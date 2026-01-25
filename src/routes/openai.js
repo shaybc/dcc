@@ -53,6 +53,7 @@ const CompletionSchema = z.object({
   model: z.string().optional(),
   stream: z.boolean().optional(),
   prompt: z.string().min(1),
+  stop: z.union([z.string(), z.array(z.string())]).optional(),
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().min(1).max(65536).optional()
 });
@@ -78,8 +79,10 @@ openaiRouter.post("/completions", async (req, res) => {
       generationConfig: Object.keys(generationConfig).length ? generationConfig : undefined
     });
 
-    const text =
+    let text =
       raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
+    text = stripSingleCodeFence(text);
+    text = applyStopSequences(text, parsed.stop);
 
     console.log(`[OPENAI] id=${reqId} completions_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
 
@@ -284,4 +287,36 @@ function cleanUndefined(obj) {
 
 function writeSse(res, payload) {
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function stripSingleCodeFence(text) {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("```") || !trimmed.endsWith("```")) {
+    return text;
+  }
+
+  const match = trimmed.match(/^```[^\n]*\n([\s\S]*?)\n```$/);
+  if (!match) {
+    return text;
+  }
+
+  return match[1].trimEnd();
+}
+
+function applyStopSequences(text, stop) {
+  if (!stop || !text) {
+    return text;
+  }
+
+  const stops = Array.isArray(stop) ? stop : [stop];
+  const indices = stops
+    .map(s => (s ? text.indexOf(s) : -1))
+    .filter(i => i >= 0);
+
+  if (!indices.length) {
+    return text;
+  }
+
+  const cutoff = Math.min(...indices);
+  return text.slice(0, cutoff);
 }
