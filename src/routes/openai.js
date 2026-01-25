@@ -7,7 +7,7 @@ import { GeminiAIStudioClient } from "../services/ai/geminiAIStudioClient.js";
 export const openaiRouter = express.Router();
 
 function normalizeGeminiModel(model) {
-  if (!model) return "gemini-2.5-flash";
+  if (!model) return "gemini-2.5-pro";
   return model.startsWith("models/") ? model.slice("models/".length) : model;
 }
 
@@ -197,11 +197,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       toolConfig: buildToolConfig(parsed.tool_choice)
     };
 
-    if (parsed.stream) {
-      res.status(200);
-      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
+    const raw = await client.generateText(requestPayload);
 
       try {
         writeSse(res, {
