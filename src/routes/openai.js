@@ -193,7 +193,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       contents,
       system: systemText,
       generationConfig: Object.keys(generationConfig).length ? generationConfig : undefined,
-      tools: parsed.tools,
+      tools: normalizeGeminiTools(parsed.tools),
       toolConfig: buildToolConfig(parsed.tool_choice)
     };
 
@@ -203,41 +203,54 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       res.setHeader("Cache-Control", "no-cache, no-transform");
       res.setHeader("Connection", "keep-alive");
 
-      writeSse(res, {
-        id: "chatcmpl_stream",
-        object: "chat.completion.chunk",
-        created: Math.floor(Date.now() / 1000),
-        model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
-        choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }]
-      });
-
-      let accumulated = "";
-      for await (const chunk of client.streamGenerateText(requestPayload)) {
-        if (!chunk) continue;
-        accumulated += chunk;
+      try {
         writeSse(res, {
           id: "chatcmpl_stream",
           object: "chat.completion.chunk",
           created: Math.floor(Date.now() / 1000),
           model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
-          choices: [{ index: 0, delta: { content: chunk }, finish_reason: null }]
+          choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }]
         });
+
+        for await (const chunk of client.streamGenerateText(requestPayload)) {
+          if (!chunk) continue;
+          writeSse(res, {
+            id: "chatcmpl_stream",
+            object: "chat.completion.chunk",
+            created: Math.floor(Date.now() / 1000),
+            model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+            choices: [{ index: 0, delta: { content: chunk }, finish_reason: null }]
+          });
+        }
+
+        writeSse(res, {
+          id: "chatcmpl_stream",
+          object: "chat.completion.chunk",
+          created: Math.floor(Date.now() / 1000),
+          model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+          choices: [{ index: 0, delta: {}, finish_reason: "stop" }]
+        });
+
+        res.write("data: [DONE]\n\n");
+        res.end();
+
+        console.log(`[OPENAI] id=${reqId} stream_done total_ms=${Date.now() - t0}`);
+        return;
+      } catch (err) {
+        return handleStreamError(res, reqId, err);
       }
-
-      writeSse(res, {
-        id: "chatcmpl_stream",
-        object: "chat.completion.chunk",
-        created: Math.floor(Date.now() / 1000),
-        model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
-        choices: [{ index: 0, delta: {}, finish_reason: "stop" }]
-      });
-
-      res.write("data: [DONE]\n\n");
-      res.end();
-
-      console.log(`[OPENAI] id=${reqId} stream_done total_ms=${Date.now() - t0}`);
-      return;
     }
+
+    const raw = await client.generateText(requestPayload);
+
+    const text =
+      raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
+
+    console.log(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
+
+    const modelName = normalizeGeminiModel(parsed.model || env.GEMINI_MODEL);
+    const created = Math.floor(Date.now() / 1000);
+    const id = `chatcmpl_${Date.now()}`;
 
     const raw = await client.generateText(requestPayload);
 
@@ -269,6 +282,9 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     console.log(`[OPENAI] id=${reqId} json_reply_ms=${Date.now() - t0}`);
     res.json(payload);
   } catch (e) {
+    if (res.headersSent) {
+      return handleStreamError(res, reqId, e);
+    }
     const msg = String(e?.message || e);
     console.log(`[OPENAI] id=${reqId} ERROR ${msg}`);
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
@@ -354,6 +370,43 @@ function buildToolConfig(toolChoice) {
     };
   }
   return undefined;
+}
+
+function normalizeGeminiTools(tools) {
+  if (!Array.isArray(tools) || !tools.length) return undefined;
+  const functionDeclarations = tools
+    .map(tool => {
+      if (tool?.type !== "function" || !tool.function) return null;
+      const { name, description, parameters } = tool.function;
+      if (!name) return null;
+      return {
+        name,
+        description,
+        parameters
+      };
+    })
+    .filter(Boolean);
+
+  if (!functionDeclarations.length) return undefined;
+  return [{ functionDeclarations }];
+}
+
+function handleStreamError(res, reqId, err) {
+  const msg = String(err?.message || err);
+  console.log(`[OPENAI] id=${reqId} ERROR ${msg}`);
+  if (!res.headersSent) {
+    res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
+    return;
+  }
+  writeSse(res, {
+    id: "chatcmpl_stream",
+    object: "chat.completion.chunk",
+    created: Math.floor(Date.now() / 1000),
+    model: "unknown",
+    choices: [{ index: 0, delta: {}, finish_reason: "error" }]
+  });
+  res.write("data: [DONE]\n\n");
+  res.end();
 }
 
 function stripPromptEcho(text, prompt) {
