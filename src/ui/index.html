@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>DCC - Developer Control Center</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    input, textarea, button { width: 100%; padding: 10px; margin-top: 8px; box-sizing: border-box; }
+    button { cursor: pointer; }
+    pre { background: #f7f7f7; padding: 12px; border-radius: 10px; overflow: auto; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>Developer Control Center (DCC)</h1>
+  <p>Local governance + workflow runs + Bitbucket PR creation.</p>
+
+  <div class="row">
+    <div class="card">
+      <h2>Definitions</h2>
+      <button id="btnLoadDefs">Load definitions</button>
+      <pre id="defsOut"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Create Bitbucket PR</h2>
+      <label>Repo path</label>
+      <input id="repoPath" placeholder="/path/to/your/repo" />
+      <label>Base branch</label>
+      <input id="baseBranch" placeholder="main" />
+      <label>Title</label>
+      <input id="prTitle" placeholder="My PR title" />
+      <label>Description</label>
+      <textarea id="prDesc" rows="4" placeholder="Describe changes"></textarea>
+      <button id="btnCreatePr">Create PR</button>
+      <pre id="prOut"></pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Workflows</h2>
+    <button id="btnLoadWf">List workflows</button>
+    <pre id="wfOut"></pre>
+
+    <h3>Run workflow</h3>
+    <label>Workflow ID</label>
+    <input id="wfId" placeholder="java-monolith-to-microservice" />
+    <label>Repo path</label>
+    <input id="wfRepoPath" placeholder="/path/to/your/repo" />
+    <label>Branch</label>
+    <input id="wfBranch" placeholder="feature/my-branch" />
+    <button id="btnRunWf">Run workflow</button>
+    <pre id="wfRunOut"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Run History</h2>
+    <button id="btnRuns">Load runs</button>
+    <pre id="runsOut"></pre>
+  </div>
+
+<script>
+  async function api(path, opts) {
+    const res = await fetch(path, Object.assign({ headers: { "Content-Type": "application/json" } }, opts || {}));
+    const txt = await res.text();
+    try { return { ok: res.ok, status: res.status, data: JSON.parse(txt) }; }
+    catch { return { ok: res.ok, status: res.status, data: txt }; }
+  }
+
+  document.getElementById("btnLoadDefs").onclick = async () => {
+    const r = await api("/api/configs");
+    document.getElementById("defsOut").textContent = JSON.stringify(r, null, 2);
+  };
+
+  document.getElementById("btnCreatePr").onclick = async () => {
+    const payload = {
+      repoPath: document.getElementById("repoPath").value,
+      baseBranch: document.getElementById("baseBranch").value,
+      title: document.getElementById("prTitle").value,
+      description: document.getElementById("prDesc").value
+    };
+    const r = await api("/api/pr/create", { method: "POST", body: JSON.stringify(payload) });
+    document.getElementById("prOut").textContent = JSON.stringify(r, null, 2);
+  };
+
+  document.getElementById("btnLoadWf").onclick = async () => {
+    const r = await api("/api/workflows");
+    document.getElementById("wfOut").textContent = JSON.stringify(r, null, 2);
+  };
+
+  document.getElementById("btnRunWf").onclick = async () => {
+    const wfId = document.getElementById("wfId").value;
+    const payload = {
+      repoPath: document.getElementById("wfRepoPath").value,
+      branch: document.getElementById("wfBranch").value
+    };
+    const r = await api(`/api/workflows/${encodeURIComponent(wfId)}/run`, { method: "POST", body: JSON.stringify(payload) });
+    document.getElementById("wfRunOut").textContent = JSON.stringify(r, null, 2);
+  };
+
+  document.getElementById("btnRuns").onclick = async () => {
+    const r = await api("/api/runs?limit=50");
+    document.getElementById("runsOut").textContent = JSON.stringify(r, null, 2);
+  };
+</script>
+</body>
+</html>
