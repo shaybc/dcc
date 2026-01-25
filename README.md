@@ -37,6 +37,8 @@ Then open:
 - If `DCC_AUTH_TOKEN` is set, every request must include header `x-dcc-token: <token>`.
 - Passwords should not be stored in plain text. Prefer using environment injection or OS keychain.
 
+
+
 ## What this project does
 
 This project is a local web server called Developer Control Center (DCC). It provides a web interface and an API to help developers with their workflows.
@@ -46,4 +48,43 @@ Key features include:
 - **Bitbucket Integration**: It can create Pull Requests in Bitbucket Data Center for the current Git branch.
 - **Workflow Tracking**: It keeps a history of workflow runs, storing the data locally in a SQLite database.
 - **IDE Agnostic UI**: It offers a basic web UI that can be used from any environment, independent of a specific IDE.
+
+## API Endpoints
+
+The server exposes the following REST API endpoints under the `/api` prefix.
+
+### OpenAI Compatible Shim API
+
+These endpoints provide an OpenAI-compatible interface that internally connects to Gemini. This allows tools like Continue to use the DCC server as a local AI proxy.
+
+- `GET /api/openai/models`
+  - Lists available AI models.
+- `POST /api/openai/completions`
+  - Creates a legacy text completion (for `text-` models).
+- `POST /api/openai/chat/completions`
+  - Creates a chat-based completion, supporting streaming and function calling.
+- `POST /api/openai/embeddings`
+  - Generates vector embeddings for a given text input.
+
+### DCC APIs
+
+These endpoints are specific to the Developer Control Center's functionality.
+
+- `GET /api/ai-calls`
+  - Lists a history of AI calls made through the server.
+- `GET /api/ai-calls/:id`
+  - Retrieves details for a single AI call by its ID.
+- `GET /api/configs`
+  - Lists available Continue definitions from the config repository.
+- `POST /api/pr/create`
+  - Creates a Bitbucket Data Center pull request for the current git branch.
+- `GET /api/runs`
+  - Lists historical workflow runs.
+- `GET /api/runs/:id`
+  - Retrieves details for a single workflow run by its ID.
+- `GET /api/workflows`
+  - Lists all available workflows.
+- `POST /api/workflows/:id/run`
+  - Starts a new run for a specific workflow.
+
 
