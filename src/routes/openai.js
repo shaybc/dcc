@@ -82,6 +82,7 @@ openaiRouter.post("/completions", async (req, res) => {
     let text =
       raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
     text = stripSingleCodeFence(text);
+    text = stripPromptEcho(text, parsed.prompt);
     text = applyStopSequences(text, parsed.stop);
 
     console.log(`[OPENAI] id=${reqId} completions_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
@@ -287,6 +288,24 @@ function cleanUndefined(obj) {
 
 function writeSse(res, payload) {
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function stripPromptEcho(text, prompt) {
+  if (!text || !prompt) {
+    return text;
+  }
+
+  if (text.startsWith(prompt)) {
+    return text.slice(prompt.length);
+  }
+
+  const trimmedPrompt = prompt.trimEnd();
+  if (trimmedPrompt && text.startsWith(trimmedPrompt)) {
+    const remainder = text.slice(trimmedPrompt.length);
+    return remainder.startsWith("\n") ? remainder.slice(1) : remainder;
+  }
+
+  return text;
 }
 
 function stripSingleCodeFence(text) {
