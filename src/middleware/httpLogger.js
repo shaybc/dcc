@@ -1,5 +1,6 @@
 // src/middleware/httpLogger.js
 import { randomUUID } from "crypto";
+import { logInfo, logWarn } from "../utils/logger.js";
 
 /**
  * Logs inbound HTTP requests and the final response status code.
@@ -27,12 +28,12 @@ export function httpLogger(options = {}) {
     res.setHeader("x-dcc-request-id", id);
 
     const url = req.originalUrl || req.url;
-    console.log(`[HTTP] id=${id} -> ${req.method} ${url}`);
+    logInfo(`[HTTP] id=${id} -> ${req.method} ${url}`);
 
     if (includeHeaders) {
       const safeHeaders = { ...req.headers };
       if (safeHeaders.authorization) safeHeaders.authorization = "***redacted***";
-      console.log(`[HTTP] id=${id} headers=${JSON.stringify(safeHeaders)}`);
+      logInfo(`[HTTP] id=${id} headers=${JSON.stringify(safeHeaders)}`);
     }
 
     if (includeBody) {
@@ -42,9 +43,9 @@ export function httpLogger(options = {}) {
           bodyStr.length > maxBodyChars
             ? bodyStr.slice(0, maxBodyChars) + "…(truncated)"
             : bodyStr;
-        console.log(`[HTTP] id=${id} body=${trimmed}`);
+        logInfo(`[HTTP] id=${id} body=${trimmed}`);
       } catch {
-        console.log(`[HTTP] id=${id} body=<unserializable>`);
+        logInfo(`[HTTP] id=${id} body=<unserializable>`);
       }
     }
 
@@ -74,18 +75,18 @@ export function httpLogger(options = {}) {
       finished = true;
       const ms = Date.now() - start;
       const len = res.getHeader("content-length") ?? "-";
-      console.log(
+      logInfo(
         `[HTTP] id=${id} <- ${res.statusCode} (${ms}ms) ${req.method} ${url} len=${len}`
       );
       if (includeResponsePreview && responsePreview != null) {
-        console.log(`[HTTP] id=${id} resp=${responsePreview}`);
+        logInfo(`[HTTP] id=${id} resp=${responsePreview}`);
       }
     });
 
     res.on("close", () => {
       if (finished) return;
       const ms = Date.now() - start;
-      console.log(`[HTTP] id=${id} !! closed early (${ms}ms) ${req.method} ${url}`);
+      logWarn(`[HTTP] id=${id} !! closed early (${ms}ms) ${req.method} ${url}`);
     });
 
     next();
