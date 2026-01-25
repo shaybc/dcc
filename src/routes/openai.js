@@ -7,7 +7,7 @@ import { GeminiAIStudioClient } from "../services/ai/geminiAIStudioClient.js";
 export const openaiRouter = express.Router();
 
 function normalizeGeminiModel(model) {
-  if (!model) return "gemini-2.5-flash";
+  if (!model) return "gemini-2.5-pro";
   return model.startsWith("models/") ? model.slice("models/".length) : model;
 }
 
@@ -240,6 +240,17 @@ openaiRouter.post("/chat/completions", async (req, res) => {
         return handleStreamError(res, reqId, err);
       }
     }
+
+    const raw = await client.generateText(requestPayload);
+
+    const text =
+      raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
+
+    console.log(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
+
+    const modelName = normalizeGeminiModel(parsed.model || env.GEMINI_MODEL);
+    const created = Math.floor(Date.now() / 1000);
+    const id = `chatcmpl_${Date.now()}`;
 
     const raw = await client.generateText(requestPayload);
 
