@@ -2,7 +2,7 @@
 export class GeminiAIStudioClient {
   constructor({ apiKey, model }) {
     this.apiKey = apiKey;
-    this.model = model; // e.g. "gemini-2.5-flash" or "text-embedding-004"
+    this.model = model; // e.g. "gemini-2.5-pro" or "text-embedding-004"
     this.baseUrl = "https://generativelanguage.googleapis.com/v1beta";
   }
 
@@ -168,6 +168,21 @@ function buildGeminiBody({ prompt, contents, generationConfig, system, tools }) 
     ...(generationConfig ? { generationConfig } : {}),
     ...(tools ? { tools } : {})
   };
+}
+
+function logGeminiRequest({ method, url, headers, body }) {
+  const safeUrl = redactUrlKey(url);
+  const safeHeaders = { ...headers };
+  console.log(`[GEMINI] ${method} ${safeUrl}`);
+  console.log(`[GEMINI] headers=${JSON.stringify(safeHeaders)}`);
+  if (body !== undefined) {
+    console.log(`[GEMINI] body=${JSON.stringify(body)}`);
+  }
+}
+
+function redactUrlKey(url) {
+  if (!url) return url;
+  return url.replace(/([?&]key=)[^&]+/g, "$1***redacted***");
 }
 
 function logGeminiRequest({ method, url, headers, body }) {
