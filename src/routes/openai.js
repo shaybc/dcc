@@ -81,9 +81,17 @@ openaiRouter.post("/completions", async (req, res) => {
 
     let text =
       raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
+    const originalText = text;
+    console.log(`[OPENAI] id=${reqId} completions_raw_prefix=${JSON.stringify(text.slice(0, 120))} raw_len=${text.length}`);
     text = stripSingleCodeFence(text);
+    console.log(`[OPENAI] id=${reqId} completions_after_fence_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
     text = stripPromptEcho(text, parsed.prompt);
+    console.log(`[OPENAI] id=${reqId} completions_after_echo_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
     text = applyStopSequences(text, parsed.stop);
+    console.log(`[OPENAI] id=${reqId} completions_after_stop_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
+    if (originalText && originalText === text) {
+      console.log(`[OPENAI] id=${reqId} completions_normalization_no_change`);
+    }
 
     console.log(`[OPENAI] id=${reqId} completions_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
 
@@ -293,6 +301,13 @@ function writeSse(res, payload) {
 function stripPromptEcho(text, prompt) {
   if (!text || !prompt) {
     return text;
+  }
+
+  const normalizedText = text.replace(/\r\n/g, "\n");
+  const normalizedPrompt = prompt.replace(/\r\n/g, "\n");
+
+  if (normalizedText.startsWith(normalizedPrompt)) {
+    return normalizedText.slice(normalizedPrompt.length);
   }
 
   if (text.startsWith(prompt)) {
