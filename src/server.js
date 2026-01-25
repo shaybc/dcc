@@ -28,13 +28,13 @@ app.use(express.json({ limit: "10mb" }));
 
 // Add request logging to see what's being called
 app.use((req, res, next) => {
-  console.log(`[DEBUG] ${req.method} ${req.path}`);
+  console.log(`[DEBUG] ${req.method} ${req.path} \n\nHeaders: ${JSON.stringify(req.headers)} \n\nBody: ${JSON.stringify(req.body)}\n\n`);
   next();
 });
 
 // HTTP logging (DEBUG MODE ON)
 app.use(httpLogger({
-  includeHeaders: false,
+  includeHeaders: true,
   includeBody: true,               // <-- ON for debugging Continue
   maxBodyChars: 6000,
   includeResponsePreview: true,    // <-- logs response preview

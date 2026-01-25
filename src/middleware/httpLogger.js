@@ -12,7 +12,7 @@ export function httpLogger(options = {}) {
   const {
     includeHeaders = false,
     includeBody = false,
-    maxBodyChars = 2000,
+    maxBodyChars = 6000,
 
     // NEW: response preview logging
     includeResponsePreview = true,
