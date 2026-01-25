@@ -9,27 +9,11 @@ export class GeminiAIStudioClient {
   /**
    * Generate text (non-stream).
    */
-  async generateText({ prompt, generationConfig = undefined, system = undefined, tools = undefined }) {
+  async generateText({ prompt, contents, generationConfig = undefined, system = undefined, tools = undefined }) {
     const modelPath = this.model.startsWith("models/") ? this.model : `models/${this.model}`;
     const url = `${this.baseUrl}/${modelPath}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
 
-    const contents = [];
-
-    if (system && system.trim()) {
-      // Gemini API supports systemInstruction; keep system out of contents
-    }
-
-    contents.push({
-      role: "user",
-      parts: [{ text: String(prompt || "") }]
-    });
-
-    const body = {
-      contents,
-      ...(system && system.trim() ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-      ...(generationConfig ? { generationConfig } : {}),
-      ...(tools ? { tools } : {})
-    };
+    const body = buildGeminiBody({ prompt, contents, generationConfig, system, tools });
 
     logGeminiRequest({
       method: "POST",
@@ -109,6 +93,96 @@ export class GeminiAIStudioClient {
 
     return await r.json();
   }
+
+  /**
+   * Stream text chunks from Gemini.
+   */
+  async *streamGenerateText({ prompt, contents, generationConfig = undefined, system = undefined, tools = undefined }) {
+    const modelPath = this.model.startsWith("models/") ? this.model : `models/${this.model}`;
+    const url = `${this.baseUrl}/${modelPath}:streamGenerateContent?alt=sse&key=${encodeURIComponent(this.apiKey)}`;
+    const body = buildGeminiBody({ prompt, contents, generationConfig, system, tools });
+
+    logGeminiRequest({
+      method: "POST",
+      url,
+      headers: { "Content-Type": "application/json" },
+      body
+    });
+
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(`Gemini streamGenerateContent failed: ${r.status} ${t}`);
+    }
+
+    if (!r.body) return;
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === "data: [DONE]") continue;
+        const payload = trimmed.startsWith("data: ") ? trimmed.slice(6) : trimmed;
+        let parsed;
+        try {
+          parsed = JSON.parse(payload);
+        } catch {
+          continue;
+        }
+        const text =
+          parsed?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
+        if (text) {
+          yield text;
+        }
+      }
+    }
+  }
+}
+
+function buildGeminiBody({ prompt, contents, generationConfig, system, tools }) {
+  const resolvedContents = Array.isArray(contents) && contents.length
+    ? contents
+    : [{
+        role: "user",
+        parts: [{ text: String(prompt || "") }]
+      }];
+
+  return {
+    contents: resolvedContents,
+    ...(system && system.trim() ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+    ...(generationConfig ? { generationConfig } : {}),
+    ...(tools ? { tools } : {})
+  };
+}
+
+function logGeminiRequest({ method, url, headers, body }) {
+  const safeUrl = redactUrlKey(url);
+  const safeHeaders = { ...headers };
+  console.log(`[GEMINI] ${method} ${safeUrl}`);
+  console.log(`[GEMINI] headers=${JSON.stringify(safeHeaders)}`);
+  if (body !== undefined) {
+    console.log(`[GEMINI] body=${JSON.stringify(body)}`);
+  }
+}
+
+function redactUrlKey(url) {
+  if (!url) return url;
+  return url.replace(/([?&]key=)[^&]+/g, "$1***redacted***");
 }
 
 function logGeminiRequest({ method, url, headers, body }) {
