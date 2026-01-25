@@ -11,14 +11,14 @@ let _db = null;
  */
 export function getDb() {
   if (_db) return _db;
-
-  const dir = path.join(os.homedir(), ".dcc");
-
-  // Ensure directory exists (better-sqlite3 requires the directory to exist)
-  fs.mkdirSync(dir, { recursive: true });
-
-  const file = path.join(dir, "history.db");
-
+  const dbPath = path.join(os.homedir(), ".dcc");
+  // ensure directory exists
+  try {
+    fs.mkdirSync(dbPath, { recursive: true });
+  } catch {
+    // best-effort; if it fails, DB open will throw with a clear error
+  }
+  const file = path.join(dbPath, "history.db");
   _db = new Database(file);
   _db.pragma("journal_mode = WAL");
   return _db;

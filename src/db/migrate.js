@@ -33,7 +33,8 @@ export function migrate() {
       FOREIGN KEY(run_id) REFERENCES runs(id)
     );
 
-    -- AI call audit log (Mission-Control-like)
+    -- AI call audit log (Mission Control-like observability)
+    -- Stores full prompt text (user + system), best-effort context refs, and a short response preview.
     CREATE TABLE IF NOT EXISTS ai_calls (
       id TEXT PRIMARY KEY,
       created_at INTEGER NOT NULL,
@@ -43,11 +44,9 @@ export function migrate() {
       latency_ms INTEGER NOT NULL,
       http_status INTEGER NOT NULL,
 
-      -- Stored intentionally:
       prompt_full TEXT NOT NULL,
-      context_refs_json TEXT NOT NULL,  -- JSON array of strings
+      context_refs_json TEXT NOT NULL,
       reply_preview TEXT NOT NULL,
-
       error TEXT
     );
 

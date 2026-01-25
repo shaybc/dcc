@@ -1,11 +1,15 @@
 // src/services/ai/aiLogService.js
-import { getDb } from "../../db/sqlite.js";
-import { randomUUID } from "crypto";
+import crypto from "crypto";
 import { env } from "../../utils/env.js";
+import { getDb } from "../../db/sqlite.js";
 
 /**
- * Stores a small but useful record for every OpenAI-compatible call.
- * Goal: investigation + reporting without persisting full code context.
+ * Local AI call logging for later investigation (Mission Control-like observability).
+ *
+ * This keeps the data minimal to reduce sensitive leakage:
+ * - prompt_full: full user/system prompt text (configurable decision; keep for now)
+ * - context_refs_json: names of context providers/files (best-effort)
+ * - reply_preview: first N chars (AI_LOG_REPLY_PREVIEW_CHARS)
  */
 export function logAiCall({
   endpoint,
@@ -16,67 +20,36 @@ export function logAiCall({
   promptFull,
   contextRefs,
   replyPreview,
-  error = null
+  error
 }) {
-  if (!env.AI_LOG_ENABLED) return null;
+  if (!env.AI_LOG_ENABLED) return;
 
-  const db = getDb();
-  const id = randomUUID();
-  const createdAt = Date.now();
-
-  db.prepare(`
-    INSERT INTO ai_calls (
-      id, created_at, endpoint, model, is_stream, latency_ms, http_status,
-      prompt_full, context_refs_json, reply_preview, error
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    createdAt,
-    endpoint,
-    model,
-    isStream ? 1 : 0,
-    Math.max(0, Math.floor(latencyMs || 0)),
-    httpStatus,
-    String(promptFull || ""),
-    JSON.stringify(Array.isArray(contextRefs) ? contextRefs : []),
-    String(replyPreview || ""),
-    error ? String(error) : null
-  );
-
-  return id;
-}
-
-export function listAiCalls({ limit = 50 }) {
-  const db = getDb();
-  const rows = db.prepare(`
-    SELECT id, created_at, endpoint, model, is_stream, latency_ms, http_status,
-           context_refs_json, reply_preview, error
-    FROM ai_calls
-    ORDER BY created_at DESC
-    LIMIT ?
-  `).all(limit);
-
-  return rows.map(r => ({
-    ...r,
-    context_refs: safeJsonParse(r.context_refs_json, [])
-  }));
-}
-
-export function getAiCall(id) {
-  const db = getDb();
-  const r = db.prepare(`SELECT * FROM ai_calls WHERE id=?`).get(id);
-  if (!r) return null;
-
-  return {
-    ...r,
-    context_refs: safeJsonParse(r.context_refs_json, [])
-  };
-}
-
-function safeJsonParse(s, fallback) {
   try {
-    return JSON.parse(s);
+    const db = getDb();
+    const id = `ai_${crypto.randomUUID()}`;
+    const createdAt = Date.now();
+    db.prepare(
+      `INSERT INTO ai_calls (
+        id, created_at, endpoint, model, is_stream, latency_ms, http_status,
+        prompt_full, context_refs_json, reply_preview, error
+      ) VALUES (
+        @id, @created_at, @endpoint, @model, @is_stream, @latency_ms, @http_status,
+        @prompt_full, @context_refs_json, @reply_preview, @error
+      )`
+    ).run({
+      id,
+      created_at: createdAt,
+      endpoint: String(endpoint || ""),
+      model: String(model || ""),
+      is_stream: isStream ? 1 : 0,
+      latency_ms: Number(latencyMs || 0),
+      http_status: Number(httpStatus || 0),
+      prompt_full: String(promptFull || ""),
+      context_refs_json: JSON.stringify(Array.isArray(contextRefs) ? contextRefs : []),
+      reply_preview: String(replyPreview || ""),
+      error: error ? String(error) : null
+    });
   } catch {
-    return fallback;
+    // Best-effort logging only. Never break the AI response path.
   }
 }

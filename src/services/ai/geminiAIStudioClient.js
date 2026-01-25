@@ -1,99 +1,92 @@
 // src/services/ai/geminiAIStudioClient.js
-import { env } from "../../utils/env.js";
-
-/**
- * Gemini AI Studio (Google AI Studio) REST client
- * Base host: https://generativelanguage.googleapis.com
- *
- * We keep this client small and explicit, so it can be maintained easily.
- */
 export class GeminiAIStudioClient {
   constructor({ apiKey, model }) {
-    if (!apiKey) throw new Error("GEMINI_API_KEY is required");
     this.apiKey = apiKey;
-    this.model = model || "gemini-2.0-flash";
+    this.model = model; // e.g. "gemini-2.5-flash" or "text-embedding-004"
     this.baseUrl = "https://generativelanguage.googleapis.com/v1beta";
   }
 
   /**
-   * List models available to the API key.
+   * Generate text (non-stream).
    */
-  async listModels() {
-    const url = `${this.baseUrl}/models?key=${encodeURIComponent(this.apiKey)}`;
-    const res = await fetch(url, { method: "GET" });
-    const text = await res.text();
-    if (!res.ok) throw new Error(`Gemini listModels failed (${res.status}): ${text}`);
-    return JSON.parse(text);
-  }
+  async generateText({ prompt, generationConfig = undefined, system = undefined, tools = undefined }) {
+    const modelPath = this.model.startsWith("models/") ? this.model : `models/${this.model}`;
+    const url = `${this.baseUrl}/${modelPath}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
 
-  /**
-   * Generate content (non-stream).
-   * @param {object} params
-   * @param {string} params.prompt - user prompt text
-   * @param {object} [params.generationConfig] - temperature/maxOutputTokens/etc
-   * @param {string} [params.system] - optional system instruction
-   */
-  async generateText({ prompt, generationConfig = undefined, system = undefined }) {
-    const url = `${this.baseUrl}/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
-
-    const body = {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }]
-        }
-      ]
-    };
+    const contents = [];
 
     if (system && system.trim()) {
-      // Gemini uses a separate "systemInstruction" field
-      body.systemInstruction = { parts: [{ text: system }] };
+      // Gemini API supports systemInstruction; keep system out of contents
     }
 
-    if (generationConfig) {
-      body.generationConfig = generationConfig;
-    }
+    contents.push({
+      role: "user",
+      parts: [{ text: String(prompt || "") }]
+    });
 
-    const res = await fetch(url, {
+    const body = {
+      contents,
+      ...(system && system.trim() ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+      ...(generationConfig ? { generationConfig } : {}),
+      ...(tools ? { tools } : {})
+    };
+
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
 
-    const text = await res.text();
-    if (!res.ok) throw new Error(`Gemini generateContent failed (${res.status}): ${text}`);
-    return JSON.parse(text);
-  }
-}
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(`Gemini generateContent failed: ${r.status} ${t}`);
+    }
 
-async embedContent({ model, input }) {
-  const m = model?.startsWith("models/") ? model : `models/${model}`;
-  const url = `${this.baseUrl}/${m}:embedContent?key=${encodeURIComponent(this.apiKey)}`;
-
-  const body = {
-    content: { parts: [{ text: input }] }
-  };
-
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-
-  if (!r.ok) {
-    const t = await r.text();
-    throw new Error(`Gemini embedContent failed: ${r.status} ${t}`);
+    return await r.json();
   }
 
-  return await r.json();
-}
+  /**
+   * Embeddings: uses :embedContent.
+   */
+  async embedText({ model, text }) {
+    const m = model || this.model;
+    const modelPath = m.startsWith("models/") ? m : `models/${m}`;
+    const url = `${this.baseUrl}/${modelPath}:embedContent?key=${encodeURIComponent(this.apiKey)}`;
 
-/**
- * Factory so the rest of the app doesn’t need to know env specifics.
- */
-export function getGeminiClient() {
-  return new GeminiAIStudioClient({
-    apiKey: env.GEMINI_API_KEY,
-    model: env.GEMINI_MODEL
-  });
+    const body = {
+      content: { parts: [{ text: String(text || "") }] }
+    };
+
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(`Gemini embedContent failed: ${r.status} ${t}`);
+    }
+
+    return await r.json();
+  }
+
+  /**
+   * List models.
+   */
+  async listModels() {
+    const url = `${this.baseUrl}/models?key=${encodeURIComponent(this.apiKey)}`;
+
+    const r = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    });
+
+    if (!r.ok) {
+      const t = await r.text();
+      throw new Error(`Gemini listModels failed: ${r.status} ${t}`);
+    }
+
+    return await r.json();
+  }
 }
