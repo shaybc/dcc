@@ -13,7 +13,7 @@ const EnvSchema = z.object({
   // Gemini AI Studio (Google Generative Language API)
   GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
   GEMINI_BASE_URL: z.string().url().optional().default("https://generativelanguage.googleapis.com/v1beta"),
-  GEMINI_MODEL: z.string().optional().default("gemini-2.5-flash"),
+  GEMINI_MODEL: z.string().optional().default("gemini-2.5-pro"),
   GEMINI_EMBEDDING_MODEL: z.string().optional().default("text-embedding-004"),
 
   // AI call logging
