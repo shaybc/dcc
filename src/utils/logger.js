@@ -1,69 +1,30 @@
-import fs from "fs";
-import path from "path";
+import "dotenv/config";
+import { z } from "zod";
 
-const LOG_DIR = path.resolve(process.cwd(), "log");
-const MAX_BYTES = 50 * 1024 * 1024;
-let currentStream = null;
-let currentDate = null;
-let currentSize = 0;
+const EnvSchema = z.object({
+  PORT: z.coerce.number().default(7331),
+  CONFIG_REPO_PATH: z.string().min(1).default(process.cwd()),
+  DCC_AUTH_TOKEN: z.string().optional().default(""),
+  BITBUCKET_BASE_URL: z.string().url().default("https://bitbucket.example.local"),
+  BITBUCKET_USERNAME: z.string().optional().default(""),
+  BITBUCKET_PASSWORD: z.string().optional().default(""),
+  DEFAULT_BASE_BRANCH: z.string().default("main"),
 
-function formatDate(now) {
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd}`;
-}
+  // Gemini AI Studio (Google Generative Language API)
+  GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
+  GEMINI_BASE_URL: z.string().url().optional().default("https://generativelanguage.googleapis.com/v1beta"),
+  GEMINI_MODEL: z.string().optional().default("gemini-2.5-pro"),
+  GEMINI_EMBEDDING_MODEL: z.string().optional().default("text-embedding-004"),
 
-function formatTime(now) {
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-  return `${hh}.${mm}`;
-}
+    // AI call logging
+  AI_LOG_ENABLED: z.coerce.boolean().default(true),
+  AI_LOG_REPLY_PREVIEW_CHARS: z.coerce.number().min(0).max(5000).default(100),
+  OPENAI_RESPONSE_LOG_ENABLED: z.coerce.boolean().default(false),
+  MAX_LOG_FILE_SIZE_BYTES: z.coerce.number().min(0).default(50 * 1024 * 1024),
 
-function openStream(now) {
-  fs.mkdirSync(LOG_DIR, { recursive: true });
-  const datePart = formatDate(now);
-  const timePart = formatTime(now);
-  const filename = `dcc_${datePart}_${timePart}.log`;
-  const filepath = path.join(LOG_DIR, filename);
-  currentStream = fs.createWriteStream(filepath, { flags: "a" });
-  currentDate = datePart;
-  currentSize = 0;
-}
+  // Optional legacy vars (kept for compatibility with earlier drafts)
+  OPENAI_SHIM_BASE_URL: z.string().optional().default(""),
+  OPENAI_SHIM_API_KEY: z.string().optional().default("")
+});
 
-function rotateIfNeeded(entryBytes, now) {
-  const datePart = formatDate(now);
-  const needsDateRotate = currentDate && datePart !== currentDate;
-  const needsSizeRotate = currentStream && currentSize + entryBytes > MAX_BYTES;
-  if (!currentStream || needsDateRotate || needsSizeRotate) {
-    if (currentStream) {
-      currentStream.end();
-    }
-    openStream(now);
-  }
-}
-
-function formatEntry(level, msg, meta) {
-  const metaSuffix = meta ? ` ${JSON.stringify(meta)}` : "";
-  return `[${level}] ${msg}${metaSuffix}\n\n`;
-}
-
-function writeLog(level, msg, meta) {
-  const now = new Date();
-  const entry = formatEntry(level, msg, meta);
-  rotateIfNeeded(Buffer.byteLength(entry), now);
-  currentSize += Buffer.byteLength(entry);
-  currentStream.write(entry);
-}
-
-export function logInfo(msg, meta = undefined) {
-  writeLog("INFO", msg, meta);
-}
-
-export function logWarn(msg, meta = undefined) {
-  writeLog("WARN", msg, meta);
-}
-
-export function logError(msg, meta = undefined) {
-  writeLog("ERROR", msg, meta);
-}
+export const env = EnvSchema.parse(process.env);
