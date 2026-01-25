@@ -7,7 +7,7 @@ import { GeminiAIStudioClient } from "../services/ai/geminiAIStudioClient.js";
 export const openaiRouter = express.Router();
 
 function normalizeGeminiModel(model) {
-  if (!model) return "gemini-2.5-flash";
+  if (!model) return "gemini-2.5-pro";
   return model.startsWith("models/") ? model.slice("models/".length) : model;
 }
 

@@ -2,7 +2,7 @@
 export class GeminiAIStudioClient {
   constructor({ apiKey, model }) {
     this.apiKey = apiKey;
-    this.model = model; // e.g. "gemini-2.5-flash" or "text-embedding-004"
+    this.model = model; // e.g. "gemini-2.5-pro" or "text-embedding-004"
     this.baseUrl = "https://generativelanguage.googleapis.com/v1beta";
   }
 
