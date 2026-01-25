@@ -197,11 +197,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       toolConfig: buildToolConfig(parsed.tool_choice)
     };
 
-    if (parsed.stream) {
-      res.status(200);
-      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
+    const raw = await client.generateText(requestPayload);
 
       try {
         writeSse(res, {
@@ -241,21 +237,10 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       }
     }
 
-    const raw = await client.generateText(requestPayload);
+    const rawResponse = await client.generateText(requestPayload);
 
     const text =
-      raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
-
-    console.log(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
-
-    const modelName = normalizeGeminiModel(parsed.model || env.GEMINI_MODEL);
-    const created = Math.floor(Date.now() / 1000);
-    const id = `chatcmpl_${Date.now()}`;
-
-    const raw = await client.generateText(requestPayload);
-
-    const text =
-      raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
+      rawResponse?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
 
     console.log(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
 
