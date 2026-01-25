@@ -20,11 +20,12 @@ function getClientForModel(modelFromRequest) {
 }
 
 openaiRouter.get("/models", async (req, res) => {
+  const reqId = req._reqId || "no-id";
   try {
     const client = getClientForModel();
     const data = await client.listModels();
 
-    res.json({
+    const payload = {
       object: "list",
       data: (data.models || []).map(m => ({
         id: m.name?.startsWith("models/") ? m.name.slice("models/".length) : m.name,
@@ -32,7 +33,9 @@ openaiRouter.get("/models", async (req, res) => {
         created: 0,
         owned_by: "google"
       }))
-    });
+    };
+    logOpenAiResponse(reqId, "models_json", payload);
+    res.json(payload);
   } catch (e) {
     res.status(500).json({ error: { message: String(e?.message || e), type: "server_error" } });
   }
@@ -118,7 +121,7 @@ openaiRouter.post("/completions", async (req, res) => {
       res.setHeader("Cache-Control", "no-cache, no-transform");
       res.setHeader("Connection", "keep-alive");
 
-      writeSse(res, {
+      writeSseWithLog(res, reqId, {
         id,
         object: "text_completion",
         created,
@@ -126,7 +129,7 @@ openaiRouter.post("/completions", async (req, res) => {
         choices: [{ index: 0, text, logprobs: null, finish_reason: null }]
       });
 
-      writeSse(res, {
+      writeSseWithLog(res, reqId, {
         id,
         object: "text_completion",
         created,
@@ -135,20 +138,23 @@ openaiRouter.post("/completions", async (req, res) => {
       });
 
       res.write("data: [DONE]\n\n");
+      logOpenAiResponse(reqId, "completions_sse_done", "[DONE]");
       res.end();
 
       console.log(`[OPENAI] id=${reqId} completions_stream_done total_ms=${Date.now() - t0}`);
       return;
     }
 
-    res.json({
+    const payload = {
       id,
       object: "text_completion",
       created,
       model: modelName,
       choices: [{ index: 0, text, logprobs: null, finish_reason: "stop" }],
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-    });
+    };
+    logOpenAiResponse(reqId, "completions_json", payload);
+    res.json(payload);
 
     console.log(`[OPENAI] id=${reqId} completions_json_reply_ms=${Date.now() - t0}`);
   } catch (e) {
@@ -207,7 +213,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       let sawToolCalls = false;
 
       try {
-        writeSse(res, {
+        writeSseWithLog(res, reqId, {
           id: "chatcmpl_stream",
           object: "chat.completion.chunk",
           created: Math.floor(Date.now() / 1000),
@@ -219,7 +225,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
           if (!chunk) continue;
           const { text, functionCalls } = chunk;
           if (text) {
-            writeSse(res, {
+            writeSseWithLog(res, reqId, {
               id: "chatcmpl_stream",
               object: "chat.completion.chunk",
               created: Math.floor(Date.now() / 1000),
@@ -242,7 +248,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
                 }
               };
             });
-            writeSse(res, {
+            writeSseWithLog(res, reqId, {
               id: "chatcmpl_stream",
               object: "chat.completion.chunk",
               created: Math.floor(Date.now() / 1000),
@@ -252,7 +258,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
           }
         }
 
-        writeSse(res, {
+        writeSseWithLog(res, reqId, {
           id: "chatcmpl_stream",
           object: "chat.completion.chunk",
           created: Math.floor(Date.now() / 1000),
@@ -261,6 +267,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
         });
 
         res.write("data: [DONE]\n\n");
+        logOpenAiResponse(reqId, "chat_completions_sse_done", "[DONE]");
         res.end();
 
         console.log(`[OPENAI] id=${reqId} stream_done total_ms=${Date.now() - t0}`);
@@ -305,6 +312,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     };
 
     console.log(`[OPENAI] id=${reqId} json_reply_ms=${Date.now() - t0}`);
+    logOpenAiResponse(reqId, "chat_completions_json", payload);
     res.json(payload);
   } catch (e) {
     if (res.headersSent) {
@@ -343,11 +351,13 @@ openaiRouter.post("/embeddings", async (req, res) => {
 
     console.log(`[OPENAI] id=${reqId} embeddings_ok count=${data.length} ms=${Date.now() - t0}`);
 
-    res.json({
+    const payload = {
       object: "list",
       data,
       usage: { prompt_tokens: 0, total_tokens: 0 }
-    });
+    };
+    logOpenAiResponse(reqId, "embeddings_json", payload);
+    res.json(payload);
   } catch (e) {
     const msg = String(e?.message || e);
     console.log(`[OPENAI] id=${reqId} embeddings_ERROR ${msg}`);
@@ -361,6 +371,11 @@ function cleanUndefined(obj) {
 
 function writeSse(res, payload) {
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function writeSseWithLog(res, reqId, payload) {
+  logOpenAiResponse(reqId, "sse_chunk", payload);
+  writeSse(res, payload);
 }
 
 function normalizeContentText(content) {
@@ -451,7 +466,7 @@ function handleStreamError(res, reqId, err) {
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
     return;
   }
-  writeSse(res, {
+  writeSseWithLog(res, reqId, {
     id: "chatcmpl_stream",
     object: "chat.completion.chunk",
     created: Math.floor(Date.now() / 1000),
@@ -459,7 +474,16 @@ function handleStreamError(res, reqId, err) {
     choices: [{ index: 0, delta: {}, finish_reason: "error" }]
   });
   res.write("data: [DONE]\n\n");
+  logOpenAiResponse(reqId, "chat_completions_sse_done", "[DONE]");
   res.end();
+}
+
+function logOpenAiResponse(reqId, label, payload) {
+  if (!env.OPENAI_RESPONSE_LOG_ENABLED) {
+    return;
+  }
+  const serialized = typeof payload === "string" ? payload : JSON.stringify(payload);
+  console.log(`[OPENAI] id=${reqId} response_${label}=${serialized}`);
 }
 
 function stripPromptEcho(text, prompt) {
