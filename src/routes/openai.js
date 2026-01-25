@@ -85,6 +85,16 @@ openaiRouter.post("/completions", async (req, res) => {
     console.log(`[OPENAI] id=${reqId} completions_raw_prefix=${JSON.stringify(text.slice(0, 120))} raw_len=${text.length}`);
     text = stripSingleCodeFence(text);
     console.log(`[OPENAI] id=${reqId} completions_after_fence_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
+    const normalizedText = text.replace(/\r\n/g, "\n");
+    const normalizedPrompt = parsed.prompt.replace(/\r\n/g, "\n");
+    const commonPrefix = commonPrefixLength(normalizedText, normalizedPrompt);
+    if (commonPrefix > 0 && commonPrefix < normalizedPrompt.length) {
+      const mismatchIndex = commonPrefix;
+      console.log(`[OPENAI] id=${reqId} completions_prompt_mismatch_at=${mismatchIndex}`);
+      console.log(`[OPENAI] id=${reqId} completions_prompt_expected=${JSON.stringify(normalizedPrompt.slice(mismatchIndex, mismatchIndex + 80))}`);
+      console.log(`[OPENAI] id=${reqId} completions_prompt_actual=${JSON.stringify(normalizedText.slice(mismatchIndex, mismatchIndex + 80))}`);
+    }
+    console.log(`[OPENAI] id=${reqId} completions_prompt_len=${normalizedPrompt.length} prompt_common_prefix=${commonPrefix}`);
     text = stripPromptEcho(text, parsed.prompt);
     console.log(`[OPENAI] id=${reqId} completions_after_echo_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
     text = applyStopSequences(text, parsed.stop);
@@ -353,4 +363,14 @@ function applyStopSequences(text, stop) {
 
   const cutoff = Math.min(...indices);
   return text.slice(0, cutoff);
+}
+
+function commonPrefixLength(a, b) {
+  const maxLen = Math.min(a.length, b.length);
+  for (let i = 0; i < maxLen; i += 1) {
+    if (a[i] !== b[i]) {
+      return i;
+    }
+  }
+  return maxLen;
 }
