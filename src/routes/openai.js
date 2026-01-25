@@ -197,7 +197,11 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       toolConfig: buildToolConfig(parsed.tool_choice)
     };
 
-    const raw = await client.generateText(requestPayload);
+    if (parsed.stream) {
+      res.status(200);
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
 
       try {
         writeSse(res, {
