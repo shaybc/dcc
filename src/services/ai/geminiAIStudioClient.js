@@ -1,4 +1,5 @@
 // src/services/ai/geminiAIStudioClient.js
+import { logInfo } from "../../utils/logger.js";
 export class GeminiAIStudioClient {
   constructor({ apiKey, model }) {
     this.apiKey = apiKey;
@@ -190,10 +191,10 @@ function extractGeminiParts(content) {
 function logGeminiHttpRequest({ method, url, headers, body }) {
   const safeUrl = redactUrlKey(url);
   const safeHeaders = { ...headers };
-  console.log(`[GEMINI] ${method} ${safeUrl}`);
-  console.log(`[GEMINI] headers=${JSON.stringify(safeHeaders)}`);
+  logInfo(`[GEMINI] ${method} ${safeUrl}`);
+  logInfo(`[GEMINI] headers=${JSON.stringify(safeHeaders)}`);
   if (body !== undefined) {
-    console.log(`[GEMINI] body=${JSON.stringify(body)}`);
+    logInfo(`[GEMINI] body=${JSON.stringify(body)}`);
   }
 }
 

@@ -28,7 +28,7 @@ app.use(express.json({ limit: "10mb" }));
 
 // Add request logging to see what's being called
 app.use((req, res, next) => {
-  console.log(`[DEBUG] ${req.method} ${req.path} \n\nHeaders: ${JSON.stringify(req.headers)} \n\nBody: ${JSON.stringify(req.body)}\n\n`);
+  logInfo(`[DEBUG] ${req.method} ${req.path} Headers: ${JSON.stringify(req.headers)} Body: ${JSON.stringify(req.body)}`);
   next();
 });
 

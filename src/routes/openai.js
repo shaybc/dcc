@@ -2,6 +2,7 @@
 import express from "express";
 import { z } from "zod";
 import { env } from "../utils/env.js";
+import { logError, logInfo } from "../utils/logger.js";
 import { GeminiAIStudioClient } from "../services/ai/geminiAIStudioClient.js";
 
 export const openaiRouter = express.Router();
@@ -71,7 +72,7 @@ openaiRouter.post("/completions", async (req, res) => {
   try {
     const parsed = CompletionSchema.parse(req.body);
 
-    console.log(`[OPENAI] id=${reqId} completions stream=${Boolean(parsed.stream)} model=${parsed.model || env.GEMINI_MODEL}`);
+    logInfo(`[OPENAI] id=${reqId} completions stream=${Boolean(parsed.stream)} model=${parsed.model || env.GEMINI_MODEL}`);
 
     const client = getClientForModel(parsed.model);
 
@@ -88,28 +89,28 @@ openaiRouter.post("/completions", async (req, res) => {
     let text =
       raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
     const originalText = text;
-    console.log(`[OPENAI] id=${reqId} completions_raw_prefix=${JSON.stringify(text.slice(0, 120))} raw_len=${text.length}`);
+    logInfo(`[OPENAI] id=${reqId} completions_raw_prefix=${JSON.stringify(text.slice(0, 120))} raw_len=${text.length}`);
     text = stripSingleCodeFence(text);
-    console.log(`[OPENAI] id=${reqId} completions_after_fence_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
+    logInfo(`[OPENAI] id=${reqId} completions_after_fence_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
     const normalizedText = text.replace(/\r\n/g, "\n");
     const normalizedPrompt = parsed.prompt.replace(/\r\n/g, "\n");
     const commonPrefix = commonPrefixLength(normalizedText, normalizedPrompt);
     if (commonPrefix > 0 && commonPrefix < normalizedPrompt.length) {
       const mismatchIndex = commonPrefix;
-      console.log(`[OPENAI] id=${reqId} completions_prompt_mismatch_at=${mismatchIndex}`);
-      console.log(`[OPENAI] id=${reqId} completions_prompt_expected=${JSON.stringify(normalizedPrompt.slice(mismatchIndex, mismatchIndex + 80))}`);
-      console.log(`[OPENAI] id=${reqId} completions_prompt_actual=${JSON.stringify(normalizedText.slice(mismatchIndex, mismatchIndex + 80))}`);
+      logInfo(`[OPENAI] id=${reqId} completions_prompt_mismatch_at=${mismatchIndex}`);
+      logInfo(`[OPENAI] id=${reqId} completions_prompt_expected=${JSON.stringify(normalizedPrompt.slice(mismatchIndex, mismatchIndex + 80))}`);
+      logInfo(`[OPENAI] id=${reqId} completions_prompt_actual=${JSON.stringify(normalizedText.slice(mismatchIndex, mismatchIndex + 80))}`);
     }
-    console.log(`[OPENAI] id=${reqId} completions_prompt_len=${normalizedPrompt.length} prompt_common_prefix=${commonPrefix}`);
+    logInfo(`[OPENAI] id=${reqId} completions_prompt_len=${normalizedPrompt.length} prompt_common_prefix=${commonPrefix}`);
     text = stripPromptEcho(text, parsed.prompt);
-    console.log(`[OPENAI] id=${reqId} completions_after_echo_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
+    logInfo(`[OPENAI] id=${reqId} completions_after_echo_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
     text = applyStopSequences(text, parsed.stop);
-    console.log(`[OPENAI] id=${reqId} completions_after_stop_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
+    logInfo(`[OPENAI] id=${reqId} completions_after_stop_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
     if (originalText && originalText === text) {
-      console.log(`[OPENAI] id=${reqId} completions_normalization_no_change`);
+      logInfo(`[OPENAI] id=${reqId} completions_normalization_no_change`);
     }
 
-    console.log(`[OPENAI] id=${reqId} completions_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
+    logInfo(`[OPENAI] id=${reqId} completions_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
 
     const modelName = normalizeGeminiModel(parsed.model || env.GEMINI_MODEL);
     const created = Math.floor(Date.now() / 1000);
@@ -141,7 +142,7 @@ openaiRouter.post("/completions", async (req, res) => {
       logOpenAiResponse(reqId, "completions_sse_done", "[DONE]");
       res.end();
 
-      console.log(`[OPENAI] id=${reqId} completions_stream_done total_ms=${Date.now() - t0}`);
+      logInfo(`[OPENAI] id=${reqId} completions_stream_done total_ms=${Date.now() - t0}`);
       return;
     }
 
@@ -156,10 +157,10 @@ openaiRouter.post("/completions", async (req, res) => {
     logOpenAiResponse(reqId, "completions_json", payload);
     res.json(payload);
 
-    console.log(`[OPENAI] id=${reqId} completions_json_reply_ms=${Date.now() - t0}`);
+    logInfo(`[OPENAI] id=${reqId} completions_json_reply_ms=${Date.now() - t0}`);
   } catch (e) {
     const msg = String(e?.message || e);
-    console.log(`[OPENAI] id=${reqId} completions_ERROR ${msg}`);
+    logError(`[OPENAI] id=${reqId} completions_ERROR ${msg}`);
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
   }
 });
@@ -182,7 +183,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       }))
       .filter(m => m.parts[0].text.trim().length > 0);
 
-    console.log(`[OPENAI] id=${reqId} chat.completions stream=${Boolean(parsed.stream)} model=${parsed.model || env.GEMINI_MODEL}`);
+    logInfo(`[OPENAI] id=${reqId} chat.completions stream=${Boolean(parsed.stream)} model=${parsed.model || env.GEMINI_MODEL}`);
 
     if (!contents.length) {
       return res.status(400).json({ error: { message: "No user message content found", type: "invalid_request_error" } });
@@ -270,7 +271,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
         logOpenAiResponse(reqId, "chat_completions_sse_done", "[DONE]");
         res.end();
 
-        console.log(`[OPENAI] id=${reqId} stream_done total_ms=${Date.now() - t0}`);
+        logInfo(`[OPENAI] id=${reqId} stream_done total_ms=${Date.now() - t0}`);
         return;
       } catch (err) {
         return handleStreamError(res, reqId, err);
@@ -281,7 +282,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
     const { text, functionCalls } = extractGeminiTextAndCalls(rawResponse);
 
-    console.log(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
+    logInfo(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
 
     const modelName = normalizeGeminiModel(parsed.model || env.GEMINI_MODEL);
     const created = Math.floor(Date.now() / 1000);
@@ -311,7 +312,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
     };
 
-    console.log(`[OPENAI] id=${reqId} json_reply_ms=${Date.now() - t0}`);
+    logInfo(`[OPENAI] id=${reqId} json_reply_ms=${Date.now() - t0}`);
     logOpenAiResponse(reqId, "chat_completions_json", payload);
     res.json(payload);
   } catch (e) {
@@ -319,7 +320,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       return handleStreamError(res, reqId, e);
     }
     const msg = String(e?.message || e);
-    console.log(`[OPENAI] id=${reqId} ERROR ${msg}`);
+    logError(`[OPENAI] id=${reqId} ERROR ${msg}`);
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
   }
 });
@@ -337,7 +338,7 @@ openaiRouter.post("/embeddings", async (req, res) => {
     const parsed = EmbeddingsSchema.parse(req.body);
     const modelName = parsed.model || "text-embedding-004";
 
-    console.log(`[OPENAI] id=${reqId} embeddings model=${modelName}`);
+    logInfo(`[OPENAI] id=${reqId} embeddings model=${modelName}`);
 
     const client = getClientForModel(modelName);
     const inputs = Array.isArray(parsed.input) ? parsed.input : [parsed.input];
@@ -349,7 +350,7 @@ openaiRouter.post("/embeddings", async (req, res) => {
       data.push({ object: "embedding", index: i, embedding: values });
     }
 
-    console.log(`[OPENAI] id=${reqId} embeddings_ok count=${data.length} ms=${Date.now() - t0}`);
+    logInfo(`[OPENAI] id=${reqId} embeddings_ok count=${data.length} ms=${Date.now() - t0}`);
 
     const payload = {
       object: "list",
@@ -360,7 +361,7 @@ openaiRouter.post("/embeddings", async (req, res) => {
     res.json(payload);
   } catch (e) {
     const msg = String(e?.message || e);
-    console.log(`[OPENAI] id=${reqId} embeddings_ERROR ${msg}`);
+    logError(`[OPENAI] id=${reqId} embeddings_ERROR ${msg}`);
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
   }
 });
@@ -461,7 +462,7 @@ function toOpenAiToolCalls(functionCalls) {
 
 function handleStreamError(res, reqId, err) {
   const msg = String(err?.message || err);
-  console.log(`[OPENAI] id=${reqId} ERROR ${msg}`);
+  logError(`[OPENAI] id=${reqId} ERROR ${msg}`);
   if (!res.headersSent) {
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
     return;
@@ -483,7 +484,7 @@ function logOpenAiResponse(reqId, label, payload) {
     return;
   }
   const serialized = typeof payload === "string" ? payload : JSON.stringify(payload);
-  console.log(`[OPENAI] id=${reqId} response_${label}=${serialized}`);
+  logInfo(`[OPENAI] id=${reqId} response_${label}=${serialized}`);
 }
 
 function stripPromptEcho(text, prompt) {
