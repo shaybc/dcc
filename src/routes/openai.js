@@ -197,7 +197,14 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       toolConfig: buildToolConfig(parsed.tool_choice)
     };
 
-    const raw = await client.generateText(requestPayload);
+    if (parsed.stream) {
+      res.status(200);
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+
+      let toolCallIndex = 0;
+      let sawToolCalls = false;
 
       try {
         writeSse(res, {
@@ -210,13 +217,39 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
         for await (const chunk of client.streamGenerateText(requestPayload)) {
           if (!chunk) continue;
-          writeSse(res, {
-            id: "chatcmpl_stream",
-            object: "chat.completion.chunk",
-            created: Math.floor(Date.now() / 1000),
-            model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
-            choices: [{ index: 0, delta: { content: chunk }, finish_reason: null }]
-          });
+          const { text, functionCalls } = chunk;
+          if (text) {
+            writeSse(res, {
+              id: "chatcmpl_stream",
+              object: "chat.completion.chunk",
+              created: Math.floor(Date.now() / 1000),
+              model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+              choices: [{ index: 0, delta: { content: text }, finish_reason: null }]
+            });
+          }
+          if (functionCalls?.length) {
+            sawToolCalls = true;
+            const toolCalls = functionCalls.map(call => {
+              const currentIndex = toolCallIndex++;
+              const id = `call_${Date.now()}_${currentIndex}`;
+              return {
+                index: currentIndex,
+                id,
+                type: "function",
+                function: {
+                  name: call.name,
+                  arguments: JSON.stringify(call.args ?? {})
+                }
+              };
+            });
+            writeSse(res, {
+              id: "chatcmpl_stream",
+              object: "chat.completion.chunk",
+              created: Math.floor(Date.now() / 1000),
+              model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+              choices: [{ index: 0, delta: { tool_calls: toolCalls }, finish_reason: null }]
+            });
+          }
         }
 
         writeSse(res, {
@@ -224,7 +257,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
           object: "chat.completion.chunk",
           created: Math.floor(Date.now() / 1000),
           model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
-          choices: [{ index: 0, delta: {}, finish_reason: "stop" }]
+          choices: [{ index: 0, delta: {}, finish_reason: sawToolCalls ? "tool_calls" : "stop" }]
         });
 
         res.write("data: [DONE]\n\n");
@@ -239,8 +272,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
     const rawResponse = await client.generateText(requestPayload);
 
-    const text =
-      rawResponse?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
+    const { text, functionCalls } = extractGeminiTextAndCalls(rawResponse);
 
     console.log(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
 
@@ -249,6 +281,14 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     const id = `chatcmpl_${Date.now()}`;
 
     // Non-stream JSON
+    const message = {
+      role: "assistant",
+      content: text || null
+    };
+    if (functionCalls.length) {
+      message.tool_calls = toOpenAiToolCalls(functionCalls);
+    }
+
     const payload = {
       id,
       object: "chat.completion",
@@ -257,8 +297,8 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       choices: [
         {
           index: 0,
-          message: { role: "assistant", content: text },
-          finish_reason: "stop"
+          message,
+          finish_reason: functionCalls.length ? "tool_calls" : "stop"
         }
       ],
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
@@ -374,6 +414,34 @@ function normalizeGeminiTools(tools) {
 
   if (!functionDeclarations.length) return undefined;
   return [{ functionDeclarations }];
+}
+
+function extractGeminiTextAndCalls(rawResponse) {
+  const parts = rawResponse?.candidates?.[0]?.content?.parts || [];
+  let text = "";
+  const functionCalls = [];
+
+  for (const part of parts) {
+    if (part?.text) {
+      text += part.text;
+    }
+    if (part?.functionCall?.name) {
+      functionCalls.push(part.functionCall);
+    }
+  }
+
+  return { text, functionCalls };
+}
+
+function toOpenAiToolCalls(functionCalls) {
+  return functionCalls.map((call, index) => ({
+    id: `call_${Date.now()}_${index}`,
+    type: "function",
+    function: {
+      name: call.name,
+      arguments: JSON.stringify(call.args ?? {})
+    }
+  }));
 }
 
 function handleStreamError(res, reqId, err) {
