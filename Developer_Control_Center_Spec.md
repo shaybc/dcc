@@ -3,6 +3,20 @@
 
 ---
 
+## What is Continue?
+
+Continue is an open-source autopilot for software development. It provides an IDE extension (for VS Code and JetBrains) that allows developers to interact with powerful AI models. Users can ask questions, get code suggestions, and automate changes to their codebase.
+
+Key features include:
+- **Chat Interface**: A familiar chat UI to interact with AI models.
+- **Context Awareness**: Continue automatically indexes your codebase to provide relevant context to the AI.
+- **Agents & Slash Commands**: Pre-defined and custom agents (`/edit`, `/debug`, etc.) that perform specific tasks.
+- **Model Agnostic**: Can be configured to use various local or remote large language models (LLMs).
+
+In the context of DCC, Continue acts as the developer-facing client, while DCC provides the centralized configuration and governance for it.
+
+---
+
 ## 1. Goal
 
 Build a **local-first “Developer Control Center” (DCC)** that acts as the **central governance, execution, and PR automation layer** for AI-assisted development, while:
