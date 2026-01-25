@@ -36,3 +36,14 @@ Then open:
 ## Security notes
 - If `DCC_AUTH_TOKEN` is set, every request must include header `x-dcc-token: <token>`.
 - Passwords should not be stored in plain text. Prefer using environment injection or OS keychain.
+
+## What this project does
+
+This project is a local web server called Developer Control Center (DCC). It provides a web interface and an API to help developers with their workflows.
+
+Key features include:
+- **Configuration Management**: It helps manage "Continue definitions" which are stored in a Bitbucket repository. Changes are managed through a pull-request-based workflow.
+- **Bitbucket Integration**: It can create Pull Requests in Bitbucket Data Center for the current Git branch.
+- **Workflow Tracking**: It keeps a history of workflow runs, storing the data locally in a SQLite database.
+- **IDE Agnostic UI**: It offers a basic web UI that can be used from any environment, independent of a specific IDE.
+
