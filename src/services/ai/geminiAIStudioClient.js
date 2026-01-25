@@ -144,10 +144,9 @@ export class GeminiAIStudioClient {
         } catch {
           continue;
         }
-        const text =
-          parsed?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
-        if (text) {
-          yield text;
+        const { text, functionCalls } = extractGeminiParts(parsed?.candidates?.[0]?.content);
+        if (text || functionCalls.length) {
+          yield { text, functionCalls };
         }
       }
     }
@@ -169,6 +168,23 @@ function buildGeminiBody({ prompt, contents, generationConfig, system, tools, to
     ...(tools ? { tools } : {}),
     ...(toolConfig ? { toolConfig } : {})
   };
+}
+
+function extractGeminiParts(content) {
+  const parts = Array.isArray(content?.parts) ? content.parts : [];
+  let text = "";
+  const functionCalls = [];
+
+  for (const part of parts) {
+    if (part?.text) {
+      text += part.text;
+    }
+    if (part?.functionCall?.name) {
+      functionCalls.push(part.functionCall);
+    }
+  }
+
+  return { text, functionCalls };
 }
 
 function logGeminiHttpRequest({ method, url, headers, body }) {
