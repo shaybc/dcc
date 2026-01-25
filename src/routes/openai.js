@@ -193,7 +193,8 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       contents,
       system: systemText,
       generationConfig: Object.keys(generationConfig).length ? generationConfig : undefined,
-      tools: parsed.tools
+      tools: parsed.tools,
+      toolConfig: buildToolConfig(parsed.tool_choice)
     };
 
     if (parsed.stream) {
@@ -334,6 +335,25 @@ function normalizeContentText(content) {
   }
   if (content == null) return "";
   return String(content);
+}
+
+function buildToolConfig(toolChoice) {
+  if (!toolChoice) return undefined;
+  if (toolChoice === "none") {
+    return { functionCallingConfig: { mode: "NONE" } };
+  }
+  if (toolChoice === "auto") {
+    return { functionCallingConfig: { mode: "AUTO" } };
+  }
+  if (toolChoice?.type === "function" && toolChoice?.function?.name) {
+    return {
+      functionCallingConfig: {
+        mode: "ANY",
+        allowedFunctionNames: [toolChoice.function.name]
+      }
+    };
+  }
+  return undefined;
 }
 
 function stripPromptEcho(text, prompt) {

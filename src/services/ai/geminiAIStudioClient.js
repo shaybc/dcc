@@ -9,13 +9,13 @@ export class GeminiAIStudioClient {
   /**
    * Generate text (non-stream).
    */
-  async generateText({ prompt, contents, generationConfig = undefined, system = undefined, tools = undefined }) {
+  async generateText({ prompt, contents, generationConfig = undefined, system = undefined, tools = undefined, toolConfig = undefined }) {
     const modelPath = this.model.startsWith("models/") ? this.model : `models/${this.model}`;
     const url = `${this.baseUrl}/${modelPath}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
 
-    const body = buildGeminiBody({ prompt, contents, generationConfig, system, tools });
+    const body = buildGeminiBody({ prompt, contents, generationConfig, system, tools, toolConfig });
 
-    logGeminiRequest({
+    logGeminiHttpRequest({
       method: "POST",
       url,
       headers: { "Content-Type": "application/json" },
@@ -48,7 +48,7 @@ export class GeminiAIStudioClient {
       content: { parts: [{ text: String(text || "") }] }
     };
 
-    logGeminiRequest({
+    logGeminiHttpRequest({
       method: "POST",
       url,
       headers: { "Content-Type": "application/json" },
@@ -75,7 +75,7 @@ export class GeminiAIStudioClient {
   async listModels() {
     const url = `${this.baseUrl}/models?key=${encodeURIComponent(this.apiKey)}`;
 
-    logGeminiRequest({
+    logGeminiHttpRequest({
       method: "GET",
       url,
       headers: { "Content-Type": "application/json" }
@@ -97,12 +97,12 @@ export class GeminiAIStudioClient {
   /**
    * Stream text chunks from Gemini.
    */
-  async *streamGenerateText({ prompt, contents, generationConfig = undefined, system = undefined, tools = undefined }) {
+  async *streamGenerateText({ prompt, contents, generationConfig = undefined, system = undefined, tools = undefined, toolConfig = undefined }) {
     const modelPath = this.model.startsWith("models/") ? this.model : `models/${this.model}`;
     const url = `${this.baseUrl}/${modelPath}:streamGenerateContent?alt=sse&key=${encodeURIComponent(this.apiKey)}`;
-    const body = buildGeminiBody({ prompt, contents, generationConfig, system, tools });
+    const body = buildGeminiBody({ prompt, contents, generationConfig, system, tools, toolConfig });
 
-    logGeminiRequest({
+    logGeminiHttpRequest({
       method: "POST",
       url,
       headers: { "Content-Type": "application/json" },
@@ -154,7 +154,7 @@ export class GeminiAIStudioClient {
   }
 }
 
-function buildGeminiBody({ prompt, contents, generationConfig, system, tools }) {
+function buildGeminiBody({ prompt, contents, generationConfig, system, tools, toolConfig }) {
   const resolvedContents = Array.isArray(contents) && contents.length
     ? contents
     : [{
@@ -166,26 +166,12 @@ function buildGeminiBody({ prompt, contents, generationConfig, system, tools }) 
     contents: resolvedContents,
     ...(system && system.trim() ? { systemInstruction: { parts: [{ text: system }] } } : {}),
     ...(generationConfig ? { generationConfig } : {}),
-    ...(tools ? { tools } : {})
+    ...(tools ? { tools } : {}),
+    ...(toolConfig ? { toolConfig } : {})
   };
 }
 
-function logGeminiRequest({ method, url, headers, body }) {
-  const safeUrl = redactUrlKey(url);
-  const safeHeaders = { ...headers };
-  console.log(`[GEMINI] ${method} ${safeUrl}`);
-  console.log(`[GEMINI] headers=${JSON.stringify(safeHeaders)}`);
-  if (body !== undefined) {
-    console.log(`[GEMINI] body=${JSON.stringify(body)}`);
-  }
-}
-
-function redactUrlKey(url) {
-  if (!url) return url;
-  return url.replace(/([?&]key=)[^&]+/g, "$1***redacted***");
-}
-
-function logGeminiRequest({ method, url, headers, body }) {
+function logGeminiHttpRequest({ method, url, headers, body }) {
   const safeUrl = redactUrlKey(url);
   const safeHeaders = { ...headers };
   console.log(`[GEMINI] ${method} ${safeUrl}`);
