@@ -31,6 +31,13 @@ export class GeminiAIStudioClient {
       ...(tools ? { tools } : {})
     };
 
+    logGeminiRequest({
+      method: "POST",
+      url,
+      headers: { "Content-Type": "application/json" },
+      body
+    });
+
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -57,6 +64,13 @@ export class GeminiAIStudioClient {
       content: { parts: [{ text: String(text || "") }] }
     };
 
+    logGeminiRequest({
+      method: "POST",
+      url,
+      headers: { "Content-Type": "application/json" },
+      body
+    });
+
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -77,6 +91,12 @@ export class GeminiAIStudioClient {
   async listModels() {
     const url = `${this.baseUrl}/models?key=${encodeURIComponent(this.apiKey)}`;
 
+    logGeminiRequest({
+      method: "GET",
+      url,
+      headers: { "Content-Type": "application/json" }
+    });
+
     const r = await fetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" }
@@ -89,4 +109,19 @@ export class GeminiAIStudioClient {
 
     return await r.json();
   }
+}
+
+function logGeminiRequest({ method, url, headers, body }) {
+  const safeUrl = redactUrlKey(url);
+  const safeHeaders = { ...headers };
+  console.log(`[GEMINI] ${method} ${safeUrl}`);
+  console.log(`[GEMINI] headers=${JSON.stringify(safeHeaders)}`);
+  if (body !== undefined) {
+    console.log(`[GEMINI] body=${JSON.stringify(body)}`);
+  }
+}
+
+function redactUrlKey(url) {
+  if (!url) return url;
+  return url.replace(/([?&]key=)[^&]+/g, "$1***redacted***");
 }
