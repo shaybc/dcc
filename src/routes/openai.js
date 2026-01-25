@@ -46,8 +46,11 @@ const ChatSchema = z.object({
     content: z.union([z.string(), z.array(z.any())]).optional()
   })).min(1),
   temperature: z.number().min(0).max(2).optional(),
-  max_tokens: z.number().min(1).max(65536).optional()
-});
+  max_tokens: z.number().min(1).max(65536).optional(),
+  tools: z.array(z.any()).optional(),
+  tool_choice: z.any().optional(),
+  stream_options: z.any().optional()
+}).passthrough();
 
 const CompletionSchema = z.object({
   model: z.string().optional(),
@@ -165,15 +168,17 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     const system = parsed.messages.find(m => m.role === "system")?.content;
     const systemText = typeof system === "string" ? system : "";
 
-    const userText = parsed.messages
-      .filter(m => m.role === "user")
-      .map(m => (typeof m.content === "string" ? m.content : ""))
-      .join("\n\n")
-      .trim();
+    const contents = parsed.messages
+      .filter(m => m.role !== "system")
+      .map(m => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: normalizeContentText(m.content) }]
+      }))
+      .filter(m => m.parts[0].text.trim().length > 0);
 
     console.log(`[OPENAI] id=${reqId} chat.completions stream=${Boolean(parsed.stream)} model=${parsed.model || env.GEMINI_MODEL}`);
 
-    if (!userText) {
+    if (!contents.length) {
       return res.status(400).json({ error: { message: "No user message content found", type: "invalid_request_error" } });
     }
 
@@ -184,11 +189,59 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       maxOutputTokens: parsed.max_tokens
     });
 
-    const raw = await client.generateText({
-      prompt: userText,
+    const requestPayload = {
+      contents,
       system: systemText,
-      generationConfig: Object.keys(generationConfig).length ? generationConfig : undefined
-    });
+      generationConfig: Object.keys(generationConfig).length ? generationConfig : undefined,
+      tools: normalizeGeminiTools(parsed.tools),
+      toolConfig: buildToolConfig(parsed.tool_choice)
+    };
+
+    if (parsed.stream) {
+      res.status(200);
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+
+      try {
+        writeSse(res, {
+          id: "chatcmpl_stream",
+          object: "chat.completion.chunk",
+          created: Math.floor(Date.now() / 1000),
+          model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+          choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }]
+        });
+
+        for await (const chunk of client.streamGenerateText(requestPayload)) {
+          if (!chunk) continue;
+          writeSse(res, {
+            id: "chatcmpl_stream",
+            object: "chat.completion.chunk",
+            created: Math.floor(Date.now() / 1000),
+            model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+            choices: [{ index: 0, delta: { content: chunk }, finish_reason: null }]
+          });
+        }
+
+        writeSse(res, {
+          id: "chatcmpl_stream",
+          object: "chat.completion.chunk",
+          created: Math.floor(Date.now() / 1000),
+          model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+          choices: [{ index: 0, delta: {}, finish_reason: "stop" }]
+        });
+
+        res.write("data: [DONE]\n\n");
+        res.end();
+
+        console.log(`[OPENAI] id=${reqId} stream_done total_ms=${Date.now() - t0}`);
+        return;
+      } catch (err) {
+        return handleStreamError(res, reqId, err);
+      }
+    }
+
+    const raw = await client.generateText(requestPayload);
 
     const text =
       raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
@@ -198,43 +251,6 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     const modelName = normalizeGeminiModel(parsed.model || env.GEMINI_MODEL);
     const created = Math.floor(Date.now() / 1000);
     const id = `chatcmpl_${Date.now()}`;
-
-    if (parsed.stream) {
-      res.status(200);
-      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
-
-      writeSse(res, {
-        id,
-        object: "chat.completion.chunk",
-        created,
-        model: modelName,
-        choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }]
-      });
-
-      writeSse(res, {
-        id,
-        object: "chat.completion.chunk",
-        created,
-        model: modelName,
-        choices: [{ index: 0, delta: { content: text }, finish_reason: null }]
-      });
-
-      writeSse(res, {
-        id,
-        object: "chat.completion.chunk",
-        created,
-        model: modelName,
-        choices: [{ index: 0, delta: {}, finish_reason: "stop" }]
-      });
-
-      res.write("data: [DONE]\n\n");
-      res.end();
-
-      console.log(`[OPENAI] id=${reqId} stream_done total_ms=${Date.now() - t0}`);
-      return;
-    }
 
     // Non-stream JSON
     const payload = {
@@ -255,6 +271,9 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     console.log(`[OPENAI] id=${reqId} json_reply_ms=${Date.now() - t0}`);
     res.json(payload);
   } catch (e) {
+    if (res.headersSent) {
+      return handleStreamError(res, reqId, e);
+    }
     const msg = String(e?.message || e);
     console.log(`[OPENAI] id=${reqId} ERROR ${msg}`);
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
@@ -306,6 +325,77 @@ function cleanUndefined(obj) {
 
 function writeSse(res, payload) {
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function normalizeContentText(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map(part => {
+        if (typeof part === "string") return part;
+        if (part?.text) return part.text;
+        return JSON.stringify(part);
+      })
+      .join("\n");
+  }
+  if (content == null) return "";
+  return String(content);
+}
+
+function buildToolConfig(toolChoice) {
+  if (!toolChoice) return undefined;
+  if (toolChoice === "none") {
+    return { functionCallingConfig: { mode: "NONE" } };
+  }
+  if (toolChoice === "auto") {
+    return { functionCallingConfig: { mode: "AUTO" } };
+  }
+  if (toolChoice?.type === "function" && toolChoice?.function?.name) {
+    return {
+      functionCallingConfig: {
+        mode: "ANY",
+        allowedFunctionNames: [toolChoice.function.name]
+      }
+    };
+  }
+  return undefined;
+}
+
+function normalizeGeminiTools(tools) {
+  if (!Array.isArray(tools) || !tools.length) return undefined;
+  const functionDeclarations = tools
+    .map(tool => {
+      if (tool?.type !== "function" || !tool.function) return null;
+      const { name, description, parameters } = tool.function;
+      if (!name) return null;
+      return {
+        name,
+        description,
+        parameters
+      };
+    })
+    .filter(Boolean);
+
+  if (!functionDeclarations.length) return undefined;
+  return [{ functionDeclarations }];
+}
+
+function handleStreamError(res, reqId, err) {
+  const msg = String(err?.message || err);
+  console.log(`[OPENAI] id=${reqId} ERROR ${msg}`);
+  if (!res.headersSent) {
+    res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
+    return;
+  }
+  writeSse(res, {
+    id: "chatcmpl_stream",
+    object: "chat.completion.chunk",
+    created: Math.floor(Date.now() / 1000),
+    model: "unknown",
+    choices: [{ index: 0, delta: {}, finish_reason: "error" }]
+  });
+  res.write("data: [DONE]\n\n");
+  res.end();
 }
 
 function stripPromptEcho(text, prompt) {
