@@ -919,8 +919,12 @@
       contentLabel: "YAML",
       fields: [
         { key: "provider", label: "Provider", placeholder: "http" },
-        { key: "url", label: "URL", placeholder: "https://api.example.com/v1/users", nest: ["params", "url"] },
-        { key: "headers", label: "Headers (KEY: value per line)", placeholder: "Authorization: Bearer <token>", type: "mapList", nest: ["params", "headers"] }
+        {
+          key: "params",
+          label: "Params (YAML)",
+          placeholder: "url: \"https://api.example.com/v1/users\"\nheaders:\n  - Authorization: \"Bearer <token>\"",
+          type: "yaml"
+        }
       ]
     },
     tools: {
@@ -975,6 +979,50 @@
       ].join("\n");
     }
     return `${space}${key}: ${formatYamlScalar(value)}`;
+  };
+
+  const stringifyYamlLines = (value, indent = 0) => {
+    const space = " ".repeat(indent);
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return [`${space}[]`];
+      }
+      return value.flatMap((item) => {
+        if (item && typeof item === "object") {
+          const nestedLines = stringifyYamlLines(item, indent + 2);
+          const [first, ...rest] = nestedLines;
+          return [
+            `${space}- ${first.trimStart()}`,
+            ...rest
+          ];
+        }
+        return [`${space}- ${formatYamlScalar(String(item))}`];
+      });
+    }
+    if (value && typeof value === "object") {
+      const entries = Object.entries(value);
+      if (entries.length === 0) {
+        return [`${space}{}`];
+      }
+      return entries.flatMap(([key, val]) => {
+        if (val && typeof val === "object") {
+          if (Array.isArray(val)) {
+            if (val.length === 0) {
+              return [`${space}${key}: []`];
+            }
+            const nestedLines = stringifyYamlLines(val, indent + 2);
+            return [`${space}${key}:`, ...nestedLines];
+          }
+          const nestedLines = stringifyYamlLines(val, indent + 2);
+          if (nestedLines.length === 1 && nestedLines[0].trim() === "{}") {
+            return [`${space}${key}: {}`];
+          }
+          return [`${space}${key}:`, ...nestedLines];
+        }
+        return [`${space}${key}: ${formatYamlScalar(String(val))}`];
+      });
+    }
+    return [`${space}${formatYamlScalar(String(value))}`];
   };
 
   const formatYamlListField = (key, values, indent) => {
@@ -1062,6 +1110,21 @@
         } else {
           itemLines.push(line);
         }
+        return;
+      }
+      if (field.type === "yaml") {
+        if (!value.trim()) {
+          return;
+        }
+        const prefixLine = `${" ".repeat(indent)}${field.key}:`;
+        if (index === 0) {
+          itemLines.push(prefixLine.replace(new RegExp(`^ {${indent}}`), "  - "));
+        } else {
+          itemLines.push(prefixLine);
+        }
+        value.split("\n").forEach((line) => {
+          itemLines.push(`${" ".repeat(indent + 2)}${line}`);
+        });
         return;
       }
       const line = formatYamlField(field.key, value, indent, field.multiline || field.type === "textarea");
@@ -1292,6 +1355,18 @@
         normalized[field.key] = "";
         return;
       }
+      if (field.type === "yaml") {
+        if (rawValue === undefined || rawValue === null) {
+          normalized[field.key] = "";
+          return;
+        }
+        if (typeof rawValue === "string") {
+          normalized[field.key] = rawValue;
+          return;
+        }
+        normalized[field.key] = stringifyYamlLines(rawValue, 0).join("\n");
+        return;
+      }
       normalized[field.key] = rawValue ?? "";
     });
     return normalized;
@@ -1443,7 +1518,11 @@
     wrapper.className = "field";
     const label = document.createElement("label");
     label.textContent = field.label;
-    const inputType = field.type === "textarea" || field.type === "list" || field.type === "map" || field.type === "mapList";
+    const inputType = field.type === "textarea"
+      || field.type === "list"
+      || field.type === "map"
+      || field.type === "mapList"
+      || field.type === "yaml";
     const input = inputType ? document.createElement("textarea") : document.createElement("input");
     input.dataset.defField = field.key;
     input.placeholder = field.placeholder || "";
