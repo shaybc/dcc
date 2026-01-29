@@ -788,6 +788,12 @@
     }
   };
 
+  document.getElementById("btnSyncAiAssets").onclick = async () => {
+    const r = await api("/api/settings/sync-ai-assets", { method: "POST" });
+    document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
+    renderStatus("settingsStatus", r, "Awaiting update");
+  };
+
   document.getElementById("btnLoadAll").onclick = async () => {
     await Promise.all([
       document.getElementById("btnLoadDefs").onclick(),
