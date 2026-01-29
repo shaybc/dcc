@@ -260,8 +260,53 @@
           </details>
         </div>
         <div class="card">
+          <h2>Create definition</h2>
+          <p class="muted">Save a new prompt, agent, workflow, rule, or tool to the config repo and your local Continue folder.</p>
+          <div class="field-group">
+            <div class="field">
+              <label for="defType">Definition type</label>
+              <select id="defType">
+                <option value="prompts">Prompt</option>
+                <option value="agents">Agent</option>
+                <option value="workflows">Workflow</option>
+                <option value="rules">Rule</option>
+                <option value="tools">Tool</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="defName">Name</label>
+              <input id="defName" placeholder="e.g. Team onboarding prompt" />
+            </div>
+            <div class="field">
+              <label for="defDescription">Short description</label>
+              <input id="defDescription" placeholder="When and why to use this definition" />
+            </div>
+            <div class="field">
+              <label for="defAuthor">Created by</label>
+              <input id="defAuthor" placeholder="you@company.com" />
+            </div>
+            <div class="field">
+              <label for="defFileExt">File extension</label>
+              <input id="defFileExt" placeholder="md, yaml, json (optional)" />
+              <span class="helper">Leave blank to use defaults (md for prompts, yaml for others).</span>
+            </div>
+            <div class="field">
+              <label for="defContent">Content</label>
+              <textarea id="defContent" placeholder="Definition content goes here"></textarea>
+            </div>
+          </div>
+          <div class="button-row" style="margin-top: 12px;">
+            <button id="btnSaveDef">Save definition</button>
+          </div>
+          <div id="defSaveStatus" class="status">Awaiting save</div>
+          <details>
+            <summary>Save response</summary>
+            <pre id="defSaveOut"></pre>
+          </details>
+        </div>
+        <div class="card">
           <h2>Next steps</h2>
-          <p class="muted">Once definitions are loaded, you can update the registry via a PR or run a workflow from the Workflows tab.</p>
+          <p class="muted">After saving, definitions are committed and pushed to the config repo and mirrored to your local Continue folder.</p>
           <ul>
             <li>Review the definition list for unexpected entries.</li>
             <li>Use workflow runs for larger migrations.</li>
@@ -519,10 +564,29 @@
   document.getElementById("btnLoadDefs").onclick = async () => {
     const r = await api("/api/configs");
     document.getElementById("defsOut").textContent = JSON.stringify(r, null, 2);
-    state.definitions = Array.isArray(r.data) ? r.data : [];
+    state.definitions = Array.isArray(r.data?.definitions)
+      ? r.data.definitions
+      : (Array.isArray(r.data) ? r.data : []);
     renderStatus("defsStatus", r, "Awaiting load");
     renderTable("defsTable", state.definitions, "No definitions returned.");
     updateOverview();
+  };
+
+  document.getElementById("btnSaveDef").onclick = async () => {
+    const payload = {
+      type: document.getElementById("defType").value,
+      name: document.getElementById("defName").value,
+      description: document.getElementById("defDescription").value,
+      createdBy: document.getElementById("defAuthor").value,
+      fileExtension: document.getElementById("defFileExt").value,
+      content: document.getElementById("defContent").value
+    };
+    const r = await api("/api/configs/definitions", { method: "POST", body: JSON.stringify(payload) });
+    document.getElementById("defSaveOut").textContent = JSON.stringify(r, null, 2);
+    renderStatus("defSaveStatus", r, "Awaiting save");
+    if (r.ok) {
+      document.getElementById("btnLoadDefs").onclick();
+    }
   };
 
   document.getElementById("btnCreatePr").onclick = async () => {
