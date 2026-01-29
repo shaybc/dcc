@@ -121,6 +121,20 @@
       gap: 6px;
     }
 
+    .def-item {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .def-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
     .input-with-action {
       display: flex;
       align-items: center;
@@ -391,12 +405,23 @@
               <input id="defName" placeholder="e.g. Team onboarding prompt" />
             </div>
             <div class="field">
-              <label for="defDescription">Short description</label>
-              <input id="defDescription" placeholder="When and why to use this definition" />
+              <label for="defAuthor">Author</label>
+              <input id="defAuthor" placeholder="you@company.com" />
             </div>
             <div class="field">
-              <label for="defAuthor">Created by</label>
-              <input id="defAuthor" placeholder="you@company.com" />
+              <label for="defVersion">Version</label>
+              <input id="defVersion" placeholder="0.0.1" />
+            </div>
+            <div class="field">
+              <label for="defSchema">Schema</label>
+              <input id="defSchema" placeholder="v1" />
+            </div>
+            <div class="field" style="grid-column: 1 / -1;">
+              <label id="defItemsLabel" for="defItems">Definitions</label>
+              <div id="defItems" class="field-group"></div>
+              <div class="button-row" style="margin-top: 8px;">
+                <button type="button" class="secondary" id="btnAddDefItem">Add entry</button>
+              </div>
             </div>
             <div class="field">
               <label for="defFileExt">File extension</label>
@@ -404,8 +429,8 @@
               <span class="helper">Leave blank to use defaults (md for prompts, yaml for others).</span>
             </div>
             <div class="field">
-              <label for="defContent">Content</label>
-              <textarea id="defContent" placeholder="Definition content goes here"></textarea>
+              <label for="defContent">YAML</label>
+              <textarea id="defContent" placeholder="Definition YAML goes here"></textarea>
             </div>
           </div>
           <div class="button-row" style="margin-top: 12px;">
@@ -772,6 +797,390 @@
     renderTable("overviewRuns", state.runs.slice(0, 5), "Load runs to see recent activity.");
   };
 
+  const definitionSchemas = {
+    prompts: {
+      listKey: "prompts",
+      label: "Prompts",
+      itemLabel: "Prompt",
+      fields: [
+        { key: "name", label: "Name", placeholder: "New prompt" },
+        { key: "description", label: "Description", placeholder: "Describe the prompt" },
+        { key: "prompt", label: "Prompt", placeholder: "Prompt content", type: "textarea", multiline: true }
+      ]
+    },
+    agents: {
+      listKey: "agents",
+      label: "Agents",
+      itemLabel: "Agent",
+      fields: [
+        { key: "name", label: "Name", placeholder: "New agent" },
+        { key: "description", label: "Description", placeholder: "Describe the agent" },
+        { key: "instructions", label: "Instructions", placeholder: "Agent instructions", type: "textarea", multiline: true }
+      ]
+    },
+    workflows: {
+      listKey: "workflows",
+      label: "Workflows",
+      itemLabel: "Workflow",
+      fields: [
+        { key: "name", label: "Name", placeholder: "New workflow" },
+        { key: "description", label: "Description", placeholder: "Describe the workflow" },
+        { key: "steps", label: "Steps", placeholder: "Workflow steps", type: "textarea", multiline: true }
+      ]
+    },
+    rules: {
+      listKey: "rules",
+      label: "Rules",
+      itemLabel: "Rule",
+      fields: [
+        { key: "name", label: "Name", placeholder: "New rule" },
+        { key: "description", label: "Description", placeholder: "Describe the rule" },
+        { key: "rule", label: "Rule", placeholder: "Rule content", type: "textarea", multiline: true }
+      ]
+    },
+    tools: {
+      listKey: "tools",
+      label: "Tools",
+      itemLabel: "Tool",
+      fields: [
+        { key: "name", label: "Name", placeholder: "New tool" },
+        { key: "description", label: "Description", placeholder: "Describe the tool" },
+        { key: "tool", label: "Tool definition", placeholder: "Tool definition", type: "textarea", multiline: true }
+      ]
+    },
+    context: {
+      listKey: "context",
+      label: "Context",
+      itemLabel: "Context provider",
+      fields: [
+        { key: "name", label: "Name", placeholder: "New context provider" },
+        { key: "description", label: "Description", placeholder: "Describe the context provider" },
+        { key: "context", label: "Context", placeholder: "Context configuration", type: "textarea", multiline: true }
+      ]
+    },
+    mcpServers: {
+      listKey: "mcpServers",
+      label: "MCP Servers",
+      itemLabel: "MCP server",
+      fields: [
+        { key: "name", label: "Name", placeholder: "New MCP server" },
+        { key: "description", label: "Description", placeholder: "Describe the MCP server" },
+        { key: "server", label: "Server config", placeholder: "Server configuration", type: "textarea", multiline: true }
+      ]
+    },
+    models: {
+      listKey: "models",
+      label: "Models",
+      itemLabel: "Model",
+      fields: [
+        { key: "name", label: "Name", placeholder: "New model" },
+        { key: "description", label: "Description", placeholder: "Describe the model" },
+        { key: "model", label: "Model config", placeholder: "Model configuration", type: "textarea", multiline: true }
+      ]
+    }
+  };
+
+  const definitionForm = {
+    typeSelect: document.getElementById("defType"),
+    nameInput: document.getElementById("defName"),
+    authorInput: document.getElementById("defAuthor"),
+    versionInput: document.getElementById("defVersion"),
+    schemaInput: document.getElementById("defSchema"),
+    itemsLabel: document.getElementById("defItemsLabel"),
+    itemsContainer: document.getElementById("defItems"),
+    addItemButton: document.getElementById("btnAddDefItem"),
+    contentInput: document.getElementById("defContent")
+  };
+
+  let suppressContentSync = false;
+  let suppressFormSync = false;
+
+  const getDefinitionSchema = (type) => definitionSchemas[type] || definitionSchemas.prompts;
+
+  const formatYamlScalar = (value) => {
+    if (value === "") return "\"\"";
+    if (/[:#]/.test(value) || /^\s|\s$/.test(value)) {
+      return JSON.stringify(value);
+    }
+    return value;
+  };
+
+  const formatYamlField = (key, value, indent, multiline) => {
+    const space = " ".repeat(indent);
+    if (value === "") {
+      return `${space}${key}: \"\"`;
+    }
+    if (multiline || value.includes("\n")) {
+      const lines = value.split("\n");
+      return [
+        `${space}${key}: |`,
+        ...lines.map((line) => `${space}  ${line}`)
+      ].join("\n");
+    }
+    return `${space}${key}: ${formatYamlScalar(value)}`;
+  };
+
+  const buildDefinitionYaml = () => {
+    const schema = getDefinitionSchema(definitionForm.typeSelect.value);
+    const metaLines = [];
+    const author = definitionForm.authorInput.value.trim();
+    const name = definitionForm.nameInput.value.trim();
+    const version = definitionForm.versionInput.value.trim();
+    const schemaValue = definitionForm.schemaInput.value.trim();
+
+    if (name) metaLines.push(`name: ${formatYamlScalar(name)}`);
+    if (version) metaLines.push(`version: ${formatYamlScalar(version)}`);
+    if (schemaValue) metaLines.push(`schema: ${formatYamlScalar(schemaValue)}`);
+    if (author) metaLines.push(`author: ${formatYamlScalar(author)}`);
+
+    const items = collectDefinitionItems(schema);
+    const listLines = [`${schema.listKey}:`];
+    items.forEach((item) => {
+      const itemLines = [];
+      schema.fields.forEach((field, index) => {
+        const value = item[field.key] ?? "";
+        const line = formatYamlField(field.key, value, 4, field.multiline);
+        if (index === 0) {
+          const adjusted = line.replace(/^ {4}/, "  - ");
+          itemLines.push(adjusted);
+        } else {
+          itemLines.push(line);
+        }
+      });
+      listLines.push(...itemLines);
+    });
+
+    return [...metaLines, "", ...listLines].join("\n").trim() + "\n";
+  };
+
+  const parseYamlScalar = (raw) => {
+    const value = raw.trim();
+    if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+      return value.slice(1, -1);
+    }
+    return value;
+  };
+
+  const parseDefinitionYaml = (text) => {
+    const lines = text.replace(/\r\n/g, "\n").split("\n");
+    const meta = {};
+    const knownListKeys = Object.values(definitionSchemas).map((schema) => schema.listKey);
+    let listKey = null;
+    let listStartIndex = -1;
+
+    lines.forEach((line, index) => {
+      const match = line.match(/^([A-Za-z0-9_]+):\s*(.*)$/);
+      if (!match || line.startsWith(" ")) return;
+      const key = match[1];
+      const rest = match[2];
+      if (knownListKeys.includes(key) && rest.trim() === "") {
+        listKey = key;
+        listStartIndex = index;
+      } else if (rest.trim() !== "") {
+        meta[key] = parseYamlScalar(rest);
+      }
+    });
+
+    const items = [];
+    if (listKey && listStartIndex >= 0) {
+      let currentItem = null;
+      let i = listStartIndex + 1;
+      while (i < lines.length) {
+        const line = lines[i];
+        if (!line.trim()) {
+          i += 1;
+          continue;
+        }
+        if (!line.startsWith(" ")) {
+          break;
+        }
+        const listMatch = line.match(/^\s*-\s*([A-Za-z0-9_]+):\s*(.*)$/);
+        const keyMatch = line.match(/^\s+([A-Za-z0-9_]+):\s*(.*)$/);
+        if (listMatch) {
+          currentItem = {};
+          items.push(currentItem);
+          const key = listMatch[1];
+          const rawValue = listMatch[2];
+          const { value, nextIndex } = parseYamlValue(lines, i, rawValue, line.indexOf("-"));
+          currentItem[key] = value;
+          i = nextIndex + 1;
+          continue;
+        }
+        if (keyMatch && currentItem) {
+          const key = keyMatch[1];
+          const rawValue = keyMatch[2];
+          const { value, nextIndex } = parseYamlValue(lines, i, rawValue, line.search(/\S/));
+          currentItem[key] = value;
+          i = nextIndex + 1;
+          continue;
+        }
+        i += 1;
+      }
+    }
+
+    return { meta, listKey, items };
+  };
+
+  const parseYamlValue = (lines, index, rawValue, indent) => {
+    if (rawValue.trim() !== "|") {
+      return { value: parseYamlScalar(rawValue), nextIndex: index };
+    }
+    let blockIndent = indent + 2;
+    for (let j = index + 1; j < lines.length; j += 1) {
+      const line = lines[j];
+      if (line.trim() === "") continue;
+      blockIndent = line.match(/^(\s*)/)[1].length;
+      break;
+    }
+    const blockLines = [];
+    let i = index + 1;
+    while (i < lines.length) {
+      const line = lines[i];
+      const lineIndent = line.match(/^(\s*)/)[1].length;
+      if (line.trim() === "" && lineIndent >= blockIndent) {
+        blockLines.push("");
+        i += 1;
+        continue;
+      }
+      if (lineIndent < blockIndent) {
+        break;
+      }
+      blockLines.push(line.slice(blockIndent));
+      i += 1;
+    }
+    return { value: blockLines.join("\n"), nextIndex: i - 1 };
+  };
+
+  const collectDefinitionItems = (schema) => {
+    const items = [];
+    definitionForm.itemsContainer.querySelectorAll("[data-def-item]").forEach((itemEl) => {
+      const item = {};
+      schema.fields.forEach((field) => {
+        const input = itemEl.querySelector(`[data-def-field=\"${field.key}\"]`);
+        item[field.key] = input ? input.value : "";
+      });
+      const hasValue = schema.fields.some((field) => (item[field.key] || "").trim() !== "");
+      if (hasValue) {
+        items.push(item);
+      }
+    });
+    if (items.length === 0) {
+      items.push(Object.fromEntries(schema.fields.map((field) => [field.key, ""])));
+    }
+    return items;
+  };
+
+  const renderDefinitionItems = (schema, items) => {
+    definitionForm.itemsContainer.innerHTML = "";
+    items.forEach((item, index) => {
+      const itemCard = document.createElement("div");
+      itemCard.className = "def-item";
+      itemCard.dataset.defItem = "true";
+
+      const header = document.createElement("div");
+      header.className = "def-item-header";
+      const title = document.createElement("strong");
+      title.textContent = `${schema.itemLabel} ${index + 1}`;
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "ghost";
+      removeButton.textContent = "Remove";
+      removeButton.onclick = () => {
+        itemCard.remove();
+        updateYamlFromForm();
+        refreshItemTitles(schema);
+      };
+      header.appendChild(title);
+      header.appendChild(removeButton);
+      itemCard.appendChild(header);
+
+      schema.fields.forEach((field) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "field";
+        const label = document.createElement("label");
+        label.textContent = field.label;
+        const input = field.type === "textarea" ? document.createElement("textarea") : document.createElement("input");
+        input.dataset.defField = field.key;
+        input.placeholder = field.placeholder || "";
+        input.value = item[field.key] || "";
+        input.addEventListener("input", updateYamlFromForm);
+        wrapper.appendChild(label);
+        wrapper.appendChild(input);
+        itemCard.appendChild(wrapper);
+      });
+
+      definitionForm.itemsContainer.appendChild(itemCard);
+    });
+  };
+
+  const refreshItemTitles = (schema) => {
+    definitionForm.itemsContainer.querySelectorAll(".def-item").forEach((card, index) => {
+      const title = card.querySelector(".def-item-header strong");
+      if (title) {
+        title.textContent = `${schema.itemLabel} ${index + 1}`;
+      }
+    });
+  };
+
+  const updateYamlFromForm = () => {
+    if (suppressFormSync) return;
+    suppressContentSync = true;
+    definitionForm.contentInput.value = buildDefinitionYaml();
+    suppressContentSync = false;
+  };
+
+  const updateFormFromYaml = () => {
+    if (suppressContentSync) return;
+    suppressFormSync = true;
+    const { meta, listKey, items } = parseDefinitionYaml(definitionForm.contentInput.value);
+    const matchingType = Object.keys(definitionSchemas).find(
+      (type) => definitionSchemas[type].listKey === listKey
+    );
+    if (matchingType) {
+      definitionForm.typeSelect.value = matchingType;
+    }
+    const schema = getDefinitionSchema(definitionForm.typeSelect.value);
+    definitionForm.itemsLabel.textContent = schema.label;
+    definitionForm.nameInput.value = meta.name || definitionForm.nameInput.value || "";
+    definitionForm.authorInput.value = meta.author || definitionForm.authorInput.value || "";
+    definitionForm.versionInput.value = meta.version || definitionForm.versionInput.value || "";
+    definitionForm.schemaInput.value = meta.schema || definitionForm.schemaInput.value || "";
+
+    const normalizedItems = (items.length ? items : [{}]).map((item) => {
+      const normalized = {};
+      schema.fields.forEach((field) => {
+        normalized[field.key] = item[field.key] || "";
+      });
+      return normalized;
+    });
+    renderDefinitionItems(schema, normalizedItems);
+    suppressFormSync = false;
+  };
+
+  const resetDefinitionFormForType = () => {
+    const schema = getDefinitionSchema(definitionForm.typeSelect.value);
+    definitionForm.itemsLabel.textContent = schema.label;
+    renderDefinitionItems(schema, [Object.fromEntries(schema.fields.map((field) => [field.key, ""]))]);
+    updateYamlFromForm();
+  };
+
+  const bindDefinitionForm = () => {
+    definitionForm.typeSelect.addEventListener("change", resetDefinitionFormForType);
+    definitionForm.addItemButton.addEventListener("click", () => {
+      const schema = getDefinitionSchema(definitionForm.typeSelect.value);
+      const items = collectDefinitionItems(schema);
+      items.push(Object.fromEntries(schema.fields.map((field) => [field.key, ""])));
+      renderDefinitionItems(schema, items);
+      updateYamlFromForm();
+    });
+
+    [definitionForm.nameInput, definitionForm.authorInput, definitionForm.versionInput, definitionForm.schemaInput]
+      .forEach((input) => input.addEventListener("input", updateYamlFromForm));
+
+    definitionForm.contentInput.addEventListener("input", updateFormFromYaml);
+    resetDefinitionFormForType();
+  };
+
   const loadSettings = async () => {
     const r = await api("/api/settings");
     document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
@@ -799,7 +1208,6 @@
     const payload = {
       type: document.getElementById("defType").value,
       name: document.getElementById("defName").value,
-      description: document.getElementById("defDescription").value,
       createdBy: document.getElementById("defAuthor").value,
       fileExtension: document.getElementById("defFileExt").value,
       content: document.getElementById("defContent").value
@@ -960,6 +1368,7 @@
     document.getElementById("baseBranchCustom").style.display = showCustom ? "block" : "none";
   });
 
+  bindDefinitionForm();
   populateRecentRepos();
   updateOverview();
   loadSettings();
