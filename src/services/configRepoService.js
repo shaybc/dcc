@@ -20,7 +20,7 @@ export function getLocalContinueRoot() {
 }
 
 function getCategories() {
-  return ["prompts", "agents", "workflows", "rules", "tools"];
+  return ["prompts", "agents", "workflows", "rules", "tools", "context", "mcpServers", "models"];
 }
 
 function getDefinitionMetadataRoot(root) {
@@ -45,7 +45,10 @@ function defaultExtensionFor(type) {
     agents: "yaml",
     workflows: "yaml",
     rules: "yaml",
-    tools: "yaml"
+    tools: "yaml",
+    context: "yaml",
+    mcpServers: "yaml",
+    models: "yaml"
   };
   return defaults[type] || "md";
 }
