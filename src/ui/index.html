@@ -121,6 +121,16 @@
       gap: 6px;
     }
 
+    .input-with-action {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .input-with-action input {
+      flex: 1;
+    }
+
     label { font-weight: 600; }
 
     input, textarea, select {
@@ -480,6 +490,14 @@
               <input id="configRepoPath" placeholder="c:\\git\\ai_assets" />
               <span class="helper">This folder should contain the .continue directory for shared definitions.</span>
             </div>
+            <div class="field">
+              <label for="aiAssetsRepoUrl">AI Assets Repo URL</label>
+              <div class="input-with-action">
+                <input id="aiAssetsRepoUrl" placeholder="https://example.com/scm/ai_assets.git" />
+                <button class="secondary" id="btnSyncAiAssets" type="button">Sync</button>
+              </div>
+              <span class="helper">Used to clone or pull the ai_assets repository into the shared folder.</span>
+            </div>
           </div>
           <div class="button-row" style="margin-top: 12px;">
             <button id="btnSaveSettings">Save settings</button>
@@ -631,8 +649,11 @@
     const r = await api("/api/settings");
     document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
     renderStatus("settingsStatus", r, "Awaiting update");
-    if (r.ok && r.data?.configRepoPath) {
-      document.getElementById("configRepoPath").value = r.data.configRepoPath;
+    if (r.ok && r.data && "configRepoPath" in r.data) {
+      document.getElementById("configRepoPath").value = r.data.configRepoPath || "";
+    }
+    if (r.ok && r.data && "aiAssetsRepoUrl" in r.data) {
+      document.getElementById("aiAssetsRepoUrl").value = r.data.aiAssetsRepoUrl || "";
     }
   };
 
@@ -723,13 +744,23 @@
   };
 
   document.getElementById("btnSaveSettings").onclick = async () => {
-    const payload = { configRepoPath: document.getElementById("configRepoPath").value };
+    const payload = {
+      configRepoPath: document.getElementById("configRepoPath").value,
+      aiAssetsRepoUrl: document.getElementById("aiAssetsRepoUrl").value
+    };
     const r = await api("/api/settings", { method: "PUT", body: JSON.stringify(payload) });
     document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
     renderStatus("settingsStatus", r, "Awaiting update");
     if (r.ok) {
       document.getElementById("configRepoPath").value = r.data?.configRepoPath || payload.configRepoPath;
+      document.getElementById("aiAssetsRepoUrl").value = r.data?.aiAssetsRepoUrl || payload.aiAssetsRepoUrl;
     }
+  };
+
+  document.getElementById("btnSyncAiAssets").onclick = async () => {
+    const r = await api("/api/settings/sync-ai-assets", { method: "POST" });
+    document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
+    renderStatus("settingsStatus", r, "Awaiting update");
   };
 
   document.getElementById("btnLoadAll").onclick = async () => {
