@@ -131,6 +131,16 @@
       flex: 1;
     }
 
+    .sync-indicator {
+      width: 18px;
+      height: 18px;
+      display: none;
+    }
+
+    .sync-indicator.is-active {
+      display: inline-block;
+    }
+
     label { font-weight: 600; }
 
     input, textarea, select {
@@ -495,6 +505,12 @@
               <div class="input-with-action">
                 <input id="aiAssetsRepoUrl" placeholder="https://example.com/scm/ai_assets.git" />
                 <button class="secondary" id="btnSyncAiAssets" type="button">Sync</button>
+                <img
+                  id="aiAssetsSyncIndicator"
+                  class="sync-indicator"
+                  alt="Syncing"
+                  src="data:image/gif;base64,R0lGODlhEAAQAPIAAP///wAAAMLCwkJCQgAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQFCgAAACwAAAAAEAAQAAADMwi63P4wyklrE2MIOggZnAdOmGYJRbExwroUmcG2LmDEwnHBUwEBADs="
+                />
               </div>
               <span class="helper">Used to clone or pull the ai_assets repository into the shared folder.</span>
             </div>
@@ -754,6 +770,21 @@
     if (r.ok) {
       document.getElementById("configRepoPath").value = r.data?.configRepoPath || payload.configRepoPath;
       document.getElementById("aiAssetsRepoUrl").value = r.data?.aiAssetsRepoUrl || payload.aiAssetsRepoUrl;
+    }
+  };
+
+  document.getElementById("btnSyncAiAssets").onclick = async () => {
+    const button = document.getElementById("btnSyncAiAssets");
+    const indicator = document.getElementById("aiAssetsSyncIndicator");
+    button.disabled = true;
+    indicator.classList.add("is-active");
+    try {
+      const r = await api("/api/settings/sync-ai-assets", { method: "POST" });
+      document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
+      renderStatus("settingsStatus", r, "Awaiting update");
+    } finally {
+      button.disabled = false;
+      indicator.classList.remove("is-active");
     }
   };
 
