@@ -135,6 +135,19 @@
       justify-content: space-between;
     }
 
+    .def-section {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fafafa;
+    }
+
+    .def-section-title {
+      font-weight: 700;
+    }
+
     .input-with-action {
       display: flex;
       align-items: center;
@@ -404,15 +417,15 @@
               <label for="defName">Name</label>
               <input id="defName" placeholder="e.g. Team onboarding prompt" />
             </div>
-            <div class="field">
+            <div class="field def-meta">
               <label for="defAuthor">Author</label>
               <input id="defAuthor" placeholder="you@company.com" />
             </div>
-            <div class="field">
+            <div class="field def-meta">
               <label for="defVersion">Version</label>
               <input id="defVersion" placeholder="0.0.1" />
             </div>
-            <div class="field">
+            <div class="field def-meta">
               <label for="defSchema">Schema</label>
               <input id="defSchema" placeholder="v1" />
             </div>
@@ -799,9 +812,11 @@
 
   const definitionSchemas = {
     prompts: {
+      kind: "list",
       listKey: "prompts",
       label: "Prompts",
       itemLabel: "Prompt",
+      contentLabel: "YAML",
       fields: [
         { key: "name", label: "Name", placeholder: "New prompt" },
         { key: "description", label: "Description", placeholder: "Describe the prompt" },
@@ -809,73 +824,115 @@
       ]
     },
     agents: {
-      listKey: "agents",
-      label: "Agents",
-      itemLabel: "Agent",
+      kind: "markdown",
+      label: "Agent",
+      contentLabel: "Markdown",
+      frontmatterFields: [
+        { key: "description", label: "Description", placeholder: "Agent description", type: "textarea" },
+        { key: "tools", label: "Tools (comma-separated)", placeholder: "built_in, org/tool" },
+        { key: "rules", label: "Rules (comma-separated)", placeholder: "continuedev/rule-id" }
+      ],
+      bodyField: { key: "body", label: "Instructions", placeholder: "Agent instructions", type: "textarea" }
+    },
+    rules: {
+      kind: "markdown",
+      label: "Rule",
+      contentLabel: "Markdown",
+      frontmatterFields: [
+        { key: "description", label: "Description", placeholder: "Optional description", type: "textarea" }
+      ],
+      bodyField: { key: "body", label: "Rule content", placeholder: "- Rule details", type: "textarea" }
+    },
+    mcpServers: {
+      kind: "list",
+      listKey: "mcpServers",
+      label: "MCP Servers",
+      itemLabel: "MCP server",
+      contentLabel: "YAML",
       fields: [
-        { key: "name", label: "Name", placeholder: "New agent" },
-        { key: "description", label: "Description", placeholder: "Describe the agent" },
-        { key: "instructions", label: "Instructions", placeholder: "Agent instructions", type: "textarea", multiline: true }
+        { key: "name", label: "Name", placeholder: "Playwright MCP" },
+        { key: "command", label: "Command", placeholder: "npx" },
+        { key: "args", label: "Args (one per line)", placeholder: "@playwright/mcp@latest", type: "list" }
+      ]
+    },
+    models: {
+      kind: "list",
+      listKey: "models",
+      label: "Models",
+      itemLabel: "Model",
+      contentLabel: "YAML",
+      fields: [
+        { key: "name", label: "Name", placeholder: "Mistral Large" },
+        { key: "provider", label: "Provider", placeholder: "mistral" },
+        { key: "model", label: "Model", placeholder: "mistral-large-2411" },
+        { key: "apiKey", label: "API key", placeholder: "${{ inputs.MISTRAL_API_KEY }}" },
+        { key: "roles", label: "Roles (one per line)", placeholder: "chat", type: "list" },
+        { key: "contextLength", label: "Context length", placeholder: "131000", type: "number", nest: ["defaultCompletionOptions", "contextLength"] }
       ]
     },
     workflows: {
-      listKey: "workflows",
-      label: "Workflows",
-      itemLabel: "Workflow",
-      fields: [
-        { key: "name", label: "Name", placeholder: "New workflow" },
-        { key: "description", label: "Description", placeholder: "Describe the workflow" },
-        { key: "steps", label: "Steps", placeholder: "Workflow steps", type: "textarea", multiline: true }
+      kind: "sections",
+      label: "Workflow",
+      contentLabel: "YAML",
+      sections: [
+        {
+          key: "models",
+          label: "Models",
+          itemLabel: "Model reference",
+          fields: [
+            { key: "uses", label: "Uses", placeholder: "anthropic/claude-4-sonnet" },
+            { key: "with", label: "With (KEY: value per line)", placeholder: "ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}", type: "map" },
+            { key: "overrideRoles", label: "Override roles (one per line)", placeholder: "chat", type: "list", nest: ["override", "roles"] }
+          ]
+        },
+        {
+          key: "context",
+          label: "Context",
+          itemLabel: "Context provider",
+          fields: [
+            { key: "uses", label: "Uses", placeholder: "continuedev/diff-context" }
+          ]
+        },
+        {
+          key: "mcpServers",
+          label: "MCP Servers",
+          itemLabel: "MCP server",
+          fields: [
+            { key: "uses", label: "Uses", placeholder: "continuedev/context7-mcp-sse" }
+          ]
+        },
+        {
+          key: "rules",
+          label: "Rules",
+          itemLabel: "Rule",
+          fields: [
+            { key: "uses", label: "Uses", placeholder: "continuedev/continue-docs-standards" }
+          ]
+        }
       ]
     },
-    rules: {
-      listKey: "rules",
-      label: "Rules",
-      itemLabel: "Rule",
+    context: {
+      kind: "list",
+      listKey: "context",
+      label: "Context",
+      itemLabel: "Context provider",
+      contentLabel: "YAML",
       fields: [
-        { key: "name", label: "Name", placeholder: "New rule" },
-        { key: "description", label: "Description", placeholder: "Describe the rule" },
-        { key: "rule", label: "Rule", placeholder: "Rule content", type: "textarea", multiline: true }
+        { key: "provider", label: "Provider", placeholder: "http" },
+        { key: "url", label: "URL", placeholder: "https://api.example.com/v1/users", nest: ["params", "url"] },
+        { key: "headers", label: "Headers (KEY: value per line)", placeholder: "Authorization: Bearer <token>", type: "mapList", nest: ["params", "headers"] }
       ]
     },
     tools: {
+      kind: "list",
       listKey: "tools",
       label: "Tools",
       itemLabel: "Tool",
+      contentLabel: "YAML",
       fields: [
         { key: "name", label: "Name", placeholder: "New tool" },
         { key: "description", label: "Description", placeholder: "Describe the tool" },
         { key: "tool", label: "Tool definition", placeholder: "Tool definition", type: "textarea", multiline: true }
-      ]
-    },
-    context: {
-      listKey: "context",
-      label: "Context",
-      itemLabel: "Context provider",
-      fields: [
-        { key: "name", label: "Name", placeholder: "New context provider" },
-        { key: "description", label: "Description", placeholder: "Describe the context provider" },
-        { key: "context", label: "Context", placeholder: "Context configuration", type: "textarea", multiline: true }
-      ]
-    },
-    mcpServers: {
-      listKey: "mcpServers",
-      label: "MCP Servers",
-      itemLabel: "MCP server",
-      fields: [
-        { key: "name", label: "Name", placeholder: "New MCP server" },
-        { key: "description", label: "Description", placeholder: "Describe the MCP server" },
-        { key: "server", label: "Server config", placeholder: "Server configuration", type: "textarea", multiline: true }
-      ]
-    },
-    models: {
-      listKey: "models",
-      label: "Models",
-      itemLabel: "Model",
-      fields: [
-        { key: "name", label: "Name", placeholder: "New model" },
-        { key: "description", label: "Description", placeholder: "Describe the model" },
-        { key: "model", label: "Model config", placeholder: "Model configuration", type: "textarea", multiline: true }
       ]
     }
   };
@@ -920,6 +977,162 @@
     return `${space}${key}: ${formatYamlScalar(value)}`;
   };
 
+  const formatYamlListField = (key, values, indent) => {
+    const space = " ".repeat(indent);
+    const cleanValues = values.filter((entry) => entry.trim() !== "");
+    if (cleanValues.length === 0) {
+      return `${space}${key}: []`;
+    }
+    return [
+      `${space}${key}:`,
+      ...cleanValues.map((entry) => `${space}  - ${formatYamlScalar(entry)}`)
+    ].join("\n");
+  };
+
+  const formatYamlMapField = (key, entries, indent) => {
+    const space = " ".repeat(indent);
+    const cleanEntries = entries.filter((entry) => entry.key && entry.value !== undefined);
+    if (cleanEntries.length === 0) {
+      return `${space}${key}: {}`;
+    }
+    return [
+      `${space}${key}:`,
+      ...cleanEntries.map((entry) => `${space}  ${entry.key}: ${formatYamlScalar(entry.value)}`)
+    ].join("\n");
+  };
+
+  const formatYamlMapListField = (key, entries, indent) => {
+    const space = " ".repeat(indent);
+    const cleanEntries = entries.filter((entry) => entry.key && entry.value !== undefined);
+    if (cleanEntries.length === 0) {
+      return `${space}${key}: []`;
+    }
+    return [
+      `${space}${key}:`,
+      ...cleanEntries.map((entry) => `${space}  - ${entry.key}: ${formatYamlScalar(entry.value)}`)
+    ].join("\n");
+  };
+
+  const parseListLines = (value) => value.split("\n").map((line) => line.trim()).filter(Boolean);
+
+  const parseMapLines = (value) => value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [key, ...rest] = line.split(":");
+      return { key: key.trim(), value: rest.join(":").trim() };
+    })
+    .filter((entry) => entry.key);
+
+  const buildYamlItemLines = (item, fields, indent) => {
+    const itemLines = [];
+    const nestedFields = [];
+    fields.forEach((field, index) => {
+      if (field.nest) {
+        nestedFields.push(field);
+        return;
+      }
+      const value = item[field.key] ?? "";
+      if (field.type === "list") {
+        const lines = parseListLines(value);
+        const line = formatYamlListField(field.key, lines, indent);
+        if (index === 0) {
+          itemLines.push(line.replace(new RegExp(`^ {${indent}}`), "  - "));
+        } else {
+          itemLines.push(line);
+        }
+        return;
+      }
+      if (field.type === "map") {
+        const entries = parseMapLines(value);
+        const line = formatYamlMapField(field.key, entries, indent);
+        if (index === 0) {
+          itemLines.push(line.replace(new RegExp(`^ {${indent}}`), "  - "));
+        } else {
+          itemLines.push(line);
+        }
+        return;
+      }
+      if (field.type === "mapList") {
+        const entries = parseMapLines(value);
+        const line = formatYamlMapListField(field.key, entries, indent);
+        if (index === 0) {
+          itemLines.push(line.replace(new RegExp(`^ {${indent}}`), "  - "));
+        } else {
+          itemLines.push(line);
+        }
+        return;
+      }
+      const line = formatYamlField(field.key, value, indent, field.multiline || field.type === "textarea");
+      if (index === 0) {
+        itemLines.push(line.replace(new RegExp(`^ {${indent}}`), "  - "));
+      } else {
+        itemLines.push(line);
+      }
+    });
+
+    if (nestedFields.length) {
+      const nestGroups = {};
+      nestedFields.forEach((field) => {
+        const value = item[field.key] ?? "";
+        if (value === "") return;
+        const [groupKey] = field.nest;
+        if (!nestGroups[groupKey]) nestGroups[groupKey] = [];
+        nestGroups[groupKey].push(field);
+      });
+      Object.entries(nestGroups).forEach(([groupKey, groupFields]) => {
+        itemLines.push(`${" ".repeat(indent)}${groupKey}:`);
+        groupFields.forEach((field) => {
+          const value = item[field.key] ?? "";
+          const nestedKey = field.nest[field.nest.length - 1];
+          if (field.type === "list") {
+            const lines = parseListLines(value);
+            itemLines.push(formatYamlListField(nestedKey, lines, indent + 2));
+            return;
+          }
+          if (field.type === "map") {
+            const entries = parseMapLines(value);
+            itemLines.push(formatYamlMapField(nestedKey, entries, indent + 2));
+            return;
+          }
+          if (field.type === "mapList") {
+            const entries = parseMapLines(value);
+            itemLines.push(formatYamlMapListField(nestedKey, entries, indent + 2));
+            return;
+          }
+          itemLines.push(formatYamlField(nestedKey, value, indent + 2, field.multiline || field.type === "textarea"));
+        });
+      });
+    }
+
+    return itemLines;
+  };
+
+  const buildDefinitionMarkdown = (schema) => {
+    const frontmatterEntries = [];
+    const nameValue = definitionForm.nameInput.value.trim();
+    if (nameValue) {
+      frontmatterEntries.push(formatYamlField("name", nameValue, 0, false));
+    }
+    const frontmatterLines = [
+      ...frontmatterEntries,
+      ...schema.frontmatterFields
+      .map((field) => ({ field, value: definitionForm.itemsContainer.querySelector(`[data-def-field=\"${field.key}\"]`)?.value ?? "" }))
+      .filter(({ value }) => value.trim() !== "")
+      .map(({ field, value }) => formatYamlField(field.key, value, 0, field.type === "textarea"))
+    ];
+    const bodyInput = definitionForm.itemsContainer.querySelector(`[data-def-field=\"${schema.bodyField.key}\"]`);
+    const bodyValue = bodyInput?.value ?? "";
+    return [
+      "---",
+      ...frontmatterLines,
+      "---",
+      "",
+      bodyValue.trim()
+    ].join("\n").trim() + "\n";
+  };
+
   const buildDefinitionYaml = () => {
     const schema = getDefinitionSchema(definitionForm.typeSelect.value);
     const metaLines = [];
@@ -933,24 +1146,32 @@
     if (schemaValue) metaLines.push(`schema: ${formatYamlScalar(schemaValue)}`);
     if (author) metaLines.push(`author: ${formatYamlScalar(author)}`);
 
-    const items = collectDefinitionItems(schema);
-    const listLines = [`${schema.listKey}:`];
-    items.forEach((item) => {
-      const itemLines = [];
-      schema.fields.forEach((field, index) => {
-        const value = item[field.key] ?? "";
-        const line = formatYamlField(field.key, value, 4, field.multiline);
-        if (index === 0) {
-          const adjusted = line.replace(/^ {4}/, "  - ");
-          itemLines.push(adjusted);
-        } else {
-          itemLines.push(line);
-        }
-      });
-      listLines.push(...itemLines);
-    });
+    if (schema.kind === "markdown") {
+      return buildDefinitionMarkdown(schema);
+    }
 
-    return [...metaLines, "", ...listLines].join("\n").trim() + "\n";
+    const blocks = [];
+    if (schema.kind === "list") {
+      const items = collectDefinitionItems(schema);
+      const listLines = [`${schema.listKey}:`];
+      items.forEach((item) => {
+        listLines.push(...buildYamlItemLines(item, schema.fields, 4));
+      });
+      blocks.push(listLines.join("\n"));
+    }
+
+    if (schema.kind === "sections") {
+      schema.sections.forEach((section) => {
+        const items = collectDefinitionItems({ kind: "list", fields: section.fields }, section.key);
+        const listLines = [`${section.key}:`];
+        items.forEach((item) => {
+          listLines.push(...buildYamlItemLines(item, section.fields, 4));
+        });
+        blocks.push(listLines.join("\n"));
+      });
+    }
+
+    return [...metaLines, "", ...blocks].join("\n").trim() + "\n";
   };
 
   const parseYamlScalar = (raw) => {
@@ -961,64 +1182,56 @@
     return value;
   };
 
+  const parseMarkdownDefinition = (text) => {
+    const cleaned = text.replace(/\r\n/g, "\n");
+    const frontmatterMatch = cleaned.match(/^---\n([\s\S]*?)\n---\n?/);
+    const frontmatter = {};
+    let body = cleaned;
+    if (frontmatterMatch) {
+      body = cleaned.slice(frontmatterMatch[0].length);
+      const lines = frontmatterMatch[1].split("\n");
+      lines.forEach((line) => {
+        const match = line.match(/^([A-Za-z0-9_]+):\s*(.*)$/);
+        if (match) {
+          frontmatter[match[1]] = parseYamlScalar(match[2] || "");
+        }
+      });
+    }
+    return { frontmatter, body: body.trim() };
+  };
+
   const parseDefinitionYaml = (text) => {
     const lines = text.replace(/\r\n/g, "\n").split("\n");
     const meta = {};
-    const knownListKeys = Object.values(definitionSchemas).map((schema) => schema.listKey);
-    let listKey = null;
-    let listStartIndex = -1;
-
-    lines.forEach((line, index) => {
+    const sections = {};
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) {
+        i += 1;
+        continue;
+      }
+      if (line.startsWith(" ")) {
+        i += 1;
+        continue;
+      }
       const match = line.match(/^([A-Za-z0-9_]+):\s*(.*)$/);
-      if (!match || line.startsWith(" ")) return;
+      if (!match) {
+        i += 1;
+        continue;
+      }
       const key = match[1];
       const rest = match[2];
-      if (knownListKeys.includes(key) && rest.trim() === "") {
-        listKey = key;
-        listStartIndex = index;
-      } else if (rest.trim() !== "") {
+      if (rest.trim() !== "") {
         meta[key] = parseYamlScalar(rest);
-      }
-    });
-
-    const items = [];
-    if (listKey && listStartIndex >= 0) {
-      let currentItem = null;
-      let i = listStartIndex + 1;
-      while (i < lines.length) {
-        const line = lines[i];
-        if (!line.trim()) {
-          i += 1;
-          continue;
-        }
-        if (!line.startsWith(" ")) {
-          break;
-        }
-        const listMatch = line.match(/^\s*-\s*([A-Za-z0-9_]+):\s*(.*)$/);
-        const keyMatch = line.match(/^\s+([A-Za-z0-9_]+):\s*(.*)$/);
-        if (listMatch) {
-          currentItem = {};
-          items.push(currentItem);
-          const key = listMatch[1];
-          const rawValue = listMatch[2];
-          const { value, nextIndex } = parseYamlValue(lines, i, rawValue, line.indexOf("-"));
-          currentItem[key] = value;
-          i = nextIndex + 1;
-          continue;
-        }
-        if (keyMatch && currentItem) {
-          const key = keyMatch[1];
-          const rawValue = keyMatch[2];
-          const { value, nextIndex } = parseYamlValue(lines, i, rawValue, line.search(/\S/));
-          currentItem[key] = value;
-          i = nextIndex + 1;
-          continue;
-        }
         i += 1;
+        continue;
       }
+      const { items, nextIndex } = parseYamlList(lines, i + 1, 0);
+      sections[key] = items;
+      i = nextIndex;
     }
-
-    return { meta, listKey, items };
+    return { meta, sections };
   };
 
   const parseYamlValue = (lines, index, rawValue, indent) => {
@@ -1051,9 +1264,156 @@
     return { value: blockLines.join("\n"), nextIndex: i - 1 };
   };
 
-  const collectDefinitionItems = (schema) => {
+  const normalizeItemForSchema = (item, fields) => {
+    const normalized = {};
+    fields.forEach((field) => {
+      const resolveValue = () => {
+        if (!field.nest) {
+          return item[field.key];
+        }
+        return field.nest.reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), item);
+      };
+      const rawValue = resolveValue();
+      if (field.type === "list") {
+        normalized[field.key] = Array.isArray(rawValue) ? rawValue.join("\n") : "";
+        return;
+      }
+      if (field.type === "map" || field.type === "mapList") {
+        if (Array.isArray(rawValue)) {
+          normalized[field.key] = rawValue.join("\n");
+          return;
+        }
+        if (rawValue && typeof rawValue === "object") {
+          normalized[field.key] = Object.entries(rawValue)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join("\n");
+          return;
+        }
+        normalized[field.key] = "";
+        return;
+      }
+      normalized[field.key] = rawValue ?? "";
+    });
+    return normalized;
+  };
+
+  const getIndent = (line) => line.match(/^(\s*)/)[1].length;
+
+  const parseYamlList = (lines, startIndex, parentIndent) => {
     const items = [];
-    definitionForm.itemsContainer.querySelectorAll("[data-def-item]").forEach((itemEl) => {
+    let i = startIndex;
+    let currentItem = null;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) {
+        i += 1;
+        continue;
+      }
+      const indent = getIndent(line);
+      if (indent <= parentIndent) {
+        break;
+      }
+      if (line.trim().startsWith("- ")) {
+        currentItem = {};
+        items.push(currentItem);
+        const remainder = line.trim().slice(2);
+        if (remainder) {
+          const match = remainder.match(/^([A-Za-z0-9_]+):\s*(.*)$/);
+          if (match) {
+            const { value, nextIndex } = parseYamlValue(lines, i, match[2], indent);
+            currentItem[match[1]] = value;
+            i = nextIndex + 1;
+            continue;
+          }
+        }
+        i += 1;
+        continue;
+      }
+      const fieldMatch = line.trim().match(/^([A-Za-z0-9_]+):\s*(.*)$/);
+      if (fieldMatch && currentItem) {
+        const fieldIndent = indent;
+        const rawValue = fieldMatch[2];
+        if (rawValue.trim() === "") {
+          const nextLine = lines[i + 1] || "";
+          const nextIndent = getIndent(nextLine);
+          if (nextLine.trim().startsWith("- ")) {
+            const { values, nextIndex } = parseYamlScalarList(lines, i + 1, fieldIndent);
+            currentItem[fieldMatch[1]] = values;
+            i = nextIndex + 1;
+            continue;
+          }
+          if (nextIndent > fieldIndent) {
+            const { map, nextIndex } = parseYamlMap(lines, i + 1, fieldIndent);
+            currentItem[fieldMatch[1]] = map;
+            i = nextIndex + 1;
+            continue;
+          }
+        }
+        const { value, nextIndex } = parseYamlValue(lines, i, rawValue, indent);
+        currentItem[fieldMatch[1]] = value;
+        i = nextIndex + 1;
+        continue;
+      }
+      i += 1;
+    }
+    return { items, nextIndex: i };
+  };
+
+  const parseYamlScalarList = (lines, startIndex, parentIndent) => {
+    const values = [];
+    let i = startIndex;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) {
+        i += 1;
+        continue;
+      }
+      const indent = getIndent(line);
+      if (indent <= parentIndent) break;
+      const match = line.trim().match(/^-\s*(.*)$/);
+      if (match) {
+        values.push(parseYamlScalar(match[1]));
+      }
+      i += 1;
+    }
+    return { values, nextIndex: i - 1 };
+  };
+
+  const parseYamlMap = (lines, startIndex, parentIndent) => {
+    const map = {};
+    let i = startIndex;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (!line.trim()) {
+        i += 1;
+        continue;
+      }
+      const indent = getIndent(line);
+      if (indent <= parentIndent) break;
+      const match = line.trim().match(/^([A-Za-z0-9_]+):\s*(.*)$/);
+      if (match) {
+        if (match[2].trim() === "") {
+          const nextLine = lines[i + 1] || "";
+          if (nextLine.trim().startsWith("- ")) {
+            const { values, nextIndex } = parseYamlScalarList(lines, i + 1, indent);
+            map[match[1]] = values;
+            i = nextIndex + 1;
+            continue;
+          }
+        }
+        map[match[1]] = parseYamlScalar(match[2]);
+      }
+      i += 1;
+    }
+    return { map, nextIndex: i - 1 };
+  };
+
+  const collectDefinitionItems = (schema, sectionKey = null) => {
+    const items = [];
+    const selector = sectionKey
+      ? `[data-def-section=\"${sectionKey}\"] [data-def-item]`
+      : "[data-def-item]";
+    definitionForm.itemsContainer.querySelectorAll(selector).forEach((itemEl) => {
       const item = {};
       schema.fields.forEach((field) => {
         const input = itemEl.querySelector(`[data-def-field=\"${field.key}\"]`);
@@ -1070,8 +1430,103 @@
     return items;
   };
 
-  const renderDefinitionItems = (schema, items) => {
+  const collectSectionData = (schema) => {
+    const sectionData = {};
+    schema.sections.forEach((section) => {
+      sectionData[section.key] = collectDefinitionItems({ fields: section.fields }, section.key);
+    });
+    return sectionData;
+  };
+
+  const renderField = (field, value) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "field";
+    const label = document.createElement("label");
+    label.textContent = field.label;
+    const inputType = field.type === "textarea" || field.type === "list" || field.type === "map" || field.type === "mapList";
+    const input = inputType ? document.createElement("textarea") : document.createElement("input");
+    input.dataset.defField = field.key;
+    input.placeholder = field.placeholder || "";
+    input.value = value || "";
+    input.addEventListener("input", updateYamlFromForm);
+    wrapper.appendChild(label);
+    wrapper.appendChild(input);
+    return wrapper;
+  };
+
+  const renderDefinitionItems = (schema, data) => {
     definitionForm.itemsContainer.innerHTML = "";
+    if (schema.kind === "markdown") {
+      definitionForm.addItemButton.style.display = "none";
+      schema.frontmatterFields.forEach((field) => {
+        definitionForm.itemsContainer.appendChild(renderField(field, data?.frontmatter?.[field.key] || ""));
+      });
+      definitionForm.itemsContainer.appendChild(renderField(schema.bodyField, data?.body || ""));
+      return;
+    }
+    if (schema.kind === "sections") {
+      definitionForm.addItemButton.style.display = "none";
+      schema.sections.forEach((section) => {
+        const sectionCard = document.createElement("div");
+        sectionCard.className = "def-section";
+        sectionCard.dataset.defSection = section.key;
+        const title = document.createElement("div");
+        title.className = "def-section-title";
+        title.textContent = section.label;
+        sectionCard.appendChild(title);
+
+        const items = data?.sections?.[section.key] || [Object.fromEntries(section.fields.map((field) => [field.key, ""]))];
+        items.forEach((item, index) => {
+          const itemCard = document.createElement("div");
+          itemCard.className = "def-item";
+          itemCard.dataset.defItem = "true";
+          const header = document.createElement("div");
+          header.className = "def-item-header";
+          const headerTitle = document.createElement("strong");
+          headerTitle.textContent = `${section.itemLabel} ${index + 1}`;
+          const removeButton = document.createElement("button");
+          removeButton.type = "button";
+          removeButton.className = "ghost";
+          removeButton.textContent = "Remove";
+          removeButton.onclick = () => {
+            itemCard.remove();
+            updateYamlFromForm();
+            refreshItemTitles(section.key, section.itemLabel);
+          };
+          header.appendChild(headerTitle);
+          header.appendChild(removeButton);
+          itemCard.appendChild(header);
+          section.fields.forEach((field) => {
+            itemCard.appendChild(renderField(field, item[field.key] || ""));
+          });
+          sectionCard.appendChild(itemCard);
+        });
+
+        const addButtonRow = document.createElement("div");
+        addButtonRow.className = "button-row";
+        const addButton = document.createElement("button");
+        addButton.type = "button";
+        addButton.className = "secondary";
+        addButton.textContent = `Add ${section.itemLabel}`;
+        addButton.onclick = () => {
+          const sectionData = collectSectionData(schema);
+          sectionData[section.key] = [
+            ...sectionData[section.key],
+            Object.fromEntries(section.fields.map((field) => [field.key, ""]))
+          ];
+          renderDefinitionItems(schema, { sections: sectionData });
+          updateYamlFromForm();
+        };
+        addButtonRow.appendChild(addButton);
+        sectionCard.appendChild(addButtonRow);
+
+        definitionForm.itemsContainer.appendChild(sectionCard);
+      });
+      return;
+    }
+
+    definitionForm.addItemButton.style.display = "inline-flex";
+    const items = data?.items || [Object.fromEntries(schema.fields.map((field) => [field.key, ""]))];
     items.forEach((item, index) => {
       const itemCard = document.createElement("div");
       itemCard.className = "def-item";
@@ -1088,36 +1543,28 @@
       removeButton.onclick = () => {
         itemCard.remove();
         updateYamlFromForm();
-        refreshItemTitles(schema);
+        refreshItemTitles(null, schema.itemLabel);
       };
       header.appendChild(title);
       header.appendChild(removeButton);
       itemCard.appendChild(header);
 
       schema.fields.forEach((field) => {
-        const wrapper = document.createElement("div");
-        wrapper.className = "field";
-        const label = document.createElement("label");
-        label.textContent = field.label;
-        const input = field.type === "textarea" ? document.createElement("textarea") : document.createElement("input");
-        input.dataset.defField = field.key;
-        input.placeholder = field.placeholder || "";
-        input.value = item[field.key] || "";
-        input.addEventListener("input", updateYamlFromForm);
-        wrapper.appendChild(label);
-        wrapper.appendChild(input);
-        itemCard.appendChild(wrapper);
+        itemCard.appendChild(renderField(field, item[field.key] || ""));
       });
 
       definitionForm.itemsContainer.appendChild(itemCard);
     });
   };
 
-  const refreshItemTitles = (schema) => {
-    definitionForm.itemsContainer.querySelectorAll(".def-item").forEach((card, index) => {
+  const refreshItemTitles = (sectionKey, itemLabel) => {
+    const selector = sectionKey
+      ? `[data-def-section=\"${sectionKey}\"] .def-item`
+      : ".def-item";
+    definitionForm.itemsContainer.querySelectorAll(selector).forEach((card, index) => {
       const title = card.querySelector(".def-item-header strong");
       if (title) {
-        title.textContent = `${schema.itemLabel} ${index + 1}`;
+        title.textContent = `${itemLabel} ${index + 1}`;
       }
     });
   };
@@ -1132,35 +1579,81 @@
   const updateFormFromYaml = () => {
     if (suppressContentSync) return;
     suppressFormSync = true;
-    const { meta, listKey, items } = parseDefinitionYaml(definitionForm.contentInput.value);
-    const matchingType = Object.keys(definitionSchemas).find(
-      (type) => definitionSchemas[type].listKey === listKey
-    );
+    const rawContent = definitionForm.contentInput.value;
+    if (rawContent.trim().startsWith("---")) {
+      const parsed = parseMarkdownDefinition(rawContent);
+      const isAgent = "tools" in parsed.frontmatter || "rules" in parsed.frontmatter;
+      definitionForm.typeSelect.value = isAgent ? "agents" : "rules";
+      const schema = getDefinitionSchema(definitionForm.typeSelect.value);
+      applyDefinitionLayout(schema);
+      definitionForm.nameInput.value = parsed.frontmatter.name || definitionForm.nameInput.value || "";
+      renderDefinitionItems(schema, { frontmatter: parsed.frontmatter, body: parsed.body });
+      suppressFormSync = false;
+      return;
+    }
+    const schema = getDefinitionSchema(definitionForm.typeSelect.value);
+    const { meta, sections } = parseDefinitionYaml(definitionForm.contentInput.value);
+    const matchingType = Object.keys(definitionSchemas).find((type) => {
+      const candidate = definitionSchemas[type];
+      if (candidate.kind === "list") {
+        return candidate.listKey in sections;
+      }
+      if (candidate.kind === "sections") {
+        return candidate.sections.some((section) => section.key in sections);
+      }
+      return false;
+    });
     if (matchingType) {
       definitionForm.typeSelect.value = matchingType;
     }
-    const schema = getDefinitionSchema(definitionForm.typeSelect.value);
-    definitionForm.itemsLabel.textContent = schema.label;
+    const resolvedSchema = getDefinitionSchema(definitionForm.typeSelect.value);
+    applyDefinitionLayout(resolvedSchema);
+    definitionForm.itemsLabel.textContent = resolvedSchema.label;
     definitionForm.nameInput.value = meta.name || definitionForm.nameInput.value || "";
     definitionForm.authorInput.value = meta.author || definitionForm.authorInput.value || "";
     definitionForm.versionInput.value = meta.version || definitionForm.versionInput.value || "";
     definitionForm.schemaInput.value = meta.schema || definitionForm.schemaInput.value || "";
 
-    const normalizedItems = (items.length ? items : [{}]).map((item) => {
-      const normalized = {};
-      schema.fields.forEach((field) => {
-        normalized[field.key] = item[field.key] || "";
+    if (resolvedSchema.kind === "list") {
+      const items = (sections[resolvedSchema.listKey] || []).map((item) => normalizeItemForSchema(item, resolvedSchema.fields));
+      renderDefinitionItems(resolvedSchema, { items: items.length ? items : [{}] });
+    } else if (resolvedSchema.kind === "sections") {
+      const sectionData = {};
+      resolvedSchema.sections.forEach((section) => {
+        const items = (sections[section.key] || []).map((item) => normalizeItemForSchema(item, section.fields));
+        sectionData[section.key] = items.length ? items : [Object.fromEntries(section.fields.map((field) => [field.key, ""]))];
       });
-      return normalized;
-    });
-    renderDefinitionItems(schema, normalizedItems);
+      renderDefinitionItems(resolvedSchema, { sections: sectionData });
+    }
     suppressFormSync = false;
+  };
+
+  const applyDefinitionLayout = (schema) => {
+    definitionForm.itemsLabel.textContent = schema.label;
+    const contentLabel = schema.contentLabel || "YAML";
+    document.querySelector("label[for=\"defContent\"]").textContent = contentLabel;
+    definitionForm.contentInput.placeholder = schema.kind === "markdown"
+      ? "Definition Markdown goes here"
+      : "Definition YAML goes here";
+    document.querySelectorAll(".def-meta").forEach((field) => {
+      field.style.display = schema.kind === "markdown" ? "none" : "";
+    });
   };
 
   const resetDefinitionFormForType = () => {
     const schema = getDefinitionSchema(definitionForm.typeSelect.value);
-    definitionForm.itemsLabel.textContent = schema.label;
-    renderDefinitionItems(schema, [Object.fromEntries(schema.fields.map((field) => [field.key, ""]))]);
+    applyDefinitionLayout(schema);
+    if (schema.kind === "markdown") {
+      renderDefinitionItems(schema, { frontmatter: {}, body: "" });
+    } else if (schema.kind === "sections") {
+      const sectionData = {};
+      schema.sections.forEach((section) => {
+        sectionData[section.key] = [Object.fromEntries(section.fields.map((field) => [field.key, ""]))];
+      });
+      renderDefinitionItems(schema, { sections: sectionData });
+    } else {
+      renderDefinitionItems(schema, { items: [Object.fromEntries(schema.fields.map((field) => [field.key, ""]))] });
+    }
     updateYamlFromForm();
   };
 
@@ -1168,9 +1661,10 @@
     definitionForm.typeSelect.addEventListener("change", resetDefinitionFormForType);
     definitionForm.addItemButton.addEventListener("click", () => {
       const schema = getDefinitionSchema(definitionForm.typeSelect.value);
+      if (schema.kind !== "list") return;
       const items = collectDefinitionItems(schema);
       items.push(Object.fromEntries(schema.fields.map((field) => [field.key, ""])));
-      renderDefinitionItems(schema, items);
+      renderDefinitionItems(schema, { items });
       updateYamlFromForm();
     });
 
