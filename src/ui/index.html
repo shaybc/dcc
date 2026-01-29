@@ -231,6 +231,64 @@
       font-size: 12px;
       color: var(--muted);
     }
+
+    .checkbox-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+
+    .checkbox-item input {
+      width: 18px;
+      height: 18px;
+    }
+
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: help;
+      position: relative;
+    }
+
+    .info-icon::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 130%;
+      right: 0;
+      width: 280px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #111827;
+      color: #f9fafb;
+      font-size: 12px;
+      line-height: 1.4;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(6px);
+      pointer-events: none;
+      transition: all 0.2s ease;
+      z-index: 5;
+    }
+
+    .info-icon:hover::after {
+      opacity: 1;
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -534,6 +592,56 @@
             <li>Changes apply immediately to new definition saves.</li>
           </ul>
         </div>
+        <div class="card">
+          <h2>AI assets</h2>
+          <p class="muted">Select the AI assets you want to copy into the current project.</p>
+          <div class="field-group">
+            <div class="field">
+              <label for="aiAssetsProjectPath">Project path</label>
+              <input id="aiAssetsProjectPath" list="recentRepos" placeholder="/path/to/your/project" />
+              <span class="helper">This is the path to the repo currently opened in your IDE.</span>
+            </div>
+          </div>
+          <div class="checkbox-list" style="margin-top: 12px;">
+            <label class="checkbox-item">
+              <input type="checkbox" data-ai-asset="rules" />
+              Rules
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" data-ai-asset="prompts" />
+              Prompts
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" data-ai-asset="workflows" />
+              Workflows
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" data-ai-asset="context" />
+              Context
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" data-ai-asset="models" />
+              Models
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" data-ai-asset="agents" />
+              Agents
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" data-ai-asset="mcpServers" />
+              MCP Servers
+            </label>
+          </div>
+          <div class="button-row" style="margin-top: 14px; align-items: center;">
+            <button id="btnCopyAiAssets">Copy to Project</button>
+            <span
+              class="info-icon"
+              data-tooltip='select the AI assets you want to include in your project and press "Copy to Project", this will copy the selected assets (Rules / Prompts / Workflows ...) into your current project and be available in your Continue client directly from your IDE.'
+              aria-label="Copy to Project help"
+            >i</span>
+          </div>
+          <div id="aiAssetsCopyStatus" class="status" style="margin-top: 10px;">Awaiting copy</div>
+        </div>
       </div>
     </section>
   </main>
@@ -793,6 +901,43 @@
     document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
     renderStatus("settingsStatus", r, "Awaiting update");
   };
+
+  const collectSelectedAiAssets = () => {
+    return Array.from(document.querySelectorAll("[data-ai-asset]"))
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => checkbox.dataset.aiAsset);
+  };
+
+  const copyAiAssets = async (overwrite = false) => {
+    const projectPath = document.getElementById("aiAssetsProjectPath").value.trim();
+    const selections = collectSelectedAiAssets();
+    if (!projectPath) {
+      document.getElementById("aiAssetsCopyStatus").textContent = "Project path is required.";
+      document.getElementById("aiAssetsCopyStatus").className = "status warn";
+      return;
+    }
+    if (selections.length === 0) {
+      document.getElementById("aiAssetsCopyStatus").textContent = "Select at least one AI asset.";
+      document.getElementById("aiAssetsCopyStatus").className = "status warn";
+      return;
+    }
+    const payload = { projectPath, selections, overwrite };
+    const r = await api("/api/settings/copy-ai-assets", { method: "POST", body: JSON.stringify(payload) });
+    document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
+    if (r.status === 409 && Array.isArray(r.data?.conflicts) && !overwrite) {
+      const confirmOverwrite = window.confirm(
+        `Some files already exist (${r.data.conflicts.length}). Do you want to overwrite them?`
+      );
+      if (confirmOverwrite) {
+        await copyAiAssets(true);
+        return;
+      }
+    }
+    renderStatus("aiAssetsCopyStatus", r, "Awaiting copy");
+    rememberRepo(projectPath);
+  };
+
+  document.getElementById("btnCopyAiAssets").onclick = () => copyAiAssets(false);
 
   document.getElementById("btnLoadAll").onclick = async () => {
     await Promise.all([
