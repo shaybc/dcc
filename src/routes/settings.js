@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { syncAiAssetsRepo } from "../services/aiAssetsRepoService.js";
+import { copyAiAssetsToProject } from "../services/aiAssetsCopyService.js";
 import { getAiAssetsRepoUrl, getConfigRepoPath, setSetting } from "../services/settingsService.js";
 
 export const settingsRouter = Router();
@@ -31,5 +32,32 @@ settingsRouter.post("/sync-ai-assets", async (req, res) => {
   } catch (error) {
     const status = error?.status || 500;
     return res.status(status).json({ error: error?.message || "Failed to sync AI Assets repo." });
+  }
+});
+
+settingsRouter.post("/copy-ai-assets", (req, res) => {
+  try {
+    const { projectPath, selections, overwrite } = req.body || {};
+    if (typeof projectPath !== "string" || projectPath.trim().length === 0) {
+      return res.status(400).json({ error: "projectPath is required." });
+    }
+    if (!Array.isArray(selections) || selections.length === 0) {
+      return res.status(400).json({ error: "At least one asset selection is required." });
+    }
+    const result = copyAiAssetsToProject({
+      projectPath: projectPath.trim(),
+      selections,
+      overwrite: Boolean(overwrite)
+    });
+    if (result.conflicts && result.conflicts.length > 0 && !overwrite) {
+      return res.status(409).json({
+        error: "Some destination files already exist.",
+        conflicts: result.conflicts
+      });
+    }
+    return res.json(result);
+  } catch (error) {
+    const status = error?.status || 500;
+    return res.status(status).json({ error: error?.message || "Failed to copy AI assets." });
   }
 });
