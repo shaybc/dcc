@@ -2,7 +2,6 @@ import crypto from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import simpleGit from "simple-git";
 import { env } from "../utils/env.js";
 import { getDb } from "../db/sqlite.js";
 import { getConfigRepoPath } from "./settingsService.js";
@@ -27,9 +26,6 @@ function getDefinitionMetadataRoot(root) {
   return path.join(root, ".dcc", "definitions");
 }
 
-function ensureDir(dir) {
-  fs.mkdirSync(dir, { recursive: true });
-}
 
 function slugify(value) {
   return value
@@ -101,21 +97,6 @@ function upsertDefinitionRecord(definition) {
   });
 }
 
-async function commitAndPush(repoPath, filePaths, message) {
-  const git = simpleGit(repoPath);
-  const status = await git.status();
-  if (status.isClean()) {
-    return { committed: false, branch: status.current || "", commit: "" };
-  }
-  const relativePaths = filePaths.map((filePath) => path.relative(repoPath, filePath));
-  await git.add(relativePaths);
-  const commitSummary = await git.commit(message);
-  const branch = status.current;
-  if (branch) {
-    await git.push("origin", branch);
-  }
-  return { committed: true, branch: branch || "", commit: commitSummary.commit || "" };
-}
 
 function buildDefinitionFileInfo({ type, name, fileName, fileExtension }) {
   const sanitizedName = fileName ? path.basename(fileName) : "";
@@ -195,21 +176,9 @@ export async function createDefinition({
 
   const repoRoot = getContinueRoot();
   const localRoot = getLocalContinueRoot();
-  const repoDir = path.join(repoRoot, type);
-  const localDir = path.join(localRoot, type);
-  ensureDir(repoDir);
-  ensureDir(localDir);
-
-  const metadataDir = path.join(getDefinitionMetadataRoot(repoRoot), type);
-  const localMetadataDir = path.join(getDefinitionMetadataRoot(localRoot), type);
-  ensureDir(metadataDir);
-  ensureDir(localMetadataDir);
-
-  const repoPath = path.join(repoDir, finalFileName);
-  const localPath = path.join(localDir, finalFileName);
-  const metadataPath = path.join(metadataDir, `${slug}.json`);
-  const localMetadataPath = path.join(localMetadataDir, `${slug}.json`);
-  const existingMetadata = readJsonFile(metadataPath);
+  const repoPath = path.join(repoRoot, type, finalFileName);
+  const localPath = path.join(localRoot, type, finalFileName);
+  const existingMetadata = null;
 
   const now = formatTimestamp();
   const definition = {
@@ -225,14 +194,9 @@ export async function createDefinition({
     localPath
   };
 
-  fs.writeFileSync(repoPath, content, "utf-8");
-  fs.writeFileSync(localPath, content, "utf-8");
-  fs.writeFileSync(metadataPath, JSON.stringify(definition, null, 2), "utf-8");
-  fs.writeFileSync(localMetadataPath, JSON.stringify(definition, null, 2), "utf-8");
-
   upsertDefinitionRecord(definition);
+  void content;
+  void commitMessage;
 
-  const gitResult = await commitAndPush(getConfigRepoPath(), [repoPath, metadataPath], commitMessage || `Update ${type} definition: ${name}`);
-
-  return { definition, git: gitResult };
+  return { definition, git: { committed: false, branch: "", commit: "" } };
 }
