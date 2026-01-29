@@ -5,13 +5,14 @@ import path from "path";
 import simpleGit from "simple-git";
 import { env } from "../utils/env.js";
 import { getDb } from "../db/sqlite.js";
+import { getConfigRepoPath } from "./settingsService.js";
 
 /**
  * The Continue config registry is a Bitbucket repo cloned locally.
  * Continue uses ~/.continue/config.json -> configPath -> <clone>/.continue
  */
 export function getContinueRoot() {
-  return path.join(env.CONFIG_REPO_PATH, ".continue");
+  return path.join(getConfigRepoPath(), ".continue");
 }
 
 export function getLocalContinueRoot() {
@@ -229,7 +230,7 @@ export async function createDefinition({
 
   upsertDefinitionRecord(definition);
 
-  const gitResult = await commitAndPush(env.CONFIG_REPO_PATH, [repoPath, metadataPath], commitMessage || `Update ${type} definition: ${name}`);
+  const gitResult = await commitAndPush(getConfigRepoPath(), [repoPath, metadataPath], commitMessage || `Update ${type} definition: ${name}`);
 
   return { definition, git: gitResult };
 }

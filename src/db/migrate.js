@@ -67,5 +67,11 @@ export function migrate() {
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_definitions_repo_path ON definitions(repo_path);
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
 }

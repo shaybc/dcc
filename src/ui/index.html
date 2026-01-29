@@ -33,8 +33,35 @@
       border-bottom: 1px solid var(--border);
     }
 
+    .header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
     header h1 { margin: 0 0 6px; font-size: 28px; }
     header p { margin: 0; color: var(--muted); }
+
+    .icon-button {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      font-size: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+
+    .icon-button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
 
     main { padding: 28px 36px 44px; }
 
@@ -188,8 +215,13 @@
 </head>
 <body>
   <header>
-    <h1>Developer Control Center (DCC)</h1>
-    <p>Local governance, workflow execution, and Bitbucket PR creation — now organized into focused tabs.</p>
+    <div class="header-row">
+      <div>
+        <h1>Developer Control Center (DCC)</h1>
+        <p>Local governance, workflow execution, and Bitbucket PR creation — now organized into focused tabs.</p>
+      </div>
+      <button id="btnSettings" class="icon-button" aria-label="Open settings">⚙️</button>
+    </div>
   </header>
 
   <main>
@@ -436,6 +468,40 @@
         </div>
       </div>
     </section>
+
+    <section class="panel" id="panel-settings" data-panel="settings">
+      <div class="grid two">
+        <div class="card">
+          <h2>Configuration</h2>
+          <p class="muted">Set the shared folder that stores your Continue configuration repository.</p>
+          <div class="field-group">
+            <div class="field">
+              <label for="configRepoPath">Shared folder location</label>
+              <input id="configRepoPath" placeholder="c:\\git\\ai_assets" />
+              <span class="helper">This folder should contain the .continue directory for shared definitions.</span>
+            </div>
+          </div>
+          <div class="button-row" style="margin-top: 12px;">
+            <button id="btnSaveSettings">Save settings</button>
+            <button class="secondary" id="btnSettingsBack">Back to overview</button>
+          </div>
+          <div id="settingsStatus" class="status">Awaiting update</div>
+          <details>
+            <summary>Raw response</summary>
+            <pre id="settingsOut"></pre>
+          </details>
+        </div>
+        <div class="card">
+          <h2>Why this matters</h2>
+          <p class="muted">DCC uses the shared folder to sync definitions across your local workspace and Bitbucket.</p>
+          <ul>
+            <li>Point to the local clone of your config repository.</li>
+            <li>Ensure the folder is accessible to the DCC server process.</li>
+            <li>Changes apply immediately to new definition saves.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
   </main>
 
   <datalist id="recentRepos"></datalist>
@@ -561,6 +627,15 @@
     renderTable("overviewRuns", state.runs.slice(0, 5), "Load runs to see recent activity.");
   };
 
+  const loadSettings = async () => {
+    const r = await api("/api/settings");
+    document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
+    renderStatus("settingsStatus", r, "Awaiting update");
+    if (r.ok && r.data?.configRepoPath) {
+      document.getElementById("configRepoPath").value = r.data.configRepoPath;
+    }
+  };
+
   document.getElementById("btnLoadDefs").onclick = async () => {
     const r = await api("/api/configs");
     document.getElementById("defsOut").textContent = JSON.stringify(r, null, 2);
@@ -647,6 +722,16 @@
     updateOverview();
   };
 
+  document.getElementById("btnSaveSettings").onclick = async () => {
+    const payload = { configRepoPath: document.getElementById("configRepoPath").value };
+    const r = await api("/api/settings", { method: "PUT", body: JSON.stringify(payload) });
+    document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
+    renderStatus("settingsStatus", r, "Awaiting update");
+    if (r.ok) {
+      document.getElementById("configRepoPath").value = r.data?.configRepoPath || payload.configRepoPath;
+    }
+  };
+
   document.getElementById("btnLoadAll").onclick = async () => {
     await Promise.all([
       document.getElementById("btnLoadDefs").onclick(),
@@ -657,6 +742,8 @@
 
   document.getElementById("btnJumpWorkflows").onclick = () => setActiveTab("workflows");
   document.getElementById("btnJumpPrs").onclick = () => setActiveTab("prs");
+  document.getElementById("btnSettings").onclick = () => setActiveTab("settings");
+  document.getElementById("btnSettingsBack").onclick = () => setActiveTab("overview");
 
   document.getElementById("baseBranchPreset").addEventListener("change", (event) => {
     const showCustom = event.target.value === "custom";
@@ -665,6 +752,7 @@
 
   populateRecentRepos();
   updateOverview();
+  loadSettings();
 </script>
 </body>
 </html>

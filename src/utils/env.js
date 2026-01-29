@@ -5,7 +5,6 @@ import { z } from "zod";
 
 const EnvSchema = z.object({
   PORT: z.coerce.number().default(7331),
-  CONFIG_REPO_PATH: z.string().min(1).default(process.cwd()),
   LOCAL_CONTINUE_PATH: z.string().min(1).default(path.join(os.homedir(), ".continue")),
   DCC_AUTH_TOKEN: z.string().optional().default(""),
   BITBUCKET_BASE_URL: z.string().url().default("https://bitbucket.example.local"),
