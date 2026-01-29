@@ -1,6 +1,7 @@
 import { getDb } from "../db/sqlite.js";
 
 export const DEFAULT_CONFIG_REPO_PATH = "c:\\git\\ai_assets";
+export const DEFAULT_AI_ASSETS_REPO_URL = "";
 
 export function getSetting(key, fallbackValue = null) {
   const db = getDb();
@@ -30,4 +31,8 @@ export function setSetting(key, value) {
 
 export function getConfigRepoPath() {
   return getSetting("configRepoPath", DEFAULT_CONFIG_REPO_PATH);
+}
+
+export function getAiAssetsRepoUrl() {
+  return getSetting("aiAssetsRepoUrl", DEFAULT_AI_ASSETS_REPO_URL);
 }
