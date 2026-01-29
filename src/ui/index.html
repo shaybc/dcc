@@ -5,62 +5,395 @@
   <title>DCC - Developer Control Center</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
-    input, textarea, button { width: 100%; padding: 10px; margin-top: 8px; box-sizing: border-box; }
-    button { cursor: pointer; }
-    pre { background: #f7f7f7; padding: 12px; border-radius: 10px; overflow: auto; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+    :root {
+      color-scheme: light;
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 28px 36px 16px;
+      background: linear-gradient(120deg, #ffffff 0%, #eef2ff 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 { margin: 0 0 6px; font-size: 28px; }
+    header p { margin: 0; color: var(--muted); }
+
+    main { padding: 28px 36px 44px; }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .tab-button {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .tab-button[aria-selected="true"] {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .grid.three { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card h2, .card h3 { margin-top: 0; }
+    .muted { color: var(--muted); }
+
+    .field-group {
+      display: grid;
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label { font-weight: 600; }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 14px;
+    }
+
+    textarea { resize: vertical; min-height: 90px; }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    button.ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      color: var(--muted);
+    }
+
+    .status.ok { background: rgba(16, 185, 129, 0.15); color: #047857; }
+    .status.warn { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th { background: #f9fafb; font-weight: 600; }
+
+    details {
+      margin-top: 12px;
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+    }
+
+    pre {
+      margin: 10px 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 13px;
+      color: #111827;
+    }
+
+    .helper {
+      font-size: 12px;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
-  <h1>Developer Control Center (DCC)</h1>
-  <p>Local governance + workflow runs + Bitbucket PR creation.</p>
+  <header>
+    <h1>Developer Control Center (DCC)</h1>
+    <p>Local governance, workflow execution, and Bitbucket PR creation — now organized into focused tabs.</p>
+  </header>
 
-  <div class="row">
-    <div class="card">
-      <h2>Definitions</h2>
-      <button id="btnLoadDefs">Load definitions</button>
-      <pre id="defsOut"></pre>
+  <main>
+    <div class="tabs" role="tablist" aria-label="DCC sections">
+      <button class="tab-button" role="tab" aria-selected="true" data-tab="overview">Overview</button>
+      <button class="tab-button" role="tab" aria-selected="false" data-tab="definitions">Definitions</button>
+      <button class="tab-button" role="tab" aria-selected="false" data-tab="workflows">Workflows</button>
+      <button class="tab-button" role="tab" aria-selected="false" data-tab="prs">Pull Requests</button>
+      <button class="tab-button" role="tab" aria-selected="false" data-tab="runs">Run History</button>
     </div>
 
-    <div class="card">
-      <h2>Create Bitbucket PR</h2>
-      <label>Repo path</label>
-      <input id="repoPath" placeholder="/path/to/your/repo" />
-      <label>Base branch</label>
-      <input id="baseBranch" placeholder="main" />
-      <label>Title</label>
-      <input id="prTitle" placeholder="My PR title" />
-      <label>Description</label>
-      <textarea id="prDesc" rows="4" placeholder="Describe changes"></textarea>
-      <button id="btnCreatePr">Create PR</button>
-      <pre id="prOut"></pre>
-    </div>
-  </div>
+    <section class="panel active" id="panel-overview" data-panel="overview">
+      <div class="grid two">
+        <div class="card">
+          <h2>Quick actions</h2>
+          <p class="muted">Load data once and jump directly into the workflows you need.</p>
+          <div class="button-row">
+            <button id="btnLoadAll">Refresh overview</button>
+            <button class="secondary" id="btnJumpWorkflows">Go to workflows</button>
+            <button class="ghost" id="btnJumpPrs">Go to PRs</button>
+          </div>
+          <div class="helper">Runs: last 20 • Workflows: all • Definitions: current registry</div>
+        </div>
+        <div class="card">
+          <h2>System status</h2>
+          <div class="grid three">
+            <div>
+              <div class="muted">Definitions</div>
+              <div id="defsCount" style="font-size: 22px; font-weight: 700;">—</div>
+            </div>
+            <div>
+              <div class="muted">Workflows</div>
+              <div id="workflowsCount" style="font-size: 22px; font-weight: 700;">—</div>
+            </div>
+            <div>
+              <div class="muted">Recent runs</div>
+              <div id="runsCount" style="font-size: 22px; font-weight: 700;">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  <div class="card">
-    <h2>Workflows</h2>
-    <button id="btnLoadWf">List workflows</button>
-    <pre id="wfOut"></pre>
+      <div class="grid two" style="margin-top: 18px;">
+        <div class="card">
+          <h3>Latest workflows</h3>
+          <div id="overviewWorkflows"></div>
+        </div>
+        <div class="card">
+          <h3>Recent runs</h3>
+          <div id="overviewRuns"></div>
+        </div>
+      </div>
+    </section>
 
-    <h3>Run workflow</h3>
-    <label>Workflow ID</label>
-    <input id="wfId" placeholder="java-monolith-to-microservice" />
-    <label>Repo path</label>
-    <input id="wfRepoPath" placeholder="/path/to/your/repo" />
-    <label>Branch</label>
-    <input id="wfBranch" placeholder="feature/my-branch" />
-    <button id="btnRunWf">Run workflow</button>
-    <pre id="wfRunOut"></pre>
-  </div>
+    <section class="panel" id="panel-definitions" data-panel="definitions">
+      <div class="grid two">
+        <div class="card">
+          <h2>Definitions registry</h2>
+          <p class="muted">Keep track of the configuration registry currently available in the repo.</p>
+          <div class="button-row">
+            <button id="btnLoadDefs">Load definitions</button>
+          </div>
+          <div id="defsStatus" class="status">Awaiting load</div>
+          <div id="defsTable"></div>
+          <details>
+            <summary>Raw response</summary>
+            <pre id="defsOut"></pre>
+          </details>
+        </div>
+        <div class="card">
+          <h2>Next steps</h2>
+          <p class="muted">Once definitions are loaded, you can update the registry via a PR or run a workflow from the Workflows tab.</p>
+          <ul>
+            <li>Review the definition list for unexpected entries.</li>
+            <li>Use workflow runs for larger migrations.</li>
+            <li>Capture changes in Bitbucket for governance.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
 
-  <div class="card">
-    <h2>Run History</h2>
-    <button id="btnRuns">Load runs</button>
-    <pre id="runsOut"></pre>
-  </div>
+    <section class="panel" id="panel-workflows" data-panel="workflows">
+      <div class="grid two">
+        <div class="card">
+          <h2>Available workflows</h2>
+          <p class="muted">Use the catalog to inspect or kick off a workflow run.</p>
+          <div class="button-row">
+            <button id="btnLoadWf">List workflows</button>
+          </div>
+          <div id="wfStatus" class="status">Awaiting load</div>
+          <div id="wfTable"></div>
+          <details>
+            <summary>Raw response</summary>
+            <pre id="wfOut"></pre>
+          </details>
+        </div>
+        <div class="card">
+          <h2>Run a workflow</h2>
+          <div class="field-group">
+            <div class="field">
+              <label for="wfSelect">Workflow</label>
+              <select id="wfSelect">
+                <option value="">Select a workflow</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="wfRepoPath">Repo path</label>
+              <input id="wfRepoPath" list="recentRepos" placeholder="/path/to/your/repo" />
+              <span class="helper">Reuse recent repository paths for faster setup.</span>
+            </div>
+            <div class="field">
+              <label for="wfBranch">Branch</label>
+              <input id="wfBranch" placeholder="feature/my-branch" />
+            </div>
+          </div>
+          <div class="button-row" style="margin-top: 12px;">
+            <button id="btnRunWf">Run workflow</button>
+          </div>
+          <div id="wfRunStatus" class="status">Awaiting run</div>
+          <details>
+            <summary>Run response</summary>
+            <pre id="wfRunOut"></pre>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-prs" data-panel="prs">
+      <div class="grid two">
+        <div class="card">
+          <h2>Create Bitbucket PR</h2>
+          <div class="field-group">
+            <div class="field">
+              <label for="repoPath">Repo path</label>
+              <input id="repoPath" list="recentRepos" placeholder="/path/to/your/repo" />
+            </div>
+            <div class="field">
+              <label for="baseBranchPreset">Base branch</label>
+              <select id="baseBranchPreset">
+                <option value="main">main</option>
+                <option value="master">master</option>
+                <option value="develop">develop</option>
+                <option value="custom">Custom…</option>
+              </select>
+              <input id="baseBranchCustom" placeholder="Enter base branch" style="display:none;" />
+            </div>
+            <div class="field">
+              <label for="prTitle">Title</label>
+              <input id="prTitle" placeholder="Describe the change" />
+            </div>
+            <div class="field">
+              <label for="prDesc">Description</label>
+              <textarea id="prDesc" rows="4" placeholder="Summarize the change and any testing"></textarea>
+            </div>
+          </div>
+          <div class="button-row" style="margin-top: 12px;">
+            <button id="btnCreatePr">Create PR</button>
+          </div>
+          <div id="prStatus" class="status">Awaiting submit</div>
+          <details>
+            <summary>PR response</summary>
+            <pre id="prOut"></pre>
+          </details>
+        </div>
+        <div class="card">
+          <h2>PR checklist</h2>
+          <ul>
+            <li>Ensure your branch is pushed and up to date.</li>
+            <li>Confirm the base branch matches the target repo.</li>
+            <li>Include migration notes or run instructions.</li>
+          </ul>
+          <p class="muted">Tip: Save common repo paths so they appear in the dropdown suggestions.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-runs" data-panel="runs">
+      <div class="grid two">
+        <div class="card">
+          <h2>Run history</h2>
+          <div class="button-row">
+            <button id="btnRuns">Load runs</button>
+          </div>
+          <div id="runsStatus" class="status">Awaiting load</div>
+          <div id="runsTable"></div>
+          <details>
+            <summary>Raw response</summary>
+            <pre id="runsOut"></pre>
+          </details>
+        </div>
+        <div class="card">
+          <h2>About run history</h2>
+          <p class="muted">Runs are stored locally in SQLite to help you track which workflows were executed, when, and why.</p>
+          <ul>
+            <li>Click any run row to inspect in the API.</li>
+            <li>Re-run workflows from the Workflows tab.</li>
+            <li>Keep the database clean for clearer audits.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <datalist id="recentRepos"></datalist>
 
 <script>
   async function api(path, opts) {
@@ -70,41 +403,204 @@
     catch { return { ok: res.ok, status: res.status, data: txt }; }
   }
 
+  const state = {
+    definitions: [],
+    workflows: [],
+    runs: []
+  };
+
+  const tabs = document.querySelectorAll("[data-tab]");
+  const panels = document.querySelectorAll("[data-panel]");
+
+  const setActiveTab = (tabId) => {
+    tabs.forEach((tab) => {
+      const isActive = tab.dataset.tab === tabId;
+      tab.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    panels.forEach((panel) => {
+      panel.classList.toggle("active", panel.dataset.panel === tabId);
+    });
+  };
+
+  tabs.forEach((tab) => tab.addEventListener("click", () => setActiveTab(tab.dataset.tab)));
+
+  const renderStatus = (elementId, response, fallback) => {
+    const el = document.getElementById(elementId);
+    if (!response) {
+      el.textContent = fallback;
+      el.className = "status";
+      return;
+    }
+    const statusText = response.ok ? `Success (${response.status})` : `Error (${response.status})`;
+    el.textContent = statusText;
+    el.className = `status ${response.ok ? "ok" : "warn"}`;
+  };
+
+  const sanitizeValue = (value) => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string" || typeof value === "number") return String(value);
+    return JSON.stringify(value);
+  };
+
+  const renderTable = (containerId, rows, emptyText) => {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+    if (!Array.isArray(rows) || rows.length === 0) {
+      container.innerHTML = `<p class="muted">${emptyText}</p>`;
+      return;
+    }
+    const columns = Array.from(
+      rows.reduce((set, row) => {
+        if (row && typeof row === "object") {
+          Object.keys(row).forEach((key) => set.add(key));
+        }
+        return set;
+      }, new Set())
+    );
+
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    (columns.length ? columns : ["value"]).forEach((column) => {
+      const th = document.createElement("th");
+      th.textContent = column;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      if (columns.length) {
+        columns.forEach((column) => {
+          const td = document.createElement("td");
+          td.textContent = sanitizeValue(row[column]);
+          tr.appendChild(td);
+        });
+      } else {
+        const td = document.createElement("td");
+        td.textContent = sanitizeValue(row);
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  };
+
+  const populateRecentRepos = () => {
+    const list = document.getElementById("recentRepos");
+    const repos = JSON.parse(localStorage.getItem("dcc.repos") || "[]");
+    list.innerHTML = "";
+    repos.forEach((repo) => {
+      const option = document.createElement("option");
+      option.value = repo;
+      list.appendChild(option);
+    });
+  };
+
+  const rememberRepo = (path) => {
+    if (!path) return;
+    const repos = JSON.parse(localStorage.getItem("dcc.repos") || "[]");
+    const updated = [path, ...repos.filter((repo) => repo !== path)].slice(0, 8);
+    localStorage.setItem("dcc.repos", JSON.stringify(updated));
+    populateRecentRepos();
+  };
+
+  const updateOverview = () => {
+    document.getElementById("defsCount").textContent = state.definitions.length || "0";
+    document.getElementById("workflowsCount").textContent = state.workflows.length || "0";
+    document.getElementById("runsCount").textContent = state.runs.length || "0";
+    renderTable("overviewWorkflows", state.workflows.slice(0, 5), "Load workflows to see the catalog.");
+    renderTable("overviewRuns", state.runs.slice(0, 5), "Load runs to see recent activity.");
+  };
+
   document.getElementById("btnLoadDefs").onclick = async () => {
     const r = await api("/api/configs");
     document.getElementById("defsOut").textContent = JSON.stringify(r, null, 2);
+    state.definitions = Array.isArray(r.data) ? r.data : [];
+    renderStatus("defsStatus", r, "Awaiting load");
+    renderTable("defsTable", state.definitions, "No definitions returned.");
+    updateOverview();
   };
 
   document.getElementById("btnCreatePr").onclick = async () => {
+    const baseBranchPreset = document.getElementById("baseBranchPreset").value;
+    const baseBranch = baseBranchPreset === "custom"
+      ? document.getElementById("baseBranchCustom").value
+      : baseBranchPreset;
+    const repoPath = document.getElementById("repoPath").value;
     const payload = {
-      repoPath: document.getElementById("repoPath").value,
-      baseBranch: document.getElementById("baseBranch").value,
+      repoPath,
+      baseBranch,
       title: document.getElementById("prTitle").value,
       description: document.getElementById("prDesc").value
     };
     const r = await api("/api/pr/create", { method: "POST", body: JSON.stringify(payload) });
     document.getElementById("prOut").textContent = JSON.stringify(r, null, 2);
+    renderStatus("prStatus", r, "Awaiting submit");
+    rememberRepo(repoPath);
   };
 
   document.getElementById("btnLoadWf").onclick = async () => {
     const r = await api("/api/workflows");
     document.getElementById("wfOut").textContent = JSON.stringify(r, null, 2);
+    state.workflows = Array.isArray(r.data) ? r.data : [];
+    renderStatus("wfStatus", r, "Awaiting load");
+    renderTable("wfTable", state.workflows, "No workflows returned.");
+    const select = document.getElementById("wfSelect");
+    select.innerHTML = '<option value="">Select a workflow</option>';
+    state.workflows.forEach((workflow) => {
+      const id = workflow.id || workflow.slug || workflow.name || workflow.workflowId || workflow;
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = id;
+      select.appendChild(option);
+    });
+    updateOverview();
   };
 
   document.getElementById("btnRunWf").onclick = async () => {
-    const wfId = document.getElementById("wfId").value;
+    const wfId = document.getElementById("wfSelect").value;
+    const repoPath = document.getElementById("wfRepoPath").value;
     const payload = {
-      repoPath: document.getElementById("wfRepoPath").value,
+      repoPath,
       branch: document.getElementById("wfBranch").value
     };
     const r = await api(`/api/workflows/${encodeURIComponent(wfId)}/run`, { method: "POST", body: JSON.stringify(payload) });
     document.getElementById("wfRunOut").textContent = JSON.stringify(r, null, 2);
+    renderStatus("wfRunStatus", r, "Awaiting run");
+    rememberRepo(repoPath);
   };
 
   document.getElementById("btnRuns").onclick = async () => {
     const r = await api("/api/runs?limit=50");
     document.getElementById("runsOut").textContent = JSON.stringify(r, null, 2);
+    state.runs = Array.isArray(r.data) ? r.data : [];
+    renderStatus("runsStatus", r, "Awaiting load");
+    renderTable("runsTable", state.runs, "No runs returned.");
+    updateOverview();
   };
+
+  document.getElementById("btnLoadAll").onclick = async () => {
+    await Promise.all([
+      document.getElementById("btnLoadDefs").onclick(),
+      document.getElementById("btnLoadWf").onclick(),
+      document.getElementById("btnRuns").onclick()
+    ]);
+  };
+
+  document.getElementById("btnJumpWorkflows").onclick = () => setActiveTab("workflows");
+  document.getElementById("btnJumpPrs").onclick = () => setActiveTab("prs");
+
+  document.getElementById("baseBranchPreset").addEventListener("change", (event) => {
+    const showCustom = event.target.value === "custom";
+    document.getElementById("baseBranchCustom").style.display = showCustom ? "block" : "none";
+  });
+
+  populateRecentRepos();
+  updateOverview();
 </script>
 </body>
 </html>
