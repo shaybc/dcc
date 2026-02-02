@@ -11,6 +11,7 @@ import { logInfo } from "./utils/logger.js";
 import { httpLogger } from "./middleware/httpLogger.js";
 
 import { configsRouter } from "./routes/configs.js";
+import { definitionsRouter } from "./routes/definitions.js";
 import { workflowsRouter } from "./routes/workflows.js";
 import { runsRouter } from "./routes/runs.js";
 import { prRouter } from "./routes/pr.js";
@@ -49,6 +50,7 @@ app.use("/v1", openaiRouter);
 
 // Existing DCC APIs
 app.use("/api/configs", configsRouter);
+app.use("/api/definitions", definitionsRouter);
 app.use("/api/workflows", workflowsRouter);
 app.use("/api/runs", runsRouter);
 app.use("/api/pr", prRouter);

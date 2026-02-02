@@ -53,20 +53,17 @@ export function migrate() {
     CREATE INDEX IF NOT EXISTS idx_ai_calls_created_at ON ai_calls(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_ai_calls_model ON ai_calls(model);
 
+    DROP TABLE IF EXISTS definitions;
+
     CREATE TABLE IF NOT EXISTS definitions (
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL,
       name TEXT NOT NULL,
-      description TEXT,
-      created_by TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      repo_path TEXT NOT NULL,
-      local_path TEXT NOT NULL,
-      file_name TEXT NOT NULL
+      source TEXT NOT NULL,
+      content TEXT NOT NULL
     );
 
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_definitions_repo_path ON definitions(repo_path);
+    CREATE INDEX IF NOT EXISTS idx_definitions_name ON definitions(name);
 
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,

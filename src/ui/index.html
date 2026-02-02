@@ -715,7 +715,21 @@
     });
   };
 
-  tabs.forEach((tab) => tab.addEventListener("click", () => setActiveTab(tab.dataset.tab)));
+  const loadDefinitionsFromDb = async () => {
+    const r = await api("/api/definitions");
+    document.getElementById("defsOut").textContent = JSON.stringify(r, null, 2);
+    state.definitions = Array.isArray(r.data?.definitions) ? r.data.definitions : [];
+    renderStatus("defsStatus", r, "Awaiting load");
+    renderTable("defsTable", state.definitions, "No definitions returned.");
+    updateOverview();
+  };
+
+  tabs.forEach((tab) => tab.addEventListener("click", () => {
+    setActiveTab(tab.dataset.tab);
+    if (tab.dataset.tab === "definitions") {
+      loadDefinitionsFromDb();
+    }
+  }));
 
   const renderStatus = (elementId, response, fallback) => {
     const el = document.getElementById(elementId);
@@ -1754,14 +1768,12 @@
   };
 
   document.getElementById("btnLoadDefs").onclick = async () => {
-    const r = await api("/api/configs");
+    const r = await api("/api/definitions/load", { method: "POST" });
     document.getElementById("defsOut").textContent = JSON.stringify(r, null, 2);
-    state.definitions = Array.isArray(r.data?.definitions)
-      ? r.data.definitions
-      : (Array.isArray(r.data) ? r.data : []);
     renderStatus("defsStatus", r, "Awaiting load");
-    renderTable("defsTable", state.definitions, "No definitions returned.");
-    updateOverview();
+    if (r.ok) {
+      await loadDefinitionsFromDb();
+    }
   };
 
   document.getElementById("btnSaveDef").onclick = async () => {
