@@ -53,8 +53,6 @@ export function migrate() {
     CREATE INDEX IF NOT EXISTS idx_ai_calls_created_at ON ai_calls(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_ai_calls_model ON ai_calls(model);
 
-    DROP TABLE IF EXISTS definitions;
-
     CREATE TABLE IF NOT EXISTS definitions (
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL,
