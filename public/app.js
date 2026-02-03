@@ -50,6 +50,16 @@ function statusLabel(status) {
   return "Available";
 }
 
+function formatFilterLabel(type) {
+  if (type === "all") {
+    return "All";
+  }
+  return type
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function filterIconSvg(type) {
   if (type === "prompt" || type === "prompts") {
     return `
@@ -66,6 +76,51 @@ function filterIconSvg(type) {
       </svg>
     `;
   }
+  if (type === "mcp servers" || type === "mcp server") {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="6" rx="2"></rect>
+        <rect x="3" y="9" width="18" height="6" rx="2"></rect>
+        <rect x="3" y="15" width="18" height="6" rx="2"></rect>
+      </svg>
+    `;
+  }
+  if (type === "rules" || type === "rule") {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3h8"></path>
+        <path d="M6 7h12"></path>
+        <path d="M8 11h8"></path>
+        <path d="M10 15h4"></path>
+        <path d="M12 19h0"></path>
+      </svg>
+    `;
+  }
+  if (type === "agents" || type === "agent") {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="8" r="4"></circle>
+        <path d="M6 20a6 6 0 0 1 12 0"></path>
+      </svg>
+    `;
+  }
+  if (type === "users" || type === "user") {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="7" r="4"></circle>
+        <path d="M4 21a8 8 0 0 1 16 0"></path>
+      </svg>
+    `;
+  }
+  if (type === "orgs" || type === "org") {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 21h18"></path>
+        <path d="M5 21V7l7-4 7 4v14"></path>
+        <path d="M9 21v-6h6v6"></path>
+      </svg>
+    `;
+  }
   return `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="8"></circle>
@@ -76,12 +131,19 @@ function filterIconSvg(type) {
 }
 
 function renderFilters() {
-  const types = ["all", ...new Set(definitions.map((def) => def.type))];
+  const knownTypes = ["models", "mcp servers", "rules", "prompts", "agents", "users", "orgs"];
+  const definitionTypes = definitions.map((def) => def.type);
+  const uniqueTypes = new Set(
+    [...knownTypes, ...definitionTypes]
+      .filter(Boolean)
+      .map((type) => String(type).toLowerCase())
+  );
+  const types = ["all", ...uniqueTypes];
   filtersContainer.innerHTML = "";
   filterMenu.innerHTML = "";
   types.forEach((type) => {
     const chip = document.createElement("button");
-    const label = type === "all" ? "All" : type;
+    const label = formatFilterLabel(type);
     chip.className = "chip";
     chip.innerHTML = `
       <span class="chip-icon">${filterIconSvg(type)}</span>
