@@ -24,7 +24,7 @@ export class AiAssetsService {
   }
 
   canRefresh(): boolean {
-    return Boolean(this.directoryHandle);
+    return true;
   }
 
   async selectAndLoadDefinitions(): Promise<DefinitionCard[]> {
@@ -55,7 +55,7 @@ export class AiAssetsService {
 
   async refreshDefinitions(): Promise<DefinitionCard[]> {
     if (!this.directoryHandle) {
-      throw new Error("Load your ai_assets folder to enable refresh.");
+      return this.selectAndLoadDefinitions();
     }
     const definitions = await this.scanDirectory(this.directoryHandle, []);
     const unique = this.deduplicate(definitions);
