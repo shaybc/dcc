@@ -3,6 +3,7 @@ import { Component, OnInit } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { AiAssetsService } from "./ai-assets.service";
 import { DefinitionCard, DefinitionType } from "./models";
+import { ContinueFolderService } from "./continue-folder.service";
 import { StorageService } from "./storage.service";
 
 @Component({
@@ -34,7 +35,11 @@ export class AppComponent implements OnInit {
   canRefresh = false;
   filterMenuOpen = false;
 
-  constructor(private aiAssets: AiAssetsService, private storage: StorageService) {}
+  constructor(
+    private aiAssets: AiAssetsService,
+    private continueFolder: ContinueFolderService,
+    private storage: StorageService
+  ) {}
 
   ngOnInit(): void {
     this.savedIds = new Set(this.storage.getSavedIds());
@@ -118,13 +123,41 @@ export class AppComponent implements OnInit {
     return match?.label ?? "All";
   }
 
-  toggleSaved(definition: DefinitionCard): void {
+  async toggleSaved(definition: DefinitionCard): Promise<void> {
+    this.statusMessage = "";
+    console.info("[dcc-hub] toggleSaved start", {
+      id: definition.id,
+      title: definition.title,
+      sourcePath: definition.sourcePath,
+      type: definition.type
+    });
     if (this.savedIds.has(definition.id)) {
-      this.savedIds.delete(definition.id);
-    } else {
-      this.savedIds.add(definition.id);
+      try {
+        console.info("[dcc-hub] removing definition from Continue folder");
+        await this.continueFolder.removeDefinition(definition);
+        this.savedIds.delete(definition.id);
+        this.storage.setSavedIds(Array.from(this.savedIds));
+        this.statusMessage = `Removed ${definition.title} from your Continue team folder.`;
+        console.info("[dcc-hub] removal complete");
+      } catch (error) {
+        console.error("[dcc-hub] removal failed", error);
+        this.statusMessage =
+          error instanceof Error ? error.message : "Unable to remove definition from your Continue folder.";
+      }
+      return;
     }
-    this.storage.setSavedIds(Array.from(this.savedIds));
+
+    try {
+      console.info("[dcc-hub] saving definition to Continue folder");
+      await this.continueFolder.saveDefinition(definition);
+      this.savedIds.add(definition.id);
+      this.storage.setSavedIds(Array.from(this.savedIds));
+      this.statusMessage = `Saved ${definition.title} to your Continue team folder.`;
+      console.info("[dcc-hub] save complete");
+    } catch (error) {
+      console.error("[dcc-hub] save failed", error);
+      this.statusMessage = error instanceof Error ? error.message : "Unable to save definition to your Continue folder.";
+    }
   }
 
   isSaved(definition: DefinitionCard): boolean {
