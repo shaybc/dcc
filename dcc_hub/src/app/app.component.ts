@@ -25,9 +25,7 @@ export class AppComponent implements OnInit {
     { label: "Prompts", value: "Prompt" },
     { label: "Agents", value: "Agent" },
     { label: "Users", value: "User" },
-    { label: "Orgs", value: "Org" },
-    { label: "Config", value: "Config" },
-    { label: "Unknown", value: "Unknown" }
+    { label: "Orgs", value: "Org" }
   ];
   statusMessage = "";
   lastLoadedAt = "";
