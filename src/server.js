@@ -1,5 +1,6 @@
 import express from "express";
 import helmet from "helmet";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -27,15 +28,6 @@ migrate();
 const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  return next();
-});
 app.use(express.json({ limit: "10mb" }));
 
 // Add request logging to see what's being called
@@ -72,9 +64,15 @@ app.use("/api/ai-calls", aiCallsRouter);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use("/", express.static(path.join(__dirname, "ui")));
+const uiDistPath = path.join(__dirname, "..", "dcc_hub", "dist", "dcc-hub");
+const uiFallbackPath = path.join(__dirname, "ui");
+const uiPath = fs.existsSync(uiDistPath) ? uiDistPath : uiFallbackPath;
+app.use("/", express.static(uiPath));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(uiPath, "index.html"));
+});
 
 app.listen(env.PORT, () => {
   logInfo(`DCC listening on http://localhost:${env.PORT}`);
