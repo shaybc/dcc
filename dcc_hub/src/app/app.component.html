@@ -1,7 +1,15 @@
 <div class="page">
   <header class="hero">
     <div class="brand">
-      <div class="logo">⟲</div>
+      <button
+        type="button"
+        class="logo-button"
+        (click)="refreshDefinitions()"
+        [disabled]="!canRefresh"
+        aria-label="Refresh ai_assets"
+      >
+        ⟲
+      </button>
       <div>
         <h1>Continue Hub</h1>
         <p>

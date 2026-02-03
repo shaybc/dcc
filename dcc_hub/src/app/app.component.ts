@@ -22,6 +22,7 @@ export class AppComponent implements OnInit {
   lastLoadedAt = "";
   lastSourceLabel = "";
   savedIds = new Set<string>();
+  canRefresh = false;
 
   constructor(private aiAssets: AiAssetsService, private storage: StorageService) {}
 
@@ -34,6 +35,7 @@ export class AppComponent implements OnInit {
     this.applyFilter();
     this.loadSampleIfEmpty();
     this.loadSettings();
+    this.canRefresh = this.aiAssets.canRefresh();
   }
 
   async pickFolder(): Promise<void> {
@@ -42,9 +44,23 @@ export class AppComponent implements OnInit {
       this.definitions = await this.aiAssets.selectAndLoadDefinitions();
       this.statusMessage = `Loaded ${this.definitions.length} definitions from ai_assets.`;
       this.loadSettings();
+      this.canRefresh = this.aiAssets.canRefresh();
       this.applyFilter();
     } catch (error) {
       this.statusMessage = error instanceof Error ? error.message : "Unable to load definitions.";
+    }
+  }
+
+  async refreshDefinitions(): Promise<void> {
+    this.statusMessage = "";
+    try {
+      this.definitions = await this.aiAssets.refreshDefinitions();
+      this.statusMessage = `Refreshed ${this.definitions.length} definitions from ai_assets.`;
+      this.loadSettings();
+      this.applyFilter();
+    } catch (error) {
+      this.statusMessage =
+        error instanceof Error ? error.message : "Unable to refresh definitions. Load your ai_assets folder first.";
     }
   }
 
