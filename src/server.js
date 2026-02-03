@@ -17,6 +17,7 @@ import { runsRouter } from "./routes/runs.js";
 import { prRouter } from "./routes/pr.js";
 import { openaiRouter } from "./routes/openai.js";
 import { settingsRouter } from "./routes/settings.js";
+import { continueRouter } from "./routes/continue.js";
 
 // optional (only if exists in your project)
 import { aiCallsRouter } from "./routes/aiCalls.js";
@@ -26,6 +27,15 @@ migrate();
 const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false }));
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  return next();
+});
 app.use(express.json({ limit: "10mb" }));
 
 // Add request logging to see what's being called
@@ -55,6 +65,7 @@ app.use("/api/workflows", workflowsRouter);
 app.use("/api/runs", runsRouter);
 app.use("/api/pr", prRouter);
 app.use("/api/settings", settingsRouter);
+app.use("/api/continue", continueRouter);
 
 // AI call history APIs
 app.use("/api/ai-calls", aiCallsRouter);
