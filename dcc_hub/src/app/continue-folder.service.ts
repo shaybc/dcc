@@ -4,8 +4,6 @@ import { DefinitionCard, DefinitionType } from "./models";
 
 @Injectable({ providedIn: "root" })
 export class ContinueFolderService {
-  private continueHandle?: FileSystemDirectoryHandle;
-
   constructor(private aiAssets: AiAssetsService) {}
 
   async saveDefinition(definition: DefinitionCard): Promise<void> {
@@ -14,19 +12,7 @@ export class ContinueFolderService {
       sourcePath: definition.sourcePath,
       type: definition.type
     });
-    if (!this.canUseNativeAccess()) {
-      await this.saveViaApi(definition);
-      return;
-    }
-    const destination = await this.getDestinationHandles(definition);
-    if (!destination) {
-      throw new Error("Unable to resolve the Continue folder destination.");
-    }
-    const content = await this.readDefinitionSource(definition);
-    console.info("[dcc-hub] writing definition", { fileName: destination.fileName });
-    const writable = await destination.fileHandle.createWritable();
-    await writable.write(content);
-    await writable.close();
+    await this.saveViaApi(definition);
   }
 
   async removeDefinition(definition: DefinitionCard): Promise<void> {
@@ -35,38 +21,7 @@ export class ContinueFolderService {
       sourcePath: definition.sourcePath,
       type: definition.type
     });
-    if (!this.canUseNativeAccess()) {
-      await this.removeViaApi(definition);
-      return;
-    }
-    const destination = await this.getDestinationHandles(definition, false);
-    if (!destination) {
-      console.warn("[dcc-hub] no Continue destination found for removal");
-      return;
-    }
-    await destination.directoryHandle.removeEntry(destination.fileName);
-    console.info("[dcc-hub] removed definition", { fileName: destination.fileName });
-  }
-
-  private async getDestinationHandles(
-    definition: DefinitionCard,
-    create = true
-  ): Promise<{ directoryHandle: FileSystemDirectoryHandle; fileHandle: FileSystemFileHandle; fileName: string } | null> {
-    const continueHandle = await this.ensureContinueHandle();
-    const teamHandle = await this.getOrCreateDirectory(continueHandle, "team");
-    const typeFolder = this.mapTypeFolder(definition);
-    const typeHandle = await this.getOrCreateDirectory(teamHandle, typeFolder);
-    const fileName = this.getFileName(definition);
-    if (!create) {
-      try {
-        const fileHandle = await typeHandle.getFileHandle(fileName);
-        return { directoryHandle: typeHandle, fileHandle, fileName };
-      } catch {
-        return null;
-      }
-    }
-    const fileHandle = await typeHandle.getFileHandle(fileName, { create: true });
-    return { directoryHandle: typeHandle, fileHandle, fileName };
+    await this.removeViaApi(definition);
   }
 
   private async readDefinitionSource(definition: DefinitionCard): Promise<string> {
@@ -87,41 +42,6 @@ export class ContinueFolderService {
     }
     console.info("[dcc-hub] reading definition source", { name: source.name });
     return source.text();
-  }
-
-  private async ensureContinueHandle(): Promise<FileSystemDirectoryHandle> {
-    if (this.continueHandle) {
-      console.info("[dcc-hub] using cached Continue handle");
-      return this.continueHandle;
-    }
-    let handle: FileSystemDirectoryHandle | undefined;
-    if ("showDirectoryPicker" in window) {
-      console.info("[dcc-hub] requesting Continue folder picker");
-      handle = await (window as Window & { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> })
-        .showDirectoryPicker();
-    } else if ("chooseFileSystemEntries" in window) {
-      console.info("[dcc-hub] requesting Continue folder picker via legacy API");
-      handle = await (
-        window as Window & {
-          chooseFileSystemEntries(options: { type: "openDirectory" }): Promise<FileSystemDirectoryHandle>;
-        }
-      ).chooseFileSystemEntries({ type: "openDirectory" });
-    } else {
-      console.error("[dcc-hub] showDirectoryPicker unsupported");
-      throw new Error(
-        "Your browser does not support selecting the Continue folder. Use a Chromium-based browser like Chrome or Edge."
-      );
-    }
-    console.info("[dcc-hub] Continue folder picked", { name: handle.name });
-    if (handle.name !== ".continue") {
-      throw new Error("Select your %USERPROFILE%\\.continue folder to save definitions.");
-    }
-    this.continueHandle = handle;
-    return handle;
-  }
-
-  private canUseNativeAccess(): boolean {
-    return "showDirectoryPicker" in window || "chooseFileSystemEntries" in window;
   }
 
   private async saveViaApi(definition: DefinitionCard): Promise<void> {
@@ -162,13 +82,6 @@ export class ContinueFolderService {
       const payload = await response.json().catch(() => ({}));
       throw new Error(payload.error || "Unable to remove definition via server API.");
     }
-  }
-
-  private async getOrCreateDirectory(
-    parent: FileSystemDirectoryHandle,
-    name: string
-  ): Promise<FileSystemDirectoryHandle> {
-    return parent.getDirectoryHandle(name, { create: true });
   }
 
   private mapTypeFolder(definition: DefinitionCard): string {
