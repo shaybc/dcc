@@ -103,6 +103,9 @@
         </div>
       </div>
       <div class="controls-row secondary">
+        <div class="filters">
+          <button type="button" (click)="pickFolder()">Load ai_assets</button>
+        </div>
         <div class="filter-chips" *ngIf="activeType !== 'All'">
           <button type="button" class="filter-chip" (click)="clearFilter()">
             <span class="chip-icon" [ngSwitch]="activeType">
@@ -150,9 +153,6 @@
               </svg>
             </span>
           </button>
-        </div>
-        <div class="filters">
-          <button type="button" (click)="pickFolder()">Load ai_assets</button>
         </div>
       </div>
     </div>
