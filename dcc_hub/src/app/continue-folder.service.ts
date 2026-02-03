@@ -14,6 +14,10 @@ export class ContinueFolderService {
       sourcePath: definition.sourcePath,
       type: definition.type
     });
+    if (!this.canUseNativeAccess()) {
+      await this.saveViaApi(definition);
+      return;
+    }
     const destination = await this.getDestinationHandles(definition);
     if (!destination) {
       throw new Error("Unable to resolve the Continue folder destination.");
@@ -31,6 +35,10 @@ export class ContinueFolderService {
       sourcePath: definition.sourcePath,
       type: definition.type
     });
+    if (!this.canUseNativeAccess()) {
+      await this.removeViaApi(definition);
+      return;
+    }
     const destination = await this.getDestinationHandles(definition, false);
     if (!destination) {
       console.warn("[dcc-hub] no Continue destination found for removal");
@@ -46,7 +54,7 @@ export class ContinueFolderService {
   ): Promise<{ directoryHandle: FileSystemDirectoryHandle; fileHandle: FileSystemFileHandle; fileName: string } | null> {
     const continueHandle = await this.ensureContinueHandle();
     const teamHandle = await this.getOrCreateDirectory(continueHandle, "team");
-    const typeFolder = this.mapTypeFolder(definition.type);
+    const typeFolder = this.mapTypeFolder(definition);
     const typeHandle = await this.getOrCreateDirectory(teamHandle, typeFolder);
     const fileName = this.getFileName(definition);
     if (!create) {
@@ -101,6 +109,50 @@ export class ContinueFolderService {
     return handle;
   }
 
+  private canUseNativeAccess(): boolean {
+    return "showDirectoryPicker" in window || "chooseFileSystemEntries" in window;
+  }
+
+  private async saveViaApi(definition: DefinitionCard): Promise<void> {
+    const content = await this.readDefinitionSource(definition);
+    const typeFolder = this.mapTypeFolder(definition);
+    const fileName = this.getFileName(definition);
+    console.info("[dcc-hub] saving definition via API", { typeFolder, fileName });
+    const response = await fetch("/api/continue/definitions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save",
+        typeFolder,
+        fileName,
+        content
+      })
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || "Unable to save definition via server API.");
+    }
+  }
+
+  private async removeViaApi(definition: DefinitionCard): Promise<void> {
+    const typeFolder = this.mapTypeFolder(definition);
+    const fileName = this.getFileName(definition);
+    console.info("[dcc-hub] removing definition via API", { typeFolder, fileName });
+    const response = await fetch("/api/continue/definitions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "remove",
+        typeFolder,
+        fileName
+      })
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || "Unable to remove definition via server API.");
+    }
+  }
+
   private async getOrCreateDirectory(
     parent: FileSystemDirectoryHandle,
     name: string
@@ -108,8 +160,9 @@ export class ContinueFolderService {
     return parent.getDirectoryHandle(name, { create: true });
   }
 
-  private mapTypeFolder(type: DefinitionType): string {
-    switch (type) {
+  private mapTypeFolder(definition: DefinitionCard): string {
+    const resolvedType = definition.type === "Unknown" ? this.inferTypeFromPath(definition.sourcePath) : definition.type;
+    switch (resolvedType) {
       case "Model":
         return "model";
       case "Rule":
@@ -127,12 +180,41 @@ export class ContinueFolderService {
       case "Config":
         return "config";
       default:
-        return type.toLowerCase().replace(/\s+/g, "-") || "unknown";
+        return resolvedType.toLowerCase().replace(/\s+/g, "-") || "unknown";
     }
   }
 
   private getFileName(definition: DefinitionCard): string {
     const segments = definition.sourcePath.split("/").filter(Boolean);
     return segments[segments.length - 1] ?? `${definition.id}.md`;
+  }
+
+  private inferTypeFromPath(sourcePath: string): DefinitionType {
+    const lower = sourcePath.toLowerCase();
+    if (lower.includes("prompts")) {
+      return "Prompt";
+    }
+    if (lower.includes("rules")) {
+      return "Rule";
+    }
+    if (lower.includes("models")) {
+      return "Model";
+    }
+    if (lower.includes("agents")) {
+      return "Agent";
+    }
+    if (lower.includes("users")) {
+      return "User";
+    }
+    if (lower.includes("orgs")) {
+      return "Org";
+    }
+    if (lower.includes("mcp")) {
+      return "MCP Server";
+    }
+    if (lower.includes("config")) {
+      return "Config";
+    }
+    return "Unknown";
   }
 }
