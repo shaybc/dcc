@@ -107,6 +107,16 @@ export class AppComponent implements OnInit {
     this.applyFilter();
   }
 
+  clearFilter(): void {
+    this.activeType = "All";
+    this.applyFilter();
+  }
+
+  get activeFilterLabel(): string {
+    const match = this.filterOptions.find((option) => option.value === this.activeType);
+    return match?.label ?? "All";
+  }
+
   toggleSaved(definition: DefinitionCard): void {
     if (this.savedIds.has(definition.id)) {
       this.savedIds.delete(definition.id);
