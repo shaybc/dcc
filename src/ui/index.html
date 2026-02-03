@@ -494,9 +494,14 @@
       <div class="grid two">
         <div class="card">
           <h2>Definitions registry</h2>
-          <p class="muted">Keep track of the configuration registry currently available in the repo.</p>
+          <p class="muted">Review the definitions currently available in the registry list below.</p>
           <div class="button-row">
             <button id="btnLoadDefs">Load definitions</button>
+            <span
+              class="info-icon"
+              data-tooltip="Loads definitions from the shared folder’s .continue registry and populates the registry list below in DCC."
+              aria-label="Load definitions help"
+            >i</span>
           </div>
           <div id="defsStatus" class="status">Awaiting load</div>
           <div id="defsTable"></div>
@@ -703,7 +708,7 @@
           <p class="muted">Set the shared folder that stores your Continue configuration repository.</p>
           <div class="field-group">
             <div class="field">
-              <label for="configRepoPath">Shared folder location</label>
+              <label for="configRepoPath">Shared definitions cloned folder</label>
               <input id="configRepoPath" placeholder="c:\\git\\ai_assets" />
               <span class="helper">This folder should contain the .continue directory for shared definitions.</span>
             </div>
@@ -756,15 +761,6 @@
           </div>
           <div id="projectPathsStatus" class="status" style="margin-top: 12px;">Awaiting update</div>
           <div id="projectPathsTable" style="margin-top: 12px;"></div>
-        </div>
-        <div class="card">
-          <h2>Why this matters</h2>
-          <p class="muted">DCC uses the shared folder to sync definitions across your local workspace and Bitbucket.</p>
-          <ul>
-            <li>Point to the local clone of your config repository.</li>
-            <li>Ensure the folder is accessible to the DCC server process.</li>
-            <li>Changes apply immediately to new definition saves.</li>
-          </ul>
         </div>
         <div class="card">
           <h2>AI assets</h2>
