@@ -309,6 +309,7 @@ main {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 20px;
+  justify-items: center;
 }
 
 .card {
@@ -317,12 +318,15 @@ main {
   border-radius: 18px;
   padding: 20px;
   position: relative;
-  min-height: 180px;
+  width: 100%;
+  max-width: 320px;
+  height: 200px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
 }
 
 .card:hover {
