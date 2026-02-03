@@ -11,6 +11,10 @@ const TYPE_MAP: Array<{ match: RegExp; type: DefinitionType }> = [
 
 @Injectable({ providedIn: "root" })
 export class AiAssetsService {
+  private directoryHandle?: FileSystemDirectoryHandle;
+  private lastSelectedFiles?: File[];
+  private lastSourceLabel?: string;
+
   constructor(private storage: StorageService) {}
 
   loadCachedDefinitions(): DefinitionCard[] {
@@ -21,10 +25,17 @@ export class AiAssetsService {
     return this.storage.getSettings();
   }
 
+  canRefresh(): boolean {
+    return Boolean(this.directoryHandle || this.lastSelectedFiles);
+  }
+
   async selectAndLoadDefinitions(): Promise<DefinitionCard[]> {
     if ("showDirectoryPicker" in window) {
       const directoryHandle = await (window as Window & { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> })
         .showDirectoryPicker();
+      this.directoryHandle = directoryHandle;
+      this.lastSelectedFiles = undefined;
+      this.lastSourceLabel = undefined;
       const definitions = await this.scanDirectory(directoryHandle, []);
       const unique = this.deduplicate(definitions);
       this.storage.setDefinitions(unique);
@@ -35,7 +46,10 @@ export class AiAssetsService {
       return unique;
     }
 
-    const { definitions, sourceLabel } = await this.selectDirectoryViaInput();
+    this.directoryHandle = undefined;
+    const { definitions, sourceLabel, files } = await this.selectDirectoryViaInput();
+    this.lastSelectedFiles = files;
+    this.lastSourceLabel = sourceLabel;
     const unique = this.deduplicate(definitions);
     this.storage.setDefinitions(unique);
     this.storage.setSettings({
@@ -45,11 +59,39 @@ export class AiAssetsService {
     return unique;
   }
 
-  private async selectDirectoryViaInput(): Promise<{ definitions: DefinitionCard[]; sourceLabel: string }> {
+  async refreshDefinitions(): Promise<DefinitionCard[]> {
+    if (!this.directoryHandle) {
+      if (this.lastSelectedFiles && this.lastSourceLabel) {
+        const definitions = await this.parseFiles(this.lastSelectedFiles);
+        const unique = this.deduplicate(definitions);
+        this.storage.setDefinitions(unique);
+        this.storage.setSettings({
+          lastLoadedAt: new Date().toISOString(),
+          lastSourceLabel: this.lastSourceLabel
+        });
+        return unique;
+      }
+      return this.selectAndLoadDefinitions();
+    }
+    const definitions = await this.scanDirectory(this.directoryHandle, []);
+    const unique = this.deduplicate(definitions);
+    this.storage.setDefinitions(unique);
+    this.storage.setSettings({
+      lastLoadedAt: new Date().toISOString(),
+      lastSourceLabel: this.directoryHandle.name
+    });
+    return unique;
+  }
+
+  private async selectDirectoryViaInput(): Promise<{
+    definitions: DefinitionCard[];
+    sourceLabel: string;
+    files: File[];
+  }> {
     const input = document.createElement("input") as HTMLInputElement & { webkitdirectory?: boolean };
     input.type = "file";
     input.multiple = true;
-    input.accept = ".json";
+    input.accept = ".json,.md";
     input.webkitdirectory = true;
 
     const files = await new Promise<FileList>((resolve, reject) => {
@@ -64,10 +106,17 @@ export class AiAssetsService {
       input.click();
     });
 
+    const parsed = await this.parseFiles(Array.from(files));
+    const sourceLabel = this.lastSourceLabel ?? "Local folder";
+    return { definitions: parsed, sourceLabel, files: Array.from(files) };
+  }
+
+  private async parseFiles(files: File[]): Promise<DefinitionCard[]> {
     const parsed: DefinitionCard[] = [];
     let sourceLabel = "Local folder";
-    for (const file of Array.from(files)) {
-      if (!file.name.toLowerCase().endsWith(".json")) {
+    for (const file of files) {
+      const lowerName = file.name.toLowerCase();
+      if (!lowerName.endsWith(".json") && !lowerName.endsWith(".md")) {
         continue;
       }
       const relativePath = file.webkitRelativePath || file.name;
@@ -82,7 +131,8 @@ export class AiAssetsService {
       }
     }
 
-    return { definitions: parsed, sourceLabel };
+    this.lastSourceLabel = sourceLabel;
+    return parsed;
   }
 
   private deduplicate(definitions: DefinitionCard[]): DefinitionCard[] {
@@ -111,7 +161,7 @@ export class AiAssetsService {
         continue;
       }
 
-      if (entry.kind === "file" && name.toLowerCase().endsWith(".json")) {
+      if (entry.kind === "file" && this.isSupportedDefinitionFile(name)) {
         const fileEntry = entry as FileSystemFileHandle;
         const file = await fileEntry.getFile();
         const content = await file.text();
@@ -126,9 +176,9 @@ export class AiAssetsService {
   }
 
   private parseDefinition(content: string, pathSegments: string[]): DefinitionCard | null {
+    const inferredType = this.inferType(pathSegments);
     try {
       const data = JSON.parse(content) as Record<string, unknown>;
-      const inferredType = this.inferType(pathSegments);
       const title = this.pickString(data, ["title", "name", "displayName"]) ?? this.fallbackTitle(pathSegments);
       const description =
         this.pickString(data, ["description", "summary", "details"]) ??
@@ -147,7 +197,7 @@ export class AiAssetsService {
         sourcePath: pathSegments.join("/")
       };
     } catch {
-      return null;
+      return this.parseMarkdownDefinition(content, pathSegments, inferredType);
     }
   }
 
@@ -179,6 +229,32 @@ export class AiAssetsService {
 
   private fallbackTitle(pathSegments: string[]): string {
     const last = pathSegments[pathSegments.length - 1] ?? "Definition";
-    return last.replace(/\.json$/i, "").replace(/[-_]/g, " ");
+    return last.replace(/\.(json|md)$/i, "").replace(/[-_]/g, " ");
+  }
+
+  private isSupportedDefinitionFile(name: string): boolean {
+    const lower = name.toLowerCase();
+    return lower.endsWith(".json") || lower.endsWith(".md");
+  }
+
+  private parseMarkdownDefinition(
+    content: string,
+    pathSegments: string[],
+    inferredType: DefinitionType
+  ): DefinitionCard | null {
+    const lines = content.split(/\r?\n/);
+    const heading = lines.find((line) => line.trim().startsWith("#"));
+    const title = heading?.replace(/^#+\s*/, "").trim() || this.fallbackTitle(pathSegments);
+    const descriptionLine = lines.find((line) => line.trim() && !line.trim().startsWith("#"));
+    const description = descriptionLine?.trim() || "No description available for this definition.";
+    return {
+      id: `${pathSegments.join("/")}`,
+      title,
+      description,
+      provider: "Continue",
+      type: inferredType,
+      tags: [],
+      sourcePath: pathSegments.join("/")
+    };
   }
 }

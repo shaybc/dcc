@@ -1,7 +1,15 @@
 <div class="page">
   <header class="hero">
     <div class="brand">
-      <div class="logo">⟲</div>
+      <button
+        type="button"
+        class="logo-button"
+        (click)="refreshDefinitions()"
+        [disabled]="!canRefresh"
+        aria-label="Refresh ai_assets"
+      >
+        ⟲
+      </button>
       <div>
         <h1>Continue Hub</h1>
         <p>
@@ -11,20 +19,43 @@
     </div>
 
     <div class="controls">
-      <div class="search">
-        <span class="icon">🔍</span>
-        <input
-          type="text"
-          placeholder="Search for models, rules, MCP servers..."
-          [(ngModel)]="searchTerm"
-          (input)="applyFilter()"
-        />
-      </div>
-      <div class="filters">
-        <select [(ngModel)]="activeType" (change)="applyFilter()">
-          <option *ngFor="let type of types" [value]="type">{{ type }}</option>
-        </select>
-        <button type="button" (click)="pickFolder()">Load ai_assets</button>
+      <div class="controls-row">
+        <div class="search">
+          <span class="icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.3-4.3"></path>
+            </svg>
+          </span>
+          <input
+            type="text"
+            placeholder="Search for models, rules, MCP servers..."
+            [(ngModel)]="searchTerm"
+            (input)="applyFilter()"
+          />
+        </div>
+        <div class="filter-dropdown">
+          <button type="button" class="filter-button" (click)="toggleFilterMenu()">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </button>
+          <div class="filter-menu" *ngIf="filterMenuOpen">
+            <button
+              type="button"
+              *ngFor="let option of filterOptions"
+              (click)="selectFilter(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+        <div class="filters">
+          <button type="button" (click)="pickFolder()">Load ai_assets</button>
+        </div>
       </div>
     </div>
 
