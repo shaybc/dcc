@@ -10,6 +10,9 @@ export class ContinueFolderService {
 
   async saveDefinition(definition: DefinitionCard): Promise<void> {
     const destination = await this.getDestinationHandles(definition);
+    if (!destination) {
+      throw new Error("Unable to resolve the Continue folder destination.");
+    }
     const content = await this.readDefinitionSource(definition);
     const writable = await destination.fileHandle.createWritable();
     await writable.write(content);
