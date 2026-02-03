@@ -30,7 +30,7 @@
   }
 }
 
-.logo {
+.logo-button {
   width: 48px;
   height: 48px;
   border-radius: 16px;
@@ -38,6 +38,20 @@
   display: grid;
   place-items: center;
   font-size: 24px;
+  border: 1px solid #2b2b31;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    border-color: #4a4a54;
+    background: #2b2b33;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .controls {
@@ -47,13 +61,13 @@
 }
 
 .search {
-  flex: 1 1 420px;
+  flex: 1 1 520px;
   display: flex;
   align-items: center;
   gap: 8px;
   background: #1b1b1f;
   border-radius: 12px;
-  padding: 12px 16px;
+  padding: 24px 40px;
   border: 1px solid #2b2b31;
 
   input {
@@ -70,18 +84,67 @@
   }
 }
 
+.filter-dropdown {
+  position: relative;
+  margin-left: auto;
+}
+
+.filter-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #2b2b31;
+  background: #1f1f25;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #4a4a54;
+    background: #2b2b33;
+  }
+}
+
+.filter-icon {
+  font-size: 16px;
+}
+
+.filter-menu {
+  position: absolute;
+  right: 0;
+  top: 54px;
+  background: #121216;
+  border: 1px solid #2b2b31;
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  z-index: 10;
+
+  button {
+    background: transparent;
+    border: none;
+    color: #f2f2f2;
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+
+    &:hover {
+      background: #1f1f26;
+    }
+  }
+}
+
 .filters {
   display: flex;
   gap: 12px;
   align-items: center;
-
-  select {
-    background: #1b1b1f;
-    border: 1px solid #2b2b31;
-    color: inherit;
-    padding: 10px 12px;
-    border-radius: 10px;
-  }
 
   button {
     background: #232329;
