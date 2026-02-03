@@ -75,13 +75,24 @@ export class ContinueFolderService {
       console.info("[dcc-hub] using cached Continue handle");
       return this.continueHandle;
     }
-    if (!("showDirectoryPicker" in window)) {
+    let handle: FileSystemDirectoryHandle | undefined;
+    if ("showDirectoryPicker" in window) {
+      console.info("[dcc-hub] requesting Continue folder picker");
+      handle = await (window as Window & { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> })
+        .showDirectoryPicker();
+    } else if ("chooseFileSystemEntries" in window) {
+      console.info("[dcc-hub] requesting Continue folder picker via legacy API");
+      handle = await (
+        window as Window & {
+          chooseFileSystemEntries(options: { type: "openDirectory" }): Promise<FileSystemDirectoryHandle>;
+        }
+      ).chooseFileSystemEntries({ type: "openDirectory" });
+    } else {
       console.error("[dcc-hub] showDirectoryPicker unsupported");
-      throw new Error("Your browser does not support selecting the Continue folder.");
+      throw new Error(
+        "Your browser does not support selecting the Continue folder. Use a Chromium-based browser like Chrome or Edge."
+      );
     }
-    console.info("[dcc-hub] requesting Continue folder picker");
-    const handle = await (window as Window & { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> })
-      .showDirectoryPicker();
     console.info("[dcc-hub] Continue folder picked", { name: handle.name });
     if (handle.name !== ".continue") {
       throw new Error("Select your %USERPROFILE%\\.continue folder to save definitions.");
