@@ -91,7 +91,7 @@ export class AiAssetsService {
     const input = document.createElement("input") as HTMLInputElement & { webkitdirectory?: boolean };
     input.type = "file";
     input.multiple = true;
-    input.accept = ".json";
+    input.accept = ".json,.md";
     input.webkitdirectory = true;
 
     const files = await new Promise<FileList>((resolve, reject) => {
@@ -115,7 +115,8 @@ export class AiAssetsService {
     const parsed: DefinitionCard[] = [];
     let sourceLabel = "Local folder";
     for (const file of files) {
-      if (!file.name.toLowerCase().endsWith(".json")) {
+      const lowerName = file.name.toLowerCase();
+      if (!lowerName.endsWith(".json") && !lowerName.endsWith(".md")) {
         continue;
       }
       const relativePath = file.webkitRelativePath || file.name;
@@ -160,7 +161,7 @@ export class AiAssetsService {
         continue;
       }
 
-      if (entry.kind === "file" && name.toLowerCase().endsWith(".json")) {
+      if (entry.kind === "file" && this.isSupportedDefinitionFile(name)) {
         const fileEntry = entry as FileSystemFileHandle;
         const file = await fileEntry.getFile();
         const content = await file.text();
@@ -175,9 +176,9 @@ export class AiAssetsService {
   }
 
   private parseDefinition(content: string, pathSegments: string[]): DefinitionCard | null {
+    const inferredType = this.inferType(pathSegments);
     try {
       const data = JSON.parse(content) as Record<string, unknown>;
-      const inferredType = this.inferType(pathSegments);
       const title = this.pickString(data, ["title", "name", "displayName"]) ?? this.fallbackTitle(pathSegments);
       const description =
         this.pickString(data, ["description", "summary", "details"]) ??
@@ -196,7 +197,7 @@ export class AiAssetsService {
         sourcePath: pathSegments.join("/")
       };
     } catch {
-      return null;
+      return this.parseMarkdownDefinition(content, pathSegments, inferredType);
     }
   }
 
@@ -228,6 +229,32 @@ export class AiAssetsService {
 
   private fallbackTitle(pathSegments: string[]): string {
     const last = pathSegments[pathSegments.length - 1] ?? "Definition";
-    return last.replace(/\.json$/i, "").replace(/[-_]/g, " ");
+    return last.replace(/\.(json|md)$/i, "").replace(/[-_]/g, " ");
+  }
+
+  private isSupportedDefinitionFile(name: string): boolean {
+    const lower = name.toLowerCase();
+    return lower.endsWith(".json") || lower.endsWith(".md");
+  }
+
+  private parseMarkdownDefinition(
+    content: string,
+    pathSegments: string[],
+    inferredType: DefinitionType
+  ): DefinitionCard | null {
+    const lines = content.split(/\r?\n/);
+    const heading = lines.find((line) => line.trim().startsWith("#"));
+    const title = heading?.replace(/^#+\s*/, "").trim() || this.fallbackTitle(pathSegments);
+    const descriptionLine = lines.find((line) => line.trim() && !line.trim().startsWith("#"));
+    const description = descriptionLine?.trim() || "No description available for this definition.";
+    return {
+      id: `${pathSegments.join("/")}`,
+      title,
+      description,
+      provider: "Continue",
+      type: inferredType,
+      tags: [],
+      sourcePath: pathSegments.join("/")
+    };
   }
 }
