@@ -6,7 +6,6 @@ const TYPE_MAP: Array<{ match: RegExp; type: DefinitionType }> = [
   { match: /model/i, type: "Model" },
   { match: /rule/i, type: "Rule" },
   { match: /mcp/i, type: "MCP Server" },
-  { match: /context/i, type: "Context" },
   { match: /config/i, type: "Config" }
 ];
 
@@ -202,9 +201,7 @@ export class AiAssetsService {
         provider,
         type: (data["type"] as DefinitionType) ?? inferredType,
         tags,
-        sourcePath: pathSegments.join("/"),
-        fileName: pathSegments[pathSegments.length - 1],
-        rawContent: content
+        sourcePath: pathSegments.join("/")
       };
     } catch {
       return this.parseMarkdownDefinition(content, pathSegments, inferredType);
@@ -264,9 +261,7 @@ export class AiAssetsService {
       provider: "Continue",
       type: inferredType,
       tags: [],
-      sourcePath: pathSegments.join("/"),
-      fileName: pathSegments[pathSegments.length - 1],
-      rawContent: content
+      sourcePath: pathSegments.join("/")
     };
   }
 }
