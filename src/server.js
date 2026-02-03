@@ -17,6 +17,7 @@ import { runsRouter } from "./routes/runs.js";
 import { prRouter } from "./routes/pr.js";
 import { openaiRouter } from "./routes/openai.js";
 import { settingsRouter } from "./routes/settings.js";
+import { hubDefinitionsRouter } from "./routes/hubDefinitions.js";
 
 // optional (only if exists in your project)
 import { aiCallsRouter } from "./routes/aiCalls.js";
@@ -55,6 +56,7 @@ app.use("/api/workflows", workflowsRouter);
 app.use("/api/runs", runsRouter);
 app.use("/api/pr", prRouter);
 app.use("/api/settings", settingsRouter);
+app.use("/api/hub/definitions", hubDefinitionsRouter);
 
 // AI call history APIs
 app.use("/api/ai-calls", aiCallsRouter);

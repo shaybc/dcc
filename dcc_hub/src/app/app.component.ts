@@ -22,6 +22,8 @@ export class AppComponent implements OnInit {
     { label: "Models", value: "Model" },
     { label: "MCP Servers", value: "MCP Server" },
     { label: "Rules", value: "Rule" },
+    { label: "Contexts", value: "Context" },
+    { label: "Configs", value: "Config" },
     { label: "Prompts", value: "Prompt" },
     { label: "Agents", value: "Agent" },
     { label: "Users", value: "User" },
@@ -118,13 +120,41 @@ export class AppComponent implements OnInit {
     return match?.label ?? "All";
   }
 
-  toggleSaved(definition: DefinitionCard): void {
-    if (this.savedIds.has(definition.id)) {
-      this.savedIds.delete(definition.id);
-    } else {
-      this.savedIds.add(definition.id);
+  async toggleSaved(definition: DefinitionCard): Promise<void> {
+    const shouldSave = !this.savedIds.has(definition.id);
+    this.statusMessage = "";
+    try {
+      const response = await fetch("/api/hub/definitions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: shouldSave ? "save" : "remove",
+          definition: {
+            id: definition.id,
+            title: definition.title,
+            description: definition.description,
+            type: definition.type,
+            sourcePath: definition.sourcePath,
+            fileName: definition.fileName,
+            rawContent: definition.rawContent
+          }
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Unable to update Continue folder.");
+      }
+      if (shouldSave) {
+        this.savedIds.add(definition.id);
+        this.statusMessage = payload?.message || "Added to your Continue team folder.";
+      } else {
+        this.savedIds.delete(definition.id);
+        this.statusMessage = payload?.message || "Removed from your Continue team folder.";
+      }
+      this.storage.setSavedIds(Array.from(this.savedIds));
+    } catch (error) {
+      this.statusMessage = error instanceof Error ? error.message : "Unable to update Continue folder.";
     }
-    this.storage.setSavedIds(Array.from(this.savedIds));
   }
 
   isSaved(definition: DefinitionCard): boolean {
