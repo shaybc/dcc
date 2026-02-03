@@ -26,7 +26,14 @@ export class AiAssetsService {
   }
 
   canRefresh(): boolean {
-    return Boolean(this.directoryHandle || this.lastSelectedFiles);
+    if (this.directoryHandle || this.lastSelectedFiles) {
+      return true;
+    }
+    const settings = this.storage.getSettings();
+    if (settings.lastSourceLabel) {
+      return true;
+    }
+    return this.storage.getDefinitions().length > 0;
   }
 
   async selectAndLoadDefinitions(): Promise<DefinitionCard[]> {
