@@ -1,0 +1,57 @@
+<div class="page">
+  <header class="hero">
+    <div class="brand">
+      <div class="logo">⟲</div>
+      <div>
+        <h1>Continue Hub</h1>
+        <p>
+          Discover the models, rules, and MCP servers you need to create a custom AI coding agent.
+        </p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="search">
+        <span class="icon">🔍</span>
+        <input
+          type="text"
+          placeholder="Search for models, rules, MCP servers..."
+          [(ngModel)]="searchTerm"
+          (input)="applyFilter()"
+        />
+      </div>
+      <div class="filters">
+        <select [(ngModel)]="activeType" (change)="applyFilter()">
+          <option *ngFor="let type of types" [value]="type">{{ type }}</option>
+        </select>
+        <button type="button" (click)="pickFolder()">Load ai_assets</button>
+      </div>
+    </div>
+
+    <div class="meta">
+      <span *ngIf="lastSourceLabel">Source: {{ lastSourceLabel }}</span>
+      <span *ngIf="lastLoadedAt">Last refresh: {{ lastLoadedAt | date : 'medium' }}</span>
+      <span *ngIf="statusMessage">{{ statusMessage }}</span>
+    </div>
+  </header>
+
+  <section class="grid">
+    <article class="card" *ngFor="let definition of filtered">
+      <div class="card-header">
+        <h2>{{ definition.title }}</h2>
+        <button type="button" class="save" (click)="toggleSaved(definition)">
+          {{ isSaved(definition) ? '✓' : '+' }}
+        </button>
+      </div>
+      <p>{{ definition.description }}</p>
+      <div class="card-footer">
+        <div class="provider">By {{ definition.provider }}</div>
+        <span class="type">{{ definition.type }}</span>
+      </div>
+      <div class="tags" *ngIf="definition.tags.length">
+        <span *ngFor="let tag of definition.tags">{{ tag }}</span>
+      </div>
+      <div class="path">{{ definition.sourcePath }}</div>
+    </article>
+  </section>
+</div>
