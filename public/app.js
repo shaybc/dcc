@@ -212,7 +212,9 @@ function renderCards() {
       const action = event.target.closest("[data-action]");
       if (action) {
         event.stopPropagation();
-        if (def.status === "local-only") {
+        if (def.status === "saved") {
+          await removeDefinition(def.id);
+        } else if (def.status === "local-only") {
           await publishDefinition(def.id);
         } else if (def.status !== "saved") {
           await saveDefinition(def.id);
@@ -250,6 +252,10 @@ async function saveDefinition(id) {
 
 async function publishDefinition(id) {
   await fetch(`/api/definitions/${id}/publish`, { method: "POST" });
+}
+
+async function removeDefinition(id) {
+  await fetch(`/api/definitions/${id}/remove`, { method: "POST" });
 }
 
 searchInput.addEventListener("input", (event) => {

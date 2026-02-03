@@ -432,6 +432,40 @@ app.post("/api/definitions/:id/publish", async (req, res) => {
   });
 });
 
+app.post("/api/definitions/:id/remove", async (req, res) => {
+  db.get("SELECT * FROM definitions WHERE id = ?", [req.params.id], async (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    if (!row) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+    try {
+      const teamRoot = getTeamRoot();
+      const destDir = path.join(teamRoot, row.type || "misc");
+      const destPath = path.join(destDir, path.basename(row.filePath));
+      if (fs.existsSync(destPath)) {
+        await fsp.unlink(destPath);
+      }
+      db.run(
+        "UPDATE definitions SET inTeam = 0, status = 'repo' WHERE id = ?",
+        [row.id],
+        (updateErr) => {
+          if (updateErr) {
+            res.status(500).json({ error: updateErr.message });
+            return;
+          }
+          res.json({ ok: true });
+        }
+      );
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+});
+
 app.get("/settings", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "settings.html"));
 });
