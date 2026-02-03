@@ -49,7 +49,7 @@ export class ContinueFolderService {
     const typeFolder = this.mapTypeFolder(definition);
     const fileName = this.getFileName(definition);
     console.info("[dcc-hub] saving definition via API", { typeFolder, fileName });
-    const response = await fetch("/api/continue/definitions", {
+    const response = await fetch(`${this.apiBase}/api/continue/definitions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -69,7 +69,7 @@ export class ContinueFolderService {
     const typeFolder = this.mapTypeFolder(definition);
     const fileName = this.getFileName(definition);
     console.info("[dcc-hub] removing definition via API", { typeFolder, fileName });
-    const response = await fetch("/api/continue/definitions", {
+    const response = await fetch(`${this.apiBase}/api/continue/definitions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -82,6 +82,14 @@ export class ContinueFolderService {
       const payload = await response.json().catch(() => ({}));
       throw new Error(payload.error || "Unable to remove definition via server API.");
     }
+  }
+
+  private get apiBase(): string {
+    const { hostname, port, protocol } = window.location;
+    if (hostname === "localhost" && port === "4200") {
+      return `${protocol}//${hostname}:7331`;
+    }
+    return `${protocol}//${hostname}${port ? `:${port}` : ""}`;
   }
 
   private mapTypeFolder(definition: DefinitionCard): string {
