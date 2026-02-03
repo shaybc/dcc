@@ -27,11 +27,22 @@
           [(ngModel)]="searchTerm"
           (input)="applyFilter()"
         />
+        <div class="filter-dropdown">
+          <button type="button" class="filter-button" (click)="toggleFilterMenu()">
+            <span class="filter-icon">⏷</span>
+          </button>
+          <div class="filter-menu" *ngIf="filterMenuOpen">
+            <button
+              type="button"
+              *ngFor="let option of filterOptions"
+              (click)="selectFilter(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
       </div>
       <div class="filters">
-        <select [(ngModel)]="activeType" (change)="applyFilter()">
-          <option *ngFor="let type of types" [value]="type">{{ type }}</option>
-        </select>
         <button type="button" (click)="pickFolder()">Load ai_assets</button>
       </div>
     </div>

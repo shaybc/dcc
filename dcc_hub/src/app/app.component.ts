@@ -14,15 +14,27 @@ import { StorageService } from "./storage.service";
 })
 export class AppComponent implements OnInit {
   searchTerm = "";
-  activeType: DefinitionType | "All" = "All";
+  activeType: DefinitionType | "All" | "Prompt" | "Agent" | "User" | "Org" = "All";
   definitions: DefinitionCard[] = [];
   filtered: DefinitionCard[] = [];
-  types: Array<DefinitionType | "All"> = ["All", "Model", "Rule", "MCP Server", "Config", "Unknown"];
+  filterOptions: Array<{ label: string; value: DefinitionType | "All" | "Prompt" | "Agent" | "User" | "Org" }> = [
+    { label: "All", value: "All" },
+    { label: "Models", value: "Model" },
+    { label: "MCP Servers", value: "MCP Server" },
+    { label: "Rules", value: "Rule" },
+    { label: "Prompts", value: "Prompt" },
+    { label: "Agents", value: "Agent" },
+    { label: "Users", value: "User" },
+    { label: "Orgs", value: "Org" },
+    { label: "Config", value: "Config" },
+    { label: "Unknown", value: "Unknown" }
+  ];
   statusMessage = "";
   lastLoadedAt = "";
   lastSourceLabel = "";
   savedIds = new Set<string>();
   canRefresh = false;
+  filterMenuOpen = false;
 
   constructor(private aiAssets: AiAssetsService, private storage: StorageService) {}
 
@@ -67,7 +79,7 @@ export class AppComponent implements OnInit {
   applyFilter(): void {
     const term = this.searchTerm.trim().toLowerCase();
     this.filtered = this.definitions.filter((definition) => {
-      const matchesType = this.activeType === "All" || definition.type === this.activeType;
+      const matchesType = this.matchesActiveType(definition);
       if (!matchesType) {
         return false;
       }
@@ -87,6 +99,16 @@ export class AppComponent implements OnInit {
     });
   }
 
+  toggleFilterMenu(): void {
+    this.filterMenuOpen = !this.filterMenuOpen;
+  }
+
+  selectFilter(type: DefinitionType | "All" | "Prompt" | "Agent" | "User" | "Org"): void {
+    this.activeType = type;
+    this.filterMenuOpen = false;
+    this.applyFilter();
+  }
+
   toggleSaved(definition: DefinitionCard): void {
     if (this.savedIds.has(definition.id)) {
       this.savedIds.delete(definition.id);
@@ -98,6 +120,13 @@ export class AppComponent implements OnInit {
 
   isSaved(definition: DefinitionCard): boolean {
     return this.savedIds.has(definition.id);
+  }
+
+  private matchesActiveType(definition: DefinitionCard): boolean {
+    if (this.activeType === "All") {
+      return true;
+    }
+    return definition.type === this.activeType;
   }
 
   private loadSettings(): void {
