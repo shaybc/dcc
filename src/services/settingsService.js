@@ -36,3 +36,22 @@ export function getConfigRepoPath() {
 export function getAiAssetsRepoUrl() {
   return getSetting("aiAssetsRepoUrl", DEFAULT_AI_ASSETS_REPO_URL);
 }
+
+export function listProjectPaths() {
+  const db = getDb();
+  return db.prepare("SELECT id, path, created_at FROM project_paths ORDER BY created_at DESC").all();
+}
+
+export function addProjectPath(path) {
+  const db = getDb();
+  const now = Date.now();
+  const insert = db.prepare("INSERT OR IGNORE INTO project_paths (path, created_at) VALUES (?, ?)").run(path, now);
+  const row = db.prepare("SELECT id, path, created_at FROM project_paths WHERE path = ?").get(path);
+  return { path: row, created: insert.changes > 0 };
+}
+
+export function removeProjectPath(id) {
+  const db = getDb();
+  const result = db.prepare("DELETE FROM project_paths WHERE id = ?").run(id);
+  return result.changes > 0;
+}

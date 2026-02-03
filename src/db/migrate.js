@@ -68,5 +68,11 @@ export function migrate() {
       value TEXT NOT NULL,
       updated_at INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS project_paths (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT NOT NULL UNIQUE,
+      created_at INTEGER NOT NULL
+    );
   `);
 }

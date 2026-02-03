@@ -238,6 +238,39 @@
 
     th { background: #f9fafb; font-weight: 600; }
 
+    .context-menu {
+      position: fixed;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      padding: 6px;
+      display: none;
+      z-index: 20;
+      min-width: 160px;
+    }
+
+    .context-menu.is-active {
+      display: block;
+    }
+
+    .context-menu button {
+      width: 100%;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .context-menu button:hover {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
     details {
       margin-top: 12px;
       background: #f9fafb;
@@ -624,6 +657,22 @@
           </details>
         </div>
         <div class="card">
+          <h2>Project paths</h2>
+          <p class="muted">Track project locations for quick reuse in AI asset operations.</p>
+          <div class="field-group">
+            <div class="field">
+              <label for="projectPathInput">Add project path</label>
+              <div class="input-with-action">
+                <input id="projectPathInput" placeholder="/path/to/project" />
+                <button class="secondary" id="btnAddProjectPath" type="button" aria-label="Add project path">+</button>
+              </div>
+              <span class="helper">Right-click a saved path to remove it.</span>
+            </div>
+          </div>
+          <div id="projectPathsStatus" class="status" style="margin-top: 12px;">Awaiting update</div>
+          <div id="projectPathsTable" style="margin-top: 12px;"></div>
+        </div>
+        <div class="card">
           <h2>Why this matters</h2>
           <p class="muted">DCC uses the shared folder to sync definitions across your local workspace and Bitbucket.</p>
           <ul>
@@ -687,6 +736,9 @@
   </main>
 
   <datalist id="recentRepos"></datalist>
+  <div id="projectPathMenu" class="context-menu" role="menu">
+    <button id="btnRemoveProjectPath" type="button">Remove project</button>
+  </div>
 
 <script>
   async function api(path, opts) {
@@ -699,7 +751,8 @@
   const state = {
     definitions: [],
     workflows: [],
-    runs: []
+    runs: [],
+    projectPaths: []
   };
 
   const tabs = document.querySelectorAll("[data-tab]");
@@ -795,6 +848,62 @@
     table.appendChild(tbody);
     container.appendChild(table);
   };
+
+  const projectPathMenu = document.getElementById("projectPathMenu");
+  let projectPathMenuTargetId = null;
+
+  const hideProjectPathMenu = () => {
+    projectPathMenu.classList.remove("is-active");
+    projectPathMenuTargetId = null;
+  };
+
+  const renderProjectPathsTable = () => {
+    const container = document.getElementById("projectPathsTable");
+    container.innerHTML = "";
+    if (!state.projectPaths.length) {
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.textContent = "No project paths saved yet.";
+      container.appendChild(empty);
+      return;
+    }
+
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    const header = document.createElement("th");
+    header.textContent = "Project path";
+    headerRow.appendChild(header);
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    state.projectPaths.forEach((path) => {
+      const tr = document.createElement("tr");
+      tr.dataset.projectPathId = path.id;
+      const td = document.createElement("td");
+      td.textContent = path.path || "";
+      tr.appendChild(td);
+      tr.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        projectPathMenuTargetId = path.id;
+        projectPathMenu.style.left = `${event.clientX}px`;
+        projectPathMenu.style.top = `${event.clientY}px`;
+        projectPathMenu.classList.add("is-active");
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  };
+
+  document.addEventListener("click", (event) => {
+    if (!projectPathMenu.contains(event.target)) {
+      hideProjectPathMenu();
+    }
+  });
+
+  window.addEventListener("blur", hideProjectPathMenu);
 
   const populateRecentRepos = () => {
     const list = document.getElementById("recentRepos");
@@ -1755,6 +1864,40 @@
     resetDefinitionFormForType();
   };
 
+  const loadProjectPaths = async () => {
+    const r = await api("/api/settings/project-paths");
+    renderStatus("projectPathsStatus", r, "Awaiting update");
+    if (r.ok) {
+      state.projectPaths = Array.isArray(r.data?.paths) ? r.data.paths : [];
+      renderProjectPathsTable();
+    }
+  };
+
+  const addProjectPath = async () => {
+    const input = document.getElementById("projectPathInput");
+    const path = input.value.trim();
+    if (!path) {
+      const status = document.getElementById("projectPathsStatus");
+      status.textContent = "Project path is required.";
+      status.className = "status warn";
+      return;
+    }
+    const r = await api("/api/settings/project-paths", { method: "POST", body: JSON.stringify({ path }) });
+    renderStatus("projectPathsStatus", r, "Awaiting update");
+    if (r.ok) {
+      input.value = "";
+      await loadProjectPaths();
+    }
+  };
+
+  const removeProjectPath = async (id) => {
+    const r = await api(`/api/settings/project-paths/${encodeURIComponent(id)}`, { method: "DELETE" });
+    renderStatus("projectPathsStatus", r, "Awaiting update");
+    if (r.ok) {
+      await loadProjectPaths();
+    }
+  };
+
   const loadSettings = async () => {
     const r = await api("/api/settings");
     document.getElementById("settingsOut").textContent = JSON.stringify(r, null, 2);
@@ -1864,6 +2007,15 @@
     }
   };
 
+  document.getElementById("btnAddProjectPath").onclick = () => addProjectPath();
+
+  document.getElementById("btnRemoveProjectPath").onclick = async () => {
+    if (!projectPathMenuTargetId) return;
+    const targetId = projectPathMenuTargetId;
+    hideProjectPathMenu();
+    await removeProjectPath(targetId);
+  };
+
   document.getElementById("btnSyncAiAssets").onclick = async () => {
     const button = document.getElementById("btnSyncAiAssets");
     const indicator = document.getElementById("aiAssetsSyncIndicator");
@@ -1944,6 +2096,7 @@
   populateRecentRepos();
   updateOverview();
   loadSettings();
+  loadProjectPaths();
 </script>
 </body>
 </html>

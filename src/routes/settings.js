@@ -1,7 +1,14 @@
 import { Router } from "express";
 import { syncAiAssetsRepo } from "../services/aiAssetsRepoService.js";
 import { copyAiAssetsToProject } from "../services/aiAssetsCopyService.js";
-import { getAiAssetsRepoUrl, getConfigRepoPath, setSetting } from "../services/settingsService.js";
+import {
+  addProjectPath,
+  getAiAssetsRepoUrl,
+  getConfigRepoPath,
+  listProjectPaths,
+  removeProjectPath,
+  setSetting
+} from "../services/settingsService.js";
 
 export const settingsRouter = Router();
 
@@ -60,4 +67,29 @@ settingsRouter.post("/copy-ai-assets", (req, res) => {
     const status = error?.status || 500;
     return res.status(status).json({ error: error?.message || "Failed to copy AI assets." });
   }
+});
+
+settingsRouter.get("/project-paths", (req, res) => {
+  res.json({ paths: listProjectPaths() });
+});
+
+settingsRouter.post("/project-paths", (req, res) => {
+  const { path } = req.body || {};
+  if (typeof path !== "string" || path.trim().length === 0) {
+    return res.status(400).json({ error: "path is required." });
+  }
+  const result = addProjectPath(path.trim());
+  return res.json(result);
+});
+
+settingsRouter.delete("/project-paths/:id", (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) {
+    return res.status(400).json({ error: "Valid id is required." });
+  }
+  const removed = removeProjectPath(id);
+  if (!removed) {
+    return res.status(404).json({ error: "Project path not found." });
+  }
+  return res.json({ removed: true });
 });
