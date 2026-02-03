@@ -24,6 +24,8 @@ Then open:
 - UI: http://localhost:7331
 - API: http://localhost:7331/api
 
+If the server is running, open the UI in your browser at `http://localhost:7331`.
+
 ## UI build workflow (same-origin)
 The Angular UI lives in `dcc_hub`. For local development without CORS or a proxy, build the UI and serve it from the Express server so both the UI and API share the same origin.
 
@@ -97,4 +99,3 @@ These endpoints are specific to the Developer Control Center's functionality.
   - Lists all available workflows.
 - `POST /api/workflows/:id/run`
   - Starts a new run for a specific workflow.
-
