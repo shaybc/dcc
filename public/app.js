@@ -142,36 +142,31 @@ function renderFilters() {
   filtersContainer.innerHTML = "";
   filterMenu.innerHTML = "";
   types.forEach((type) => {
-    const chip = document.createElement("button");
-    const label = formatFilterLabel(type);
-    chip.className = "chip";
-    chip.innerHTML = `
-      <span class="chip-icon">${filterIconSvg(type)}</span>
-      <span class="chip-label">${label}</span>
-      ${
-        type === activeFilter && type !== "all"
-          ? `<span class="chip-clear" role="button" aria-label="Clear filter">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 6 6 18"></path>
-                <path d="m6 6 12 12"></path>
-              </svg>
-            </span>`
-          : ""
-      }
-    `;
-    if (type === activeFilter) {
-      chip.classList.add("active");
+    if (type === activeFilter && type !== "all") {
+      const chip = document.createElement("button");
+      const label = formatFilterLabel(type);
+      chip.className = "chip active";
+      chip.innerHTML = `
+        <span class="chip-icon">${filterIconSvg(type)}</span>
+        <span class="chip-label">${label}</span>
+        <span class="chip-clear" role="button" aria-label="Clear filter">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+          </svg>
+        </span>
+      `;
+      chip.addEventListener("click", (event) => {
+        if (event.target.closest(".chip-clear")) {
+          activeFilter = "all";
+        } else {
+          activeFilter = type;
+        }
+        renderFilters();
+        renderCards();
+      });
+      filtersContainer.appendChild(chip);
     }
-    chip.addEventListener("click", (event) => {
-      if (event.target.closest(".chip-clear")) {
-        activeFilter = "all";
-      } else {
-        activeFilter = type;
-      }
-      renderFilters();
-      renderCards();
-    });
-    filtersContainer.appendChild(chip);
 
     const menuItem = document.createElement("button");
     menuItem.className = "filter-menu-item";
