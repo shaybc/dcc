@@ -17,6 +17,82 @@
       --warning: #f59e0b;
       --success: #10b981;
       --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      --header-start: #ffffff;
+      --header-end: #eef2ff;
+      --surface: #ffffff;
+      --surface-subtle: #fafafa;
+      --surface-muted: #f9fafb;
+      --status-bg: #f3f4f6;
+      --context-bg: #ffffff;
+      --input-bg: #ffffff;
+      --details-bg: #f9fafb;
+      --table-header: #f9fafb;
+      --pre-text: #111827;
+      --info-icon-bg: #ffffff;
+      --info-tooltip-bg: #111827;
+      --info-tooltip-text: #f9fafb;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --border: #1f2937;
+      --accent: #60a5fa;
+      --accent-soft: rgba(96, 165, 250, 0.2);
+      --warning: #fbbf24;
+      --success: #34d399;
+      --shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+      --header-start: #0b1224;
+      --header-end: #172554;
+      --surface: #0b1224;
+      --surface-subtle: #0f1a2b;
+      --surface-muted: #111827;
+      --status-bg: rgba(148, 163, 184, 0.15);
+      --context-bg: #111827;
+      --input-bg: #0b1224;
+      --details-bg: #0f172a;
+      --table-header: #0f1a2b;
+      --pre-text: #e2e8f0;
+      --info-icon-bg: #0b1224;
+      --info-tooltip-bg: #e2e8f0;
+      --info-tooltip-text: #111827;
+    }
+
+    :root[data-theme="light"] {
+      color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root[data-theme="system"] {
+        color-scheme: dark;
+        --bg: #0f172a;
+        --card: #111827;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --border: #1f2937;
+        --accent: #60a5fa;
+        --accent-soft: rgba(96, 165, 250, 0.2);
+        --warning: #fbbf24;
+        --success: #34d399;
+        --shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+        --header-start: #0b1224;
+        --header-end: #172554;
+        --surface: #0b1224;
+        --surface-subtle: #0f1a2b;
+        --surface-muted: #111827;
+        --status-bg: rgba(148, 163, 184, 0.15);
+        --context-bg: #111827;
+        --input-bg: #0b1224;
+        --details-bg: #0f172a;
+        --table-header: #0f1a2b;
+        --pre-text: #e2e8f0;
+        --info-icon-bg: #0b1224;
+        --info-tooltip-bg: #e2e8f0;
+        --info-tooltip-text: #111827;
+      }
     }
 
     * { box-sizing: border-box; }
@@ -29,7 +105,7 @@
 
     header {
       padding: 28px 36px 16px;
-      background: linear-gradient(120deg, #ffffff 0%, #eef2ff 100%);
+      background: linear-gradient(120deg, var(--header-start) 0%, var(--header-end) 100%);
       border-bottom: 1px solid var(--border);
     }
 
@@ -45,7 +121,7 @@
 
     .icon-button {
       border: 1px solid var(--border);
-      background: #fff;
+      background: var(--surface);
       color: var(--text);
       width: 42px;
       height: 42px;
@@ -141,7 +217,7 @@
       padding: 12px;
       border: 1px solid var(--border);
       border-radius: 12px;
-      background: #fafafa;
+      background: var(--surface-subtle);
     }
 
     .def-section-title {
@@ -175,7 +251,7 @@
       padding: 10px 12px;
       border-radius: 10px;
       border: 1px solid var(--border);
-      background: #fff;
+      background: var(--input-bg);
       font-size: 14px;
     }
 
@@ -198,7 +274,7 @@
     }
 
     button.secondary {
-      background: #fff;
+      background: var(--surface);
       color: var(--accent);
       border: 1px solid var(--accent);
     }
@@ -216,7 +292,7 @@
       font-size: 13px;
       padding: 4px 10px;
       border-radius: 999px;
-      background: #f3f4f6;
+      background: var(--status-bg);
       color: var(--muted);
     }
 
@@ -236,11 +312,11 @@
       vertical-align: top;
     }
 
-    th { background: #f9fafb; font-weight: 600; }
+    th { background: var(--table-header); font-weight: 600; }
 
     .context-menu {
       position: fixed;
-      background: #fff;
+      background: var(--context-bg);
       border: 1px solid var(--border);
       border-radius: 10px;
       box-shadow: var(--shadow);
@@ -273,7 +349,7 @@
 
     details {
       margin-top: 12px;
-      background: #f9fafb;
+      background: var(--details-bg);
       border-radius: 12px;
       padding: 10px 14px;
       border: 1px solid var(--border);
@@ -284,7 +360,7 @@
       white-space: pre-wrap;
       word-break: break-word;
       font-size: 13px;
-      color: #111827;
+      color: var(--pre-text);
     }
 
     .helper {
@@ -317,7 +393,7 @@
       height: 20px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      background: #fff;
+      background: var(--info-icon-bg);
       color: var(--muted);
       font-size: 12px;
       font-weight: 700;
@@ -333,8 +409,8 @@
       width: 280px;
       padding: 10px 12px;
       border-radius: 10px;
-      background: #111827;
-      color: #f9fafb;
+      background: var(--info-tooltip-bg);
+      color: var(--info-tooltip-text);
       font-size: 12px;
       line-height: 1.4;
       box-shadow: var(--shadow);
@@ -645,6 +721,15 @@
               </div>
               <span class="helper">Used to clone or pull the ai_assets repository into the shared folder.</span>
             </div>
+            <div class="field">
+              <label for="themeSelect">Theme</label>
+              <select id="themeSelect">
+                <option value="system">Automatic (System)</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+              <span class="helper">Choose light or dark mode, or follow your system preference.</span>
+            </div>
           </div>
           <div class="button-row" style="margin-top: 12px;">
             <button id="btnSaveSettings">Save settings</button>
@@ -753,6 +838,22 @@
     workflows: [],
     runs: [],
     projectPaths: []
+  };
+
+  const themeStorageKey = "dcc-theme";
+  const themeSelect = document.getElementById("themeSelect");
+
+  const applyTheme = (theme) => {
+    const selection = ["light", "dark", "system"].includes(theme) ? theme : "system";
+    document.documentElement.dataset.theme = selection;
+  };
+
+  const loadTheme = () => {
+    const stored = localStorage.getItem(themeStorageKey) || "system";
+    applyTheme(stored);
+    if (themeSelect) {
+      themeSelect.value = stored;
+    }
   };
 
   const tabs = document.querySelectorAll("[data-tab]");
@@ -1910,6 +2011,14 @@
     }
   };
 
+  if (themeSelect) {
+    themeSelect.addEventListener("change", (event) => {
+      const selection = event.target.value;
+      localStorage.setItem(themeStorageKey, selection);
+      applyTheme(selection);
+    });
+  }
+
   document.getElementById("btnLoadDefs").onclick = async () => {
     const r = await api("/api/definitions/load", { method: "POST" });
     document.getElementById("defsOut").textContent = JSON.stringify(r, null, 2);
@@ -2095,6 +2204,7 @@
   bindDefinitionForm();
   populateRecentRepos();
   updateOverview();
+  loadTheme();
   loadSettings();
   loadProjectPaths();
 </script>
