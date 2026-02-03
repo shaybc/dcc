@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DCC Hub</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Developer Control Center</h1>
+        <p>Discover, sync, and deploy Continue definitions from your team hub.</p>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/settings">⚙ Settings</a>
+      </div>
+    </header>
+    <main>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search definitions" />
+      </div>
+      <div class="chips" id="filters"></div>
+      <div class="grid" id="cards"></div>
+    </main>
+
+    <div class="modal" id="detailModal">
+      <div class="modal-content">
+        <button class="btn" id="closeModal">Close</button>
+        <h2 id="detailTitle"></h2>
+        <p id="detailDescription"></p>
+        <div class="status-pill" id="detailStatus"></div>
+        <h3>Definition</h3>
+        <pre id="detailContent"></pre>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

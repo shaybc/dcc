@@ -1,0 +1,15 @@
+{
+  "name": "dcc",
+  "version": "0.1.0",
+  "description": "Developer Control Center local hub",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "gray-matter": "^4.0.3",
+    "sqlite3": "^5.1.7"
+  }
+}
