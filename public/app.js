@@ -142,9 +142,9 @@ function renderFilters() {
   filtersContainer.innerHTML = "";
   filterMenu.innerHTML = "";
   types.forEach((type) => {
+    const label = formatFilterLabel(type);
     if (type === activeFilter && type !== "all") {
       const chip = document.createElement("button");
-      const label = formatFilterLabel(type);
       chip.className = "chip active";
       chip.innerHTML = `
         <span class="chip-icon">${filterIconSvg(type)}</span>
