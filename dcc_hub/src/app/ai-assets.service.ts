@@ -97,9 +97,11 @@ export class AiAssetsService {
   async getDefinitionFile(definition: DefinitionCard): Promise<File | null> {
     const sourcePath = definition.sourcePath;
     if (this.directoryHandle) {
+      console.info("[dcc-hub] getDefinitionFile from directory handle", { sourcePath });
       return this.getFileFromDirectoryHandle(this.directoryHandle, sourcePath);
     }
     if (this.lastSelectedFiles) {
+      console.info("[dcc-hub] getDefinitionFile from selected files", { sourcePath });
       const match = this.lastSelectedFiles.find((file) => file.webkitRelativePath === sourcePath);
       if (match) {
         return match;

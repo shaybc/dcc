@@ -9,22 +9,35 @@ export class ContinueFolderService {
   constructor(private aiAssets: AiAssetsService) {}
 
   async saveDefinition(definition: DefinitionCard): Promise<void> {
+    console.info("[dcc-hub] ContinueFolderService.saveDefinition", {
+      id: definition.id,
+      sourcePath: definition.sourcePath,
+      type: definition.type
+    });
     const destination = await this.getDestinationHandles(definition);
     if (!destination) {
       throw new Error("Unable to resolve the Continue folder destination.");
     }
     const content = await this.readDefinitionSource(definition);
+    console.info("[dcc-hub] writing definition", { fileName: destination.fileName });
     const writable = await destination.fileHandle.createWritable();
     await writable.write(content);
     await writable.close();
   }
 
   async removeDefinition(definition: DefinitionCard): Promise<void> {
+    console.info("[dcc-hub] ContinueFolderService.removeDefinition", {
+      id: definition.id,
+      sourcePath: definition.sourcePath,
+      type: definition.type
+    });
     const destination = await this.getDestinationHandles(definition, false);
     if (!destination) {
+      console.warn("[dcc-hub] no Continue destination found for removal");
       return;
     }
     await destination.directoryHandle.removeEntry(destination.fileName);
+    console.info("[dcc-hub] removed definition", { fileName: destination.fileName });
   }
 
   private async getDestinationHandles(
@@ -53,18 +66,23 @@ export class ContinueFolderService {
     if (!source) {
       throw new Error("Unable to locate the source file. Load your ai_assets folder and try again.");
     }
+    console.info("[dcc-hub] reading definition source", { name: source.name });
     return source.text();
   }
 
   private async ensureContinueHandle(): Promise<FileSystemDirectoryHandle> {
     if (this.continueHandle) {
+      console.info("[dcc-hub] using cached Continue handle");
       return this.continueHandle;
     }
     if (!("showDirectoryPicker" in window)) {
+      console.error("[dcc-hub] showDirectoryPicker unsupported");
       throw new Error("Your browser does not support selecting the Continue folder.");
     }
+    console.info("[dcc-hub] requesting Continue folder picker");
     const handle = await (window as Window & { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> })
       .showDirectoryPicker();
+    console.info("[dcc-hub] Continue folder picked", { name: handle.name });
     if (handle.name !== ".continue") {
       throw new Error("Select your %USERPROFILE%\\.continue folder to save definitions.");
     }

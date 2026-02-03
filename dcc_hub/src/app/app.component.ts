@@ -125,13 +125,22 @@ export class AppComponent implements OnInit {
 
   async toggleSaved(definition: DefinitionCard): Promise<void> {
     this.statusMessage = "";
+    console.info("[dcc-hub] toggleSaved start", {
+      id: definition.id,
+      title: definition.title,
+      sourcePath: definition.sourcePath,
+      type: definition.type
+    });
     if (this.savedIds.has(definition.id)) {
       try {
+        console.info("[dcc-hub] removing definition from Continue folder");
         await this.continueFolder.removeDefinition(definition);
         this.savedIds.delete(definition.id);
         this.storage.setSavedIds(Array.from(this.savedIds));
         this.statusMessage = `Removed ${definition.title} from your Continue team folder.`;
+        console.info("[dcc-hub] removal complete");
       } catch (error) {
+        console.error("[dcc-hub] removal failed", error);
         this.statusMessage =
           error instanceof Error ? error.message : "Unable to remove definition from your Continue folder.";
       }
@@ -139,11 +148,14 @@ export class AppComponent implements OnInit {
     }
 
     try {
+      console.info("[dcc-hub] saving definition to Continue folder");
       await this.continueFolder.saveDefinition(definition);
       this.savedIds.add(definition.id);
       this.storage.setSavedIds(Array.from(this.savedIds));
       this.statusMessage = `Saved ${definition.title} to your Continue team folder.`;
+      console.info("[dcc-hub] save complete");
     } catch (error) {
+      console.error("[dcc-hub] save failed", error);
       this.statusMessage = error instanceof Error ? error.message : "Unable to save definition to your Continue folder.";
     }
   }
