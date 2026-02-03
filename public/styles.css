@@ -188,6 +188,59 @@ main {
   font-weight: 500;
 }
 
+.filter-dropdown {
+  position: relative;
+}
+
+.filter-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  min-width: 200px;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  display: none;
+  z-index: 20;
+}
+
+.filter-menu.open {
+  display: grid;
+  gap: 6px;
+}
+
+.filter-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.filter-menu-item:hover {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.active-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-left: auto;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
 .filter-btn svg {
   width: 16px;
   height: 16px;

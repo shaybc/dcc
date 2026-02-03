@@ -3,6 +3,8 @@ const filtersContainer = document.getElementById("filters");
 const searchInput = document.getElementById("search");
 const clearSearchButton = document.getElementById("clearSearch");
 const searchField = document.querySelector(".search-field");
+const filterButton = document.getElementById("filterButton");
+const filterMenu = document.getElementById("filterMenu");
 const modal = document.getElementById("detailModal");
 const closeModal = document.getElementById("closeModal");
 const detailTitle = document.getElementById("detailTitle");
@@ -76,6 +78,7 @@ function filterIconSvg(type) {
 function renderFilters() {
   const types = ["all", ...new Set(definitions.map((def) => def.type))];
   filtersContainer.innerHTML = "";
+  filterMenu.innerHTML = "";
   types.forEach((type) => {
     const chip = document.createElement("button");
     const label = type === "all" ? "All" : type;
@@ -107,6 +110,22 @@ function renderFilters() {
       renderCards();
     });
     filtersContainer.appendChild(chip);
+
+    const menuItem = document.createElement("button");
+    menuItem.className = "filter-menu-item";
+    menuItem.type = "button";
+    menuItem.innerHTML = `
+      <span class="chip-icon">${filterIconSvg(type)}</span>
+      <span class="chip-label">${label}</span>
+      ${type === activeFilter ? `<span class="active-indicator"></span>` : ""}
+    `;
+    menuItem.addEventListener("click", () => {
+      activeFilter = type;
+      renderFilters();
+      renderCards();
+      closeFilterMenu();
+    });
+    filterMenu.appendChild(menuItem);
   });
 }
 
@@ -180,6 +199,22 @@ searchInput.addEventListener("input", (event) => {
   searchTerm = event.target.value.toLowerCase();
   searchField.classList.toggle("has-value", searchTerm.length > 0);
   renderCards();
+});
+
+function closeFilterMenu() {
+  filterMenu.classList.remove("open");
+  filterButton.setAttribute("aria-expanded", "false");
+}
+
+filterButton.addEventListener("click", () => {
+  const isOpen = filterMenu.classList.toggle("open");
+  filterButton.setAttribute("aria-expanded", String(isOpen));
+});
+
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".filter-dropdown")) {
+    closeFilterMenu();
+  }
 });
 
 clearSearchButton.addEventListener("click", () => {
