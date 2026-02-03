@@ -5,6 +5,10 @@ import { StorageService } from "./storage.service";
 const TYPE_MAP: Array<{ match: RegExp; type: DefinitionType }> = [
   { match: /model/i, type: "Model" },
   { match: /rule/i, type: "Rule" },
+  { match: /prompt/i, type: "Prompt" },
+  { match: /agent/i, type: "Agent" },
+  { match: /user/i, type: "User" },
+  { match: /org/i, type: "Org" },
   { match: /mcp/i, type: "MCP Server" },
   { match: /config/i, type: "Config" }
 ];
@@ -88,6 +92,24 @@ export class AiAssetsService {
       lastSourceLabel: this.directoryHandle.name
     });
     return unique;
+  }
+
+  async getDefinitionFile(definition: DefinitionCard): Promise<File | null> {
+    const sourcePath = definition.sourcePath;
+    if (this.directoryHandle) {
+      console.info("[dcc-hub] getDefinitionFile from directory handle", { sourcePath });
+      return this.getFileFromDirectoryHandle(this.directoryHandle, sourcePath);
+    }
+    if (this.lastSelectedFiles) {
+      console.info("[dcc-hub] getDefinitionFile from selected files", { sourcePath });
+      const match = this.lastSelectedFiles.find((file) => file.webkitRelativePath === sourcePath);
+      if (match) {
+        return match;
+      }
+      const fallback = this.lastSelectedFiles.find((file) => file.webkitRelativePath.endsWith(`/${sourcePath}`));
+      return fallback ?? null;
+    }
+    return null;
   }
 
   private async selectDirectoryViaInput(): Promise<{
@@ -182,6 +204,27 @@ export class AiAssetsService {
     return results;
   }
 
+  private async getFileFromDirectoryHandle(
+    handle: FileSystemDirectoryHandle,
+    sourcePath: string
+  ): Promise<File | null> {
+    try {
+      const pathSegments = sourcePath.split("/").filter(Boolean);
+      if (pathSegments.length === 0) {
+        return null;
+      }
+      let currentHandle = handle;
+      const fileName = pathSegments[pathSegments.length - 1];
+      for (const segment of pathSegments.slice(0, -1)) {
+        currentHandle = await currentHandle.getDirectoryHandle(segment);
+      }
+      const fileHandle = await currentHandle.getFileHandle(fileName);
+      return fileHandle.getFile();
+    } catch {
+      return null;
+    }
+  }
+
   private parseDefinition(content: string, pathSegments: string[]): DefinitionCard | null {
     const inferredType = this.inferType(pathSegments);
     try {
@@ -201,7 +244,8 @@ export class AiAssetsService {
         provider,
         type: (data["type"] as DefinitionType) ?? inferredType,
         tags,
-        sourcePath: pathSegments.join("/")
+        sourcePath: pathSegments.join("/"),
+        rawContent: content
       };
     } catch {
       return this.parseMarkdownDefinition(content, pathSegments, inferredType);
@@ -261,7 +305,8 @@ export class AiAssetsService {
       provider: "Continue",
       type: inferredType,
       tags: [],
-      sourcePath: pathSegments.join("/")
+      sourcePath: pathSegments.join("/"),
+      rawContent: content
     };
   }
 }
