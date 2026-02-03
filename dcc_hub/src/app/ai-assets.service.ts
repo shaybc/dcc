@@ -53,8 +53,10 @@ export class AiAssetsService {
     pathSegments: string[]
   ): Promise<DefinitionCard[]> {
     const results: DefinitionCard[] = [];
+    const entries = (handle as FileSystemDirectoryHandle & { entries(): AsyncIterable<[string, FileSystemHandle]> })
+      .entries();
     // eslint-disable-next-line no-restricted-syntax
-    for await (const [name, entry] of handle.entries()) {
+    for await (const [name, entry] of entries) {
       if (entry.kind === "directory") {
         const nested = await this.scanDirectory(entry, [...pathSegments, name]);
         results.push(...nested);
@@ -91,7 +93,7 @@ export class AiAssetsService {
         title,
         description,
         provider,
-        type: (data.type as DefinitionType) ?? inferredType,
+        type: (data["type"] as DefinitionType) ?? inferredType,
         tags,
         sourcePath: pathSegments.join("/")
       };
