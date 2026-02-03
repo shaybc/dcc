@@ -58,13 +58,15 @@ export class AiAssetsService {
     // eslint-disable-next-line no-restricted-syntax
     for await (const [name, entry] of entries) {
       if (entry.kind === "directory") {
-        const nested = await this.scanDirectory(entry, [...pathSegments, name]);
+        const directoryEntry = entry as FileSystemDirectoryHandle;
+        const nested = await this.scanDirectory(directoryEntry, [...pathSegments, name]);
         results.push(...nested);
         continue;
       }
 
       if (entry.kind === "file" && name.toLowerCase().endsWith(".json")) {
-        const file = await entry.getFile();
+        const fileEntry = entry as FileSystemFileHandle;
+        const file = await fileEntry.getFile();
         const content = await file.text();
         const definition = this.parseDefinition(content, [...pathSegments, name]);
         if (definition) {
