@@ -74,6 +74,13 @@ export class ContinueFolderService {
       console.info("[dcc-hub] using cached definition content", { id: definition.id });
       return definition.rawContent;
     }
+    console.info("[dcc-hub] cached content missing; refreshing definitions", { id: definition.id });
+    const refreshed = await this.aiAssets.refreshDefinitions();
+    const match = refreshed.find((item) => item.id === definition.id);
+    if (match?.rawContent) {
+      console.info("[dcc-hub] using refreshed definition content", { id: definition.id });
+      return match.rawContent;
+    }
     const source = await this.aiAssets.getDefinitionFile(definition);
     if (!source) {
       throw new Error("Unable to locate the source file. Load your ai_assets folder and try again.");
