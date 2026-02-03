@@ -405,8 +405,9 @@
       content: attr(data-tooltip);
       position: absolute;
       bottom: 130%;
-      right: 0;
-      width: 280px;
+      left: 0;
+      right: auto;
+      width: min(280px, calc(100vw - 32px));
       padding: 10px 12px;
       border-radius: 10px;
       background: var(--info-tooltip-bg);
@@ -494,12 +495,12 @@
       <div class="grid two">
         <div class="card">
           <h2>Definitions registry</h2>
-          <p class="muted">This list shows the definitions available, loaded from the shared folder’s .continue registry.</p>
+          <p class="muted">This list shows definitions loaded from the config repo clone, global Continue folder, your user .continue folder, and the current project.</p>
           <div class="button-row">
             <button id="btnLoadDefs">Load definitions</button>
             <span
               class="info-icon"
-              data-tooltip="Loads definitions from the shared folder’s .continue registry and populates the registry list below in DCC."
+              data-tooltip="Loads definitions from the config repo clone (.continue), global Continue folder, your user .continue folder, and the current project’s .continue folder."
               aria-label="Load definitions help"
             >i</span>
           </div>
