@@ -1,0 +1,29 @@
+[
+  {
+    "id": "models/claude-sonnet-4.5.json",
+    "title": "Claude Sonnet 4.5",
+    "description": "Hybrid reasoning model with superior intelligence for high-volume use cases.",
+    "provider": "Anthropic",
+    "type": "Model",
+    "tags": ["reasoning", "foundation"],
+    "sourcePath": "models/claude-sonnet-4.5.json"
+  },
+  {
+    "id": "rules/sanity-opinionated.json",
+    "title": "Sanity Opinionated",
+    "description": "Comprehensive TypeScript and React engineering guide focused on Sanity stacks.",
+    "provider": "Sanity",
+    "type": "Rule",
+    "tags": ["typescript", "frontend"],
+    "sourcePath": "rules/sanity-opinionated.json"
+  },
+  {
+    "id": "mcp/context7.json",
+    "title": "Context7 MCP",
+    "description": "Context7 MCP pulls up-to-date, version-specific documentation and code.",
+    "provider": "Upstash",
+    "type": "MCP Server",
+    "tags": ["docs", "tooling"],
+    "sourcePath": "mcp/context7.json"
+  }
+]
