@@ -67,6 +67,7 @@ export class AppComponent implements OnInit {
       this.definitions = await this.aiAssets.refreshDefinitions();
       this.statusMessage = `Refreshed ${this.definitions.length} definitions from ai_assets.`;
       this.loadSettings();
+      this.canRefresh = this.aiAssets.canRefresh();
       this.applyFilter();
     } catch (error) {
       this.statusMessage =
