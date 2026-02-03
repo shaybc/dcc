@@ -87,7 +87,7 @@ export class ContinueFolderService {
   private get apiBase(): string {
     const { hostname, port, protocol } = window.location;
     if (hostname === "localhost" && port === "4200") {
-      return `${protocol}//${hostname}:7331`;
+      return `http://${hostname}:7331`;
     }
     return `${protocol}//${hostname}${port ? `:${port}` : ""}`;
   }
