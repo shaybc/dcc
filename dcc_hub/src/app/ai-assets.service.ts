@@ -22,20 +22,67 @@ export class AiAssetsService {
   }
 
   async selectAndLoadDefinitions(): Promise<DefinitionCard[]> {
-    if (!("showDirectoryPicker" in window)) {
-      throw new Error("Directory picker is not supported in this browser.");
+    if ("showDirectoryPicker" in window) {
+      const directoryHandle = await (window as Window & { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> })
+        .showDirectoryPicker();
+      const definitions = await this.scanDirectory(directoryHandle, []);
+      const unique = this.deduplicate(definitions);
+      this.storage.setDefinitions(unique);
+      this.storage.setSettings({
+        lastLoadedAt: new Date().toISOString(),
+        lastSourceLabel: directoryHandle.name
+      });
+      return unique;
     }
 
-    const directoryHandle = await (window as Window & { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> })
-      .showDirectoryPicker();
-    const definitions = await this.scanDirectory(directoryHandle, []);
+    const { definitions, sourceLabel } = await this.selectDirectoryViaInput();
     const unique = this.deduplicate(definitions);
     this.storage.setDefinitions(unique);
     this.storage.setSettings({
       lastLoadedAt: new Date().toISOString(),
-      lastSourceLabel: directoryHandle.name
+      lastSourceLabel: sourceLabel
     });
     return unique;
+  }
+
+  private async selectDirectoryViaInput(): Promise<{ definitions: DefinitionCard[]; sourceLabel: string }> {
+    const input = document.createElement("input") as HTMLInputElement & { webkitdirectory?: boolean };
+    input.type = "file";
+    input.multiple = true;
+    input.accept = ".json";
+    input.webkitdirectory = true;
+
+    const files = await new Promise<FileList>((resolve, reject) => {
+      input.addEventListener("change", () => {
+        if (!input.files || input.files.length === 0) {
+          reject(new Error("No folder selected."));
+          return;
+        }
+        resolve(input.files);
+      });
+      input.addEventListener("cancel", () => reject(new Error("Folder selection was canceled.")));
+      input.click();
+    });
+
+    const parsed: DefinitionCard[] = [];
+    let sourceLabel = "Local folder";
+    for (const file of Array.from(files)) {
+      if (!file.name.toLowerCase().endsWith(".json")) {
+        continue;
+      }
+      const relativePath = file.webkitRelativePath || file.name;
+      const pathSegments = relativePath.split("/").filter(Boolean);
+      if (pathSegments.length > 0) {
+        sourceLabel = pathSegments[0];
+      }
+      const content = await file.text();
+      const definition = this.parseDefinition(content, pathSegments);
+      if (definition) {
+        parsed.push(definition);
+      }
+    }
+
+    return { definitions: parsed, sourceLabel };
   }
 
   private deduplicate(definitions: DefinitionCard[]): DefinitionCard[] {
