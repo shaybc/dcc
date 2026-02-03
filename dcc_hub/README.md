@@ -12,8 +12,12 @@ A standalone Angular SPA that mimics the Continue Hub experience. It reads Conti
 ```bash
 cd dcc_hub
 npm install
-npm start
+npm run build
+cd ..
+npm run dev
 ```
+
+The Express server serves the built Angular assets from `dcc_hub/dist/dcc-hub`, keeping the UI and API on the same origin (no proxy/CORS).
 
 ## Loading ai_assets
 

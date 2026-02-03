@@ -16,12 +16,25 @@ Local server + web UI to:
 copy .env.example .env
 npm install
 npm run db:migrate
+npm run build:ui
 npm start
 ```
 
 Then open:
 - UI: http://localhost:7331
 - API: http://localhost:7331/api
+
+If the server is running, open the UI in your browser at `http://localhost:7331`.
+
+## UI build workflow (same-origin)
+The Angular UI lives in `dcc_hub`. For local development without CORS or a proxy, build the UI and serve it from the Express server so both the UI and API share the same origin.
+
+```bash
+npm run build:ui
+npm run dev
+```
+
+This serves the built Angular assets from the Node server at the same base URL as `/api`.
 
 ## What works now
 - Run history stored locally in SQLite
@@ -86,5 +99,3 @@ These endpoints are specific to the Developer Control Center's functionality.
   - Lists all available workflows.
 - `POST /api/workflows/:id/run`
   - Starts a new run for a specific workflow.
-
-
