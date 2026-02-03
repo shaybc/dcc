@@ -1,4 +1,4 @@
-export type DefinitionType = "Model" | "Rule" | "MCP Server" | "Config" | "Unknown";
+export type DefinitionType = "Model" | "Rule" | "MCP Server" | "Config" | "Context" | "Unknown";
 
 export interface DefinitionCard {
   id: string;
@@ -8,6 +8,8 @@ export interface DefinitionCard {
   type: DefinitionType;
   tags: string[];
   sourcePath: string;
+  fileName?: string;
+  rawContent?: string;
 }
 
 export interface AiAssetsSettings {
