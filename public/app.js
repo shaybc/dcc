@@ -1,6 +1,8 @@
 const cardsContainer = document.getElementById("cards");
 const filtersContainer = document.getElementById("filters");
 const searchInput = document.getElementById("search");
+const clearSearchButton = document.getElementById("clearSearch");
+const searchField = document.querySelector(".search-field");
 const modal = document.getElementById("detailModal");
 const closeModal = document.getElementById("closeModal");
 const detailTitle = document.getElementById("detailTitle");
@@ -46,18 +48,61 @@ function statusLabel(status) {
   return "Available";
 }
 
+function filterIconSvg(type) {
+  if (type === "prompt" || type === "prompts") {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a4 4 0 0 1-4 4H7l-4 3 1.2-4.6A6 6 0 0 1 3 15a6 6 0 0 1 6-6h8a4 4 0 0 1 4 4z"></path>
+      </svg>
+    `;
+  }
+  if (type === "model" || type === "models") {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .66.26 1.3.73 1.77.47.47 1.1.73 1.77.73H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    `;
+  }
+  return `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="8"></circle>
+      <path d="M8 12h8"></path>
+      <path d="M12 8v8"></path>
+    </svg>
+  `;
+}
+
 function renderFilters() {
   const types = ["all", ...new Set(definitions.map((def) => def.type))];
   filtersContainer.innerHTML = "";
   types.forEach((type) => {
     const chip = document.createElement("button");
+    const label = type === "all" ? "All" : type;
     chip.className = "chip";
-    chip.textContent = type === "all" ? "All" : type;
+    chip.innerHTML = `
+      <span class="chip-icon">${filterIconSvg(type)}</span>
+      <span class="chip-label">${label}</span>
+      ${
+        type === activeFilter && type !== "all"
+          ? `<span class="chip-clear" role="button" aria-label="Clear filter">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </span>`
+          : ""
+      }
+    `;
     if (type === activeFilter) {
       chip.classList.add("active");
     }
-    chip.addEventListener("click", () => {
-      activeFilter = type;
+    chip.addEventListener("click", (event) => {
+      if (event.target.closest(".chip-clear")) {
+        activeFilter = "all";
+      } else {
+        activeFilter = type;
+      }
       renderFilters();
       renderCards();
     });
@@ -133,6 +178,14 @@ async function publishDefinition(id) {
 
 searchInput.addEventListener("input", (event) => {
   searchTerm = event.target.value.toLowerCase();
+  searchField.classList.toggle("has-value", searchTerm.length > 0);
+  renderCards();
+});
+
+clearSearchButton.addEventListener("click", () => {
+  searchTerm = "";
+  searchInput.value = "";
+  searchField.classList.remove("has-value");
   renderCards();
 });
 
