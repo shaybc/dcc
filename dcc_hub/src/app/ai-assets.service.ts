@@ -11,6 +11,8 @@ const TYPE_MAP: Array<{ match: RegExp; type: DefinitionType }> = [
 
 @Injectable({ providedIn: "root" })
 export class AiAssetsService {
+  private directoryHandle?: FileSystemDirectoryHandle;
+
   constructor(private storage: StorageService) {}
 
   loadCachedDefinitions(): DefinitionCard[] {
@@ -21,10 +23,15 @@ export class AiAssetsService {
     return this.storage.getSettings();
   }
 
+  canRefresh(): boolean {
+    return Boolean(this.directoryHandle);
+  }
+
   async selectAndLoadDefinitions(): Promise<DefinitionCard[]> {
     if ("showDirectoryPicker" in window) {
       const directoryHandle = await (window as Window & { showDirectoryPicker(): Promise<FileSystemDirectoryHandle> })
         .showDirectoryPicker();
+      this.directoryHandle = directoryHandle;
       const definitions = await this.scanDirectory(directoryHandle, []);
       const unique = this.deduplicate(definitions);
       this.storage.setDefinitions(unique);
@@ -35,12 +42,27 @@ export class AiAssetsService {
       return unique;
     }
 
+    this.directoryHandle = undefined;
     const { definitions, sourceLabel } = await this.selectDirectoryViaInput();
     const unique = this.deduplicate(definitions);
     this.storage.setDefinitions(unique);
     this.storage.setSettings({
       lastLoadedAt: new Date().toISOString(),
       lastSourceLabel: sourceLabel
+    });
+    return unique;
+  }
+
+  async refreshDefinitions(): Promise<DefinitionCard[]> {
+    if (!this.directoryHandle) {
+      throw new Error("Load your ai_assets folder to enable refresh.");
+    }
+    const definitions = await this.scanDirectory(this.directoryHandle, []);
+    const unique = this.deduplicate(definitions);
+    this.storage.setDefinitions(unique);
+    this.storage.setSettings({
+      lastLoadedAt: new Date().toISOString(),
+      lastSourceLabel: this.directoryHandle.name
     });
     return unique;
   }
