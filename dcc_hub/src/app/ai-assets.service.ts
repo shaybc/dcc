@@ -244,7 +244,8 @@ export class AiAssetsService {
         provider,
         type: (data["type"] as DefinitionType) ?? inferredType,
         tags,
-        sourcePath: pathSegments.join("/")
+        sourcePath: pathSegments.join("/"),
+        rawContent: content
       };
     } catch {
       return this.parseMarkdownDefinition(content, pathSegments, inferredType);
@@ -304,7 +305,8 @@ export class AiAssetsService {
       provider: "Continue",
       type: inferredType,
       tags: [],
-      sourcePath: pathSegments.join("/")
+      sourcePath: pathSegments.join("/"),
+      rawContent: content
     };
   }
 }

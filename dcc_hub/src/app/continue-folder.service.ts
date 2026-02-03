@@ -70,6 +70,10 @@ export class ContinueFolderService {
   }
 
   private async readDefinitionSource(definition: DefinitionCard): Promise<string> {
+    if (definition.rawContent) {
+      console.info("[dcc-hub] using cached definition content", { id: definition.id });
+      return definition.rawContent;
+    }
     const source = await this.aiAssets.getDefinitionFile(definition);
     if (!source) {
       throw new Error("Unable to locate the source file. Load your ai_assets folder and try again.");

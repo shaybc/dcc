@@ -17,6 +17,7 @@ export interface DefinitionCard {
   type: DefinitionType;
   tags: string[];
   sourcePath: string;
+  rawContent?: string;
 }
 
 export interface AiAssetsSettings {
