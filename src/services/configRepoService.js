@@ -74,7 +74,6 @@ export async function createDefinition({
   type,
   name,
   content,
-  createdBy = "",
   fileName,
   fileExtension,
   commitMessage
@@ -110,7 +109,6 @@ export async function createDefinition({
   }]);
   void content;
   void commitMessage;
-  void createdBy;
   void repoPath;
   void localPath;
 

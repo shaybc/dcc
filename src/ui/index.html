@@ -531,10 +531,6 @@
               <input id="defName" placeholder="e.g. Team onboarding prompt" />
             </div>
             <div class="field def-meta">
-              <label for="defAuthor">Author</label>
-              <input id="defAuthor" placeholder="you@company.com" />
-            </div>
-            <div class="field def-meta">
               <label for="defVersion">Version</label>
               <input id="defVersion" placeholder="0.0.1" />
             </div>
@@ -1151,7 +1147,6 @@
   const definitionForm = {
     typeSelect: document.getElementById("defType"),
     nameInput: document.getElementById("defName"),
-    authorInput: document.getElementById("defAuthor"),
     versionInput: document.getElementById("defVersion"),
     schemaInput: document.getElementById("defSchema"),
     itemsLabel: document.getElementById("defItemsLabel"),
@@ -1406,7 +1401,6 @@
   const buildDefinitionYaml = () => {
     const schema = getDefinitionSchema(definitionForm.typeSelect.value);
     const metaLines = [];
-    const author = definitionForm.authorInput.value.trim();
     const name = definitionForm.nameInput.value.trim();
     const version = definitionForm.versionInput.value.trim();
     const schemaValue = definitionForm.schemaInput.value.trim();
@@ -1414,7 +1408,6 @@
     if (name) metaLines.push(`name: ${formatYamlScalar(name)}`);
     if (version) metaLines.push(`version: ${formatYamlScalar(version)}`);
     if (schemaValue) metaLines.push(`schema: ${formatYamlScalar(schemaValue)}`);
-    if (author) metaLines.push(`author: ${formatYamlScalar(author)}`);
 
     if (schema.kind === "markdown") {
       return buildDefinitionMarkdown(schema);
@@ -1896,7 +1889,6 @@
     applyDefinitionLayout(resolvedSchema);
     definitionForm.itemsLabel.textContent = resolvedSchema.label;
     definitionForm.nameInput.value = meta.name || definitionForm.nameInput.value || "";
-    definitionForm.authorInput.value = meta.author || definitionForm.authorInput.value || "";
     definitionForm.versionInput.value = meta.version || definitionForm.versionInput.value || "";
     definitionForm.schemaInput.value = meta.schema || definitionForm.schemaInput.value || "";
 
@@ -1954,7 +1946,7 @@
       updateYamlFromForm();
     });
 
-    [definitionForm.nameInput, definitionForm.authorInput, definitionForm.versionInput, definitionForm.schemaInput]
+    [definitionForm.nameInput, definitionForm.versionInput, definitionForm.schemaInput]
       .forEach((input) => input.addEventListener("input", updateYamlFromForm));
 
     definitionForm.contentInput.addEventListener("input", updateFormFromYaml);
@@ -2028,7 +2020,6 @@
     const payload = {
       type: document.getElementById("defType").value,
       name: document.getElementById("defName").value,
-      createdBy: document.getElementById("defAuthor").value,
       fileExtension: document.getElementById("defFileExt").value,
       content: document.getElementById("defContent").value
     };
