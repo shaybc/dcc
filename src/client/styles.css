@@ -43,9 +43,30 @@ header {
   padding: 16px 24px;
 }
 
+header > .img-block {
+  grid-column: 1;
+  text-align: end;
+  padding-right: 10px;
+}
+
 header > .title-block {
   grid-column: 2;
   text-align: center;
+}
+
+header > .title-block > .main-title {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 0;
+  max-width: 800px;
+}
+
+header > .title-block > .main-title img {
+  padding-right: 10px;
+}
+
+header > .title-block > .main-title h1 {
+  align-self: anchor-center;
 }
 
 header h1 {
@@ -58,7 +79,7 @@ header h1 {
 header p {
   margin: 8px 0 0;
   color: var(--muted);
-  max-width: 540px;
+  max-width: 800px;
 }
 
 header .actions {
