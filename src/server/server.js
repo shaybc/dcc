@@ -1,15 +1,19 @@
-const path = require("path");
-const fs = require("fs");
-const fsp = fs.promises;
-const os = require("os");
-const { exec } = require("child_process");
-const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
-const matter = require("gray-matter");
+import openaiRouter from "./routes/openai.js";
 
+import path from "path";
+import fs from "fs";
+const fsp = fs.promises;
+import os from "os";
+import { exec } from "child_process";
+import express from "express";
+import sqliteUV from "sqlite3";
+import matter from "gray-matter";
+const __dirname = import.meta.dirname;
+
+const sqlite3 = sqliteUV.verbose();
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_PATH = process.env.DCC_DB_PATH || path.join(__dirname, "data", "dcc.sqlite");
+const DB_PATH = process.env.DCC_DB_PATH || path.join(__dirname, "../../data", "dcc.sqlite");
 const DATA_DIR = path.dirname(DB_PATH);
 
 if (!fs.existsSync(DATA_DIR)) {
@@ -45,7 +49,10 @@ db.serialize(() => {
 });
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "../client")));
+
+// OpenAI-compatible facade for Continue
+app.use("/v1", openaiRouter);
 
 function runCommand(command, options = {}) {
   return new Promise((resolve, reject) => {
@@ -467,7 +474,7 @@ app.post("/api/definitions/:id/remove", async (req, res) => {
 });
 
 app.get("/settings", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "settings.html"));
+  res.sendFile(path.join(__dirname, "../client", "settings.html"));
 });
 
 app.listen(PORT, () => {
