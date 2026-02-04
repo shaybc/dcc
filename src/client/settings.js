@@ -21,6 +21,22 @@ function setDevRootsNotice(message, isError = false) {
   devRootsNotice.style.color = isError ? "#dc2626" : "#6b7280";
 }
 
+function deriveRootPathFromFile(file, relativePath, folderName) {
+  if (file?.path) {
+    const normalizedPath = String(file.path).replace(/\\/g, "/");
+    const normalizedRelative = String(relativePath || "").replace(/\\/g, "/");
+    if (normalizedRelative && normalizedPath.endsWith(normalizedRelative)) {
+      const base = normalizedPath.slice(0, normalizedPath.length - normalizedRelative.length);
+      return `${base.replace(/\/$/, "")}/${folderName}`;
+    }
+    const lastSlash = normalizedPath.lastIndexOf("/");
+    if (lastSlash >= 0) {
+      return normalizedPath.slice(0, lastSlash);
+    }
+  }
+  return folderName;
+}
+
 function createDevRootRow(value = "") {
   const row = document.createElement("tr");
   const pathCell = document.createElement("td");
@@ -35,9 +51,25 @@ function createDevRootRow(value = "") {
   pickButton.type = "button";
   pickButton.className = "btn";
   pickButton.textContent = "Pick folder";
-  pickButton.addEventListener("click", () => {
+  pickButton.addEventListener("click", async () => {
     devRootPicker.dataset.targetRow = String(Date.now());
     row.dataset.pickerId = devRootPicker.dataset.targetRow;
+    if (window.showDirectoryPicker) {
+      try {
+        const handle = await window.showDirectoryPicker();
+        if (handle?.name) {
+          input.value = handle.name;
+          setDevRootsNotice(
+            "Selected folder name. If the full path is required, please edit the value manually."
+          );
+        }
+        return;
+      } catch (error) {
+        if (error?.name !== "AbortError") {
+          setDevRootsNotice("Folder picker failed. Please enter the path manually.", true);
+        }
+      }
+    }
     devRootPicker.value = "";
     devRootPicker.click();
   });
@@ -158,10 +190,11 @@ devRootPicker.addEventListener("change", () => {
   );
   const relativePath = file.webkitRelativePath || "";
   const folderName = relativePath.split("/")[0] || file.name;
+  const derivedPath = deriveRootPathFromFile(file, relativePath, folderName);
   if (targetRow) {
     const input = targetRow.querySelector("input");
     if (input) {
-      input.value = folderName;
+      input.value = derivedPath;
     }
   }
 });
