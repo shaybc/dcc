@@ -23,47 +23,15 @@ function setDevRootsNotice(message, isError = false) {
 function createDevRootRow(value = "") {
   const row = document.createElement("tr");
   const pathCell = document.createElement("td");
-  const actionsCell = document.createElement("td");
 
   const input = document.createElement("input");
   input.type = "text";
   input.value = value;
   input.placeholder = "/path/to/project/root";
 
-  const pickButton = document.createElement("button");
-  pickButton.type = "button";
-  pickButton.className = "btn";
-  pickButton.textContent = "Pick folder";
-  pickButton.addEventListener("click", async () => {
-    setDevRootsNotice("Opening folder picker...");
-    const response = await fetch("/api/select-folder", { method: "POST" });
-    if (!response.ok) {
-      setDevRootsNotice("Folder picker failed. Please enter the path manually.", true);
-      return;
-    }
-    const data = await response.json();
-    if (data.path) {
-      input.value = data.path;
-      setDevRootsNotice("Folder selected.");
-    } else {
-      setDevRootsNotice("No folder selected.", true);
-    }
-  });
-
-  const removeButton = document.createElement("button");
-  removeButton.type = "button";
-  removeButton.className = "btn";
-  removeButton.textContent = "Remove";
-  removeButton.addEventListener("click", () => {
-    row.remove();
-  });
-
   pathCell.appendChild(input);
-  actionsCell.appendChild(pickButton);
-  actionsCell.appendChild(removeButton);
 
   row.appendChild(pathCell);
-  row.appendChild(actionsCell);
   return row;
 }
 

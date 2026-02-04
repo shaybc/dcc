@@ -373,31 +373,6 @@ async function refreshDevProjects(roots) {
   return projects;
 }
 
-async function promptForFolder() {
-  const platform = process.platform;
-  let command = "";
-
-  if (platform === "darwin") {
-    command = `osascript -e 'POSIX path of (choose folder with prompt "Select folder")'`;
-  } else if (platform === "win32") {
-    command =
-      'powershell -NoProfile -Command "$folder = (New-Object -ComObject Shell.Application).BrowseForFolder(0, \\"Select folder\\", 0); if ($folder) { $folder.Self.Path }"';
-  } else {
-    command = "zenity --file-selection --directory";
-  }
-
-  try {
-    const stdout = await runCommand(command);
-    const trimmed = stdout.trim();
-    if (!trimmed) {
-      return "";
-    }
-    return trimmed.replace(/[/\\\\]$/, "");
-  } catch (error) {
-    return "";
-  }
-}
-
 app.get("/api/settings", async (req, res) => {
   try {
     const repoUrl = await getSetting("repoUrl");
@@ -445,15 +420,6 @@ app.post("/api/dev-project-roots", async (req, res) => {
     }
     const projects = await refreshDevProjects(roots.map((root) => String(root || "").trim()).filter(Boolean));
     res.json({ ok: true, projects });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post("/api/select-folder", async (req, res) => {
-  try {
-    const selectedPath = await promptForFolder();
-    res.json({ path: selectedPath });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
