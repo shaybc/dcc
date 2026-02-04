@@ -449,6 +449,56 @@ main {
   box-shadow: var(--shadow);
 }
 
+.settings-section {
+  margin-top: 32px;
+  background: var(--card);
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.settings-section h2 {
+  margin-top: 0;
+}
+
+.helper-text {
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.settings-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.settings-table th,
+.settings-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.settings-table td:last-child {
+  width: 140px;
+}
+
+.settings-table input {
+  margin-bottom: 0;
+}
+
+.settings-table .btn + .btn {
+  margin-left: 8px;
+}
+
+.table-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .settings-form label {
   display: block;
   margin-bottom: 8px;

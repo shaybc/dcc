@@ -46,6 +46,18 @@ db.serialize(() => {
       updatedAt TEXT
     )`
   );
+  db.run(
+    `CREATE TABLE IF NOT EXISTS dev_project_roots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT UNIQUE
+    )`
+  );
+  db.run(
+    `CREATE TABLE IF NOT EXISTS dev_projects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT UNIQUE
+    )`
+  );
 });
 
 app.use(express.json());
@@ -91,6 +103,30 @@ function setSetting(key, value) {
         resolve();
       }
     );
+  });
+}
+
+function runDb(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(this);
+    });
+  });
+}
+
+function allDb(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows);
+    });
   });
 }
 
@@ -280,6 +316,63 @@ async function loadDefinitions() {
   return { repoCount: repoFiles.length, teamCount: teamFiles.length };
 }
 
+async function scanDevProjects(roots) {
+  const projects = new Set();
+
+  async function scanDir(dir) {
+    let stat;
+    try {
+      stat = await fsp.stat(dir);
+    } catch (error) {
+      return;
+    }
+    if (!stat.isDirectory()) {
+      return;
+    }
+
+    const gitPath = path.join(dir, ".git");
+    try {
+      const gitStat = await fsp.stat(gitPath);
+      if (gitStat.isDirectory()) {
+        projects.add(dir);
+        return;
+      }
+    } catch (error) {
+      // ignore missing .git
+    }
+
+    let entries = [];
+    try {
+      entries = await fsp.readdir(dir, { withFileTypes: true });
+    } catch (error) {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        await scanDir(path.join(dir, entry.name));
+      }
+    }
+  }
+
+  for (const root of roots) {
+    if (!root) {
+      continue;
+    }
+    await scanDir(root);
+  }
+
+  return Array.from(projects).sort();
+}
+
+async function refreshDevProjects(roots) {
+  const projects = await scanDevProjects(roots);
+  await runDb("DELETE FROM dev_projects");
+  for (const project of projects) {
+    await runDb("INSERT OR IGNORE INTO dev_projects (path) VALUES (?)", [project]);
+  }
+  return projects;
+}
+
 app.get("/api/settings", async (req, res) => {
   try {
     const repoUrl = await getSetting("repoUrl");
@@ -300,6 +393,42 @@ app.post("/api/settings", async (req, res) => {
       await setSetting("repoPath", repoPath);
     }
     res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/dev-project-roots", async (req, res) => {
+  try {
+    const rows = await allDb("SELECT id, path FROM dev_project_roots ORDER BY path ASC");
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/dev-project-roots", async (req, res) => {
+  try {
+    const roots = Array.isArray(req.body?.roots) ? req.body.roots : [];
+    await runDb("DELETE FROM dev_project_roots");
+    for (const root of roots) {
+      const trimmed = String(root || "").trim();
+      if (!trimmed) {
+        continue;
+      }
+      await runDb("INSERT OR IGNORE INTO dev_project_roots (path) VALUES (?)", [trimmed]);
+    }
+    const projects = await refreshDevProjects(roots.map((root) => String(root || "").trim()).filter(Boolean));
+    res.json({ ok: true, projects });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/dev-projects", async (req, res) => {
+  try {
+    const rows = await allDb("SELECT id, path FROM dev_projects ORDER BY path ASC");
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
