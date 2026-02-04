@@ -9,7 +9,6 @@ const devProjectsTable = document.getElementById("devProjectsTable");
 const addDevRootButton = document.getElementById("addDevRoot");
 const saveDevRootsButton = document.getElementById("saveDevRoots");
 const devRootsNotice = document.getElementById("devRootsNotice");
-const devRootPicker = document.getElementById("devRootPicker");
 
 function setNotice(message, isError = false) {
   notice.textContent = message;
@@ -19,22 +18,6 @@ function setNotice(message, isError = false) {
 function setDevRootsNotice(message, isError = false) {
   devRootsNotice.textContent = message;
   devRootsNotice.style.color = isError ? "#dc2626" : "#6b7280";
-}
-
-function deriveRootPathFromFile(file, relativePath, folderName) {
-  if (file?.path) {
-    const normalizedPath = String(file.path).replace(/\\/g, "/");
-    const normalizedRelative = String(relativePath || "").replace(/\\/g, "/");
-    if (normalizedRelative && normalizedPath.endsWith(normalizedRelative)) {
-      const base = normalizedPath.slice(0, normalizedPath.length - normalizedRelative.length);
-      return `${base.replace(/\/$/, "")}/${folderName}`;
-    }
-    const lastSlash = normalizedPath.lastIndexOf("/");
-    if (lastSlash >= 0) {
-      return normalizedPath.slice(0, lastSlash);
-    }
-  }
-  return folderName;
 }
 
 function createDevRootRow(value = "") {
@@ -52,26 +35,19 @@ function createDevRootRow(value = "") {
   pickButton.className = "btn";
   pickButton.textContent = "Pick folder";
   pickButton.addEventListener("click", async () => {
-    devRootPicker.dataset.targetRow = String(Date.now());
-    row.dataset.pickerId = devRootPicker.dataset.targetRow;
-    if (window.showDirectoryPicker) {
-      try {
-        const handle = await window.showDirectoryPicker();
-        if (handle?.name) {
-          input.value = handle.name;
-          setDevRootsNotice(
-            "Selected folder name. If the full path is required, please edit the value manually."
-          );
-        }
-        return;
-      } catch (error) {
-        if (error?.name !== "AbortError") {
-          setDevRootsNotice("Folder picker failed. Please enter the path manually.", true);
-        }
-      }
+    setDevRootsNotice("Opening folder picker...");
+    const response = await fetch("/api/select-folder", { method: "POST" });
+    if (!response.ok) {
+      setDevRootsNotice("Folder picker failed. Please enter the path manually.", true);
+      return;
     }
-    devRootPicker.value = "";
-    devRootPicker.click();
+    const data = await response.json();
+    if (data.path) {
+      input.value = data.path;
+      setDevRootsNotice("Folder selected.");
+    } else {
+      setDevRootsNotice("No folder selected.", true);
+    }
   });
 
   const removeButton = document.createElement("button");
@@ -176,26 +152,6 @@ saveDevRootsButton.addEventListener("click", async () => {
   } else {
     const data = await response.json();
     setDevRootsNotice(data.error || "Failed to save roots.", true);
-  }
-});
-
-devRootPicker.addEventListener("change", () => {
-  const [file] = devRootPicker.files || [];
-  if (!file) {
-    return;
-  }
-  const rowId = devRootPicker.dataset.targetRow;
-  const targetRow = Array.from(devRootsTable.querySelectorAll("tr")).find(
-    (row) => row.dataset.pickerId === rowId
-  );
-  const relativePath = file.webkitRelativePath || "";
-  const folderName = relativePath.split("/")[0] || file.name;
-  const derivedPath = deriveRootPathFromFile(file, relativePath, folderName);
-  if (targetRow) {
-    const input = targetRow.querySelector("input");
-    if (input) {
-      input.value = derivedPath;
-    }
   }
 });
 
