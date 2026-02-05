@@ -387,6 +387,10 @@ main {
   overflow: hidden;
 }
 
+.card-in-project {
+  background: #2f333b;
+}
+
 .card:hover {
   transform: translateY(-2px);
   border-color: rgba(139, 92, 246, 0.6);

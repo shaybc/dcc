@@ -222,6 +222,9 @@ function renderCards() {
   filtered.forEach((def) => {
     const card = document.createElement("div");
     card.className = "card";
+    if (def.status === "saved" && devProjectInput.value.trim()) {
+      card.classList.add("card-in-project");
+    }
     card.innerHTML = `
       <div class="icon-btn" data-action>
         ${iconSvg(def.status)}
