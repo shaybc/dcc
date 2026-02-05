@@ -182,15 +182,13 @@ async function parseDefinition(filePath) {
   };
 }
 
-function getTeamRoot(devProjectPath) {
-  if (!devProjectPath) {
-    return null;
-  }
-  return path.join(devProjectPath, ".continue", "team");
+function getTeamRoot() {
+  return path.join(os.homedir(), ".continue", "team");
 }
 
-async function collectTeamFiles(teamRoot) {
-  if (!teamRoot || !fs.existsSync(teamRoot)) {
+async function collectTeamFiles() {
+  const teamRoot = getTeamRoot();
+  if (!fs.existsSync(teamRoot)) {
     return [];
   }
   return walkFiles(teamRoot);
@@ -203,9 +201,7 @@ async function loadDefinitions() {
   }
 
   const repoFiles = await walkFiles(repoPath);
-  const currentDevProject = await getSetting("currentDevProject");
-  const teamRoot = getTeamRoot(currentDevProject);
-  const teamFiles = await collectTeamFiles(teamRoot);
+  const teamFiles = await collectTeamFiles();
 
   const teamKeyMap = new Set();
   for (const file of teamFiles) {
@@ -526,12 +522,7 @@ app.post("/api/definitions/:id/save", async (req, res) => {
       return;
     }
     try {
-      const currentDevProject = await getSetting("currentDevProject");
-      if (!currentDevProject) {
-        res.status(400).json({ error: "No current dev project selected." });
-        return;
-      }
-      const teamRoot = getTeamRoot(currentDevProject);
+      const teamRoot = getTeamRoot();
       const destDir = path.join(teamRoot, row.type || "misc");
       await fsp.mkdir(destDir, { recursive: true });
       const destPath = path.join(destDir, path.basename(row.filePath));
@@ -607,12 +598,7 @@ app.post("/api/definitions/:id/remove", async (req, res) => {
       return;
     }
     try {
-      const currentDevProject = await getSetting("currentDevProject");
-      if (!currentDevProject) {
-        res.status(400).json({ error: "No current dev project selected." });
-        return;
-      }
-      const teamRoot = getTeamRoot(currentDevProject);
+      const teamRoot = getTeamRoot();
       const destDir = path.join(teamRoot, row.type || "misc");
       const destPath = path.join(destDir, path.basename(row.filePath));
       if (fs.existsSync(destPath)) {
