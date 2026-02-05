@@ -318,8 +318,15 @@ function getProjectDestinationInfo(projectPath, type, filePath) {
   return { destDir, destPath: path.join(destDir, fileName), normalizedType };
 }
 
+function sanitizeYamlHeaderScalars(raw) {
+  return String(raw || "").replace(
+    /^(\s*)(name|version|schema|description)\s*:\s*(@[^#\r\n]*)(\s*(?:#.*)?)$/gim,
+    (_, indent, key, value, suffix) => `${indent}${key}: "${String(value).trim()}"${suffix || ""}`
+  );
+}
+
 function parseContextProviders(content) {
-  const parsed = YAML.parse(content);
+  const parsed = YAML.parse(sanitizeYamlHeaderScalars(content));
   if (!parsed) {
     return [];
   }
@@ -348,11 +355,24 @@ function parseContextProviders(content) {
 }
 
 async function upsertContextProviders(projectPath, content) {
-  const configPath = path.join(projectPath, ".continue", "config.yaml");
+  const configPath = path.join(projectPath, ".continue", "agents", "team", "project_config.yaml");
+  console.log(`[context-save] target config path: ${configPath}`);
   await fsp.mkdir(path.dirname(configPath), { recursive: true });
 
+  const configExists = fs.existsSync(configPath);
+  console.log(`[context-save] config exists before save: ${configExists}`);
+  let createdConfig = false;
   let configDoc = {};
-  if (fs.existsSync(configPath)) {
+  if (!configExists) {
+    configDoc = {
+      name: "Team Project Config",
+      version: "1.0.0",
+      schema: "v1"
+    };
+    await fsp.writeFile(configPath, YAML.stringify(configDoc), "utf8");
+    createdConfig = true;
+    console.log(`[context-save] created config file with header: ${configPath}`);
+  } else {
     const existingRaw = await fsp.readFile(configPath, "utf8");
     configDoc = YAML.parse(existingRaw) || {};
   }
@@ -360,7 +380,14 @@ async function upsertContextProviders(projectPath, content) {
     configDoc.context = [];
   }
 
-  const providersToAdd = parseContextProviders(content);
+  let providersToAdd = [];
+  try {
+    providersToAdd = parseContextProviders(content);
+    console.log(`[context-save] parsed providers to add: ${providersToAdd.length}`);
+  } catch (error) {
+    console.error("[context-save] failed to parse provider yaml", error);
+    throw error;
+  }
   const existingProviders = new Set(
     configDoc.context
       .filter((item) => item && typeof item === "object" && item.provider)
@@ -380,12 +407,17 @@ async function upsertContextProviders(projectPath, content) {
 
   if (changed) {
     await fsp.writeFile(configPath, YAML.stringify(configDoc), "utf8");
+    console.log(`[context-save] wrote config file: ${configPath}`);
+  } else if (!createdConfig) {
+    console.log("[context-save] no changes detected, skipping file write");
   }
 }
 
 async function removeContextProviders(projectPath, content) {
-  const configPath = path.join(projectPath, ".continue", "config.yaml");
+  const configPath = path.join(projectPath, ".continue", "agents", "team", "project_config.yaml");
+  console.log(`[context-remove] target config path: ${configPath}`);
   if (!fs.existsSync(configPath)) {
+    console.log("[context-remove] config file not found, skipping remove");
     return;
   }
   const existingRaw = await fsp.readFile(configPath, "utf8");
@@ -758,8 +790,9 @@ app.post("/api/definitions/:id/save", async (req, res) => {
       res.status(404).json({ error: "Definition not found." });
       return;
     }
+    let currentDevProject = null;
     try {
-      const currentDevProject = await getSetting("currentDevProject");
+      currentDevProject = await getSetting("currentDevProject");
       if (!currentDevProject) {
         res.status(400).json({ error: "Current dev project not selected." });
         return;
@@ -767,6 +800,7 @@ app.post("/api/definitions/:id/save", async (req, res) => {
 
       const normalizedType = normalizeDefinitionType(row.type);
       if (normalizedType === "context") {
+        console.log(`[definition-save] saving context definition id=${row.id} key=${row.key} project=${currentDevProject}`);
         await upsertContextProviders(currentDevProject, row.content || "");
       } else {
         const destinationInfo = getProjectDestinationInfo(currentDevProject, row.type, row.filePath);
@@ -794,6 +828,13 @@ app.post("/api/definitions/:id/save", async (req, res) => {
         }
       );
     } catch (error) {
+      console.error("[definition-save] failed to save definition", {
+        id: row.id,
+        key: row.key,
+        type: row.type,
+        project: currentDevProject,
+        error
+      });
       res.status(500).json({ error: error.message });
     }
   });
@@ -852,8 +893,9 @@ app.post("/api/definitions/:id/remove", async (req, res) => {
       res.status(404).json({ error: "Definition not found." });
       return;
     }
+    let currentDevProject = null;
     try {
-      const currentDevProject = await getSetting("currentDevProject");
+      currentDevProject = await getSetting("currentDevProject");
       if (!currentDevProject) {
         res.status(400).json({ error: "Current dev project not selected." });
         return;
