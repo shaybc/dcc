@@ -186,6 +186,12 @@ function parseYamlHeaderFields(raw) {
     if (!YAML_HEADER_FIELDS.has(key)) {
       continue;
     }
+
+    const trimmedValue = value.trim();
+    if (["|", ">", "|-", ">-", "|+", ">+"].includes(trimmedValue)) {
+      continue;
+    }
+
     const unquoted = value.replace(/^(["'])(.*)\1$/, "$2").trim();
     headers[key] = unquoted;
   }
