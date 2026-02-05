@@ -19,6 +19,22 @@ let activeFilter = "all";
 let searchTerm = "";
 let devProjects = [];
 
+const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
+const FILTER_TYPE_SET = new Set(FILTER_TYPES);
+
+function normalizeFilterType(type) {
+  const normalized = String(type || "").trim().toLowerCase();
+  if (["model", "models"].includes(normalized)) return "models";
+  if (["mcp server", "mcp servers", "mcpserver", "mcpservers"].includes(normalized)) return "mcp servers";
+  if (["rule", "rules"].includes(normalized)) return "rules";
+  if (["prompt", "prompts"].includes(normalized)) return "prompts";
+  if (["agent", "agents"].includes(normalized)) return "agents";
+  if (["context", "contexts"].includes(normalized)) return "context";
+  if (["workflow", "workflows"].includes(normalized)) return "workflows";
+  if (["user", "users", "org", "orgs", "ai_assets", "ai assets"].includes(normalized)) return "unknown";
+  return FILTER_TYPE_SET.has(normalized) ? normalized : "unknown";
+}
+
 function iconSvg(status) {
   if (status === "saved") {
     return `
@@ -154,10 +170,9 @@ function filterIconSvg(type) {
 }
 
 function renderFilters() {
-  const knownTypes = ["models", "mcp servers", "rules", "prompts", "agents", "users", "orgs"];
-  const definitionTypes = definitions.map((def) => def.type);
+  const definitionTypes = definitions.map((def) => normalizeFilterType(def.type));
   const uniqueTypes = new Set(
-    [...knownTypes, ...definitionTypes]
+    [...FILTER_TYPES, ...definitionTypes]
       .filter(Boolean)
       .map((type) => String(type).toLowerCase())
   );
@@ -292,7 +307,11 @@ async function setCurrentDevProject(path) {
 
 async function fetchDefinitions() {
   const response = await fetch("/api/definitions");
-  definitions = await response.json();
+  const rawDefinitions = await response.json();
+  definitions = rawDefinitions.map((definition) => ({
+    ...definition,
+    type: normalizeFilterType(definition.type)
+  }));
   renderFilters();
   renderCards();
 }
