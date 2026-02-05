@@ -174,30 +174,66 @@ function parseYamlHeaderFields(raw) {
   const normalized = raw.replace(/^\uFEFF/, "");
   const lines = normalized.split(/\r?\n/);
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
     if (!line.trim()) {
       break;
     }
-    const match = line.match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/);
+
+    const match = line.match(/^(\s*)([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/);
     if (!match) {
       continue;
     }
-    const [, key, value] = match;
+
+    const [, indent, key, value] = match;
     if (!YAML_HEADER_FIELDS.has(key)) {
       continue;
     }
 
     const trimmedValue = value.trim();
     if (["|", ">", "|-", ">-", "|+", ">+"].includes(trimmedValue)) {
+      const blockLines = [];
+      const blockIndent = indent.length;
+      let contentIndent = null;
+
+      for (let next = i + 1; next < lines.length; next += 1) {
+        const nextLine = lines[next];
+        if (!nextLine.trim()) {
+          blockLines.push("");
+          continue;
+        }
+
+        const nextIndent = (nextLine.match(/^\s*/) || [""])[0].length;
+        if (nextIndent <= blockIndent) {
+          i = next - 1;
+          break;
+        }
+
+        if (contentIndent === null) {
+          contentIndent = nextIndent;
+        }
+
+        blockLines.push(nextLine.slice(contentIndent));
+
+        if (next === lines.length - 1) {
+          i = next;
+        }
+      }
+
+      const blockValue = blockLines.join("\n").trim();
+      if (blockValue) {
+        headers[key] = blockValue;
+      }
       continue;
     }
 
-    const unquoted = value.replace(/^(["'])(.*)\1$/, "$2").trim();
+    const unquoted = value.replace(/^(\"|\')(.*)\1$/, "$2").trim();
     headers[key] = unquoted;
   }
 
   return headers;
 }
+
 
 async function parseDefinition(filePath) {
   const raw = await fsp.readFile(filePath, "utf8");
