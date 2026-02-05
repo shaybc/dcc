@@ -167,13 +167,28 @@ function buildKey(type, filePath) {
   return `${type}/${path.basename(filePath)}`;
 }
 
+const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description"]);
+
 async function parseDefinition(filePath) {
   const raw = await fsp.readFile(filePath, "utf8");
   let parsed = { data: {}, content: raw };
-  try {
-    parsed = matter(raw);
-  } catch (error) {
-    parsed = { data: {}, content: raw };
+  const ext = path.extname(filePath).toLowerCase();
+
+  if ([".yml", ".yaml"].includes(ext)) {
+    try {
+      const yamlData = YAML.parse(raw);
+      if (yamlData && typeof yamlData === "object" && !Array.isArray(yamlData)) {
+        parsed = { data: yamlData, content: raw };
+      }
+    } catch (error) {
+      parsed = { data: {}, content: raw };
+    }
+  } else {
+    try {
+      parsed = matter(raw);
+    } catch (error) {
+      parsed = { data: {}, content: raw };
+    }
   }
   const type = deriveType(filePath, parsed.data);
   const name = parsed.data.name || path.basename(filePath);
@@ -233,14 +248,26 @@ function parseContextProviders(content) {
   if (!parsed) {
     return [];
   }
+
+  const stripYamlHeaders = (providerDef) => {
+    if (!providerDef || typeof providerDef !== "object") {
+      return providerDef;
+    }
+    return Object.fromEntries(Object.entries(providerDef).filter(([key]) => !YAML_HEADER_FIELDS.has(key)));
+  };
+
   if (Array.isArray(parsed)) {
-    return parsed.filter((item) => item && typeof item === "object" && item.provider);
+    return parsed
+      .map(stripYamlHeaders)
+      .filter((item) => item && typeof item === "object" && item.provider);
   }
   if (parsed.context && Array.isArray(parsed.context)) {
-    return parsed.context.filter((item) => item && typeof item === "object" && item.provider);
+    return parsed.context
+      .map(stripYamlHeaders)
+      .filter((item) => item && typeof item === "object" && item.provider);
   }
   if (parsed.provider) {
-    return [parsed];
+    return [stripYamlHeaders(parsed)].filter((item) => item && item.provider);
   }
   return [];
 }
