@@ -398,7 +398,7 @@ async function upsertContextProviders(projectPath, content) {
     changed = true;
   }
 
-  if (changed) {
+  if (!configExists || changed) {
     await fsp.writeFile(configPath, YAML.stringify(configDoc), "utf8");
     console.log(`[context-save] wrote config file: ${configPath}`);
   } else if (!createdConfig) {
