@@ -307,12 +307,14 @@ devProjectInput.addEventListener("change", async (event) => {
   const selected = event.target.value.trim();
   if (!selected) {
     await setCurrentDevProject("");
+    await fetchDefinitions();
     return;
   }
   if (devProjects.length > 0 && !devProjects.includes(selected)) {
     return;
   }
   await setCurrentDevProject(selected);
+  await fetchDefinitions();
 });
 
 function closeFilterMenu() {
@@ -348,6 +350,5 @@ modal.addEventListener("click", (event) => {
   }
 });
 
-fetchDefinitions();
 loadDevProjects();
-loadCurrentDevProject();
+loadCurrentDevProject().then(fetchDefinitions);
