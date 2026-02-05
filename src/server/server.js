@@ -354,6 +354,7 @@ async function upsertContextProviders(projectPath, content) {
 
   const configExists = fs.existsSync(configPath);
   console.log(`[context-save] config exists before save: ${configExists}`);
+  let createdConfig = false;
   let configDoc = {};
   if (!configExists) {
     configDoc = {
@@ -361,6 +362,9 @@ async function upsertContextProviders(projectPath, content) {
       version: "1.0.0",
       schema: "v1"
     };
+    await fsp.writeFile(configPath, YAML.stringify(configDoc), "utf8");
+    createdConfig = true;
+    console.log(`[context-save] created config file with header: ${configPath}`);
   } else {
     const existingRaw = await fsp.readFile(configPath, "utf8");
     configDoc = YAML.parse(existingRaw) || {};
@@ -369,8 +373,14 @@ async function upsertContextProviders(projectPath, content) {
     configDoc.context = [];
   }
 
-  const providersToAdd = parseContextProviders(content);
-  console.log(`[context-save] parsed providers to add: ${providersToAdd.length}`);
+  let providersToAdd = [];
+  try {
+    providersToAdd = parseContextProviders(content);
+    console.log(`[context-save] parsed providers to add: ${providersToAdd.length}`);
+  } catch (error) {
+    console.error("[context-save] failed to parse provider yaml", error);
+    throw error;
+  }
   const existingProviders = new Set(
     configDoc.context
       .filter((item) => item && typeof item === "object" && item.provider)
@@ -391,7 +401,7 @@ async function upsertContextProviders(projectPath, content) {
   if (!configExists || changed) {
     await fsp.writeFile(configPath, YAML.stringify(configDoc), "utf8");
     console.log(`[context-save] wrote config file: ${configPath}`);
-  } else {
+  } else if (!createdConfig) {
     console.log("[context-save] no changes detected, skipping file write");
   }
 }
@@ -810,6 +820,13 @@ app.post("/api/definitions/:id/save", async (req, res) => {
         }
       );
     } catch (error) {
+      console.error("[definition-save] failed to save definition", {
+        id: row.id,
+        key: row.key,
+        type: row.type,
+        project: currentDevProject,
+        error
+      });
       res.status(500).json({ error: error.message });
     }
   });
