@@ -351,15 +351,15 @@ async function upsertContextProviders(projectPath, content) {
   const configPath = path.join(projectPath, ".continue", "agents", "team", "project_config.yaml");
   await fsp.mkdir(path.dirname(configPath), { recursive: true });
 
+  const configExists = fs.existsSync(configPath);
   let configDoc = {};
-  if (!fs.existsSync(configPath)) {
+  if (!configExists) {
     configDoc = {
       name: "Team Project Config",
       version: "1.0.0",
       schema: "v1"
     };
-  }
-  if (fs.existsSync(configPath)) {
+  } else {
     const existingRaw = await fsp.readFile(configPath, "utf8");
     configDoc = YAML.parse(existingRaw) || {};
   }
@@ -385,7 +385,7 @@ async function upsertContextProviders(projectPath, content) {
     changed = true;
   }
 
-  if (changed) {
+  if (!configExists || changed) {
     await fsp.writeFile(configPath, YAML.stringify(configDoc), "utf8");
   }
 }
