@@ -318,8 +318,15 @@ function getProjectDestinationInfo(projectPath, type, filePath) {
   return { destDir, destPath: path.join(destDir, fileName), normalizedType };
 }
 
+function sanitizeYamlHeaderScalars(raw) {
+  return String(raw || "").replace(
+    /^(\s*)(name|version|schema|description)\s*:\s*(@[^#\r\n]*)(\s*(?:#.*)?)$/gim,
+    (_, indent, key, value, suffix) => `${indent}${key}: "${String(value).trim()}"${suffix || ""}`
+  );
+}
+
 function parseContextProviders(content) {
-  const parsed = YAML.parse(content);
+  const parsed = YAML.parse(sanitizeYamlHeaderScalars(content));
   if (!parsed) {
     return [];
   }
@@ -783,8 +790,9 @@ app.post("/api/definitions/:id/save", async (req, res) => {
       res.status(404).json({ error: "Definition not found." });
       return;
     }
+    let currentDevProject = null;
     try {
-      const currentDevProject = await getSetting("currentDevProject");
+      currentDevProject = await getSetting("currentDevProject");
       if (!currentDevProject) {
         res.status(400).json({ error: "Current dev project not selected." });
         return;
@@ -885,8 +893,9 @@ app.post("/api/definitions/:id/remove", async (req, res) => {
       res.status(404).json({ error: "Definition not found." });
       return;
     }
+    let currentDevProject = null;
     try {
-      const currentDevProject = await getSetting("currentDevProject");
+      currentDevProject = await getSetting("currentDevProject");
       if (!currentDevProject) {
         res.status(400).json({ error: "Current dev project not selected." });
         return;
