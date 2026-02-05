@@ -169,20 +169,53 @@ function buildKey(type, filePath) {
 
 const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description"]);
 
+function parseYamlHeaderFields(raw) {
+  const headers = {};
+  const normalized = raw.replace(/^\uFEFF/, "");
+  const lines = normalized.split(/\r?\n/);
+
+  for (const line of lines) {
+    if (!line.trim()) {
+      break;
+    }
+    const match = line.match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/);
+    if (!match) {
+      continue;
+    }
+    const [, key, value] = match;
+    if (!YAML_HEADER_FIELDS.has(key)) {
+      continue;
+    }
+    const unquoted = value.replace(/^(["'])(.*)\1$/, "$2").trim();
+    headers[key] = unquoted;
+  }
+
+  return headers;
+}
+
 async function parseDefinition(filePath) {
   const raw = await fsp.readFile(filePath, "utf8");
   let parsed = { data: {}, content: raw };
   const ext = path.extname(filePath).toLowerCase();
 
   if ([".yml", ".yaml"].includes(ext)) {
+    let yamlData = {};
     try {
-      const yamlData = YAML.parse(raw);
-      if (yamlData && typeof yamlData === "object" && !Array.isArray(yamlData)) {
-        parsed = { data: yamlData, content: raw };
+      const parsedYaml = YAML.parse(raw);
+      if (parsedYaml && typeof parsedYaml === "object" && !Array.isArray(parsedYaml)) {
+        yamlData = parsedYaml;
       }
     } catch (error) {
-      parsed = { data: {}, content: raw };
+      yamlData = {};
     }
+
+    parsed = {
+      data: {
+        ...yamlData,
+        ...parseYamlHeaderFields(raw)
+      },
+      content: raw
+    };
   } else {
     try {
       parsed = matter(raw);
