@@ -23,15 +23,26 @@ function setDevRootsNotice(message, isError = false) {
 function createDevRootRow(value = "") {
   const row = document.createElement("tr");
   const pathCell = document.createElement("td");
+  const actionsCell = document.createElement("td");
 
   const input = document.createElement("input");
   input.type = "text";
   input.value = value;
   input.placeholder = "/path/to/project/root";
 
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "btn";
+  removeButton.textContent = "Remove";
+  removeButton.addEventListener("click", () => {
+    row.remove();
+  });
+
   pathCell.appendChild(input);
+  actionsCell.appendChild(removeButton);
 
   row.appendChild(pathCell);
+  row.appendChild(actionsCell);
   return row;
 }
 

@@ -481,6 +481,10 @@ main {
   vertical-align: top;
 }
 
+.settings-table td:last-child {
+  width: 140px;
+}
+
 .settings-table input {
   margin-bottom: 0;
 }
