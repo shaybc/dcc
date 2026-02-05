@@ -286,6 +286,10 @@ async function showDetails(id) {
 }
 
 async function saveDefinition(id) {
+  if (!devProjectInput.value.trim()) {
+    window.alert("Please select a project first.");
+    return;
+  }
   await fetch(`/api/definitions/${id}/save`, { method: "POST" });
 }
 
