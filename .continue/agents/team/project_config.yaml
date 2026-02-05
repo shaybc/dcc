@@ -1,0 +1,12 @@
+name: Team Project Config
+version: 1.0.0
+schema: v1
+context:
+  - provider: debugger
+    params:
+      stackDepth: 3
+  - provider: currentFile
+  - provider: clipboard
+  - provider: repo-map
+    params:
+      includeSignatures: false
