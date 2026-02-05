@@ -19,7 +19,7 @@ let activeFilter = "all";
 let searchTerm = "";
 let devProjects = [];
 
-const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows"];
+const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 
 function normalizeFilterType(type) {
