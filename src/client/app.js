@@ -11,10 +11,13 @@ const detailTitle = document.getElementById("detailTitle");
 const detailDescription = document.getElementById("detailDescription");
 const detailContent = document.getElementById("detailContent");
 const detailStatus = document.getElementById("detailStatus");
+const devProjectInput = document.getElementById("devProjectSelect");
+const devProjectOptions = document.getElementById("devProjectOptions");
 
 let definitions = [];
 let activeFilter = "all";
 let searchTerm = "";
+let devProjects = [];
 
 function iconSvg(status) {
   if (status === "saved") {
@@ -228,6 +231,42 @@ function renderCards() {
   });
 }
 
+function renderDevProjectsOptions(projects) {
+  devProjectOptions.innerHTML = "";
+  projects.forEach((project) => {
+    const option = document.createElement("option");
+    option.value = project;
+    devProjectOptions.appendChild(option);
+  });
+}
+
+async function loadDevProjects() {
+  const response = await fetch("/api/dev-projects");
+  if (!response.ok) {
+    return;
+  }
+  const data = await response.json();
+  devProjects = data.map((project) => project.path || project).filter(Boolean);
+  renderDevProjectsOptions(devProjects);
+}
+
+async function loadCurrentDevProject() {
+  const response = await fetch("/api/current-dev-project");
+  if (!response.ok) {
+    return;
+  }
+  const data = await response.json();
+  devProjectInput.value = data.path || "";
+}
+
+async function setCurrentDevProject(path) {
+  await fetch("/api/current-dev-project", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path })
+  });
+}
+
 async function fetchDefinitions() {
   const response = await fetch("/api/definitions");
   definitions = await response.json();
@@ -264,6 +303,18 @@ searchInput.addEventListener("input", (event) => {
   renderCards();
 });
 
+devProjectInput.addEventListener("change", async (event) => {
+  const selected = event.target.value.trim();
+  if (!selected) {
+    await setCurrentDevProject("");
+    return;
+  }
+  if (devProjects.length > 0 && !devProjects.includes(selected)) {
+    return;
+  }
+  await setCurrentDevProject(selected);
+});
+
 function closeFilterMenu() {
   filterMenu.classList.remove("open");
   filterButton.setAttribute("aria-expanded", "false");
@@ -298,3 +349,5 @@ modal.addEventListener("click", (event) => {
 });
 
 fetchDefinitions();
+loadDevProjects();
+loadCurrentDevProject();
