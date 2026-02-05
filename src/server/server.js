@@ -398,6 +398,25 @@ app.post("/api/settings", async (req, res) => {
   }
 });
 
+app.get("/api/current-dev-project", async (req, res) => {
+  try {
+    const path = await getSetting("currentDevProject");
+    res.json({ path: path || "" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/current-dev-project", async (req, res) => {
+  try {
+    const path = String(req.body?.path || "").trim();
+    await setSetting("currentDevProject", path);
+    res.json({ ok: true, path });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/dev-project-roots", async (req, res) => {
   try {
     const rows = await allDb("SELECT id, path FROM dev_project_roots ORDER BY path ASC");
