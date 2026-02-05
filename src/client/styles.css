@@ -45,7 +45,6 @@ header {
 
 header > .header-left {
   grid-column: 1;
-  justify-self: start;
 }
 
 header > .title-block {
@@ -99,7 +98,7 @@ header .actions {
 
 .dev-project-picker input {
   width: 100%;
-  max-width: 250px;
+  max-width: 400px;
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
