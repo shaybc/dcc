@@ -63,6 +63,26 @@ function formatFilterLabel(type) {
     .join(" ");
 }
 
+
+function getCardDescription(description) {
+  const fallback = "No description provided.";
+  if (!description) {
+    return fallback;
+  }
+
+  const normalized = String(description).replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return fallback;
+  }
+
+  const maxLength = 170;
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
 function filterIconSvg(type) {
   if (type === "prompt" || type === "prompts") {
     return `
@@ -207,7 +227,7 @@ function renderCards() {
         ${iconSvg(def.status)}
       </div>
       <h3>${def.name}</h3>
-      <p>${def.description || "No description provided."}</p>
+      <p>${getCardDescription(def.description)}</p>
       <div class="meta">${def.type} · ${statusLabel(def.status)}</div>
     `;
 

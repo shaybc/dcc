@@ -167,13 +167,103 @@ function buildKey(type, filePath) {
   return `${type}/${path.basename(filePath)}`;
 }
 
+const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description"]);
+
+function parseYamlHeaderFields(raw) {
+  const headers = {};
+  const normalized = raw.replace(/^\uFEFF/, "");
+  const lines = normalized.split(/\r?\n/);
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line.trim()) {
+      break;
+    }
+
+    const match = line.match(/^(\s*)([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/);
+    if (!match) {
+      continue;
+    }
+
+    const [, indent, key, value] = match;
+    if (!YAML_HEADER_FIELDS.has(key)) {
+      continue;
+    }
+
+    const trimmedValue = value.trim();
+    if (["|", ">", "|-", ">-", "|+", ">+"].includes(trimmedValue)) {
+      const blockLines = [];
+      const blockIndent = indent.length;
+      let contentIndent = null;
+
+      for (let next = i + 1; next < lines.length; next += 1) {
+        const nextLine = lines[next];
+        if (!nextLine.trim()) {
+          blockLines.push("");
+          continue;
+        }
+
+        const nextIndent = (nextLine.match(/^\s*/) || [""])[0].length;
+        if (nextIndent <= blockIndent) {
+          i = next - 1;
+          break;
+        }
+
+        if (contentIndent === null) {
+          contentIndent = nextIndent;
+        }
+
+        blockLines.push(nextLine.slice(contentIndent));
+
+        if (next === lines.length - 1) {
+          i = next;
+        }
+      }
+
+      const blockValue = blockLines.join("\n").trim();
+      if (blockValue) {
+        headers[key] = blockValue;
+      }
+      continue;
+    }
+
+    const unquoted = value.replace(/^(\"|\')(.*)\1$/, "$2").trim();
+    headers[key] = unquoted;
+  }
+
+  return headers;
+}
+
+
 async function parseDefinition(filePath) {
   const raw = await fsp.readFile(filePath, "utf8");
   let parsed = { data: {}, content: raw };
-  try {
-    parsed = matter(raw);
-  } catch (error) {
-    parsed = { data: {}, content: raw };
+  const ext = path.extname(filePath).toLowerCase();
+
+  if ([".yml", ".yaml"].includes(ext)) {
+    let yamlData = {};
+    try {
+      const parsedYaml = YAML.parse(raw);
+      if (parsedYaml && typeof parsedYaml === "object" && !Array.isArray(parsedYaml)) {
+        yamlData = parsedYaml;
+      }
+    } catch (error) {
+      yamlData = {};
+    }
+
+    parsed = {
+      data: {
+        ...yamlData,
+        ...parseYamlHeaderFields(raw)
+      },
+      content: raw
+    };
+  } else {
+    try {
+      parsed = matter(raw);
+    } catch (error) {
+      parsed = { data: {}, content: raw };
+    }
   }
   const type = deriveType(filePath, parsed.data);
   const name = parsed.data.name || path.basename(filePath);
@@ -233,14 +323,26 @@ function parseContextProviders(content) {
   if (!parsed) {
     return [];
   }
+
+  const stripYamlHeaders = (providerDef) => {
+    if (!providerDef || typeof providerDef !== "object") {
+      return providerDef;
+    }
+    return Object.fromEntries(Object.entries(providerDef).filter(([key]) => !YAML_HEADER_FIELDS.has(key)));
+  };
+
   if (Array.isArray(parsed)) {
-    return parsed.filter((item) => item && typeof item === "object" && item.provider);
+    return parsed
+      .map(stripYamlHeaders)
+      .filter((item) => item && typeof item === "object" && item.provider);
   }
   if (parsed.context && Array.isArray(parsed.context)) {
-    return parsed.context.filter((item) => item && typeof item === "object" && item.provider);
+    return parsed.context
+      .map(stripYamlHeaders)
+      .filter((item) => item && typeof item === "object" && item.provider);
   }
   if (parsed.provider) {
-    return [parsed];
+    return [stripYamlHeaders(parsed)].filter((item) => item && item.provider);
   }
   return [];
 }
