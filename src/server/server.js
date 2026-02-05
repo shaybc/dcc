@@ -8,6 +8,7 @@ import { exec } from "child_process";
 import express from "express";
 import sqliteUV from "sqlite3";
 import matter from "gray-matter";
+import YAML from "yaml";
 const __dirname = import.meta.dirname;
 
 const sqlite3 = sqliteUV.verbose();
@@ -56,6 +57,15 @@ db.serialize(() => {
     `CREATE TABLE IF NOT EXISTS dev_projects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       path TEXT UNIQUE
+    )`
+  );
+  db.run(
+    `CREATE TABLE IF NOT EXISTS project_definition_copies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projectPath TEXT NOT NULL,
+      definitionKey TEXT NOT NULL,
+      copiedAt TEXT,
+      UNIQUE(projectPath, definitionKey)
     )`
   );
 });
@@ -184,6 +194,120 @@ async function parseDefinition(filePath) {
 
 function getTeamRoot() {
   return path.join(os.homedir(), ".continue", "team");
+}
+
+function normalizeDefinitionType(type) {
+  const normalized = String(type || "").trim().toLowerCase();
+  if (["rule", "rules"].includes(normalized)) return "rules";
+  if (["prompt", "prompts"].includes(normalized)) return "prompts";
+  if (["workflow", "workflows"].includes(normalized)) return "workflows";
+  if (["model", "models"].includes(normalized)) return "models";
+  if (["agent", "agents"].includes(normalized)) return "agents";
+  if (["mcp server", "mcp servers", "mcpserver", "mcpservers"].includes(normalized)) return "mcpservers";
+  if (["context", "contexts"].includes(normalized)) return "context";
+  return normalized;
+}
+
+function getProjectDestinationInfo(projectPath, type, filePath) {
+  const normalizedType = normalizeDefinitionType(type);
+  const fileName = path.basename(filePath || "");
+  const mappings = {
+    rules: ["rules", "rules"],
+    prompts: ["rules", "prompts"],
+    workflows: ["workflows", "workflows"],
+    models: ["models", "models"],
+    agents: ["agents", "agents"],
+    mcpservers: ["mcpServers", "mcpServers"]
+  };
+  const mapped = mappings[normalizedType];
+  if (!mapped) {
+    return null;
+  }
+  const [continueFolder, typeFolder] = mapped;
+  const destDir = path.join(projectPath, ".continue", continueFolder, "team", typeFolder);
+  return { destDir, destPath: path.join(destDir, fileName), normalizedType };
+}
+
+function parseContextProviders(content) {
+  const parsed = YAML.parse(content);
+  if (!parsed) {
+    return [];
+  }
+  if (Array.isArray(parsed)) {
+    return parsed.filter((item) => item && typeof item === "object" && item.provider);
+  }
+  if (parsed.context && Array.isArray(parsed.context)) {
+    return parsed.context.filter((item) => item && typeof item === "object" && item.provider);
+  }
+  if (parsed.provider) {
+    return [parsed];
+  }
+  return [];
+}
+
+async function upsertContextProviders(projectPath, content) {
+  const configPath = path.join(projectPath, ".continue", "config.yaml");
+  await fsp.mkdir(path.dirname(configPath), { recursive: true });
+
+  let configDoc = {};
+  if (fs.existsSync(configPath)) {
+    const existingRaw = await fsp.readFile(configPath, "utf8");
+    configDoc = YAML.parse(existingRaw) || {};
+  }
+  if (!Array.isArray(configDoc.context)) {
+    configDoc.context = [];
+  }
+
+  const providersToAdd = parseContextProviders(content);
+  const existingProviders = new Set(
+    configDoc.context
+      .filter((item) => item && typeof item === "object" && item.provider)
+      .map((item) => String(item.provider))
+  );
+
+  let changed = false;
+  for (const providerDef of providersToAdd) {
+    const providerName = String(providerDef.provider);
+    if (existingProviders.has(providerName)) {
+      continue;
+    }
+    configDoc.context.push(providerDef);
+    existingProviders.add(providerName);
+    changed = true;
+  }
+
+  if (changed) {
+    await fsp.writeFile(configPath, YAML.stringify(configDoc), "utf8");
+  }
+}
+
+async function removeContextProviders(projectPath, content) {
+  const configPath = path.join(projectPath, ".continue", "config.yaml");
+  if (!fs.existsSync(configPath)) {
+    return;
+  }
+  const existingRaw = await fsp.readFile(configPath, "utf8");
+  const configDoc = YAML.parse(existingRaw) || {};
+  if (!Array.isArray(configDoc.context)) {
+    return;
+  }
+
+  const providersToRemove = new Set(parseContextProviders(content).map((providerDef) => String(providerDef.provider)));
+  if (providersToRemove.size === 0) {
+    return;
+  }
+
+  const nextContext = configDoc.context.filter((item) => {
+    if (!item || typeof item !== "object" || !item.provider) {
+      return true;
+    }
+    return !providersToRemove.has(String(item.provider));
+  });
+
+  if (nextContext.length !== configDoc.context.length) {
+    configDoc.context = nextContext;
+    await fsp.writeFile(configPath, YAML.stringify(configDoc), "utf8");
+  }
 }
 
 async function collectTeamFiles() {
@@ -483,18 +607,29 @@ app.post("/api/load-definitions", async (req, res) => {
   }
 });
 
-app.get("/api/definitions", (req, res) => {
-  db.all(
-    "SELECT id, key, name, description, schema, version, type, filePath, source, inTeam, status FROM definitions",
-    [],
-    (err, rows) => {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
+app.get("/api/definitions", async (req, res) => {
+  try {
+    const currentDevProject = await getSetting("currentDevProject");
+    const definitionsRows = await allDb(
+      "SELECT id, key, name, description, schema, version, type, filePath, source, inTeam, status FROM definitions"
+    );
+
+    if (!currentDevProject) {
+      const rows = definitionsRows.map((row) => ({ ...row, status: "repo" }));
       res.json(rows);
+      return;
     }
-  );
+
+    const copiedRows = await allDb(
+      "SELECT definitionKey FROM project_definition_copies WHERE projectPath = ?",
+      [currentDevProject]
+    );
+    const copiedKeys = new Set(copiedRows.map((row) => row.definitionKey));
+    const rows = definitionsRows.map((row) => ({ ...row, status: copiedKeys.has(row.key) ? "saved" : "repo" }));
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.get("/api/definitions/:id", (req, res) => {
@@ -522,11 +657,29 @@ app.post("/api/definitions/:id/save", async (req, res) => {
       return;
     }
     try {
-      const teamRoot = getTeamRoot();
-      const destDir = path.join(teamRoot, row.type || "misc");
-      await fsp.mkdir(destDir, { recursive: true });
-      const destPath = path.join(destDir, path.basename(row.filePath));
-      await fsp.copyFile(row.filePath, destPath);
+      const currentDevProject = await getSetting("currentDevProject");
+      if (!currentDevProject) {
+        res.status(400).json({ error: "Current dev project not selected." });
+        return;
+      }
+
+      const normalizedType = normalizeDefinitionType(row.type);
+      if (normalizedType === "context") {
+        await upsertContextProviders(currentDevProject, row.content || "");
+      } else {
+        const destinationInfo = getProjectDestinationInfo(currentDevProject, row.type, row.filePath);
+        if (!destinationInfo) {
+          res.status(400).json({ error: `Unsupported definition type: ${row.type}` });
+          return;
+        }
+        await fsp.mkdir(destinationInfo.destDir, { recursive: true });
+        await fsp.copyFile(row.filePath, destinationInfo.destPath);
+      }
+
+      await runDb(
+        "INSERT OR IGNORE INTO project_definition_copies (projectPath, definitionKey, copiedAt) VALUES (?, ?, ?)",
+        [currentDevProject, row.key, new Date().toISOString()]
+      );
       db.run(
         "UPDATE definitions SET inTeam = 1, status = 'saved' WHERE id = ?",
         [row.id],
@@ -598,12 +751,31 @@ app.post("/api/definitions/:id/remove", async (req, res) => {
       return;
     }
     try {
-      const teamRoot = getTeamRoot();
-      const destDir = path.join(teamRoot, row.type || "misc");
-      const destPath = path.join(destDir, path.basename(row.filePath));
-      if (fs.existsSync(destPath)) {
-        await fsp.unlink(destPath);
+      const currentDevProject = await getSetting("currentDevProject");
+      if (!currentDevProject) {
+        res.status(400).json({ error: "Current dev project not selected." });
+        return;
       }
+
+      const normalizedType = normalizeDefinitionType(row.type);
+      if (normalizedType === "context") {
+        await removeContextProviders(currentDevProject, row.content || "");
+      } else {
+        const destinationInfo = getProjectDestinationInfo(currentDevProject, row.type, row.filePath);
+        if (!destinationInfo) {
+          res.status(400).json({ error: `Unsupported definition type: ${row.type}` });
+          return;
+        }
+        if (fs.existsSync(destinationInfo.destPath)) {
+          await fsp.unlink(destinationInfo.destPath);
+        }
+      }
+
+      await runDb(
+        "DELETE FROM project_definition_copies WHERE projectPath = ? AND definitionKey = ?",
+        [currentDevProject, row.key]
+      );
+
       db.run(
         "UPDATE definitions SET inTeam = 0, status = 'repo' WHERE id = ?",
         [row.id],
