@@ -23,7 +23,7 @@ function iconSvg(status) {
   if (status === "saved") {
     return `
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M5 10.5l3 3 7-7" />
+        <path d="M4 5l6 10 6-10" />
       </svg>
     `;
   }
@@ -45,7 +45,7 @@ function iconSvg(status) {
 
 function statusLabel(status) {
   if (status === "saved") {
-    return "Saved to team";
+    return "Saved to project";
   }
   if (status === "local-only") {
     return "Local only";
@@ -274,6 +274,11 @@ async function fetchDefinitions() {
   renderCards();
 }
 
+async function refreshDefinitions() {
+  await fetch("/api/load-definitions", { method: "POST" });
+  await fetchDefinitions();
+}
+
 async function showDetails(id) {
   const response = await fetch(`/api/definitions/${id}`);
   const def = await response.json();
@@ -307,12 +312,14 @@ devProjectInput.addEventListener("change", async (event) => {
   const selected = event.target.value.trim();
   if (!selected) {
     await setCurrentDevProject("");
+    await fetchDefinitions();
     return;
   }
   if (devProjects.length > 0 && !devProjects.includes(selected)) {
     return;
   }
   await setCurrentDevProject(selected);
+  await refreshDefinitions();
 });
 
 function closeFilterMenu() {
