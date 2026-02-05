@@ -349,9 +349,11 @@ function parseContextProviders(content) {
 
 async function upsertContextProviders(projectPath, content) {
   const configPath = path.join(projectPath, ".continue", "agents", "team", "project_config.yaml");
+  console.log(`[context-save] target config path: ${configPath}`);
   await fsp.mkdir(path.dirname(configPath), { recursive: true });
 
   const configExists = fs.existsSync(configPath);
+  console.log(`[context-save] config exists before save: ${configExists}`);
   let configDoc = {};
   if (!configExists) {
     configDoc = {
@@ -368,6 +370,7 @@ async function upsertContextProviders(projectPath, content) {
   }
 
   const providersToAdd = parseContextProviders(content);
+  console.log(`[context-save] parsed providers to add: ${providersToAdd.length}`);
   const existingProviders = new Set(
     configDoc.context
       .filter((item) => item && typeof item === "object" && item.provider)
@@ -387,12 +390,17 @@ async function upsertContextProviders(projectPath, content) {
 
   if (!configExists || changed) {
     await fsp.writeFile(configPath, YAML.stringify(configDoc), "utf8");
+    console.log(`[context-save] wrote config file: ${configPath}`);
+  } else {
+    console.log("[context-save] no changes detected, skipping file write");
   }
 }
 
 async function removeContextProviders(projectPath, content) {
   const configPath = path.join(projectPath, ".continue", "agents", "team", "project_config.yaml");
+  console.log(`[context-remove] target config path: ${configPath}`);
   if (!fs.existsSync(configPath)) {
+    console.log("[context-remove] config file not found, skipping remove");
     return;
   }
   const existingRaw = await fsp.readFile(configPath, "utf8");
@@ -774,6 +782,7 @@ app.post("/api/definitions/:id/save", async (req, res) => {
 
       const normalizedType = normalizeDefinitionType(row.type);
       if (normalizedType === "context") {
+        console.log(`[definition-save] saving context definition id=${row.id} key=${row.key} project=${currentDevProject}`);
         await upsertContextProviders(currentDevProject, row.content || "");
       } else {
         const destinationInfo = getProjectDestinationInfo(currentDevProject, row.type, row.filePath);
