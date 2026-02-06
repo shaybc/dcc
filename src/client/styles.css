@@ -742,6 +742,7 @@ main {
 
 .preview-section {
   margin-top: 14px;
+  min-height: 120px;
 }
 
 .preview-section + .preview-section {
@@ -759,7 +760,7 @@ main {
 
 .preview-section-header h3 {
   margin: 0;
-  font-size: 34px;
+  font-size: 24px;
   line-height: 1;
 }
 
@@ -792,11 +793,13 @@ main {
   border-radius: 10px;
   background: rgba(15, 17, 22, 0.7);
   padding: 12px;
+  min-width: 250px;
+  min-height: 100px;
 }
 
 .preview-card-title {
   font-weight: 700;
-  font-size: 18px;
+  font-size: 14px;
 }
 
 .preview-card-subtitle {
@@ -827,7 +830,8 @@ main {
   margin: 14px 0 0;
   color: var(--muted);
   font-style: italic;
-  font-size: 32px;
+  font-size: 18px;
+  padding-bottom: 15px;
 }
 
 
@@ -879,7 +883,6 @@ main {
   padding: 20px;
   white-space: pre-wrap;
   border: 1px solid var(--border);
-  min-height: 300px;
 }
 
 .settings-form {
