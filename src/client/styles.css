@@ -501,10 +501,12 @@ main {
   z-index: 100;
   padding: 10px;
   background: var(--bg);
+  overflow-y: auto;
 }
 
 .detail-page-shell {
   min-height: calc(100vh - 20px);
+  display: flex;
 }
 
 .detail-page-content {
@@ -513,7 +515,6 @@ main {
   padding: 28px;
   width: 100%;
   min-height: calc(100vh - 20px);
-  overflow: auto;
   border: 0.5px solid var(--border);
   box-shadow: var(--shadow);
 }
