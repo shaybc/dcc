@@ -275,7 +275,7 @@ async function parseDefinition(filePath) {
     description,
     schema,
     version,
-    content: parsed.content,
+    content: raw,
     type,
     filePath,
     key: buildKey(type, filePath)

@@ -536,7 +536,37 @@ function buildItemFromBlock(typeKey, block) {
   };
 }
 
-function collectPreviewSections(definitionContent) {
+function extractFrontmatterContent(rawContent) {
+  const raw = String(rawContent || "").replace(/^﻿/, "");
+  if (!raw.startsWith("---")) {
+    return raw;
+  }
+
+  const endMarker = raw.indexOf("\n---", 3);
+  if (endMarker < 0) {
+    return raw;
+  }
+
+  return raw.slice(4, endMarker).trim();
+}
+
+function getFallbackPreviewSectionKey(normalizedType) {
+  if (normalizedType === "rules") return "rules";
+  if (normalizedType === "prompts") return "prompts";
+  if (normalizedType === "context") return "context";
+  if (normalizedType === "models") return "models";
+  if (normalizedType === "mcp servers") return "mcpServers";
+  return null;
+}
+
+function buildFallbackPreviewItem(definitionMeta) {
+  return {
+    title: prettifyName(definitionMeta?.name || definitionMeta?.filePath || "Definition"),
+    subtitle: definitionMeta?.description || "Markdown definition"
+  };
+}
+
+function collectPreviewSections(definitionContent, definitionMeta = {}) {
   const mappings = {
     models: ["models"],
     mcpServers: ["mcpServers", "mcp_servers", "mcpservers"],
@@ -545,12 +575,30 @@ function collectPreviewSections(definitionContent) {
     context: ["context"]
   };
 
-  return PREVIEW_SECTION_CONFIG.map((section) => {
+  const normalizedType = normalizeFilterType(definitionMeta?.type);
+  const isMarkdown = inferDefinitionFormat(definitionMeta) === "md";
+  const sourceContent = isMarkdown ? extractFrontmatterContent(definitionContent) : String(definitionContent || "");
+
+  const sections = PREVIEW_SECTION_CONFIG.map((section) => {
     const aliases = mappings[section.key] || [section.key];
-    const blocks = aliases.flatMap((alias) => parseTopLevelListSection(definitionContent, alias));
+    const blocks = aliases.flatMap((alias) => parseTopLevelListSection(sourceContent, alias));
     const items = blocks.map((block) => buildItemFromBlock(section.key, block)).filter((item) => item.title);
     return { ...section, items };
   });
+
+  const hasItems = sections.some((section) => section.items.length > 0);
+  const fallbackSectionKey = getFallbackPreviewSectionKey(normalizedType);
+
+  if (!hasItems && isMarkdown && fallbackSectionKey) {
+    const fallbackItem = buildFallbackPreviewItem(definitionMeta);
+    return sections.map((section) => (
+      section.key === fallbackSectionKey
+        ? { ...section, items: [fallbackItem] }
+        : section
+    ));
+  }
+
+  return sections;
 }
 
 function renderPreviewSection(section) {
@@ -595,8 +643,8 @@ function renderPreviewSection(section) {
   `;
 }
 
-function renderDefinitionPreview(definitionContent) {
-  const sections = collectPreviewSections(definitionContent);
+function renderDefinitionPreview(definitionContent, definitionMeta = {}) {
+  const sections = collectPreviewSections(definitionContent, definitionMeta);
   return sections.map((section) => renderPreviewSection(section)).join("");
 }
 
@@ -632,7 +680,7 @@ async function showDetails(id) {
   const tabLabel = formatTabLabel(format);
   definitionTabSource.textContent = tabLabel;
 
-  definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent);
+  definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent, def);
   definitionTabPreview.disabled = false;
   setDefinitionTab("preview");
   showDetailPage();
