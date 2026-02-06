@@ -563,8 +563,15 @@ function collectPreviewSections(definitionContent, definitionMeta = {}) {
 
   const normalizedType = normalizeFilterType(definitionMeta?.type);
   const isMarkdown = inferDefinitionFormat(definitionMeta) === "md";
-  const fallbackSectionKey = getFallbackPreviewSectionKey(normalizedType);
-  const fallbackItem = buildFallbackPreviewItem(definitionMeta);
+
+  if (isMarkdown) {
+    const markdownSectionKey = getFallbackPreviewSectionKey(normalizedType);
+    const markdownItem = buildFallbackPreviewItem(definitionMeta);
+    return PREVIEW_SECTION_CONFIG.map((section) => ({
+      ...section,
+      items: section.key === markdownSectionKey ? [markdownItem] : []
+    }));
+  }
 
   return PREVIEW_SECTION_CONFIG.map((section) => {
     if (isMarkdown) {
