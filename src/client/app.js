@@ -115,6 +115,46 @@ function getCardDescription(description) {
   return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderDescriptionMarkdown(description) {
+  const raw = String(description || "").replace(/\r\n/g, "\n");
+  if (!raw.trim()) {
+    return "<p>No description provided.</p>";
+  }
+
+  const codeBlocks = [];
+  let html = escapeHtml(raw).replace(/```([\s\S]*?)```/g, (_, code) => {
+    const trimmed = code.replace(/^\n+|\n+$/g, "");
+    const index = codeBlocks.push(`<pre><code>${trimmed}</code></pre>`) - 1;
+    return `@@CODE_BLOCK_${index}@@`;
+  });
+
+  html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+
+  const blocks = html
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      if (/^@@CODE_BLOCK_\d+@@$/.test(block)) {
+        return block;
+      }
+      return `<p>${block.replace(/\n/g, "<br>")}</p>`;
+    });
+
+  const withParagraphs = blocks.join("");
+  return withParagraphs.replace(/@@CODE_BLOCK_(\d+)@@/g, (_, index) => codeBlocks[Number(index)] || "");
+}
+
 function filterIconSvg(type) {
   if (type === "prompt" || type === "prompts") {
     return `
@@ -342,7 +382,7 @@ async function showDetails(id) {
   const response = await fetch(`/api/definitions/${id}`);
   const def = await response.json();
   detailTitle.textContent = def.name;
-  detailDescription.textContent = def.description || "No description provided.";
+  detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
   detailContent.textContent = def.content || "";
   detailStatus.textContent = statusLabel(def.status);
   detailStatus.className = `status-pill ${def.status}`;
