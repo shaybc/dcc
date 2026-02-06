@@ -801,8 +801,7 @@ body.detail-page-open {
 }
 
 .preview-card-title {
-  font-weight: 700;
-  font-size: 14px;
+  font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;
 }
 
 .preview-card-subtitle {
