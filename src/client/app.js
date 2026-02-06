@@ -16,6 +16,11 @@ const detailTypeMetaIcon = document.getElementById("detailTypeMetaIcon");
 const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const copyDefinitionButton = document.getElementById("copyDefinition");
+const definitionTabPreview = document.getElementById("definitionTabPreview");
+const definitionTabSource = document.getElementById("definitionTabSource");
+const definitionPreviewPanel = document.getElementById("definitionPreviewPanel");
+const definitionSourcePanel = document.getElementById("definitionSourcePanel");
+const definitionPreviewContent = document.getElementById("definitionPreviewContent");
 const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
 
@@ -397,12 +402,45 @@ function formatCreatedDate(value) {
   return `Created on ${date.toLocaleDateString()}`;
 }
 
+
+function inferDefinitionFormat(definition) {
+  const filePath = String(definition?.filePath || "").toLowerCase();
+  if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) return "yaml";
+  if (filePath.endsWith(".md") || filePath.endsWith(".markdown")) return "md";
+  if (filePath.endsWith(".json")) return "json";
+  if (filePath.endsWith(".txt")) return "txt";
+
+  const content = String(definition?.content || "").trim();
+  if (content.startsWith("#") || content.includes("\n#")) return "md";
+  if (content.includes(":") && content.includes("\n")) return "yaml";
+  return "txt";
+}
+
+function formatTabLabel(format) {
+  if (format === "yaml") return "YAML";
+  if (format === "md") return "MD";
+  if (format === "json") return "JSON";
+  if (format === "txt") return "TXT";
+  return "SOURCE";
+}
+
+function setDefinitionTab(activeTab) {
+  const isPreview = activeTab === "preview";
+  definitionTabPreview.classList.toggle("active", isPreview);
+  definitionTabSource.classList.toggle("active", !isPreview);
+  definitionTabPreview.setAttribute("aria-selected", String(isPreview));
+  definitionTabSource.setAttribute("aria-selected", String(!isPreview));
+  definitionPreviewPanel.hidden = !isPreview;
+  definitionSourcePanel.hidden = isPreview;
+}
+
 async function showDetails(id) {
   const response = await fetch(`/api/definitions/${id}`);
   const def = await response.json();
   detailTitle.textContent = def.name;
   detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
-  detailContent.textContent = def.content || "";
+  const definitionContent = def.content || "";
+  detailContent.textContent = definitionContent;
   detailStatus.textContent = statusLabel(def.status);
   detailStatus.className = `status-pill ${def.status}`;
 
@@ -413,6 +451,20 @@ async function showDetails(id) {
   detailTypeMetaIcon.innerHTML = typeIcon;
   detailTypeText.textContent = typeLabel;
   detailCreatedDate.textContent = formatCreatedDate(def.createdAt);
+
+  const format = inferDefinitionFormat(def);
+  const tabLabel = formatTabLabel(format);
+  definitionTabSource.textContent = tabLabel;
+
+  if (format === "md") {
+    definitionPreviewContent.innerHTML = renderDescriptionMarkdown(definitionContent);
+    definitionTabPreview.disabled = false;
+    setDefinitionTab("preview");
+  } else {
+    definitionPreviewContent.innerHTML = "<p>Preview is available for Markdown definitions only.</p>";
+    definitionTabPreview.disabled = true;
+    setDefinitionTab("source");
+  }
 
   modal.classList.add("open");
 }
@@ -513,6 +565,18 @@ copyDefinitionButton.addEventListener("click", async () => {
   } catch (_error) {
     copyDefinitionButton.setAttribute("title", "Unable to copy");
   }
+});
+
+
+definitionTabPreview.addEventListener("click", () => {
+  if (definitionTabPreview.disabled) {
+    return;
+  }
+  setDefinitionTab("preview");
+});
+
+definitionTabSource.addEventListener("click", () => {
+  setDefinitionTab("source");
 });
 
 closeModal.addEventListener("click", () => {

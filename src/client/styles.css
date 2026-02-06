@@ -670,6 +670,76 @@ main {
 }
 
 
+
+.definition-tabs {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.definition-tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: 10px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(161, 161, 170, 0.12);
+}
+
+.definition-tab-buttons {
+  display: flex;
+  gap: 0;
+  margin-bottom: -1px;
+}
+
+.definition-tab {
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  padding: 14px 24px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.definition-tab:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.definition-tab.active {
+  color: var(--text);
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.definition-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.definition-tab-panel {
+  padding: 14px;
+  background: var(--card);
+}
+
+.definition-tab-panel #detailContent {
+  margin: 0;
+}
+
+.definition-preview-content {
+  margin: 0;
+}
+
+.definition-preview-content p:last-child {
+  margin-bottom: 0;
+}
+
+
 .definition-header {
   display: flex;
   align-items: center;
@@ -717,6 +787,7 @@ main {
   padding: 20px;
   white-space: pre-wrap;
   border: 1px solid var(--border);
+  min-height: 300px;
 }
 
 .settings-form {
