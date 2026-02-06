@@ -733,11 +733,103 @@ main {
 
 .definition-preview-content {
   margin: 0;
+  line-height: 1.4;
 }
 
 .definition-preview-content p:last-child {
   margin-bottom: 0;
 }
+
+.preview-section {
+  margin-top: 14px;
+}
+
+.preview-section + .preview-section {
+  margin-top: 22px;
+}
+
+.preview-section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-section-header h3 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.preview-section-header a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.preview-section-header a:hover {
+  color: var(--text);
+}
+
+.preview-section-header a svg {
+  width: 14px;
+  height: 14px;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.preview-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(15, 17, 22, 0.7);
+  padding: 12px;
+}
+
+.preview-card-title {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.preview-card-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.preview-card-chips {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preview-card-chips span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.preview-empty {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 32px;
+}
+
 
 
 .definition-header {
