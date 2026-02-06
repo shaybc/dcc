@@ -11,6 +11,10 @@ const detailTitle = document.getElementById("detailTitle");
 const detailDescription = document.getElementById("detailDescription");
 const detailContent = document.getElementById("detailContent");
 const detailStatus = document.getElementById("detailStatus");
+const detailTypeIcon = document.getElementById("detailTypeIcon");
+const detailTypeMetaIcon = document.getElementById("detailTypeMetaIcon");
+const detailTypeText = document.getElementById("detailTypeText");
+const detailCreatedDate = document.getElementById("detailCreatedDate");
 const copyDefinitionButton = document.getElementById("copyDefinition");
 const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
@@ -379,6 +383,20 @@ async function fetchDefinitions() {
   renderCards();
 }
 
+
+function formatCreatedDate(value) {
+  if (!value) {
+    return "Created date unavailable";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Created date unavailable";
+  }
+
+  return `Created on ${date.toLocaleDateString()}`;
+}
+
 async function showDetails(id) {
   const response = await fetch(`/api/definitions/${id}`);
   const def = await response.json();
@@ -387,6 +405,15 @@ async function showDetails(id) {
   detailContent.textContent = def.content || "";
   detailStatus.textContent = statusLabel(def.status);
   detailStatus.className = `status-pill ${def.status}`;
+
+  const normalizedType = normalizeFilterType(def.type);
+  const typeLabel = formatTypePillLabel(normalizedType);
+  const typeIcon = filterIconSvg(normalizedType);
+  detailTypeIcon.innerHTML = typeIcon;
+  detailTypeMetaIcon.innerHTML = typeIcon;
+  detailTypeText.textContent = typeLabel;
+  detailCreatedDate.textContent = formatCreatedDate(def.createdAt);
+
   modal.classList.add("open");
 }
 

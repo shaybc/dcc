@@ -106,9 +106,21 @@
             <div class="modal-kicker">Definition details</div>
             <button class="btn" id="closeModal" type="button">Close</button>
           </div>
-          <h2 id="detailTitle"></h2>
-          <div class="detail-description" id="detailDescription"></div>
-          <div class="status-pill" id="detailStatus"></div>
+          <div class="detail-hero">
+            <div class="detail-hero-icon" id="detailTypeIcon" aria-hidden="true"></div>
+            <div class="detail-hero-content">
+              <div class="detail-hero-meta-row">
+                <div class="detail-hero-type">
+                  <span class="detail-hero-type-icon" id="detailTypeMetaIcon" aria-hidden="true"></span>
+                  <span id="detailTypeText"></span>
+                </div>
+                <div class="detail-hero-date" id="detailCreatedDate"></div>
+              </div>
+              <h2 id="detailTitle"></h2>
+              <div class="detail-description" id="detailDescription"></div>
+              <div class="status-pill" id="detailStatus"></div>
+            </div>
+          </div>
           <div class="definition-header">
             <h3>Definition</h3>
             <button class="copy-btn" id="copyDefinition" type="button" aria-label="Copy definition" title="Copy definition">
