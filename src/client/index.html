@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header>
+    <header id="hubHeader">
       <div class="header-left">
         <div class="dev-project-picker">
           <label for="devProjectSelect">Dev project</label>
@@ -32,7 +32,7 @@
         <a class="btn" href="/settings">⚙ Settings</a>
       </div>
     </header>
-    <main>
+    <main id="hubMain">
       <div class="toolbar">
         <div class="toolbar-row">
           <div class="search-field">
@@ -99,12 +99,12 @@
       <div class="grid" id="cards"></div>
     </main>
 
-    <div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
-      <div class="modal-shell">
-        <div class="modal-content">
+    <main class="detail-page" id="detailPage" aria-labelledby="detailTitle" hidden>
+      <div class="detail-page-shell">
+        <div class="detail-page-content">
           <div class="modal-topbar">
             <div class="modal-kicker">Definition details</div>
-            <button class="btn" id="closeModal" type="button">Close</button>
+            <button class="btn" id="closeModal" type="button">Back to hub</button>
           </div>
           <div class="detail-hero">
             <div class="detail-hero-icon" id="detailTypeIcon" aria-hidden="true"></div>
@@ -143,7 +143,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </main>
 
     <script src="/app.js"></script>
   </body>
