@@ -5,6 +5,22 @@ const clearSearchButton = document.getElementById("clearSearch");
 const searchField = document.querySelector(".search-field");
 const filterButton = document.getElementById("filterButton");
 const filterMenu = document.getElementById("filterMenu");
+const modal = document.getElementById("detailModal");
+const closeModal = document.getElementById("closeModal");
+const detailTitle = document.getElementById("detailTitle");
+const detailDescription = document.getElementById("detailDescription");
+const detailContent = document.getElementById("detailContent");
+const detailStatus = document.getElementById("detailStatus");
+const detailTypeIcon = document.getElementById("detailTypeIcon");
+const detailTypeMetaIcon = document.getElementById("detailTypeMetaIcon");
+const detailTypeText = document.getElementById("detailTypeText");
+const detailCreatedDate = document.getElementById("detailCreatedDate");
+const copyDefinitionButton = document.getElementById("copyDefinition");
+const definitionTabPreview = document.getElementById("definitionTabPreview");
+const definitionTabSource = document.getElementById("definitionTabSource");
+const definitionPreviewPanel = document.getElementById("definitionPreviewPanel");
+const definitionSourcePanel = document.getElementById("definitionSourcePanel");
+const definitionPreviewContent = document.getElementById("definitionPreviewContent");
 const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
 
@@ -576,10 +592,71 @@ function renderPreviewSection(section) {
   `;
 }
 
-async function showDetails(id) {
-  window.location.href = `/definition.html?id=${encodeURIComponent(id)}`;
+function renderDefinitionPreview(definitionContent) {
+  const sections = collectPreviewSections(definitionContent);
+  return sections.map((section) => renderPreviewSection(section)).join("");
 }
 
+function setDefinitionTab(activeTab) {
+  const isPreview = activeTab === "preview";
+  definitionTabPreview.classList.toggle("active", isPreview);
+  definitionTabSource.classList.toggle("active", !isPreview);
+  definitionTabPreview.setAttribute("aria-selected", String(isPreview));
+  definitionTabSource.setAttribute("aria-selected", String(!isPreview));
+  definitionPreviewPanel.hidden = !isPreview;
+  definitionSourcePanel.hidden = isPreview;
+}
+
+async function showDetails(id) {
+  const response = await fetch(`/api/definitions/${id}`);
+  const def = await response.json();
+  detailTitle.textContent = def.name;
+  detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
+  const definitionContent = def.content || "";
+  detailContent.textContent = definitionContent;
+  detailStatus.textContent = statusLabel(def.status);
+  detailStatus.className = `status-pill ${def.status}`;
+
+  const normalizedType = normalizeFilterType(def.type);
+  const typeLabel = formatTypePillLabel(normalizedType);
+  const typeIcon = filterIconSvg(normalizedType);
+  detailTypeIcon.innerHTML = typeIcon;
+  detailTypeMetaIcon.innerHTML = typeIcon;
+  detailTypeText.textContent = typeLabel;
+  detailCreatedDate.textContent = formatCreatedDate(def.createdAt);
+
+  const format = inferDefinitionFormat(def);
+  const tabLabel = formatTabLabel(format);
+  definitionTabSource.textContent = tabLabel;
+
+  definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent);
+  definitionTabPreview.disabled = false;
+  setDefinitionTab("preview");
+
+  modal.classList.add("open");
+}
+
+
+async function copyDefinitionToClipboard() {
+  const definitionText = detailContent.textContent || "";
+  if (!definitionText.trim()) {
+    return;
+  }
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(definitionText);
+    return;
+  }
+
+  const fallbackTextArea = document.createElement("textarea");
+  fallbackTextArea.value = definitionText;
+  fallbackTextArea.style.position = "fixed";
+  fallbackTextArea.style.opacity = "0";
+  document.body.appendChild(fallbackTextArea);
+  fallbackTextArea.select();
+  document.execCommand("copy");
+  fallbackTextArea.remove();
+}
 
 async function saveDefinition(id) {
   if (!devProjectInput.value.trim()) {
@@ -640,6 +717,41 @@ clearSearchButton.addEventListener("click", () => {
   renderCards();
 });
 
+
+copyDefinitionButton.addEventListener("click", async () => {
+  try {
+    await copyDefinitionToClipboard();
+    copyDefinitionButton.classList.add("copied");
+    copyDefinitionButton.setAttribute("title", "Copied");
+    copyDefinitionButton.setAttribute("aria-label", "Definition copied");
+    window.setTimeout(() => {
+      copyDefinitionButton.classList.remove("copied");
+      copyDefinitionButton.setAttribute("title", "Copy definition");
+      copyDefinitionButton.setAttribute("aria-label", "Copy definition");
+    }, 1200);
+  } catch (_error) {
+    copyDefinitionButton.setAttribute("title", "Unable to copy");
+  }
+});
+
+
+definitionTabPreview.addEventListener("click", () => {
+  setDefinitionTab("preview");
+});
+
+definitionTabSource.addEventListener("click", () => {
+  setDefinitionTab("source");
+});
+
+closeModal.addEventListener("click", () => {
+  modal.classList.remove("open");
+});
+
+modal.addEventListener("click", (event) => {
+  if (event.target === modal) {
+    modal.classList.remove("open");
+  }
+});
 
 loadDevProjects();
 loadCurrentDevProject().then(fetchDefinitions);
