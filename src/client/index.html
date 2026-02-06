@@ -99,14 +99,19 @@
       <div class="grid" id="cards"></div>
     </main>
 
-    <div class="modal" id="detailModal">
-      <div class="modal-content">
-        <button class="btn" id="closeModal">Close</button>
-        <h2 id="detailTitle"></h2>
-        <p id="detailDescription"></p>
-        <div class="status-pill" id="detailStatus"></div>
-        <h3>Definition</h3>
-        <pre id="detailContent"></pre>
+    <div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <div class="modal-shell">
+        <div class="modal-content">
+          <div class="modal-topbar">
+            <div class="modal-kicker">Definition details</div>
+            <button class="btn" id="closeModal" type="button">Close</button>
+          </div>
+          <h2 id="detailTitle"></h2>
+          <p id="detailDescription"></p>
+          <div class="status-pill" id="detailStatus"></div>
+          <h3>Definition</h3>
+          <pre id="detailContent"></pre>
+        </div>
       </div>
     </div>
 
