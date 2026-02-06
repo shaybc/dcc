@@ -574,11 +574,32 @@ function collectPreviewSections(definitionContent, definitionMeta = {}) {
   }
 
   return PREVIEW_SECTION_CONFIG.map((section) => {
+    if (isMarkdown) {
+      return {
+        ...section,
+        items: section.key === fallbackSectionKey ? [fallbackItem] : []
+      };
+    }
+
     const aliases = mappings[section.key] || [section.key];
-    const blocks = aliases.flatMap((alias) => parseTopLevelListSection(definitionContent, alias));
+    const blocks = aliases.flatMap((alias) => parseTopLevelListSection(sourceContent, alias));
     const items = blocks.map((block) => buildItemFromBlock(section.key, block)).filter((item) => item.title);
     return { ...section, items };
   });
+
+  const hasItems = sections.some((section) => section.items.length > 0);
+  const fallbackSectionKey = getFallbackPreviewSectionKey(normalizedType);
+
+  if (!hasItems && isMarkdown && fallbackSectionKey) {
+    const fallbackItem = buildFallbackPreviewItem(definitionMeta);
+    return sections.map((section) => (
+      section.key === fallbackSectionKey
+        ? { ...section, items: [fallbackItem] }
+        : section
+    ));
+  }
+
+  return sections;
 }
 
 function renderPreviewSection(section) {
