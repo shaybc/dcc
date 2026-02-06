@@ -564,16 +564,16 @@ function collectPreviewSections(definitionContent, definitionMeta = {}) {
   const normalizedType = normalizeFilterType(definitionMeta?.type);
   const isMarkdown = inferDefinitionFormat(definitionMeta) === "md";
   const fallbackSectionKey = getFallbackPreviewSectionKey(normalizedType);
-
-  if (isMarkdown) {
-    const fallbackItem = buildFallbackPreviewItem(definitionMeta);
-    return PREVIEW_SECTION_CONFIG.map((section) => ({
-      ...section,
-      items: section.key === fallbackSectionKey ? [fallbackItem] : []
-    }));
-  }
+  const fallbackItem = buildFallbackPreviewItem(definitionMeta);
 
   return PREVIEW_SECTION_CONFIG.map((section) => {
+    if (isMarkdown) {
+      return {
+        ...section,
+        items: section.key === fallbackSectionKey ? [fallbackItem] : []
+      };
+    }
+
     const aliases = mappings[section.key] || [section.key];
     const blocks = aliases.flatMap((alias) => parseTopLevelListSection(sourceContent, alias));
     const items = blocks.map((block) => buildItemFromBlock(section.key, block)).filter((item) => item.title);
