@@ -536,7 +536,23 @@ function buildItemFromBlock(typeKey, block) {
   };
 }
 
-function collectPreviewSections(definitionContent) {
+function getFallbackPreviewSectionKey(normalizedType) {
+  if (normalizedType === "rules") return "rules";
+  if (normalizedType === "prompts") return "prompts";
+  if (normalizedType === "context") return "context";
+  if (normalizedType === "models") return "models";
+  if (normalizedType === "mcp servers") return "mcpServers";
+  return null;
+}
+
+function buildFallbackPreviewItem(definitionMeta) {
+  return {
+    title: prettifyName(definitionMeta?.name || definitionMeta?.filePath || "Definition"),
+    subtitle: definitionMeta?.description || "Markdown definition"
+  };
+}
+
+function collectPreviewSections(definitionContent, definitionMeta = {}) {
   const mappings = {
     models: ["models"],
     mcpServers: ["mcpServers", "mcp_servers", "mcpservers"],
@@ -544,6 +560,18 @@ function collectPreviewSections(definitionContent) {
     prompts: ["prompts"],
     context: ["context"]
   };
+
+  const normalizedType = normalizeFilterType(definitionMeta?.type);
+  const isMarkdown = inferDefinitionFormat(definitionMeta) === "md";
+  const fallbackSectionKey = getFallbackPreviewSectionKey(normalizedType);
+
+  if (isMarkdown) {
+    const fallbackItem = buildFallbackPreviewItem(definitionMeta);
+    return PREVIEW_SECTION_CONFIG.map((section) => ({
+      ...section,
+      items: section.key === fallbackSectionKey ? [fallbackItem] : []
+    }));
+  }
 
   return PREVIEW_SECTION_CONFIG.map((section) => {
     const aliases = mappings[section.key] || [section.key];
@@ -595,8 +623,8 @@ function renderPreviewSection(section) {
   `;
 }
 
-function renderDefinitionPreview(definitionContent) {
-  const sections = collectPreviewSections(definitionContent);
+function renderDefinitionPreview(definitionContent, definitionMeta = {}) {
+  const sections = collectPreviewSections(definitionContent, definitionMeta);
   return sections.map((section) => renderPreviewSection(section)).join("");
 }
 
@@ -632,7 +660,7 @@ async function showDetails(id) {
   const tabLabel = formatTabLabel(format);
   definitionTabSource.textContent = tabLabel;
 
-  definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent);
+  definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent, def);
   definitionTabPreview.disabled = false;
   setDefinitionTab("preview");
   showDetailPage();
