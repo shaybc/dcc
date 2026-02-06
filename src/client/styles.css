@@ -589,6 +589,48 @@ main {
   font-weight: 700;
 }
 
+
+.definition-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.definition-header h3 {
+  margin: 0;
+}
+
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  border-color: var(--accent);
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.copy-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.copy-btn.copied {
+  border-color: var(--success);
+  color: var(--success);
+}
+
 .modal-content pre {
   background: #0f1116;
   border-radius: 12px;

@@ -11,6 +11,7 @@ const detailTitle = document.getElementById("detailTitle");
 const detailDescription = document.getElementById("detailDescription");
 const detailContent = document.getElementById("detailContent");
 const detailStatus = document.getElementById("detailStatus");
+const copyDefinitionButton = document.getElementById("copyDefinition");
 const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
 
@@ -389,6 +390,28 @@ async function showDetails(id) {
   modal.classList.add("open");
 }
 
+
+async function copyDefinitionToClipboard() {
+  const definitionText = detailContent.textContent || "";
+  if (!definitionText.trim()) {
+    return;
+  }
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(definitionText);
+    return;
+  }
+
+  const fallbackTextArea = document.createElement("textarea");
+  fallbackTextArea.value = definitionText;
+  fallbackTextArea.style.position = "fixed";
+  fallbackTextArea.style.opacity = "0";
+  document.body.appendChild(fallbackTextArea);
+  fallbackTextArea.select();
+  document.execCommand("copy");
+  fallbackTextArea.remove();
+}
+
 async function saveDefinition(id) {
   if (!devProjectInput.value.trim()) {
     window.alert("Please select a project first.");
@@ -446,6 +469,23 @@ clearSearchButton.addEventListener("click", () => {
   searchInput.value = "";
   searchField.classList.remove("has-value");
   renderCards();
+});
+
+
+copyDefinitionButton.addEventListener("click", async () => {
+  try {
+    await copyDefinitionToClipboard();
+    copyDefinitionButton.classList.add("copied");
+    copyDefinitionButton.setAttribute("title", "Copied");
+    copyDefinitionButton.setAttribute("aria-label", "Definition copied");
+    window.setTimeout(() => {
+      copyDefinitionButton.classList.remove("copied");
+      copyDefinitionButton.setAttribute("title", "Copy definition");
+      copyDefinitionButton.setAttribute("aria-label", "Copy definition");
+    }, 1200);
+  } catch (_error) {
+    copyDefinitionButton.setAttribute("title", "Unable to copy");
+  }
 });
 
 closeModal.addEventListener("click", () => {
