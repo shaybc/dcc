@@ -536,20 +536,6 @@ function buildItemFromBlock(typeKey, block) {
   };
 }
 
-function extractFrontmatterContent(rawContent) {
-  const raw = String(rawContent || "").replace(/^﻿/, "");
-  if (!raw.startsWith("---")) {
-    return raw;
-  }
-
-  const endMarker = raw.indexOf("\n---", 3);
-  if (endMarker < 0) {
-    return raw;
-  }
-
-  return raw.slice(4, endMarker).trim();
-}
-
 function getFallbackPreviewSectionKey(normalizedType) {
   if (normalizedType === "rules") return "rules";
   if (normalizedType === "prompts") return "prompts";
@@ -577,9 +563,17 @@ function collectPreviewSections(definitionContent, definitionMeta = {}) {
 
   const normalizedType = normalizeFilterType(definitionMeta?.type);
   const isMarkdown = inferDefinitionFormat(definitionMeta) === "md";
-  const sourceContent = isMarkdown ? extractFrontmatterContent(definitionContent) : String(definitionContent || "");
+  const fallbackSectionKey = getFallbackPreviewSectionKey(normalizedType);
 
-  const sections = PREVIEW_SECTION_CONFIG.map((section) => {
+  if (isMarkdown) {
+    const fallbackItem = buildFallbackPreviewItem(definitionMeta);
+    return PREVIEW_SECTION_CONFIG.map((section) => ({
+      ...section,
+      items: section.key === fallbackSectionKey ? [fallbackItem] : []
+    }));
+  }
+
+  return PREVIEW_SECTION_CONFIG.map((section) => {
     const aliases = mappings[section.key] || [section.key];
     const blocks = aliases.flatMap((alias) => parseTopLevelListSection(sourceContent, alias));
     const items = blocks.map((block) => buildItemFromBlock(section.key, block)).filter((item) => item.title);
