@@ -79,6 +79,22 @@ function formatFilterLabel(type) {
     .join(" ");
 }
 
+function formatTypePillLabel(type) {
+  const normalizedType = normalizeFilterType(type);
+  if (normalizedType === "models") return "Model";
+  if (normalizedType === "mcp servers") return "MCP Server";
+  if (normalizedType === "rules") return "Rule";
+  if (normalizedType === "prompts") return "Prompt";
+  if (normalizedType === "agents") return "Agent";
+  if (normalizedType === "context") return "Context";
+  if (normalizedType === "workflows") return "Workflow";
+  return "Unknown";
+}
+
+function typeClassName(type) {
+  return `type-${normalizeFilterType(type).replace(/\s+/g, "-")}`;
+}
+
 
 function getCardDescription(description) {
   const fallback = "No description provided.";
@@ -246,7 +262,13 @@ function renderCards() {
       </div>
       <h3>${def.name}</h3>
       <p>${getCardDescription(def.description)}</p>
-      <div class="meta">${def.type} · ${statusLabel(def.status)}</div>
+      <div class="meta-row">
+        <div class="meta-status">${statusLabel(def.status)}</div>
+        <div class="type-pill ${typeClassName(def.type)}">
+          <span class="type-pill-icon">${filterIconSvg(def.type)}</span>
+          <span>${formatTypePillLabel(def.type)}</span>
+        </div>
+      </div>
     `;
 
     card.addEventListener("click", async (event) => {
