@@ -5,7 +5,9 @@ const clearSearchButton = document.getElementById("clearSearch");
 const searchField = document.querySelector(".search-field");
 const filterButton = document.getElementById("filterButton");
 const filterMenu = document.getElementById("filterMenu");
-const modal = document.getElementById("detailModal");
+const hubHeader = document.getElementById("hubHeader");
+const hubMain = document.getElementById("hubMain");
+const detailPage = document.getElementById("detailPage");
 const closeModal = document.getElementById("closeModal");
 const detailTitle = document.getElementById("detailTitle");
 const detailDescription = document.getElementById("detailDescription");
@@ -336,6 +338,7 @@ function renderCards() {
         return;
       }
       await showDetails(def.id);
+      updateRouteForDetails(def.id);
     });
     cardsContainer.appendChild(card);
   });
@@ -632,8 +635,50 @@ async function showDetails(id) {
   definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent);
   definitionTabPreview.disabled = false;
   setDefinitionTab("preview");
+  showDetailPage();
+}
 
-  modal.classList.add("open");
+function showDetailPage() {
+  hubHeader.hidden = true;
+  hubMain.hidden = true;
+  detailPage.hidden = false;
+  window.scrollTo(0, 0);
+}
+
+function showHubPage() {
+  detailPage.hidden = true;
+  hubHeader.hidden = false;
+  hubMain.hidden = false;
+}
+
+function updateRouteForDetails(id) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("definition", String(id));
+  window.history.pushState({}, "", url);
+}
+
+function updateRouteForHub(replace = false) {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("definition");
+  const historyMethod = replace ? "replaceState" : "pushState";
+  window.history[historyMethod]({}, "", url);
+}
+
+async function handleRoute() {
+  const definitionId = new URL(window.location.href).searchParams.get("definition");
+  if (!definitionId) {
+    showHubPage();
+    return;
+  }
+
+  const numericId = Number(definitionId);
+  if (!Number.isFinite(numericId) || numericId <= 0) {
+    updateRouteForHub(true);
+    showHubPage();
+    return;
+  }
+
+  await showDetails(numericId);
 }
 
 
@@ -744,14 +789,13 @@ definitionTabSource.addEventListener("click", () => {
 });
 
 closeModal.addEventListener("click", () => {
-  modal.classList.remove("open");
+  showHubPage();
+  updateRouteForHub();
 });
 
-modal.addEventListener("click", (event) => {
-  if (event.target === modal) {
-    modal.classList.remove("open");
-  }
+window.addEventListener("popstate", () => {
+  handleRoute();
 });
 
 loadDevProjects();
-loadCurrentDevProject().then(fetchDefinitions);
+loadCurrentDevProject().then(fetchDefinitions).then(handleRoute);
