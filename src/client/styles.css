@@ -717,7 +717,6 @@ main {
   padding: 20px;
   white-space: pre-wrap;
   border: 1px solid var(--border);
-  min-height: 300px;
 }
 
 .settings-form {
