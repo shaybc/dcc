@@ -642,6 +642,7 @@ function showDetailPage() {
   hubHeader.hidden = true;
   hubMain.hidden = true;
   detailPage.hidden = false;
+  document.body.classList.add("detail-page-open");
   window.scrollTo(0, 0);
 }
 
@@ -649,6 +650,7 @@ function showHubPage() {
   detailPage.hidden = true;
   hubHeader.hidden = false;
   hubMain.hidden = false;
+  document.body.classList.remove("detail-page-open");
 }
 
 function updateRouteForDetails(id) {

@@ -496,7 +496,11 @@ main {
 }
 
 .detail-page {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
   padding: 10px;
+  background: var(--bg);
 }
 
 .detail-page-shell {
@@ -512,6 +516,14 @@ main {
   overflow: auto;
   border: 0.5px solid var(--border);
   box-shadow: var(--shadow);
+}
+
+body.detail-page-open {
+  overflow: hidden;
+}
+
+.detail-page[hidden] {
+  display: none;
 }
 
 .modal-topbar {
