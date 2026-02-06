@@ -11,6 +11,11 @@ const detailTitle = document.getElementById("detailTitle");
 const detailDescription = document.getElementById("detailDescription");
 const detailContent = document.getElementById("detailContent");
 const detailStatus = document.getElementById("detailStatus");
+const detailTypeIcon = document.getElementById("detailTypeIcon");
+const detailTypeMetaIcon = document.getElementById("detailTypeMetaIcon");
+const detailTypeText = document.getElementById("detailTypeText");
+const detailCreatedDate = document.getElementById("detailCreatedDate");
+const copyDefinitionButton = document.getElementById("copyDefinition");
 const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
 
@@ -113,6 +118,46 @@ function getCardDescription(description) {
   }
 
   return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderDescriptionMarkdown(description) {
+  const raw = String(description || "").replace(/\r\n/g, "\n");
+  if (!raw.trim()) {
+    return "<p>No description provided.</p>";
+  }
+
+  const codeBlocks = [];
+  let html = escapeHtml(raw).replace(/```([\s\S]*?)```/g, (_, code) => {
+    const trimmed = code.replace(/^\n+|\n+$/g, "");
+    const index = codeBlocks.push(`<pre><code>${trimmed}</code></pre>`) - 1;
+    return `@@CODE_BLOCK_${index}@@`;
+  });
+
+  html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+
+  const blocks = html
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      if (/^@@CODE_BLOCK_\d+@@$/.test(block)) {
+        return block;
+      }
+      return `<p>${block.replace(/\n/g, "<br>")}</p>`;
+    });
+
+  const withParagraphs = blocks.join("");
+  return withParagraphs.replace(/@@CODE_BLOCK_(\d+)@@/g, (_, index) => codeBlocks[Number(index)] || "");
 }
 
 function filterIconSvg(type) {
@@ -338,15 +383,60 @@ async function fetchDefinitions() {
   renderCards();
 }
 
+
+function formatCreatedDate(value) {
+  if (!value) {
+    return "Created date unavailable";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Created date unavailable";
+  }
+
+  return `Created on ${date.toLocaleDateString()}`;
+}
+
 async function showDetails(id) {
   const response = await fetch(`/api/definitions/${id}`);
   const def = await response.json();
   detailTitle.textContent = def.name;
-  detailDescription.textContent = def.description || "No description provided.";
+  detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
   detailContent.textContent = def.content || "";
   detailStatus.textContent = statusLabel(def.status);
   detailStatus.className = `status-pill ${def.status}`;
+
+  const normalizedType = normalizeFilterType(def.type);
+  const typeLabel = formatTypePillLabel(normalizedType);
+  const typeIcon = filterIconSvg(normalizedType);
+  detailTypeIcon.innerHTML = typeIcon;
+  detailTypeMetaIcon.innerHTML = typeIcon;
+  detailTypeText.textContent = typeLabel;
+  detailCreatedDate.textContent = formatCreatedDate(def.createdAt);
+
   modal.classList.add("open");
+}
+
+
+async function copyDefinitionToClipboard() {
+  const definitionText = detailContent.textContent || "";
+  if (!definitionText.trim()) {
+    return;
+  }
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(definitionText);
+    return;
+  }
+
+  const fallbackTextArea = document.createElement("textarea");
+  fallbackTextArea.value = definitionText;
+  fallbackTextArea.style.position = "fixed";
+  fallbackTextArea.style.opacity = "0";
+  document.body.appendChild(fallbackTextArea);
+  fallbackTextArea.select();
+  document.execCommand("copy");
+  fallbackTextArea.remove();
 }
 
 async function saveDefinition(id) {
@@ -406,6 +496,23 @@ clearSearchButton.addEventListener("click", () => {
   searchInput.value = "";
   searchField.classList.remove("has-value");
   renderCards();
+});
+
+
+copyDefinitionButton.addEventListener("click", async () => {
+  try {
+    await copyDefinitionToClipboard();
+    copyDefinitionButton.classList.add("copied");
+    copyDefinitionButton.setAttribute("title", "Copied");
+    copyDefinitionButton.setAttribute("aria-label", "Definition copied");
+    window.setTimeout(() => {
+      copyDefinitionButton.classList.remove("copied");
+      copyDefinitionButton.setAttribute("title", "Copy definition");
+      copyDefinitionButton.setAttribute("aria-label", "Copy definition");
+    }, 1200);
+  } catch (_error) {
+    copyDefinitionButton.setAttribute("title", "Unable to copy");
+  }
 });
 
 closeModal.addEventListener("click", () => {

@@ -282,6 +282,25 @@ async function parseDefinition(filePath) {
   };
 }
 
+
+async function getFileCreatedAt(filePath) {
+  if (!filePath) {
+    return null;
+  }
+
+  try {
+    const stats = await fsp.stat(filePath);
+    const candidates = [stats.birthtime, stats.ctime, stats.mtime]
+      .filter(Boolean)
+      .map((date) => new Date(date));
+
+    const validDate = candidates.find((date) => !Number.isNaN(date.getTime()) && date.getTime() > 0);
+    return validDate ? validDate.toISOString() : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
 function getTeamRoot() {
   return path.join(os.homedir(), ".continue", "team");
 }
@@ -770,12 +789,18 @@ app.get("/api/definitions/:id", (req, res) => {
   db.get(
     "SELECT * FROM definitions WHERE id = ?",
     [req.params.id],
-    (err, row) => {
+    async (err, row) => {
       if (err) {
         res.status(500).json({ error: err.message });
         return;
       }
-      res.json(row);
+      if (!row) {
+        res.status(404).json({ error: "Definition not found." });
+        return;
+      }
+
+      const createdAt = await getFileCreatedAt(row.filePath);
+      res.json({ ...row, createdAt });
     }
   );
 });

@@ -99,14 +99,39 @@
       <div class="grid" id="cards"></div>
     </main>
 
-    <div class="modal" id="detailModal">
-      <div class="modal-content">
-        <button class="btn" id="closeModal">Close</button>
-        <h2 id="detailTitle"></h2>
-        <p id="detailDescription"></p>
-        <div class="status-pill" id="detailStatus"></div>
-        <h3>Definition</h3>
-        <pre id="detailContent"></pre>
+    <div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <div class="modal-shell">
+        <div class="modal-content">
+          <div class="modal-topbar">
+            <div class="modal-kicker">Definition details</div>
+            <button class="btn" id="closeModal" type="button">Close</button>
+          </div>
+          <div class="detail-hero">
+            <div class="detail-hero-icon" id="detailTypeIcon" aria-hidden="true"></div>
+            <div class="detail-hero-content">
+              <div class="detail-hero-meta-row">
+                <div class="detail-hero-type">
+                  <span class="detail-hero-type-icon" id="detailTypeMetaIcon" aria-hidden="true"></span>
+                  <span id="detailTypeText"></span>
+                </div>
+                <div class="detail-hero-date" id="detailCreatedDate"></div>
+              </div>
+              <h2 id="detailTitle"></h2>
+              <div class="detail-description" id="detailDescription"></div>
+              <div class="status-pill" id="detailStatus"></div>
+            </div>
+          </div>
+          <div class="definition-header">
+            <h3>Definition</h3>
+            <button class="copy-btn" id="copyDefinition" type="button" aria-label="Copy definition" title="Copy definition">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              </svg>
+            </button>
+          </div>
+          <pre id="detailContent"></pre>
+        </div>
       </div>
     </div>
 
