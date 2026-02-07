@@ -531,6 +531,18 @@ async function loadDefinitions() {
   const teamFiles = await collectTeamFiles();
 
   const normalizedRepoFiles = repoFiles.filter((filePath) => !filePath.includes(path.join(repoPath, ".git")));
+  const trackedRepoFiles = new Set();
+  try {
+    const trackedOutput = await runCommand("git ls-files -z", { cwd: repoPath });
+    for (const relativePath of trackedOutput.split("\0").filter(Boolean)) {
+      trackedRepoFiles.add(path.resolve(repoPath, relativePath));
+    }
+  } catch (_error) {
+    // If git metadata is unavailable, treat files as tracked.
+    for (const filePath of normalizedRepoFiles) {
+      trackedRepoFiles.add(path.resolve(filePath));
+    }
+  }
   const repoKeyMap = new Map();
   const teamKeyMap = new Set();
 
@@ -551,6 +563,8 @@ async function loadDefinitions() {
   for (const filePath of normalizedRepoFiles) {
     const definition = await parseDefinition(filePath);
     const inTeam = teamKeyMap.has(definition.key) ? 1 : 0;
+    const absoluteFilePath = path.resolve(filePath);
+    const source = trackedRepoFiles.has(absoluteFilePath) ? "repo" : "untracked";
     const status = inTeam ? "saved" : "repo";
 
     await new Promise((resolve, reject) => {
@@ -582,7 +596,7 @@ async function loadDefinitions() {
           definition.content,
           definition.type,
           definition.filePath,
-          "repo",
+          source,
           inTeam,
           status,
           now
@@ -653,9 +667,9 @@ async function loadDefinitions() {
   const repoKeys = [...repoKeyMap.keys()];
   if (repoKeys.length > 0) {
     const placeholders = repoKeys.map(() => "?").join(", ");
-    await runDb(`DELETE FROM definitions WHERE source = 'repo' AND key NOT IN (${placeholders})`, repoKeys);
+    await runDb(`DELETE FROM definitions WHERE source IN ('repo', 'untracked') AND key NOT IN (${placeholders})`, repoKeys);
   } else {
-    await runDb("DELETE FROM definitions WHERE source = 'repo'");
+    await runDb("DELETE FROM definitions WHERE source IN ('repo', 'untracked')");
   }
 
   const teamKeys = [...teamKeyMap];
@@ -846,8 +860,7 @@ app.get("/api/definitions", async (req, res) => {
     );
 
     if (!currentDevProject) {
-      const rows = definitionsRows.map((row) => ({ ...row, status: "repo" }));
-      res.json(rows);
+      res.json(definitionsRows);
       return;
     }
 
@@ -861,6 +874,58 @@ app.get("/api/definitions", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+app.post("/api/definitions/:id/push-upstream", async (req, res) => {
+  db.get("SELECT * FROM definitions WHERE id = ?", [req.params.id], async (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    if (!row) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const repoPath = await getSetting("repoPath");
+    if (!repoPath) {
+      res.status(400).json({ error: "Repo path not configured." });
+      return;
+    }
+
+    const source = String(row.source || "").toLowerCase();
+    if (source === "repo") {
+      res.status(400).json({ error: "Definition is already tracked in the repository." });
+      return;
+    }
+
+    const absoluteRepoPath = path.resolve(repoPath);
+    const absoluteDefinitionPath = path.resolve(row.filePath || "");
+    if (!absoluteDefinitionPath.startsWith(`${absoluteRepoPath}${path.sep}`)) {
+      res.status(400).json({ error: "Definition file is not in the configured repository." });
+      return;
+    }
+
+    if (!fs.existsSync(absoluteDefinitionPath)) {
+      await loadDefinitions();
+      res.status(404).json({ error: "Definition file was not found in the repository." });
+      return;
+    }
+
+    const commitMessage = String(req.body?.commitMessage || "").trim() || `Add definition ${row.name}`;
+    const relativePath = path.relative(absoluteRepoPath, absoluteDefinitionPath);
+
+    try {
+      await runCommand("git pull", { cwd: absoluteRepoPath });
+      await runCommand(`git add ${JSON.stringify(relativePath)}`, { cwd: absoluteRepoPath });
+      await runCommand(`git commit -m ${JSON.stringify(commitMessage)}`, { cwd: absoluteRepoPath });
+      await runCommand("git push", { cwd: absoluteRepoPath });
+      await loadDefinitions();
+      res.json({ ok: true, message: "Definition pushed to upstream repository." });
+    } catch (error) {
+      res.status(500).json({ error: extractCommandErrorMessage(error, "Failed to push definition to upstream.") });
+    }
+  });
 });
 
 app.get("/api/definitions/:id", (req, res) => {
