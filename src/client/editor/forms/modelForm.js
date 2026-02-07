@@ -1,11 +1,78 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
+function createTextInput({ mount, label, state, key, onChange }) {
+  const row = document.createElement("label");
+  row.className = "editor-field";
+  row.innerHTML = `<span>${label}</span>`;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.addEventListener("input", () => {
+    state[key] = input.value;
+    onChange();
+  });
+  row.append(input);
+  mount.append(row);
+  return input;
+}
+
 export function createModelForm({ mount, onChange }) {
-  const state = { name: "", description: "", version: "", tags: [], models: [], roles: [] };
-  const mk=(label,key)=>{const l=document.createElement('label');l.className='editor-field';l.innerHTML=`<span>${label}</span>`;const i=document.createElement('input');i.type='text';i.addEventListener('input',()=>{state[key]=i.value;onChange();});l.append(i);mount.append(l);return i;};
-  const name=mk('name','name');const description=mk('description','description');const version=mk('version','version');
-  const tags=createArrayEditor({mount,label:'tags',fields:[{name:'value',label:'Tag'}],onChange:(v)=>{state.tags=v;onChange();}});
-  const models=createArrayEditor({mount,label:'models',fields:[{name:'model',label:'model'},{name:'provider',label:'provider'}],onChange:(v)=>{state.models=v;onChange();}});
-  const roles=createArrayEditor({mount,label:'roles',fields:[{name:'value',label:'Role'}],onChange:(v)=>{state.roles=v;onChange();}});
-  return {getState(){return {...state,tags:tags.getItems(),models:models.getItems(),roles:roles.getItems()}},setState(next){Object.assign(state,next||{});name.value=state.name||'';description.value=state.description||'';version.value=state.version||'';tags.setItems(state.tags||[]);models.setItems(state.models||[]);roles.setItems(state.roles||[]);}};
+  const state = {
+    name: "",
+    description: "",
+    version: "",
+    schema: "",
+    tags: [],
+    models: []
+  };
+
+  const name = createTextInput({ mount, label: "name", state, key: "name", onChange });
+  const version = createTextInput({ mount, label: "version", state, key: "version", onChange });
+  const schema = createTextInput({ mount, label: "schema", state, key: "schema", onChange });
+  const description = createTextInput({ mount, label: "description", state, key: "description", onChange });
+
+  const tags = createArrayEditor({
+    mount,
+    label: "tags",
+    fields: [{ name: "value", label: "Tag" }],
+    onChange: (nextItems) => {
+      state.tags = nextItems;
+      onChange();
+    }
+  });
+
+  const models = createArrayEditor({
+    mount,
+    label: "models",
+    fields: [
+      { name: "name", label: "name" },
+      { name: "provider", label: "provider" },
+      { name: "model", label: "model" },
+      { name: "apiKey", label: "apiKey" },
+      { name: "roles", label: "roles", kind: "array", itemLabel: "Role" },
+      { name: "contextLength", label: "defaultCompletionOptions.contextLength" }
+    ],
+    onChange: (nextItems) => {
+      state.models = nextItems;
+      onChange();
+    }
+  });
+
+  return {
+    getState() {
+      return {
+        ...state,
+        tags: tags.getItems(),
+        models: models.getItems()
+      };
+    },
+    setState(nextState) {
+      Object.assign(state, nextState || {});
+      name.value = state.name || "";
+      version.value = state.version || "";
+      schema.value = state.schema || "";
+      description.value = state.description || "";
+      tags.setItems(state.tags || []);
+      models.setItems(state.models || []);
+    }
+  };
 }

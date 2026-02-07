@@ -26,10 +26,53 @@ let definitionType = typeParam;
 let format = "yaml";
 let unknown = {};
 
+function normalizeStringArray(value) {
+  if (Array.isArray(value)) return value;
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeModelEntries(models) {
+  return (Array.isArray(models) ? models : []).map((entry) => ({
+    ...entry,
+    roles: Array.isArray(entry?.roles) ? entry.roles : [],
+    contextLength: entry?.defaultCompletionOptions?.contextLength ?? ""
+  }));
+}
+
+
 const handlers = {
   prompt: { createForm: createPromptForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
   mcpServer: { createForm: createMcpServerForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
-  model: { createForm: createModelForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
+  model: {
+    createForm: createModelForm,
+    parse: (txt) => YAML.parse(txt || "") || {},
+    serialize: (state) => {
+      const normalizedModels = (state.models || []).map((entry) => ({
+        ...entry,
+        roles: Array.isArray(entry.roles) ? entry.roles : [],
+        defaultCompletionOptions: {
+          ...(entry.defaultCompletionOptions || {}),
+          ...(entry.contextLength ? { contextLength: Number(entry.contextLength) || entry.contextLength } : {})
+        }
+      })).map((entry) => {
+        const { contextLength, ...rest } = entry;
+        if (!rest.defaultCompletionOptions || Object.keys(rest.defaultCompletionOptions).length === 0) {
+          delete rest.defaultCompletionOptions;
+        }
+        return rest;
+      });
+
+      return YAML.stringify({
+        ...unknown,
+        ...state,
+        tags: normalizeStringArray(state.tags),
+        models: normalizedModels
+      });
+    }
+  },
   workflow: { createForm: createWorkflowForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
   context: { createForm: createContextForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
   agent: {
@@ -50,7 +93,14 @@ function normalizeState(type, parsed) {
   if (type === "mcpServer") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], mcpServers: data.mcpServers || [] };
   if (type === "agent") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], tools: data.tools || [], rules: data.rules || [], body: data.body || "" };
   if (type === "rule") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
-  if (type === "model") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], models: data.models || [], roles: data.roles || [] };
+  if (type === "model") return {
+    name: data.name || "",
+    description: data.description || "",
+    version: data.version || "",
+    schema: data.schema || "",
+    tags: normalizeStringArray(data.tags),
+    models: normalizeModelEntries(data.models)
+  };
   if (type === "workflow") return { name: data.name || "", description: data.description || "", version: data.version || "", models: data.models || [], context: data.context || [], mcpServers: data.mcpServers || [], rules: data.rules || [], override: data.override || { roles: [] } };
   return { name: data.name || "", description: data.description || "", version: data.version || "", context: data.context || [], headers: data.headers || [] };
 }
@@ -61,7 +111,7 @@ function captureUnknownFields(type, parsed) {
     mcpServer: ["name", "description", "version", "tags", "mcpServers"],
     agent: ["name", "description", "version", "tags", "tools", "rules", "body"],
     rule: ["name", "description", "version", "tags", "body"],
-    model: ["name", "description", "version", "tags", "models", "roles"],
+    model: ["name", "description", "version", "schema", "tags", "models"],
     workflow: ["name", "description", "version", "models", "override", "context", "mcpServers", "rules"],
     context: ["name", "description", "version", "context", "headers"]
   };
