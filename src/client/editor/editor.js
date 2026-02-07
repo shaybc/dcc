@@ -50,6 +50,41 @@ function normalizeMcpServers(servers) {
 }
 
 
+function normalizeWorkflowModels(models) {
+  return (Array.isArray(models) ? models : []).map((entry) => ({
+    ...entry,
+    withAnthropicApiKey: entry?.with?.ANTHROPIC_API_KEY || "",
+    roles: Array.isArray(entry?.override?.roles) ? entry.override.roles : []
+  }));
+}
+
+function normalizeUsesArray(items) {
+  return (Array.isArray(items) ? items : []).map((entry) => {
+    if (typeof entry === "string") {
+      return { uses: entry };
+    }
+    return { ...entry, uses: entry?.uses || "" };
+  });
+}
+
+function serializeWorkflowModels(models) {
+  return (Array.isArray(models) ? models : []).map((entry) => {
+    const out = { ...entry };
+    if (out.withAnthropicApiKey) {
+      out.with = { ...(out.with || {}), ANTHROPIC_API_KEY: out.withAnthropicApiKey };
+    }
+    if (Array.isArray(out.roles) && out.roles.length > 0) {
+      out.override = { ...(out.override || {}), roles: out.roles };
+    }
+    delete out.withAnthropicApiKey;
+    delete out.roles;
+    if (out.with && Object.keys(out.with).length === 0) delete out.with;
+    if (out.override && Object.keys(out.override).length === 0) delete out.override;
+    return out;
+  });
+}
+
+
 const handlers = {
   prompt: {
     createForm: createPromptForm,
@@ -98,7 +133,19 @@ const handlers = {
       });
     }
   },
-  workflow: { createForm: createWorkflowForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
+  workflow: {
+    createForm: createWorkflowForm,
+    parse: (txt) => YAML.parse(txt || "") || {},
+    serialize: (state) => YAML.stringify({
+      ...unknown,
+      ...state,
+      tags: normalizeStringArray(state.tags),
+      models: serializeWorkflowModels(state.models),
+      context: normalizeUsesArray(state.context),
+      mcpServers: normalizeUsesArray(state.mcpServers),
+      rules: normalizeUsesArray(state.rules)
+    })
+  },
   context: { createForm: createContextForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
   agent: {
     createForm: createAgentForm,
@@ -140,7 +187,17 @@ function normalizeState(type, parsed) {
     tags: normalizeStringArray(data.tags),
     models: normalizeModelEntries(data.models)
   };
-  if (type === "workflow") return { name: data.name || "", description: data.description || "", version: data.version || "", models: data.models || [], context: data.context || [], mcpServers: data.mcpServers || [], rules: data.rules || [], override: data.override || { roles: [] } };
+  if (type === "workflow") return {
+    name: data.name || "",
+    version: data.version || "",
+    schema: data.schema || "",
+    description: data.description || "",
+    tags: normalizeStringArray(data.tags),
+    models: normalizeWorkflowModels(data.models),
+    context: normalizeUsesArray(data.context),
+    mcpServers: normalizeUsesArray(data.mcpServers),
+    rules: normalizeUsesArray(data.rules)
+  };
   return { name: data.name || "", description: data.description || "", version: data.version || "", context: data.context || [], headers: data.headers || [] };
 }
 
@@ -151,7 +208,7 @@ function captureUnknownFields(type, parsed) {
     agent: ["name", "description", "version", "tags", "tools", "rules", "body"],
     rule: ["name", "description", "version", "tags", "body"],
     model: ["name", "description", "version", "schema", "tags", "models"],
-    workflow: ["name", "description", "version", "models", "override", "context", "mcpServers", "rules"],
+    workflow: ["name", "description", "version", "schema", "tags", "models", "context", "mcpServers", "rules"],
     context: ["name", "description", "version", "context", "headers"]
   };
   const known = new Set(knownByType[type] || []);

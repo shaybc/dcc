@@ -1,13 +1,114 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
+function createTextInput({ mount, label, state, key, onChange }) {
+  const row = document.createElement("label");
+  row.className = "editor-field";
+  row.innerHTML = `<span>${label}</span>`;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.addEventListener("input", () => {
+    state[key] = input.value;
+    onChange();
+  });
+  row.append(input);
+  mount.append(row);
+  return input;
+}
+
 export function createWorkflowForm({ mount, onChange }) {
-  const state = { name: "", description: "", version: "", models: [], context: [], mcpServers: [], rules: [], override: { roles: [] } };
-  const mk=(label,key)=>{const l=document.createElement('label');l.className='editor-field';l.innerHTML=`<span>${label}</span>`;const i=document.createElement('input');i.type='text';i.addEventListener('input',()=>{state[key]=i.value;onChange();});l.append(i);mount.append(l);return i;};
-  const name=mk('name','name');const description=mk('description','description');const version=mk('version','version');
-  const models=createArrayEditor({mount,label:'models',fields:[{name:'value',label:'Model'}],onChange:(v)=>{state.models=v;onChange();}});
-  const roles=createArrayEditor({mount,label:'override.roles',fields:[{name:'value',label:'Role'}],onChange:(v)=>{state.override={...(state.override||{}),roles:v};onChange();}});
-  const context=createArrayEditor({mount,label:'context',fields:[{name:'value',label:'Context'}],onChange:(v)=>{state.context=v;onChange();}});
-  const mcpServers=createArrayEditor({mount,label:'mcpServers',fields:[{name:'value',label:'MCP Server'}],onChange:(v)=>{state.mcpServers=v;onChange();}});
-  const rules=createArrayEditor({mount,label:'rules',fields:[{name:'value',label:'Rule'}],onChange:(v)=>{state.rules=v;onChange();}});
-  return {getState(){return {...state,models:models.getItems(),context:context.getItems(),mcpServers:mcpServers.getItems(),rules:rules.getItems(),override:{...(state.override||{}),roles:roles.getItems()}};},setState(next){Object.assign(state,next||{});name.value=state.name||'';description.value=state.description||'';version.value=state.version||'';models.setItems(state.models||[]);context.setItems(state.context||[]);mcpServers.setItems(state.mcpServers||[]);rules.setItems(state.rules||[]);roles.setItems(state.override?.roles||[]);}};
+  const state = {
+    name: "",
+    version: "",
+    schema: "",
+    description: "",
+    tags: [],
+    models: [],
+    context: [],
+    mcpServers: [],
+    rules: []
+  };
+
+  const name = createTextInput({ mount, label: "name", state, key: "name", onChange });
+  const version = createTextInput({ mount, label: "version", state, key: "version", onChange });
+  const schema = createTextInput({ mount, label: "schema", state, key: "schema", onChange });
+  const description = createTextInput({ mount, label: "description", state, key: "description", onChange });
+
+  const tags = createArrayEditor({
+    mount,
+    label: "tags",
+    fields: [{ name: "value", label: "Tag" }],
+    onChange: (nextItems) => {
+      state.tags = nextItems;
+      onChange();
+    }
+  });
+
+  const models = createArrayEditor({
+    mount,
+    label: "models",
+    fields: [
+      { name: "uses", label: "uses" },
+      { name: "withAnthropicApiKey", label: "with.ANTHROPIC_API_KEY" },
+      { name: "roles", label: "override.roles", kind: "array", itemLabel: "role" }
+    ],
+    onChange: (nextItems) => {
+      state.models = nextItems;
+      onChange();
+    }
+  });
+
+  const context = createArrayEditor({
+    mount,
+    label: "context",
+    fields: [{ name: "uses", label: "uses" }],
+    onChange: (nextItems) => {
+      state.context = nextItems;
+      onChange();
+    }
+  });
+
+  const mcpServers = createArrayEditor({
+    mount,
+    label: "mcpServers",
+    fields: [{ name: "uses", label: "uses" }],
+    onChange: (nextItems) => {
+      state.mcpServers = nextItems;
+      onChange();
+    }
+  });
+
+  const rules = createArrayEditor({
+    mount,
+    label: "rules",
+    fields: [{ name: "uses", label: "uses" }],
+    onChange: (nextItems) => {
+      state.rules = nextItems;
+      onChange();
+    }
+  });
+
+  return {
+    getState() {
+      return {
+        ...state,
+        tags: tags.getItems(),
+        models: models.getItems(),
+        context: context.getItems(),
+        mcpServers: mcpServers.getItems(),
+        rules: rules.getItems()
+      };
+    },
+    setState(nextState) {
+      Object.assign(state, nextState || {});
+      name.value = state.name || "";
+      version.value = state.version || "";
+      schema.value = state.schema || "";
+      description.value = state.description || "";
+      tags.setItems(state.tags || []);
+      models.setItems(state.models || []);
+      context.setItems(state.context || []);
+      mcpServers.setItems(state.mcpServers || []);
+      rules.setItems(state.rules || []);
+    }
+  };
 }
