@@ -949,12 +949,40 @@ async function deleteDefinitionFromRepo(id) {
 }
 
 
-async function duplicateDefinition(id, destinationPath, name) {
-  return fetchWithErrorHandling(`/api/definitions/${id}/duplicate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ destinationPath, name })
-  }, "Unable to duplicate definition.");
+async function duplicateDefinitionWithSavePicker() {
+  if (typeof window.showSaveFilePicker !== "function") {
+    return false;
+  }
+
+  const extension = (currentDetailDefinitionPath.split(".").pop() || "yaml").toLowerCase();
+  const suggestedFileName = currentDetailDefinitionPath
+    ? currentDetailDefinitionPath.split(/[\\/]/).pop()
+    : `${currentDetailDefinitionName || "definition"}_copy.${extension}`;
+
+  const handle = await window.showSaveFilePicker({
+    suggestedName: suggestedFileName,
+    types: [{
+      description: "Definition files",
+      accept: { "text/plain": [`.${extension}`, ".yaml", ".yml", ".md", ".json", ".txt"] }
+    }]
+  });
+
+  const writable = await handle.createWritable();
+  await writable.write(detailContent.textContent || "");
+  await writable.close();
+  return true;
+}
+
+function downloadDuplicatedDefinitionFile(fileName) {
+  const blob = new Blob([detailContent.textContent || ""], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function pushDefinitionToUpstream(id, commitMessage) {
@@ -1037,24 +1065,26 @@ duplicateDefinitionButton.addEventListener("click", async () => {
   }
 
   const suggestedName = `${currentDetailDefinitionName || "definition"}_copy`;
-  const input = document.createElement("input");
-  input.type = "file";
-  input.nwsaveas = currentDetailDefinitionPath || `${suggestedName}.yaml`;
-  input.addEventListener("change", async () => {
-    const destinationPath = input.value;
-    if (!destinationPath) {
+  const extension = (currentDetailDefinitionPath.split(".").pop() || "yaml").toLowerCase();
+  const suggestedFileName = `${suggestedName}.${extension}`;
+
+  try {
+    const usedSavePicker = await duplicateDefinitionWithSavePicker();
+    if (usedSavePicker) {
+      await fetchWithErrorHandling("/api/load-definitions", { method: "POST" }, "Unable to refresh definitions.");
+      await fetchDefinitions();
+      window.alert("Definition duplicated locally.");
       return;
     }
-
-    try {
-      const result = await duplicateDefinition(currentDetailDefinitionId, destinationPath, suggestedName);
-      await fetchDefinitions();
-      window.alert(result?.message || "Definition duplicated locally.");
-    } catch (error) {
+    downloadDuplicatedDefinitionFile(suggestedFileName);
+    window.alert("Definition file downloaded. Save it into your cloned repository folder to load it as a local definition.");
+    return;
+  } catch (error) {
+    if (error?.name !== "AbortError") {
       window.alert(error.message || "Unable to duplicate definition.");
     }
-  }, { once: true });
-  input.click();
+    return;
+  }
 });
 
 pushUpstreamDefinitionButton.addEventListener("click", async () => {
