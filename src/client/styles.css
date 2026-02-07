@@ -120,6 +120,42 @@ header p {
 header .actions {
   grid-column: 3;
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.new-definition-menu-wrap {
+  position: relative;
+}
+
+.new-definition-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+  z-index: 30;
+}
+
+.new-definition-menu button {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.new-definition-menu button:hover {
+  background: var(--surface-muted);
 }
 
 .dev-project-picker {
@@ -606,6 +642,19 @@ body.detail-page-open {
   display: none;
 }
 
+.definition-form-page {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  padding: 10px;
+  background: var(--bg);
+  overflow-y: auto;
+}
+
+.definition-form-page[hidden] {
+  display: none;
+}
+
 .modal-topbar {
   display: flex;
   align-items: center;
@@ -821,6 +870,51 @@ body.detail-page-open {
 
 .definition-tab-panel #detailContent {
   margin: 0;
+}
+
+.definition-form {
+  display: grid;
+  gap: 14px;
+}
+
+.definition-field {
+  display: grid;
+  gap: 8px;
+}
+
+.definition-field span {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.definition-field input,
+.definition-field textarea,
+.definition-yaml-area {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  color: var(--text);
+  padding: 10px 12px;
+}
+
+.definition-field textarea,
+.definition-yaml-area {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.definition-yaml-area {
+  min-height: 220px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.definition-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .definition-preview-content {
