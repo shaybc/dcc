@@ -1183,3 +1183,34 @@ body.detail-page-open {
   border-color: #60a5fa;
   background: rgba(59, 130, 246, 0.15);
 }
+
+.definition-form-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.definition-form-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#definitionYamlEditor,
+#definitionFileName,
+#definitionFilePath,
+.definition-form-fields input,
+.definition-form-fields textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
+  color: var(--text);
+}
+
+#definitionYamlEditor {
+  min-height: 280px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
