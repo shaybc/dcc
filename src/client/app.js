@@ -563,6 +563,7 @@ function collectPreviewSections(definitionContent, definitionMeta = {}) {
 
   const normalizedType = normalizeFilterType(definitionMeta?.type);
   const isMarkdown = inferDefinitionFormat(definitionMeta) === "md";
+  const sourceContent = String(definitionContent || "");
 
   if (isMarkdown) {
     const markdownSectionKey = getFallbackPreviewSectionKey(normalizedType);
