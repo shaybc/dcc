@@ -42,6 +42,13 @@ function normalizeModelEntries(models) {
   }));
 }
 
+function normalizeMcpServers(servers) {
+  return (Array.isArray(servers) ? servers : []).map((entry) => ({
+    ...entry,
+    args: Array.isArray(entry?.args) ? entry.args : []
+  }));
+}
+
 
 const handlers = {
   prompt: {
@@ -54,7 +61,16 @@ const handlers = {
       prompts: Array.isArray(state.prompts) ? state.prompts : []
     })
   },
-  mcpServer: { createForm: createMcpServerForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
+  mcpServer: {
+    createForm: createMcpServerForm,
+    parse: (txt) => YAML.parse(txt || "") || {},
+    serialize: (state) => YAML.stringify({
+      ...unknown,
+      ...state,
+      tags: normalizeStringArray(state.tags),
+      mcpServers: normalizeMcpServers(state.mcpServers)
+    })
+  },
   model: {
     createForm: createModelForm,
     parse: (txt) => YAML.parse(txt || "") || {},
@@ -106,7 +122,14 @@ function normalizeState(type, parsed) {
     tags: normalizeStringArray(data.tags),
     prompts: Array.isArray(data.prompts) ? data.prompts : []
   };
-  if (type === "mcpServer") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], mcpServers: data.mcpServers || [] };
+  if (type === "mcpServer") return {
+    name: data.name || "",
+    version: data.version || "",
+    schema: data.schema || "",
+    description: data.description || "",
+    tags: normalizeStringArray(data.tags),
+    mcpServers: normalizeMcpServers(data.mcpServers)
+  };
   if (type === "agent") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], tools: data.tools || [], rules: data.rules || [], body: data.body || "" };
   if (type === "rule") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
   if (type === "model") return {
@@ -124,7 +147,7 @@ function normalizeState(type, parsed) {
 function captureUnknownFields(type, parsed) {
   const knownByType = {
     prompt: ["name", "description", "version", "schema", "tags", "prompts"],
-    mcpServer: ["name", "description", "version", "tags", "mcpServers"],
+    mcpServer: ["name", "description", "version", "schema", "tags", "mcpServers"],
     agent: ["name", "description", "version", "tags", "tools", "rules", "body"],
     rule: ["name", "description", "version", "tags", "body"],
     model: ["name", "description", "version", "schema", "tags", "models"],
