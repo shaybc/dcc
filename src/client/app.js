@@ -17,6 +17,7 @@ const detailTypeIcon = document.getElementById("detailTypeIcon");
 const detailTypeMetaIcon = document.getElementById("detailTypeMetaIcon");
 const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
+const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
@@ -33,6 +34,7 @@ let devProjects = [];
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
+const MAX_CARD_TAG_PILLS = 3;
 
 function normalizeFilterType(type) {
   const normalized = String(type || "").trim().toLowerCase();
@@ -45,6 +47,67 @@ function normalizeFilterType(type) {
   if (["workflow", "workflows"].includes(normalized)) return "workflows";
   if (["user", "users", "org", "orgs", "ai_assets", "ai assets"].includes(normalized)) return "unknown";
   return FILTER_TYPE_SET.has(normalized) ? normalized : "unknown";
+}
+
+
+function normalizeTagValue(tag) {
+  return String(tag || "").trim().toLowerCase();
+}
+
+function parseDefinitionTags(rawTags) {
+  const source = Array.isArray(rawTags) ? rawTags.join(",") : String(rawTags || "");
+  const seen = new Set();
+  const tags = [];
+
+  source
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .forEach((tag) => {
+      const normalized = normalizeTagValue(tag);
+      if (!normalized || seen.has(normalized)) {
+        return;
+      }
+      seen.add(normalized);
+      tags.push(tag);
+    });
+
+  return tags;
+}
+
+function parseTagSearchQuery(rawSearch) {
+  return String(rawSearch || "")
+    .split(",")
+    .map((entry) => normalizeTagValue(entry))
+    .filter(Boolean);
+}
+
+function isTagOnlyQuery(queryTags) {
+  if (queryTags.length === 0) {
+    return false;
+  }
+
+  return queryTags.every((tag) => definitions.some((def) => def.tagsNormalized.includes(tag)));
+}
+
+function setSearchValue(value) {
+  searchTerm = String(value || "").toLowerCase();
+  searchInput.value = value || "";
+  searchField.classList.toggle("has-value", searchTerm.length > 0);
+}
+
+function renderTagPills(tags, { truncate = false } = {}) {
+  const visibleTags = truncate ? tags.slice(0, MAX_CARD_TAG_PILLS) : tags;
+  const hiddenCount = Math.max(tags.length - visibleTags.length, 0);
+  const pills = visibleTags
+    .map((tag) => `<button class="tag-pill" type="button" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`)
+    .join("");
+
+  if (!hiddenCount) {
+    return pills;
+  }
+
+  return `${pills}<span class="tag-pill tag-pill-more" aria-label="${hiddenCount} more tags">...</span>`;
 }
 
 function iconSvg(status) {
@@ -293,10 +356,14 @@ function renderFilters() {
 }
 
 function renderCards() {
+  const queryTags = parseTagSearchQuery(searchTerm);
+  const tagOnlyMode = isTagOnlyQuery(queryTags);
+
   const filtered = definitions.filter((def) => {
     const matchesFilter = activeFilter === "all" || def.type === activeFilter;
     const text = `${def.name} ${def.description}`.toLowerCase();
-    const matchesSearch = text.includes(searchTerm);
+    const matchesTagSearch = queryTags.every((tag) => def.tagsNormalized.includes(tag));
+    const matchesSearch = tagOnlyMode ? matchesTagSearch : text.includes(searchTerm);
     return matchesFilter && matchesSearch;
   });
 
@@ -314,6 +381,7 @@ function renderCards() {
       </div>
       <h3>${def.name}</h3>
       <p>${getCardDescription(def.description)}</p>
+      ${def.tags.length > 0 ? `<div class="tag-pills card-tag-pills">${renderTagPills(def.tags, { truncate: true })}</div>` : ""}
       <div class="meta-row">
         <div class="meta-status">${statusLabel(def.status)}</div>
         <div class="type-pill ${typeClassName(def.type)}">
@@ -324,6 +392,13 @@ function renderCards() {
     `;
 
     card.addEventListener("click", async (event) => {
+      const clickedTag = event.target.closest("[data-tag]");
+      if (clickedTag) {
+        event.stopPropagation();
+        setSearchValue(clickedTag.getAttribute("data-tag") || "");
+        renderCards();
+        return;
+      }
       const action = event.target.closest("[data-action]");
       if (action) {
         event.stopPropagation();
@@ -383,10 +458,15 @@ async function setCurrentDevProject(path) {
 async function fetchDefinitions() {
   const response = await fetch("/api/definitions");
   const rawDefinitions = await response.json();
-  definitions = rawDefinitions.map((definition) => ({
-    ...definition,
-    type: normalizeFilterType(definition.type)
-  }));
+  definitions = rawDefinitions.map((definition) => {
+    const tags = parseDefinitionTags(definition.tags);
+    return {
+      ...definition,
+      type: normalizeFilterType(definition.type),
+      tags,
+      tagsNormalized: tags.map((tag) => normalizeTagValue(tag))
+    };
+  });
   renderFilters();
   renderCards();
 }
@@ -678,6 +758,17 @@ async function showDetails(id) {
   detailTypeText.textContent = typeLabel;
   detailCreatedDate.textContent = formatCreatedDate(def.createdAt);
 
+  const tags = parseDefinitionTags(def.tags);
+  detailTags.innerHTML = tags.length > 0 ? `<div class="tag-pills">${renderTagPills(tags)}</div>` : "";
+  detailTags.querySelectorAll("[data-tag]").forEach((element) => {
+    element.addEventListener("click", () => {
+      showHubPage();
+      updateRouteForHub();
+      setSearchValue(element.getAttribute("data-tag") || "");
+      renderCards();
+    });
+  });
+
   const format = inferDefinitionFormat(def);
   const tabLabel = formatTabLabel(format);
   definitionTabSource.textContent = tabLabel;
@@ -772,8 +863,7 @@ async function removeDefinition(id) {
 }
 
 searchInput.addEventListener("input", (event) => {
-  searchTerm = event.target.value.toLowerCase();
-  searchField.classList.toggle("has-value", searchTerm.length > 0);
+  setSearchValue(event.target.value);
   renderCards();
 });
 
@@ -808,9 +898,7 @@ document.addEventListener("click", (event) => {
 });
 
 clearSearchButton.addEventListener("click", () => {
-  searchTerm = "";
-  searchInput.value = "";
-  searchField.classList.remove("has-value");
+  setSearchValue("");
   renderCards();
 });
 

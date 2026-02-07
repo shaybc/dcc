@@ -447,6 +447,41 @@ main {
   line-height: 1.4;
 }
 
+
+.tag-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.card-tag-pills {
+  max-height: 28px;
+  overflow: hidden;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--muted);
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.tag-pill:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+  color: var(--text);
+}
+
+.tag-pill-more {
+  cursor: default;
+}
+
 .card .meta-row {
   margin-top: auto;
   display: flex;
@@ -651,6 +686,10 @@ body.detail-page-open {
 .detail-hero-date {
   color: var(--muted);
   font-size: 13px;
+}
+
+.detail-tags {
+  margin-bottom: 10px;
 }
 
 @media (max-width: 720px) {

@@ -36,6 +36,7 @@ db.serialize(() => {
       key TEXT UNIQUE,
       name TEXT,
       description TEXT,
+      tags TEXT,
       schema TEXT,
       version TEXT,
       content TEXT,
@@ -68,6 +69,16 @@ db.serialize(() => {
       UNIQUE(projectPath, definitionKey)
     )`
   );
+
+  db.all("PRAGMA table_info(definitions)", (err, rows = []) => {
+    if (err) {
+      return;
+    }
+    const hasTagsColumn = rows.some((row) => row.name === "tags");
+    if (!hasTagsColumn) {
+      db.run("ALTER TABLE definitions ADD COLUMN tags TEXT", () => {});
+    }
+  });
 });
 
 app.use(express.json());
@@ -167,7 +178,7 @@ function buildKey(type, filePath) {
   return `${type}/${path.basename(filePath)}`;
 }
 
-const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description"]);
+const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "tags"]);
 
 function parseYamlHeaderFields(raw) {
   const headers = {};
@@ -266,6 +277,7 @@ async function parseDefinition(filePath) {
     }
   }
   const type = deriveType(filePath, parsed.data);
+  const tags = normalizeTags(parsed.data.tags);
   const name = parsed.data.name || path.basename(filePath);
   const description = parsed.data.description || "";
   const schema = parsed.data.schema || "";
@@ -273,6 +285,7 @@ async function parseDefinition(filePath) {
   return {
     name,
     description,
+    tags,
     schema,
     version,
     content: raw,
@@ -280,6 +293,25 @@ async function parseDefinition(filePath) {
     filePath,
     key: buildKey(type, filePath)
   };
+}
+
+function normalizeTags(rawTags) {
+  if (Array.isArray(rawTags)) {
+    return rawTags
+      .map((tag) => String(tag || "").trim())
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  if (typeof rawTags === "string") {
+    return rawTags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return "";
 }
 
 
@@ -500,11 +532,12 @@ async function loadDefinitions() {
     await new Promise((resolve, reject) => {
       db.run(
         `INSERT INTO definitions
-          (key, name, description, schema, version, content, type, filePath, source, inTeam, status, updatedAt)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (key, name, description, tags, schema, version, content, type, filePath, source, inTeam, status, updatedAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(key) DO UPDATE SET
             name = excluded.name,
             description = excluded.description,
+            tags = excluded.tags,
             schema = excluded.schema,
             version = excluded.version,
             content = excluded.content,
@@ -519,6 +552,7 @@ async function loadDefinitions() {
           definition.key,
           definition.name,
           definition.description,
+          definition.tags,
           definition.schema,
           definition.version,
           definition.content,
@@ -550,11 +584,12 @@ async function loadDefinitions() {
     await new Promise((resolve, reject) => {
       db.run(
         `INSERT INTO definitions
-          (key, name, description, schema, version, content, type, filePath, source, inTeam, status, updatedAt)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (key, name, description, tags, schema, version, content, type, filePath, source, inTeam, status, updatedAt)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(key) DO UPDATE SET
             name = excluded.name,
             description = excluded.description,
+            tags = excluded.tags,
             schema = excluded.schema,
             version = excluded.version,
             content = excluded.content,
@@ -569,6 +604,7 @@ async function loadDefinitions() {
           key,
           definition.name,
           definition.description,
+          definition.tags,
           definition.schema,
           definition.version,
           definition.content,
@@ -764,7 +800,7 @@ app.get("/api/definitions", async (req, res) => {
   try {
     const currentDevProject = await getSetting("currentDevProject");
     const definitionsRows = await allDb(
-      "SELECT id, key, name, description, schema, version, type, filePath, source, inTeam, status FROM definitions"
+      "SELECT id, key, name, description, tags, schema, version, type, filePath, source, inTeam, status FROM definitions"
     );
 
     if (!currentDevProject) {
