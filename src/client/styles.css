@@ -792,7 +792,7 @@ body.detail-page-open {
 }
 
 .preview-card {
-  border: 1px solid var(--border);
+  border: 1px solid rgba(139, 92, 246, 0.6);
   border-radius: 10px;
   background: rgba(15, 17, 22, 0.7);
   padding: 12px;
