@@ -19,6 +19,9 @@ const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
+const editDefinitionButton = document.getElementById("editDefinition");
+const newDefinitionButton = document.getElementById("newDefinitionButton");
+const newDefinitionMenu = document.getElementById("newDefinitionMenu");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
@@ -1009,6 +1012,18 @@ devProjectInput.addEventListener("change", async (event) => {
   await fetchDefinitions();
 });
 
+
+function openEditorForCurrentDefinition() {
+  if (!currentDetailDefinitionPath) return;
+  window.location.assign(`/editor/editor.html?mode=edit&path=${encodeURIComponent(currentDetailDefinitionPath)}`);
+}
+
+function toggleNewMenu() {
+  if (!newDefinitionMenu || !newDefinitionButton) return;
+  newDefinitionMenu.hidden = !newDefinitionMenu.hidden;
+  newDefinitionButton.setAttribute("aria-expanded", String(!newDefinitionMenu.hidden));
+}
+
 function closeFilterMenu() {
   filterMenu.classList.remove("open");
   filterButton.setAttribute("aria-expanded", "false");
@@ -1157,6 +1172,40 @@ closeModal.addEventListener("click", () => {
 window.addEventListener("popstate", () => {
   handleRoute();
 });
+
+document.addEventListener("click", (event) => {
+  if (newDefinitionMenu && !event.target.closest(".new-menu-wrap")) {
+    newDefinitionMenu.hidden = true;
+    if (newDefinitionButton) {
+      newDefinitionButton.setAttribute("aria-expanded", "false");
+    }
+  }
+});
+
+if (newDefinitionButton) {
+  newDefinitionButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleNewMenu();
+  });
+}
+
+if (newDefinitionMenu) {
+  newDefinitionMenu.querySelectorAll("[data-new-type]").forEach((button) => {
+    const type = button.getAttribute("data-new-type") || "prompt";
+    const label = button.getAttribute("data-type-label") || formatFilterLabel(type);
+    button.innerHTML = `<span class="menu-type-icon">${filterIconSvg(type)}</span><span>${escapeHtml(label)}</span>`;
+    button.addEventListener("click", () => {
+      window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(type)}`);
+    });
+  });
+}
+
+if (editDefinitionButton) {
+  editDefinitionButton.addEventListener("click", () => {
+    openEditorForCurrentDefinition();
+  });
+}
+
 
 loadDevProjects();
 loadCurrentDevProject().then(fetchDefinitions).then(handleRoute);

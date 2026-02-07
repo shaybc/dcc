@@ -30,6 +30,29 @@
         <p>Discover, sync, and deploy Continue definitions from your team hub.</p>
       </div>
       <div class="actions">
+        <div class="new-menu-wrap">
+          <button class="btn new-definition-btn" id="newDefinitionButton" type="button" aria-haspopup="menu" aria-expanded="false">
+            <svg class="new-definition-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7 3.8h7.2L18.2 7.8V18a2.2 2.2 0 0 1-2.2 2.2H7A2.2 2.2 0 0 1 4.8 18V6A2.2 2.2 0 0 1 7 3.8z"></path>
+              <path d="M14.2 3.8V8h4"></path>
+              <path d="M8.2 10.2h5.8"></path>
+              <path d="M8.2 13.1h4.6"></path>
+              <circle cx="16.6" cy="16.7" r="3.5"></circle>
+              <path d="M16.6 15.2v3"></path>
+              <path d="M15.1 16.7h3"></path>
+            </svg>
+            <span>New</span>
+          </button>
+          <div class="new-menu" id="newDefinitionMenu" hidden>
+            <button type="button" data-new-type="prompt" data-type-label="Prompt"></button>
+            <button type="button" data-new-type="mcpServer" data-type-label="MCP Server"></button>
+            <button type="button" data-new-type="agent" data-type-label="Agent"></button>
+            <button type="button" data-new-type="rule" data-type-label="Rule"></button>
+            <button type="button" data-new-type="model" data-type-label="Model"></button>
+            <button type="button" data-new-type="workflow" data-type-label="Workflow"></button>
+            <button type="button" data-new-type="context" data-type-label="Context"></button>
+          </div>
+        </div>
         <a class="btn" href="/settings">⚙ Settings</a>
       </div>
     </header>
@@ -149,6 +172,11 @@
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="9" y="9" width="13" height="13" rx="2"></rect>
                     <rect x="2" y="2" width="13" height="13" rx="2"></rect>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="editDefinition" type="button" aria-label="Edit definition" title="Edit definition">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
                   </svg>
                 </button>
                 <button class="copy-btn" id="copyDefinition" type="button" aria-label="Copy definition" title="Copy definition">

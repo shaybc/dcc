@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Definition Editor</title>
+    <link rel="stylesheet" href="/editor/editor.css" />
+  </head>
+  <body>
+    <header class="editor-top">
+      <h1 id="editorTitle">Definition Editor</h1>
+      <div class="editor-actions">
+        <button id="cancelButton" class="btn" type="button">Cancel</button>
+        <button id="saveButton" class="btn primary" type="button">Save</button>
+      </div>
+    </header>
+    <main class="editor-main">
+      <section>
+        <h3>Structured Form</h3>
+        <div id="formMount"></div>
+      </section>
+      <section>
+        <h3 id="rawLabel">Raw YAML</h3>
+        <div id="parseError" class="error" hidden></div>
+        <textarea id="rawText" rows="30"></textarea>
+      </section>
+    </main>
+    <script type="module" src="/editor/editor.js"></script>
+  </body>
+</html>
