@@ -1,4 +1,7 @@
 import openaiRouter from "./routes/openai.js";
+import { detectDefinitionType } from "./definitions/detectDefinitionType.js";
+import { loadDefinition } from "./definitions/loadDefinition.js";
+import { saveDefinition } from "./definitions/saveDefinition.js";
 
 import path from "path";
 import fs from "fs";
@@ -795,6 +798,63 @@ async function refreshDevProjects(roots) {
   }
   return projects;
 }
+
+
+app.get("/api/editor/definition", async (req, res) => {
+  try {
+    const repoPath = await getSetting("repoPath");
+    if (!repoPath) {
+      res.status(400).json({ error: "Repo path not configured." });
+      return;
+    }
+
+    const definitionPath = String(req.query.path || "").trim();
+    if (!definitionPath) {
+      res.status(400).json({ error: "Definition path is required." });
+      return;
+    }
+
+    const loaded = await loadDefinition(repoPath, definitionPath);
+    res.json(loaded);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/editor/detect-type", (req, res) => {
+  try {
+    const type = detectDefinitionType(req.body?.content || "", req.body?.path || "");
+    res.json({ type });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post("/api/editor/save", async (req, res) => {
+  try {
+    const repoPath = await getSetting("repoPath");
+    if (!repoPath) {
+      res.status(400).json({ error: "Repo path not configured." });
+      return;
+    }
+
+    const result = await saveDefinition({
+      mode: req.body?.mode,
+      repoPath,
+      definitionPath: req.body?.path,
+      content: req.body?.content || "",
+      format: req.body?.format || "yaml",
+      filename: req.body?.filename,
+      targetPath: req.body?.targetPath,
+      runCommand
+    });
+
+    await loadDefinitions();
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.get("/api/settings", async (req, res) => {
   try {
