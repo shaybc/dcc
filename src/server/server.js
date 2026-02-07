@@ -200,6 +200,44 @@ function buildKey(type, filePath) {
   return `${type}/${path.basename(filePath)}`;
 }
 
+function sanitizeDuplicateFileName(fileName) {
+  const normalized = path.basename(String(fileName || "").trim());
+  if (!normalized || normalized === "." || normalized === "..") {
+    return "";
+  }
+  if (/[\/]/.test(normalized)) {
+    return "";
+  }
+  return normalized;
+}
+
+function updateDefinitionNameInContent(content, fileName, nextName) {
+  const trimmedName = String(nextName || "").trim();
+  if (!trimmedName) {
+    return content;
+  }
+
+  const ext = path.extname(fileName).toLowerCase();
+  if ([".yml", ".yaml"].includes(ext)) {
+    if (/^\s*name\s*:/m.test(content)) {
+      return content.replace(/^(\s*name\s*:\s*)(.*)$/m, (_match, prefix) => `${prefix}${trimmedName}`);
+    }
+    return `name: ${trimmedName}\n${content}`;
+  }
+
+  const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/);
+  if (!frontmatterMatch) {
+    return content;
+  }
+
+  const header = frontmatterMatch[1];
+  if (/^\s*name\s*:/m.test(header)) {
+    return content.replace(/^(---\r?\n[\s\S]*?\r?\n)(\s*name\s*:\s*)(.*)$/m, (_match, before, prefix) => `${before}${prefix}${trimmedName}`);
+  }
+
+  return content.replace(/^---\r?\n/, `---\nname: ${trimmedName}\n`);
+}
+
 const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "tags"]);
 
 function parseYamlHeaderFields(raw) {
@@ -878,6 +916,64 @@ app.get("/api/definitions", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+app.post("/api/definitions/:id/duplicate", async (req, res) => {
+  db.get("SELECT * FROM definitions WHERE id = ?", [req.params.id], async (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    if (!row) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const nextName = String(req.body?.name || "").trim();
+    if (!nextName) {
+      res.status(400).json({ error: "Definition name is required." });
+      return;
+    }
+
+    const nextFileName = sanitizeDuplicateFileName(req.body?.fileName);
+    if (!nextFileName) {
+      res.status(400).json({ error: "Definition file name is required." });
+      return;
+    }
+
+    const sourceFilePath = path.resolve(row.filePath || "");
+    if (!fs.existsSync(sourceFilePath)) {
+      await loadDefinitions();
+      res.status(404).json({ error: "Definition file was not found." });
+      return;
+    }
+
+    const targetDir = path.dirname(sourceFilePath);
+    const targetPath = path.join(targetDir, nextFileName);
+    if (fs.existsSync(targetPath)) {
+      res.status(409).json({ error: "A definition file with that name already exists." });
+      return;
+    }
+
+    try {
+      const originalContent = await fsp.readFile(sourceFilePath, "utf8");
+      const duplicatedContent = updateDefinitionNameInContent(originalContent, nextFileName, nextName);
+      await fsp.writeFile(targetPath, duplicatedContent, "utf8");
+
+      await loadDefinitions();
+
+      const duplicatedKey = buildKey(deriveType(targetPath, { type: row.type }), targetPath);
+      const duplicatedRow = await getDb("SELECT id FROM definitions WHERE key = ?", [duplicatedKey]);
+      if (!duplicatedRow) {
+        res.status(500).json({ error: "Definition duplicated but could not be indexed." });
+        return;
+      }
+
+      res.json({ ok: true, id: duplicatedRow.id, message: "Definition duplicated." });
+    } catch (error) {
+      res.status(500).json({ error: error.message || "Unable to duplicate definition." });
+    }
+  });
 });
 
 app.post("/api/definitions/:id/push-upstream", async (req, res) => {
