@@ -223,41 +223,6 @@ function sanitizeDuplicateFileName(fileName) {
   return normalized;
 }
 
-function bumpMinorVersion(version) {
-  const raw = String(version || "").trim();
-  if (!raw) return "0.1";
-  const parts = raw.split(".").map((part) => Number(part));
-  if (parts.some((part) => !Number.isFinite(part))) {
-    return "0.1";
-  }
-  if (parts.length === 1) {
-    return `${parts[0]}.1`;
-  }
-  const major = parts[0];
-  const minor = parts[1] + 1;
-  return `${major}.${minor}`;
-}
-
-function updateDefinitionVersionInContent(content, nextVersion, filePath) {
-  const ext = path.extname(filePath || "").toLowerCase();
-  if ([".yaml", ".yml"].includes(ext)) {
-    if (/^\s*version\s*:/m.test(content)) {
-      return content.replace(/^(\s*version\s*:\s*)(.*)$/m, (_m, p) => `${p}${nextVersion}`);
-    }
-    return `version: ${nextVersion}\n${content}`;
-  }
-
-  const frontmatterRegex = /^---\n[\s\S]*?\n---/;
-  if (frontmatterRegex.test(content)) {
-    if (/^(---\n[\s\S]*?\n)\s*version\s*:/m.test(content)) {
-      return content.replace(/^(---\n[\s\S]*?\n)(\s*version\s*:\s*)(.*)$/m, (_m, before, p) => `${before}${p}${nextVersion}`);
-    }
-    return content.replace(/^---\n/, `---\nversion: ${nextVersion}\n`);
-  }
-
-  return content;
-}
-
 function updateDefinitionNameInContent(content, fileName, nextName) {
   const trimmedName = String(nextName || "").trim();
   if (!trimmedName) {
@@ -1103,93 +1068,6 @@ app.get("/api/definitions/:id", (req, res) => {
       res.json({ ...row, content, createdAt });
     }
   );
-});
-
-app.post("/api/definitions/:id/edit-save", async (req, res) => {
-  const row = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
-  if (!row) {
-    res.status(404).json({ error: "Definition not found." });
-    return;
-  }
-
-  const repoPath = await getSetting("repoPath");
-  if (!repoPath) {
-    res.status(400).json({ error: "Repo path not configured." });
-    return;
-  }
-
-  const absoluteRepoPath = path.resolve(repoPath);
-  const absoluteDefinitionPath = path.resolve(row.filePath || "");
-  if (!absoluteDefinitionPath.startsWith(`${absoluteRepoPath}${path.sep}`)) {
-    res.status(400).json({ error: "Definition file is not in the configured repository." });
-    return;
-  }
-
-  if (!fs.existsSync(absoluteDefinitionPath)) {
-    await loadDefinitions();
-    res.status(404).json({ error: "Definition file not found." });
-    return;
-  }
-
-  const content = String(req.body?.content || "");
-  const nextVersion = bumpMinorVersion(row.version || "");
-  const nextContent = updateDefinitionVersionInContent(content, nextVersion, absoluteDefinitionPath);
-  const relativePath = path.relative(absoluteRepoPath, absoluteDefinitionPath);
-
-  try {
-    await runCommand("git pull", { cwd: absoluteRepoPath });
-    await fsp.writeFile(absoluteDefinitionPath, nextContent, "utf8");
-    await runCommand(`git add ${JSON.stringify(relativePath)}`, { cwd: absoluteRepoPath });
-    await runCommand(`git commit -m ${JSON.stringify(`Edit definition ${row.name}`)}`, { cwd: absoluteRepoPath });
-    await runCommand("git push", { cwd: absoluteRepoPath });
-    await loadDefinitions();
-    res.json({ ok: true, message: "Definition edit saved to repository." });
-  } catch (error) {
-    res.status(500).json({ error: extractCommandErrorMessage(error, "Failed to save definition edit.") });
-  }
-});
-
-app.post("/api/definitions/create-local", async (req, res) => {
-  const repoPath = await getSetting("repoPath");
-  if (!repoPath) {
-    res.status(400).json({ error: "Repo path not configured." });
-    return;
-  }
-
-  const fileName = sanitizeDuplicateFileName(req.body?.fileName);
-  const directoryPath = String(req.body?.directoryPath || "").trim().replace(/^\/+|\/+$/g, "");
-  const content = String(req.body?.content || "");
-
-  if (!fileName) {
-    res.status(400).json({ error: "File name is required." });
-    return;
-  }
-  if (!directoryPath) {
-    res.status(400).json({ error: "Directory path is required." });
-    return;
-  }
-
-  const absoluteRepoPath = path.resolve(repoPath);
-  const targetDir = path.resolve(absoluteRepoPath, directoryPath);
-  if (!targetDir.startsWith(`${absoluteRepoPath}${path.sep}`) && targetDir !== absoluteRepoPath) {
-    res.status(400).json({ error: "Directory path must be inside repo." });
-    return;
-  }
-
-  const targetPath = path.join(targetDir, fileName);
-  if (fs.existsSync(targetPath)) {
-    res.status(409).json({ error: "File already exists." });
-    return;
-  }
-
-  try {
-    await fsp.mkdir(targetDir, { recursive: true });
-    await fsp.writeFile(targetPath, content, "utf8");
-    await loadDefinitions();
-    res.json({ ok: true, message: "Local untracked definition created." });
-  } catch (error) {
-    res.status(500).json({ error: error.message || "Unable to create local definition." });
-  }
 });
 
 app.post("/api/definitions/:id/save", async (req, res) => {
