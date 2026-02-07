@@ -85,63 +85,51 @@ function serializeWorkflowModels(models) {
 }
 
 function normalizeContextEntries(entries) {
-  return (Array.isArray(entries) ? entries : []).map((entry) => ({
-    ...entry,
-    provider: entry?.provider || "",
-    url: entry?.params?.url || "",
-    headers: Array.isArray(entry?.params?.headers)
-      ? entry.params.headers.map((item) => {
-          if (item && typeof item === "object") {
-            const [k, v] = Object.entries(item)[0] || ["", ""];
-            return k ? `${k}: ${v ?? ""}` : "";
-          }
-          return String(item || "");
-        }).filter(Boolean)
-      : [],
-    stackDepth: entry?.params?.stackDepth ?? "",
-    onlyPinned: entry?.params?.onlyPinned ?? ""
-  }));
+  return (Array.isArray(entries) ? entries : []).map((entry) => {
+    const paramsObject = entry?.params && typeof entry.params === "object" && !Array.isArray(entry.params)
+      ? entry.params
+      : {};
+    const params = Object.entries(paramsObject).map(([key, value]) => ({
+      key,
+      value: typeof value === "string" ? value : JSON.stringify(value)
+    }));
+
+    return {
+      ...entry,
+      provider: entry?.provider || "",
+      params
+    };
+  });
 }
 
-function parseBooleanMaybe(value) {
-  const s = String(value).trim().toLowerCase();
-  if (s === "true") return true;
-  if (s === "false") return false;
-  return value;
+function parseParamValue(value) {
+  const text = String(value ?? "").trim();
+  if (text === "") return "";
+  if (text === "true") return true;
+  if (text === "false") return false;
+  if (/^-?\d+(?:\.\d+)?$/.test(text)) return Number(text);
+  try {
+    return JSON.parse(text);
+  } catch (_error) {
+    return text;
+  }
 }
 
 function serializeContextEntries(entries) {
   return (Array.isArray(entries) ? entries : []).map((entry) => {
     const out = { ...entry, provider: entry?.provider || "" };
-    const params = { ...(out.params || {}) };
-    if (out.url) params.url = out.url;
-    if (Array.isArray(out.headers) && out.headers.length > 0) {
-      params.headers = out.headers.map((line) => {
-        const text = String(line || "");
-        const idx = text.indexOf(":");
-        if (idx === -1) return { [text.trim()]: "" };
-        const key = text.slice(0, idx).trim();
-        const value = text.slice(idx + 1).trim();
-        return { [key]: value };
-      });
-    }
-    if (out.stackDepth !== "" && out.stackDepth !== undefined) {
-      params.stackDepth = Number(out.stackDepth) || out.stackDepth;
-    }
-    if (out.onlyPinned !== "" && out.onlyPinned !== undefined) {
-      params.onlyPinned = parseBooleanMaybe(out.onlyPinned);
-    }
-    delete out.url;
-    delete out.headers;
-    delete out.stackDepth;
-    delete out.onlyPinned;
+    const paramsList = Array.isArray(out.params) ? out.params : [];
+    const params = {};
+    paramsList.forEach((item) => {
+      const key = String(item?.key || "").trim();
+      if (!key) return;
+      params[key] = parseParamValue(item?.value ?? "");
+    });
     if (Object.keys(params).length > 0) out.params = params;
     else delete out.params;
     return out;
   });
 }
-
-
 
 
 const handlers = {

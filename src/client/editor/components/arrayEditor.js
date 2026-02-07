@@ -37,7 +37,7 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
         const nested = createArrayEditor({
           mount: nestedMount,
           label: field.label,
-          fields: [{ name: "value", label: field.itemLabel || "Value" }],
+          fields: field.nestedFields || [{ name: "value", label: field.itemLabel || "Value" }],
           onChange: (values) => {
             state[field.name] = values;
           }

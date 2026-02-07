@@ -45,10 +45,15 @@ export function createContextForm({ mount, onChange }) {
     label: "context",
     fields: [
       { name: "provider", label: "provider" },
-      { name: "url", label: "params.url" },
-      { name: "headers", label: "params.headers", kind: "array", itemLabel: "Header (Key: Value)" },
-      { name: "stackDepth", label: "params.stackDepth" },
-      { name: "onlyPinned", label: "params.onlyPinned" }
+      {
+        name: "params",
+        label: "params",
+        kind: "array",
+        nestedFields: [
+          { name: "key", label: "key" },
+          { name: "value", label: "value" }
+        ]
+      }
     ],
     onChange: (nextItems) => {
       state.context = nextItems;
