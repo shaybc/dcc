@@ -800,7 +800,17 @@ app.get("/api/definitions/:id", (req, res) => {
       }
 
       const createdAt = await getFileCreatedAt(row.filePath);
-      res.json({ ...row, createdAt });
+
+      let content = row.content;
+      if (row.filePath) {
+        try {
+          content = await fsp.readFile(row.filePath, "utf8");
+        } catch (_error) {
+          content = row.content;
+        }
+      }
+
+      res.json({ ...row, content, createdAt });
     }
   );
 });
