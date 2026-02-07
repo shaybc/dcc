@@ -530,19 +530,25 @@ async function loadDefinitions() {
   const repoFiles = await walkFiles(repoPath);
   const teamFiles = await collectTeamFiles();
 
+  const normalizedRepoFiles = repoFiles.filter((filePath) => !filePath.includes(path.join(repoPath, ".git")));
+  const repoKeyMap = new Map();
   const teamKeyMap = new Set();
-  for (const file of teamFiles) {
-    const type = path.basename(path.dirname(file)).toLowerCase();
-    const key = buildKey(type, file);
+
+  for (const filePath of normalizedRepoFiles) {
+    const type = path.basename(path.dirname(filePath)).toLowerCase();
+    const key = buildKey(type, filePath);
+    repoKeyMap.set(key, filePath);
+  }
+
+  for (const filePath of teamFiles) {
+    const type = path.basename(path.dirname(filePath)).toLowerCase();
+    const key = buildKey(type, filePath);
     teamKeyMap.add(key);
   }
 
   const now = new Date().toISOString();
 
-  for (const filePath of repoFiles) {
-    if (filePath.includes(path.join(repoPath, ".git"))) {
-      continue;
-    }
+  for (const filePath of normalizedRepoFiles) {
     const definition = await parseDefinition(filePath);
     const inTeam = teamKeyMap.has(definition.key) ? 1 : 0;
     const status = inTeam ? "saved" : "repo";
@@ -595,7 +601,7 @@ async function loadDefinitions() {
   for (const filePath of teamFiles) {
     const type = path.basename(path.dirname(filePath)).toLowerCase();
     const key = buildKey(type, filePath);
-    if (repoFiles.some((repoFile) => buildKey(type, repoFile) === key)) {
+    if (repoKeyMap.has(key)) {
       continue;
     }
     const definition = await parseDefinition(filePath);
@@ -644,7 +650,25 @@ async function loadDefinitions() {
     });
   }
 
-  return { repoCount: repoFiles.length, teamCount: teamFiles.length };
+  const repoKeys = [...repoKeyMap.keys()];
+  if (repoKeys.length > 0) {
+    const placeholders = repoKeys.map(() => "?").join(", ");
+    await runDb(`DELETE FROM definitions WHERE source = 'repo' AND key NOT IN (${placeholders})`, repoKeys);
+  } else {
+    await runDb("DELETE FROM definitions WHERE source = 'repo'");
+  }
+
+  const teamKeys = [...teamKeyMap];
+  if (teamKeys.length > 0) {
+    const placeholders = teamKeys.map(() => "?").join(", ");
+    await runDb(`DELETE FROM definitions WHERE source = 'team' AND key NOT IN (${placeholders})`, teamKeys);
+  } else {
+    await runDb("DELETE FROM definitions WHERE source = 'team'");
+  }
+
+  await runDb("DELETE FROM project_definition_copies WHERE definitionKey NOT IN (SELECT key FROM definitions)");
+
+  return { repoCount: normalizedRepoFiles.length, teamCount: teamFiles.length };
 }
 
 async function scanDevProjects(roots) {
