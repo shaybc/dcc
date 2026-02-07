@@ -15,6 +15,29 @@
   --glow-primary: rgba(139, 92, 246, 0.12);
   --glow-secondary: rgba(59, 130, 246, 0.08);
   --shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --card-in-project-bg: #161c2b;
+  --card-in-project-border: #26324a;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f5fb;
+  --bg-soft: #ffffff;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #4b5563;
+  --border: #d1d5db;
+  --accent: #7c3aed;
+  --accent-dark: #6d28d9;
+  --success: #059669;
+  --warning: #ca8a04;
+  --surface-overlay: rgba(255, 255, 255, 0.9);
+  --input-shadow: inset 0 1px 0 rgba(17, 24, 39, 0.04);
+  --glow-primary: rgba(124, 58, 237, 0.09);
+  --glow-secondary: rgba(59, 130, 246, 0.07);
+  --shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  --card-in-project-bg: #eef2ff;
+  --card-in-project-border: #c7d2fe;
 }
 
 :root[data-theme="light"] {
@@ -411,7 +434,8 @@ main {
 }
 
 .card-in-project {
-  background: #161c2b;
+  background: var(--card-in-project-bg);
+  border-color: var(--card-in-project-border);
 }
 
 .card:hover {
