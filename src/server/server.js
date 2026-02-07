@@ -1077,6 +1077,30 @@ app.post("/api/definitions/:id/delete-repo", async (req, res) => {
       return;
     }
 
+    const absoluteDefinitionPath = path.resolve(row.filePath || "");
+    const isUntrackedDefinition = String(row.source || "").toLowerCase() === "untracked";
+
+    if (isUntrackedDefinition) {
+      if (!fs.existsSync(absoluteDefinitionPath)) {
+        await loadDefinitions();
+        res.status(404).json({ error: "Definition file was not found in local files." });
+        return;
+      }
+
+      try {
+        await fsp.unlink(absoluteDefinitionPath);
+        await loadDefinitions();
+        res.json({
+          ok: true,
+          message: "Definition deleted from local files.",
+        });
+      } catch (deleteError) {
+        await loadDefinitions();
+        res.status(500).json({ error: deleteError.message || "Failed to delete local definition file." });
+      }
+      return;
+    }
+
     const repoPath = await getSetting("repoPath");
     if (!repoPath) {
       res.status(400).json({ error: "Repo path not configured." });
@@ -1084,7 +1108,6 @@ app.post("/api/definitions/:id/delete-repo", async (req, res) => {
     }
 
     const absoluteRepoPath = path.resolve(repoPath);
-    const absoluteDefinitionPath = path.resolve(row.filePath || "");
     if (!absoluteDefinitionPath.startsWith(`${absoluteRepoPath}${path.sep}`)) {
       res.status(400).json({ error: "Definition file is not in the configured repository." });
       return;
