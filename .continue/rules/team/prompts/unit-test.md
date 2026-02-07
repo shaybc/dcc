@@ -1,6 +1,7 @@
 ---
 name: Unit test
 description: Generate unit tests for the selected code
+tags: back-end team, spring,open-shift,microservices, docker containers
 invokable: true
 ---
 
