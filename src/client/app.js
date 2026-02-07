@@ -1019,8 +1019,9 @@ function openEditorForCurrentDefinition() {
 }
 
 function toggleNewMenu() {
-  if (!newDefinitionMenu) return;
+  if (!newDefinitionMenu || !newDefinitionButton) return;
   newDefinitionMenu.hidden = !newDefinitionMenu.hidden;
+  newDefinitionButton.setAttribute("aria-expanded", String(!newDefinitionMenu.hidden));
 }
 
 function closeFilterMenu() {
@@ -1175,6 +1176,9 @@ window.addEventListener("popstate", () => {
 document.addEventListener("click", (event) => {
   if (newDefinitionMenu && !event.target.closest(".new-menu-wrap")) {
     newDefinitionMenu.hidden = true;
+    if (newDefinitionButton) {
+      newDefinitionButton.setAttribute("aria-expanded", "false");
+    }
   }
 });
 
@@ -1187,9 +1191,11 @@ if (newDefinitionButton) {
 
 if (newDefinitionMenu) {
   newDefinitionMenu.querySelectorAll("[data-new-type]").forEach((button) => {
+    const type = button.getAttribute("data-new-type") || "prompt";
+    const label = button.getAttribute("data-type-label") || formatFilterLabel(type);
+    button.innerHTML = `<span class="menu-type-icon">${filterIconSvg(type)}</span><span>${escapeHtml(label)}</span>`;
     button.addEventListener("click", () => {
-      const type = button.getAttribute("data-new-type");
-      window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(type || "prompt")}`);
+      window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(type)}`);
     });
   });
 }

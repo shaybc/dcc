@@ -1188,3 +1188,29 @@ body.detail-page-open {
 .new-menu { position: absolute; right: 0; top: 40px; min-width: 170px; background: var(--panel-bg, #161b22); border: 1px solid #30363d; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; z-index: 20; }
 .new-menu button { background: transparent; border: 0; color: inherit; text-align: left; padding: 8px; border-radius: 6px; cursor: pointer; }
 .new-menu button:hover { background: rgba(255,255,255,.08); }
+
+.new-menu[hidden] { display: none !important; }
+
+.new-definition-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-definition-btn-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.95;
+}
+
+.new-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-menu button .menu-type-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.9;
+}
