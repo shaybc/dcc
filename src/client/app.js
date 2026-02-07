@@ -22,12 +22,6 @@ const copyDefinitionButton = document.getElementById("copyDefinition");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
-const editDefinitionButton = document.getElementById("editDefinition");
-const definitionFormPage = document.getElementById("definitionFormPage");
-const definitionFormContainer = document.getElementById("definitionFormContainer");
-const definitionFormTitle = document.getElementById("definitionFormTitle");
-const newDefinitionMenuButton = document.getElementById("newDefinitionMenuButton");
-const newDefinitionMenu = document.getElementById("newDefinitionMenu");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
 const definitionPreviewPanel = document.getElementById("definitionPreviewPanel");
@@ -44,7 +38,6 @@ let currentDetailDefinitionId = null;
 let currentDetailDefinitionSource = "";
 let currentDetailDefinitionName = "";
 let currentDetailDefinitionPath = "";
-let currentDetailDefinitionType = "";
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
@@ -821,7 +814,6 @@ async function showDetails(id) {
   currentDetailDefinitionSource = String(def.source || "").toLowerCase();
   currentDetailDefinitionName = String(def.name || "");
   currentDetailDefinitionPath = String(def.filePath || "");
-  currentDetailDefinitionType = normalizeFilterType(def.type);
   detailTitle.textContent = def.name;
   detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
   const definitionContent = def.content || "";
@@ -866,7 +858,6 @@ async function showDetails(id) {
 function showDetailPage() {
   hubHeader.hidden = true;
   hubMain.hidden = true;
-  definitionFormPage.hidden = true;
   detailPage.hidden = false;
   document.body.classList.add("detail-page-open");
   window.scrollTo(0, 0);
@@ -874,89 +865,16 @@ function showDetailPage() {
 
 function showHubPage() {
   detailPage.hidden = true;
-  definitionFormPage.hidden = true;
   currentDetailDefinitionId = null;
   currentDetailDefinitionSource = "";
   currentDetailDefinitionName = "";
   currentDetailDefinitionPath = "";
-  currentDetailDefinitionType = "";
   deleteDefinitionButton.hidden = true;
   pushUpstreamDefinitionButton.hidden = true;
   pushUpstreamDefinitionButton.disabled = true;
   hubHeader.hidden = false;
   hubMain.hidden = false;
   document.body.classList.remove("detail-page-open");
-}
-
-function showDefinitionFormPage() {
-  hubHeader.hidden = true;
-  hubMain.hidden = true;
-  detailPage.hidden = true;
-  definitionFormPage.hidden = false;
-  document.body.classList.add("detail-page-open");
-  window.scrollTo(0, 0);
-}
-
-function openDefinitionForm({ mode, type, definitionId = null, initialContent = "" }) {
-  if (!window.DccDefinitionForm?.renderDefinitionForm) {
-    window.alert("Definition form is not available.");
-    return;
-  }
-
-  definitionFormTitle.textContent = mode === "edit" ? `Edit ${formatTypePillLabel(type)}` : `Create ${formatTypePillLabel(type)}`;
-  definitionFormContainer.innerHTML = "";
-  const form = window.DccDefinitionForm.renderDefinitionForm({
-    mode,
-    type,
-    initialContent,
-    onCancel: async () => {
-      if (mode === "edit" && Number.isFinite(Number(definitionId))) {
-        await showDetails(definitionId);
-        updateRouteForDetails(definitionId);
-      } else {
-        showHubPage();
-        updateRouteForHub(true);
-      }
-    },
-    onSave: async (content) => {
-      try {
-        if (mode === "edit") {
-          const commitMessage = window.prompt("Commit message", `Edit definition ${currentDetailDefinitionName || ""}`);
-          if (commitMessage === null) {
-            return;
-          }
-          const result = await fetchWithErrorHandling(`/api/definitions/${definitionId}/edit`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content, commitMessage })
-          }, "Unable to edit definition.");
-          window.alert(result.message || "Definition edit saved and pushed to repository.");
-          await fetchDefinitions();
-          await showDetails(definitionId);
-          updateRouteForDetails(definitionId);
-          return;
-        }
-
-        const destination = window.prompt("Path and filename to save (relative to repo)", `${type.replace(/\s+/g, "")}/new-definition.${type === "agents" || type === "rules" ? "md" : "yaml"}`);
-        if (destination === null) {
-          return;
-        }
-        const result = await fetchWithErrorHandling("/api/definitions/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ relativePath: destination, content })
-        }, "Unable to create definition.");
-        window.alert(result.message || "Definition created as local untracked file.");
-        await fetchDefinitions();
-        showHubPage();
-        updateRouteForHub(true);
-      } catch (error) {
-        window.alert(error.message || "Unable to save definition.");
-      }
-    }
-  });
-  definitionFormContainer.appendChild(form);
-  showDefinitionFormPage();
 }
 
 function updateRouteForDetails(id) {
@@ -1105,10 +1023,6 @@ document.addEventListener("click", (event) => {
   if (!event.target.closest(".filter-dropdown")) {
     closeFilterMenu();
   }
-  if (!event.target.closest(".new-definition-menu-wrap")) {
-    newDefinitionMenu.hidden = true;
-    newDefinitionMenuButton?.setAttribute("aria-expanded", "false");
-  }
 });
 
 clearSearchButton.addEventListener("click", () => {
@@ -1238,29 +1152,6 @@ definitionTabSource.addEventListener("click", () => {
 closeModal.addEventListener("click", () => {
   showHubPage();
   updateRouteForHub();
-});
-
-editDefinitionButton?.addEventListener("click", async () => {
-  if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
-    return;
-  }
-  const sourceContent = detailContent.textContent || "";
-  openDefinitionForm({ mode: "edit", type: currentDetailDefinitionType || "prompts", definitionId: currentDetailDefinitionId, initialContent: sourceContent });
-});
-
-newDefinitionMenuButton?.addEventListener("click", () => {
-  const nextHidden = !newDefinitionMenu.hidden;
-  newDefinitionMenu.hidden = nextHidden;
-  newDefinitionMenuButton.setAttribute("aria-expanded", String(!nextHidden));
-});
-
-newDefinitionMenu?.querySelectorAll("[data-definition-create]").forEach((item) => {
-  item.addEventListener("click", () => {
-    const type = normalizeFilterType(item.getAttribute("data-definition-create") || "prompts");
-    newDefinitionMenu.hidden = true;
-    newDefinitionMenuButton?.setAttribute("aria-expanded", "false");
-    openDefinitionForm({ mode: "create", type, initialContent: "" });
-  });
 });
 
 window.addEventListener("popstate", () => {
