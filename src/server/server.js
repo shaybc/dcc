@@ -82,7 +82,11 @@ db.serialize(() => {
 });
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "../client")));
+app.use(express.static(path.join(__dirname, "../client"), {
+  setHeaders: (res) => {
+    res.setHeader("Cache-Control", "no-store");
+  }
+}));
 
 // OpenAI-compatible facade for Continue
 app.use("/v1", openaiRouter);
