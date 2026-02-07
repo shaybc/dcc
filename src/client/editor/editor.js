@@ -84,6 +84,65 @@ function serializeWorkflowModels(models) {
   });
 }
 
+function normalizeContextEntries(entries) {
+  return (Array.isArray(entries) ? entries : []).map((entry) => ({
+    ...entry,
+    provider: entry?.provider || "",
+    url: entry?.params?.url || "",
+    headers: Array.isArray(entry?.params?.headers)
+      ? entry.params.headers.map((item) => {
+          if (item && typeof item === "object") {
+            const [k, v] = Object.entries(item)[0] || ["", ""];
+            return k ? `${k}: ${v ?? ""}` : "";
+          }
+          return String(item || "");
+        }).filter(Boolean)
+      : [],
+    stackDepth: entry?.params?.stackDepth ?? "",
+    onlyPinned: entry?.params?.onlyPinned ?? ""
+  }));
+}
+
+function parseBooleanMaybe(value) {
+  const s = String(value).trim().toLowerCase();
+  if (s === "true") return true;
+  if (s === "false") return false;
+  return value;
+}
+
+function serializeContextEntries(entries) {
+  return (Array.isArray(entries) ? entries : []).map((entry) => {
+    const out = { ...entry, provider: entry?.provider || "" };
+    const params = { ...(out.params || {}) };
+    if (out.url) params.url = out.url;
+    if (Array.isArray(out.headers) && out.headers.length > 0) {
+      params.headers = out.headers.map((line) => {
+        const text = String(line || "");
+        const idx = text.indexOf(":");
+        if (idx === -1) return { [text.trim()]: "" };
+        const key = text.slice(0, idx).trim();
+        const value = text.slice(idx + 1).trim();
+        return { [key]: value };
+      });
+    }
+    if (out.stackDepth !== "" && out.stackDepth !== undefined) {
+      params.stackDepth = Number(out.stackDepth) || out.stackDepth;
+    }
+    if (out.onlyPinned !== "" && out.onlyPinned !== undefined) {
+      params.onlyPinned = parseBooleanMaybe(out.onlyPinned);
+    }
+    delete out.url;
+    delete out.headers;
+    delete out.stackDepth;
+    delete out.onlyPinned;
+    if (Object.keys(params).length > 0) out.params = params;
+    else delete out.params;
+    return out;
+  });
+}
+
+
+
 
 const handlers = {
   prompt: {
@@ -146,7 +205,16 @@ const handlers = {
       rules: normalizeUsesArray(state.rules)
     })
   },
-  context: { createForm: createContextForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
+  context: {
+    createForm: createContextForm,
+    parse: (txt) => YAML.parse(txt || "") || {},
+    serialize: (state) => YAML.stringify({
+      ...unknown,
+      ...state,
+      tags: normalizeStringArray(state.tags),
+      context: serializeContextEntries(state.context)
+    })
+  },
   agent: {
     createForm: createAgentForm,
     parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
@@ -198,7 +266,14 @@ function normalizeState(type, parsed) {
     mcpServers: normalizeUsesArray(data.mcpServers),
     rules: normalizeUsesArray(data.rules)
   };
-  return { name: data.name || "", description: data.description || "", version: data.version || "", context: data.context || [], headers: data.headers || [] };
+  return {
+    name: data.name || "",
+    version: data.version || "",
+    schema: data.schema || "",
+    description: data.description || "",
+    tags: normalizeStringArray(data.tags),
+    context: normalizeContextEntries(data.context)
+  };
 }
 
 function captureUnknownFields(type, parsed) {
@@ -209,7 +284,7 @@ function captureUnknownFields(type, parsed) {
     rule: ["name", "description", "version", "tags", "body"],
     model: ["name", "description", "version", "schema", "tags", "models"],
     workflow: ["name", "description", "version", "schema", "tags", "models", "context", "mcpServers", "rules"],
-    context: ["name", "description", "version", "context", "headers"]
+    context: ["name", "description", "version", "schema", "tags", "context"]
   };
   const known = new Set(knownByType[type] || []);
   unknown = Object.fromEntries(Object.entries(parsed || {}).filter(([key]) => !known.has(key)));
