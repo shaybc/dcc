@@ -949,40 +949,34 @@ async function deleteDefinitionFromRepo(id) {
 }
 
 
-async function duplicateDefinitionWithSavePicker() {
-  if (typeof window.showSaveFilePicker !== "function") {
-    return false;
-  }
+async function pickDestinationFolderPath() {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.setAttribute("nwdirectory", "");
+    input.setAttribute("webkitdirectory", "");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    input.style.pointerEvents = "none";
+    document.body.appendChild(input);
 
-  const extension = (currentDetailDefinitionPath.split(".").pop() || "yaml").toLowerCase();
-  const suggestedFileName = currentDetailDefinitionPath
-    ? currentDetailDefinitionPath.split(/[\\/]/).pop()
-    : `${currentDetailDefinitionName || "definition"}_copy.${extension}`;
+    input.addEventListener("change", () => {
+      let folderPath = "";
+      const firstFile = input.files && input.files.length > 0 ? input.files[0] : null;
+      const firstFilePath = firstFile && typeof firstFile.path === "string" ? firstFile.path : "";
 
-  const handle = await window.showSaveFilePicker({
-    suggestedName: suggestedFileName,
-    types: [{
-      description: "Definition files",
-      accept: { "text/plain": [`.${extension}`, ".yaml", ".yml", ".md", ".json", ".txt"] }
-    }]
+      if (firstFilePath) {
+        folderPath = firstFilePath.replace(/[\\/][^\\/]+$/, "");
+      } else if (typeof input.value === "string") {
+        folderPath = input.value;
+      }
+
+      input.remove();
+      resolve(folderPath.trim());
+    }, { once: true });
+
+    input.click();
   });
-
-  const writable = await handle.createWritable();
-  await writable.write(detailContent.textContent || "");
-  await writable.close();
-  return true;
-}
-
-function downloadDuplicatedDefinitionFile(fileName) {
-  const blob = new Blob([detailContent.textContent || ""], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }
 
 async function pushDefinitionToUpstream(id, commitMessage) {
@@ -1067,18 +1061,36 @@ duplicateDefinitionButton.addEventListener("click", async () => {
   const suggestedName = `${currentDetailDefinitionName || "definition"}_copy`;
   const extension = (currentDetailDefinitionPath.split(".").pop() || "yaml").toLowerCase();
   const suggestedFileName = `${suggestedName}.${extension}`;
+  const fileName = window.prompt("Enter duplicated file name", suggestedFileName);
+  if (fileName === null) {
+    return;
+  }
+
+  const trimmedFileName = fileName.trim();
+  if (!trimmedFileName) {
+    window.alert("File name is required.");
+    return;
+  }
 
   try {
-    const usedSavePicker = await duplicateDefinitionWithSavePicker();
-    if (usedSavePicker) {
-      await fetchWithErrorHandling("/api/load-definitions", { method: "POST" }, "Unable to refresh definitions.");
-      await fetchDefinitions();
-      window.alert("Definition duplicated locally.");
+    const folderPath = await pickDestinationFolderPath();
+    if (!folderPath) {
       return;
     }
-    downloadDuplicatedDefinitionFile(suggestedFileName);
-    window.alert("Definition file downloaded. Save it into your cloned repository folder to load it as a local definition.");
-    return;
+
+    const separator = folderPath.includes("\\") ? "\\" : "/";
+    const destinationPath = folderPath.endsWith("/") || folderPath.endsWith("\\")
+      ? `${folderPath}${trimmedFileName}`
+      : `${folderPath}${separator}${trimmedFileName}`;
+
+    const result = await fetchWithErrorHandling(`/api/definitions/${currentDetailDefinitionId}/duplicate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ destinationPath, name: suggestedName })
+    }, "Unable to duplicate definition.");
+
+    await fetchDefinitions();
+    window.alert(result?.message || "Definition duplicated locally.");
   } catch (error) {
     if (error?.name !== "AbortError") {
       window.alert(error.message || "Unable to duplicate definition.");
