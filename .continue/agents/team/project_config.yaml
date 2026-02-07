@@ -6,7 +6,7 @@ context:
     params:
       stackDepth: 3
   - provider: currentFile
-  - provider: clipboard
   - provider: repo-map
     params:
       includeSignatures: false
+  - provider: clipboard

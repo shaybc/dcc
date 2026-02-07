@@ -956,7 +956,7 @@ deleteDefinitionButton.addEventListener("click", async () => {
   }
 
   const isConfirmed = window.confirm(
-    "Are you sure you want to delete this definition from the local machine and the local cloned repository? Definitions already installed in projects will remain and will not be removed."
+    "Are you sure you want to delete this definition from team repository? Note: projects that already have this definition installed - will not be deleted, but you will not be able to install this definition to new projects or update existing installations. If you want to remove this definition from specific project(s) only - please select the project,and click 'Remove from project' button from the definition card or details page."
   );
 
   if (!isConfirmed) {
