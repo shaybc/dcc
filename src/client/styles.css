@@ -5,7 +5,7 @@
   --card: #14161b;
   --text: #f4f4f5;
   --muted: #a1a1aa;
-  --border: #262a33;
+  --border: #2e333e;
   --accent: #8b5cf6;
   --accent-dark: #6d28d9;
   --success: #34d399;
@@ -1073,9 +1073,14 @@ body.detail-page-open {
   width: 48px;
   height: 26px;
   border-radius: 999px;
-  background: var(--bg-soft);
+  /* background: var(--bg-soft); */
   border: 1px solid var(--border);
   transition: all 0.2s ease;
+
+  background: none;
+  color: #fff0;
+  padding-top: 3px;
+  top: 3px;
 }
 
 .slider::before {
@@ -1083,7 +1088,6 @@ body.detail-page-open {
   position: absolute;
   width: 20px;
   height: 20px;
-  left: 2px;
   top: 2px;
   border-radius: 50%;
   background: var(--muted);
@@ -1091,7 +1095,7 @@ body.detail-page-open {
 }
 
 .switch input:checked + .slider {
-  background: rgba(139, 92, 246, 0.2);
+  /* background: rgba(139, 92, 246, 0.2); */
   border-color: var(--accent);
 }
 
