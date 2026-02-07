@@ -1183,3 +1183,11 @@ body.detail-page-open {
   border-color: #60a5fa;
   background: rgba(59, 130, 246, 0.15);
 }
+
+.create-dropdown { position: relative; }
+.actions { display:flex; gap:10px; align-items:center; justify-content:flex-end; }
+.editor-grid { display:flex; flex-direction:column; gap:12px; }
+.editor-grid label { display:flex; flex-direction:column; gap:6px; font-size:13px; color:var(--muted); }
+.editor-grid input, .editor-grid textarea { width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-overlay); color:var(--text); }
+#editorTypeFields { display:flex; flex-direction:column; gap:12px; }
+.editor-actions-row { display:flex; justify-content:flex-end; gap:10px; }

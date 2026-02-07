@@ -19,6 +19,21 @@ const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
+const editDefinitionButton = document.getElementById("editDefinition");
+const newDefinitionButton = document.getElementById("newDefinitionButton");
+const newDefinitionMenu = document.getElementById("newDefinitionMenu");
+const editorPage = document.getElementById("editorPage");
+const editorTitle = document.getElementById("editorTitle");
+const editorName = document.getElementById("editorName");
+const editorVersion = document.getElementById("editorVersion");
+const editorSchema = document.getElementById("editorSchema");
+const editorDescription = document.getElementById("editorDescription");
+const editorTags = document.getElementById("editorTags");
+const editorRawContent = document.getElementById("editorRawContent");
+const editorTypeFields = document.getElementById("editorTypeFields");
+const cancelEditorButton = document.getElementById("cancelEditor");
+const cancelEditorTopButton = document.getElementById("cancelEditorTop");
+const saveEditorButton = document.getElementById("saveEditor");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
@@ -38,6 +53,10 @@ let currentDetailDefinitionId = null;
 let currentDetailDefinitionSource = "";
 let currentDetailDefinitionName = "";
 let currentDetailDefinitionPath = "";
+let editorState = null;
+let editorMode = "create";
+let editorDefinitionId = null;
+let syncingEditorFromRaw = false;
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
@@ -858,6 +877,7 @@ async function showDetails(id) {
 function showDetailPage() {
   hubHeader.hidden = true;
   hubMain.hidden = true;
+  editorPage.hidden = true;
   detailPage.hidden = false;
   document.body.classList.add("detail-page-open");
   window.scrollTo(0, 0);
@@ -865,6 +885,7 @@ function showDetailPage() {
 
 function showHubPage() {
   detailPage.hidden = true;
+  editorPage.hidden = true;
   currentDetailDefinitionId = null;
   currentDetailDefinitionSource = "";
   currentDetailDefinitionName = "";
@@ -990,6 +1011,184 @@ async function duplicateDefinition(id, name, fileName) {
   }, "Unable to duplicate definition.");
 }
 
+
+function showEditorPage() {
+  hubHeader.hidden = true;
+  hubMain.hidden = true;
+  detailPage.hidden = true;
+  editorPage.hidden = false;
+  document.body.classList.add("detail-page-open");
+  window.scrollTo(0, 0);
+}
+
+function hideEditorPage() {
+  editorPage.hidden = true;
+  document.body.classList.remove("detail-page-open");
+}
+
+function buildEditorState(type) {
+  return {
+    type,
+    name: "",
+    version: "",
+    schema: "v1",
+    description: "",
+    tags: [],
+    onStateChange: handleEditorStateChange
+  };
+}
+
+function renderEditorTypeFields() {
+  window.DefinitionForm.renderTypeFields(editorTypeFields, editorState);
+}
+
+function syncFieldsFromState() {
+  editorName.value = editorState.name || "";
+  editorVersion.value = editorState.version || "";
+  editorSchema.value = editorState.schema || "v1";
+  editorDescription.value = editorState.description || "";
+  editorTags.value = (editorState.tags || []).join(", ");
+}
+
+function handleEditorStateChange() {
+  if (!editorState || syncingEditorFromRaw) return;
+  editorRawContent.value = window.DefinitionForm.buildContent(editorState);
+}
+
+async function parseRawIntoEditor() {
+  if (!editorState) return;
+  try {
+    const parsed = await fetchWithErrorHandling('/api/definitions/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: editorState.type, content: editorRawContent.value })
+    }, 'Unable to parse definition content.');
+
+    syncingEditorFromRaw = true;
+    editorState.name = parsed.name || editorState.name;
+    editorState.version = parsed.version || editorState.version;
+    editorState.schema = parsed.schema || editorState.schema;
+    editorState.description = parsed.description || editorState.description;
+    editorState.tags = Array.isArray(parsed.tags) ? parsed.tags : window.DefinitionForm.toTags(parsed.tags);
+    Object.assign(editorState, parsed.fields || {});
+    syncFieldsFromState();
+    renderEditorTypeFields();
+    syncingEditorFromRaw = false;
+  } catch (_error) {
+    syncingEditorFromRaw = false;
+  }
+}
+
+function openEditor(mode, type, initial = {}, definitionId = null) {
+  editorMode = mode;
+  editorDefinitionId = definitionId;
+  editorState = buildEditorState(window.DefinitionForm.normalizeType(type));
+  Object.assign(editorState, initial || {});
+  editorTitle.textContent = mode === 'edit' ? 'Edit definition' : `Create ${window.DefinitionForm.normalizeType(type)}`;
+  syncFieldsFromState();
+  renderEditorTypeFields();
+  editorRawContent.value = initial.content || window.DefinitionForm.buildContent(editorState);
+  showEditorPage();
+}
+
+async function saveEditor() {
+  if (!editorState) return;
+  const content = editorRawContent.value || window.DefinitionForm.buildContent(editorState);
+  if (editorMode === 'edit') {
+    const result = await fetchWithErrorHandling(`/api/definitions/${editorDefinitionId}/edit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    }, 'Unable to save definition edits.');
+    await fetchDefinitions();
+    await showDetails(editorDefinitionId);
+    hideEditorPage();
+    window.alert(result?.message || 'Definition edit saved to the repository.');
+    return;
+  }
+
+  const pathInput = window.prompt('Path to save file (directory path)');
+  if (pathInput === null) return;
+  const fileNameInput = window.prompt('File name to save');
+  if (fileNameInput === null) return;
+
+  const result = await fetchWithErrorHandling('/api/definitions/create-local', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: editorState.type, content, directoryPath: pathInput, fileName: fileNameInput })
+  }, 'Unable to save local definition.');
+
+  await fetchDefinitions();
+  hideEditorPage();
+  showHubPage();
+  window.alert(result?.message || 'Definition saved as local untracked file.');
+}
+
+function populateCreateMenu() {
+  const options = window.DefinitionForm.createTypeOptions();
+  newDefinitionMenu.innerHTML = options.map((option) => `<button class="filter-menu-item" type="button" data-type="${escapeHtml(option.value)}">${escapeHtml(option.label)}</button>`).join('');
+  newDefinitionMenu.querySelectorAll('[data-type]').forEach((button) => {
+    button.addEventListener('click', () => {
+      newDefinitionMenu.classList.remove('open');
+      newDefinitionButton.setAttribute('aria-expanded', 'false');
+      openEditor('create', button.getAttribute('data-type'));
+    });
+  });
+}
+
+
+newDefinitionButton.addEventListener("click", () => {
+  const isOpen = newDefinitionMenu.classList.toggle("open");
+  newDefinitionButton.setAttribute("aria-expanded", String(isOpen));
+});
+
+editDefinitionButton.addEventListener("click", async () => {
+  if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
+    return;
+  }
+  const def = await fetchWithErrorHandling(`/api/definitions/${currentDetailDefinitionId}`, {}, "Unable to load definition details.");
+  const initial = {
+    name: def.name || "",
+    version: def.version || "",
+    schema: def.schema || "v1",
+    description: def.description || "",
+    tags: parseDefinitionTags(def.tags),
+    content: def.content || ""
+  };
+  openEditor('edit', def.type, initial, currentDetailDefinitionId);
+  await parseRawIntoEditor();
+});
+
+[cancelEditorButton, cancelEditorTopButton].forEach((button) => {
+  button.addEventListener('click', () => {
+    hideEditorPage();
+    if (Number.isFinite(Number(currentDetailDefinitionId)) && currentDetailDefinitionId > 0) {
+      showDetailPage();
+      return;
+    }
+    showHubPage();
+  });
+});
+
+saveEditorButton.addEventListener('click', async () => {
+  try {
+    await saveEditor();
+  } catch (error) {
+    window.alert(error.message || 'Unable to save definition.');
+  }
+});
+
+editorName.addEventListener('input', () => { editorState.name = editorName.value; handleEditorStateChange(); });
+editorVersion.addEventListener('input', () => { editorState.version = editorVersion.value; handleEditorStateChange(); });
+editorSchema.addEventListener('input', () => { editorState.schema = editorSchema.value; handleEditorStateChange(); });
+editorDescription.addEventListener('input', () => { editorState.description = editorDescription.value; handleEditorStateChange(); });
+editorTags.addEventListener('input', () => { editorState.tags = window.DefinitionForm.toTags(editorTags.value); handleEditorStateChange(); });
+let rawParseTimer = null;
+editorRawContent.addEventListener('input', () => {
+  clearTimeout(rawParseTimer);
+  rawParseTimer = setTimeout(parseRawIntoEditor, 450);
+});
+
 searchInput.addEventListener("input", (event) => {
   setSearchValue(event.target.value);
   renderCards();
@@ -1022,6 +1221,10 @@ filterButton.addEventListener("click", () => {
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".filter-dropdown")) {
     closeFilterMenu();
+  }
+  if (!event.target.closest(".create-dropdown")) {
+    newDefinitionMenu.classList.remove("open");
+    newDefinitionButton.setAttribute("aria-expanded", "false");
   }
 });
 
@@ -1158,5 +1361,6 @@ window.addEventListener("popstate", () => {
   handleRoute();
 });
 
+populateCreateMenu();
 loadDevProjects();
 loadCurrentDevProject().then(fetchDefinitions).then(handleRoute);
