@@ -959,6 +959,10 @@ body.detail-page-open {
   transition: all 0.2s ease;
 }
 
+.copy-btn[hidden] {
+  display: none;
+}
+
 .copy-btn:hover {
   border-color: var(--accent);
   background: rgba(139, 92, 246, 0.15);
