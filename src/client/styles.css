@@ -17,6 +17,11 @@
   --shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
   --card-in-project-bg: #161c2b;
   --card-in-project-border: #26324a;
+  --surface-muted: rgba(161, 161, 170, 0.12);
+  --hero-icon-bg: rgba(15, 17, 22, 0.8);
+  --inline-code-bg: rgba(255, 255, 255, 0.08);
+  --code-block-bg: #0f1116;
+  --preview-card-bg: rgba(15, 17, 22, 0.7);
 }
 
 :root[data-theme="light"] {
@@ -38,25 +43,11 @@
   --shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
   --card-in-project-bg: #eef2ff;
   --card-in-project-border: #c7d2fe;
-}
-
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg: #f4f5fb;
-  --bg-soft: #ffffff;
-  --card: #ffffff;
-  --text: #111827;
-  --muted: #4b5563;
-  --border: #d1d5db;
-  --accent: #7c3aed;
-  --accent-dark: #6d28d9;
-  --success: #059669;
-  --warning: #ca8a04;
-  --surface-overlay: rgba(255, 255, 255, 0.9);
-  --input-shadow: inset 0 1px 0 rgba(17, 24, 39, 0.04);
-  --glow-primary: rgba(124, 58, 237, 0.09);
-  --glow-secondary: rgba(59, 130, 246, 0.07);
-  --shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  --surface-muted: rgba(15, 23, 42, 0.06);
+  --hero-icon-bg: rgba(15, 23, 42, 0.12);
+  --inline-code-bg: rgba(15, 23, 42, 0.07);
+  --code-block-bg: #f8fafc;
+  --preview-card-bg: #eef2ff;
 }
 
 * {
@@ -394,7 +385,7 @@ main {
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--inline-code-bg);
   color: var(--text);
 }
 
@@ -599,7 +590,7 @@ body.detail-page-open {
   display: flex;
   gap: 18px;
   align-items: stretch;
-  background: rgba(161, 161, 170, 0.12);
+  background: var(--surface-muted);
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 16px;
@@ -612,7 +603,7 @@ body.detail-page-open {
   height: 92px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  background: rgba(15, 17, 22, 0.8);
+  background: var(--hero-icon-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -691,7 +682,7 @@ body.detail-page-open {
 .detail-description code {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.92em;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--inline-code-bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 2px 6px;
@@ -699,7 +690,7 @@ body.detail-page-open {
 
 .detail-description pre {
   margin: 0 0 12px;
-  background: #0f1116;
+  background: var(--code-block-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px;
@@ -735,7 +726,7 @@ body.detail-page-open {
   gap: 12px;
   padding-right: 10px;
   border-bottom: 1px solid var(--border);
-  background: rgba(161, 161, 170, 0.12);
+  background: var(--surface-muted);
 }
 
 .definition-tab-buttons {
@@ -841,7 +832,7 @@ body.detail-page-open {
 .preview-card {
   border: 1px solid rgba(139, 92, 246, 0.6);
   border-radius: 10px;
-  background: rgba(15, 17, 22, 0.7);
+  background: var(--preview-card-bg);
   padding: 12px;
   min-width: 250px;
   min-height: 100px;
@@ -933,7 +924,7 @@ body.detail-page-open {
 }
 
 .detail-page-content pre {
-  background: #0f1116;
+  background: var(--code-block-bg);
   border-radius: 12px;
   padding: 20px;
   white-space: pre-wrap;
