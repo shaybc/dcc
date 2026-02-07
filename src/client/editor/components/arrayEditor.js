@@ -1,0 +1,116 @@
+function createElement(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
+
+function renderItemLabel(item, fields) {
+  if (typeof item === "string") return item;
+  const parts = fields.map((field) => item?.[field.name]).filter(Boolean);
+  return parts.join(" · ") || "(empty)";
+}
+
+export function createArrayEditor({ mount, label, fields, onChange }) {
+  let items = [];
+  const wrapper = createElement("section", "array-editor");
+  const header = createElement("div", "array-editor-header");
+  header.append(createElement("h4", "", label));
+  const addButton = createElement("button", "btn small", "Add item");
+  addButton.type = "button";
+  header.append(addButton);
+  const list = createElement("div", "array-editor-list");
+  wrapper.append(header, list);
+  mount.append(wrapper);
+
+  function openItemDialog(existingItem, onSave) {
+    const overlay = createElement("div", "editor-modal-overlay");
+    const modal = createElement("div", "editor-modal");
+    const form = createElement("div", "editor-modal-form");
+    const state = typeof existingItem === "string" ? { value: existingItem } : { ...(existingItem || {}) };
+
+    fields.forEach((field) => {
+      const row = createElement("label", "editor-field");
+      row.append(createElement("span", "", field.label));
+      if (field.kind === "array") {
+        const nestedMount = createElement("div", "nested-array-mount");
+        const nested = createArrayEditor({
+          mount: nestedMount,
+          label: field.label,
+          fields: [{ name: "value", label: field.itemLabel || "Value" }],
+          onChange: (values) => {
+            state[field.name] = values;
+          }
+        });
+        nested.setItems(state[field.name] || []);
+        row.append(nestedMount);
+      } else {
+        const input = field.multiline ? document.createElement("textarea") : document.createElement("input");
+        if (!field.multiline) input.type = "text";
+        input.value = state[field.name] || "";
+        input.addEventListener("input", () => {
+          state[field.name] = input.value;
+        });
+        row.append(input);
+      }
+      form.append(row);
+    });
+
+    const actions = createElement("div", "editor-modal-actions");
+    const cancel = createElement("button", "btn", "Cancel");
+    cancel.type = "button";
+    const save = createElement("button", "btn primary", "Save");
+    save.type = "button";
+    cancel.addEventListener("click", () => overlay.remove());
+    save.addEventListener("click", () => {
+      onSave(fields.length === 1 && fields[0].name === "value" ? (state.value || "") : state);
+      overlay.remove();
+    });
+    actions.append(cancel, save);
+    modal.append(form, actions);
+    overlay.append(modal);
+    document.body.append(overlay);
+  }
+
+  function render() {
+    list.innerHTML = "";
+    items.forEach((item, index) => {
+      const row = createElement("div", "array-editor-item");
+      row.append(createElement("span", "array-editor-item-label", renderItemLabel(item, fields)));
+      const actions = createElement("div", "array-editor-item-actions");
+      const edit = createElement("button", "btn small", "Edit");
+      edit.type = "button";
+      edit.addEventListener("click", () => openItemDialog(item, (value) => {
+        items[index] = value;
+        render();
+        onChange(items);
+      }));
+      const remove = createElement("button", "btn small danger", "Remove");
+      remove.type = "button";
+      remove.addEventListener("click", () => {
+        items = items.filter((_x, i) => i !== index);
+        render();
+        onChange(items);
+      });
+      actions.append(edit, remove);
+      row.append(actions);
+      list.append(row);
+    });
+  }
+
+  addButton.addEventListener("click", () => openItemDialog(null, (value) => {
+    items.push(value);
+    render();
+    onChange(items);
+  }));
+
+  return {
+    setItems(nextItems = []) {
+      items = Array.isArray(nextItems) ? [...nextItems] : [];
+      render();
+    },
+    getItems() {
+      return [...items];
+    }
+  };
+}
