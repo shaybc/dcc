@@ -19,6 +19,10 @@ const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
+const editDefinitionButton = document.getElementById("editDefinition");
+const newDefinitionButton = document.getElementById("newDefinitionButton");
+const newDefinitionMenu = document.getElementById("newDefinitionMenu");
+const definitionFormPage = document.getElementById("definitionFormPage");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
@@ -38,6 +42,7 @@ let currentDetailDefinitionId = null;
 let currentDetailDefinitionSource = "";
 let currentDetailDefinitionName = "";
 let currentDetailDefinitionPath = "";
+let currentDetailDefinition = null;
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
@@ -814,6 +819,7 @@ async function showDetails(id) {
   currentDetailDefinitionSource = String(def.source || "").toLowerCase();
   currentDetailDefinitionName = String(def.name || "");
   currentDetailDefinitionPath = String(def.filePath || "");
+  currentDetailDefinition = def;
   detailTitle.textContent = def.name;
   detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
   const definitionContent = def.content || "";
@@ -859,6 +865,7 @@ function showDetailPage() {
   hubHeader.hidden = true;
   hubMain.hidden = true;
   detailPage.hidden = false;
+  if (definitionFormPage) definitionFormPage.hidden = true;
   document.body.classList.add("detail-page-open");
   window.scrollTo(0, 0);
 }
@@ -874,7 +881,18 @@ function showHubPage() {
   pushUpstreamDefinitionButton.disabled = true;
   hubHeader.hidden = false;
   hubMain.hidden = false;
+  if (definitionFormPage) definitionFormPage.hidden = true;
   document.body.classList.remove("detail-page-open");
+}
+
+
+function showDefinitionFormPage() {
+  hubHeader.hidden = true;
+  hubMain.hidden = true;
+  detailPage.hidden = true;
+  if (definitionFormPage) definitionFormPage.hidden = false;
+  document.body.classList.add("detail-page-open");
+  window.scrollTo(0, 0);
 }
 
 function updateRouteForDetails(id) {
@@ -1023,6 +1041,9 @@ document.addEventListener("click", (event) => {
   if (!event.target.closest(".filter-dropdown")) {
     closeFilterMenu();
   }
+  if (!event.target.closest(".new-definition-dropdown")) {
+    closeNewDefinitionMenu();
+  }
 });
 
 clearSearchButton.addEventListener("click", () => {
@@ -1030,6 +1051,27 @@ clearSearchButton.addEventListener("click", () => {
   renderCards();
 });
 
+
+function closeNewDefinitionMenu() {
+  if (!newDefinitionMenu || !newDefinitionButton) return;
+  newDefinitionMenu.classList.remove("open");
+  newDefinitionButton.setAttribute("aria-expanded", "false");
+}
+
+if (newDefinitionButton) {
+  newDefinitionButton.addEventListener("click", () => {
+    const isOpen = newDefinitionMenu.classList.toggle("open");
+    newDefinitionButton.setAttribute("aria-expanded", String(isOpen));
+  });
+}
+
+newDefinitionMenu?.querySelectorAll("[data-new-type]").forEach((button) => {
+  button.addEventListener("click", () => {
+    closeNewDefinitionMenu();
+    showDefinitionFormPage();
+    window.definitionFormManager?.openCreate(button.getAttribute("data-new-type"));
+  });
+});
 
 
 deleteDefinitionButton.addEventListener("click", async () => {
@@ -1081,6 +1123,34 @@ pushUpstreamDefinitionButton.addEventListener("click", async () => {
     window.alert(error.message || "Unable to push definition.");
   }
 });
+
+
+editDefinitionButton?.addEventListener("click", () => {
+  if (!currentDetailDefinition) {
+    return;
+  }
+  showDefinitionFormPage();
+  window.definitionFormManager?.openEdit(currentDetailDefinition);
+});
+
+window.__dccDefinitionFormHooks = {
+  onCancel: async () => {
+    if (currentDetailDefinitionId) {
+      await showDetails(currentDetailDefinitionId);
+      return;
+    }
+    showHubPage();
+  },
+  onSaved: async () => {
+    await fetchDefinitions();
+    if (currentDetailDefinitionId) {
+      await showDetails(currentDetailDefinitionId);
+    } else {
+      showHubPage();
+    }
+    window.alert("Definition changes saved.");
+  }
+};
 
 copyDefinitionButton.addEventListener("click", async () => {
   try {
