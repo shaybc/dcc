@@ -30,6 +30,18 @@
         <p>Discover, sync, and deploy Continue definitions from your team hub.</p>
       </div>
       <div class="actions">
+        <div class="new-menu-wrap">
+          <button class="btn" id="newDefinitionButton" type="button">＋ New</button>
+          <div class="new-menu" id="newDefinitionMenu" hidden>
+            <button type="button" data-new-type="prompt">Prompt</button>
+            <button type="button" data-new-type="mcpServer">MCP Server</button>
+            <button type="button" data-new-type="agent">Agent</button>
+            <button type="button" data-new-type="rule">Rule</button>
+            <button type="button" data-new-type="model">Model</button>
+            <button type="button" data-new-type="workflow">Workflow</button>
+            <button type="button" data-new-type="context">Context</button>
+          </div>
+        </div>
         <a class="btn" href="/settings">⚙ Settings</a>
       </div>
     </header>
@@ -149,6 +161,11 @@
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="9" y="9" width="13" height="13" rx="2"></rect>
                     <rect x="2" y="2" width="13" height="13" rx="2"></rect>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="editDefinition" type="button" aria-label="Edit definition" title="Edit definition">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
                   </svg>
                 </button>
                 <button class="copy-btn" id="copyDefinition" type="button" aria-label="Copy definition" title="Copy definition">

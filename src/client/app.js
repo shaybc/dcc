@@ -19,6 +19,9 @@ const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
+const editDefinitionButton = document.getElementById("editDefinition");
+const newDefinitionButton = document.getElementById("newDefinitionButton");
+const newDefinitionMenu = document.getElementById("newDefinitionMenu");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
@@ -1009,6 +1012,17 @@ devProjectInput.addEventListener("change", async (event) => {
   await fetchDefinitions();
 });
 
+
+function openEditorForCurrentDefinition() {
+  if (!currentDetailDefinitionPath) return;
+  window.location.assign(`/editor/editor.html?mode=edit&path=${encodeURIComponent(currentDetailDefinitionPath)}`);
+}
+
+function toggleNewMenu() {
+  if (!newDefinitionMenu) return;
+  newDefinitionMenu.hidden = !newDefinitionMenu.hidden;
+}
+
 function closeFilterMenu() {
   filterMenu.classList.remove("open");
   filterButton.setAttribute("aria-expanded", "false");
@@ -1157,6 +1171,35 @@ closeModal.addEventListener("click", () => {
 window.addEventListener("popstate", () => {
   handleRoute();
 });
+
+document.addEventListener("click", (event) => {
+  if (newDefinitionMenu && !event.target.closest(".new-menu-wrap")) {
+    newDefinitionMenu.hidden = true;
+  }
+});
+
+if (newDefinitionButton) {
+  newDefinitionButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleNewMenu();
+  });
+}
+
+if (newDefinitionMenu) {
+  newDefinitionMenu.querySelectorAll("[data-new-type]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const type = button.getAttribute("data-new-type");
+      window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(type || "prompt")}`);
+    });
+  });
+}
+
+if (editDefinitionButton) {
+  editDefinitionButton.addEventListener("click", () => {
+    openEditorForCurrentDefinition();
+  });
+}
+
 
 loadDevProjects();
 loadCurrentDevProject().then(fetchDefinitions).then(handleRoute);

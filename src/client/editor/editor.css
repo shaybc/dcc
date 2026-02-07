@@ -1,0 +1,16 @@
+body { font-family: Arial, sans-serif; margin: 0; background: #0d1117; color: #e6edf3; }
+.editor-top { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-bottom:1px solid #30363d; }
+.editor-main { display:grid; grid-template-columns: 1fr 1fr; gap:16px; padding:16px 20px; }
+#formMount { display:flex; flex-direction:column; gap:12px; }
+.editor-field { display:flex; flex-direction:column; gap:6px; }
+input, textarea { background:#161b22; color:#e6edf3; border:1px solid #30363d; border-radius:6px; padding:8px; }
+.btn { border:1px solid #30363d; background:#21262d; color:#e6edf3; border-radius:6px; padding:7px 10px; cursor:pointer; }
+.btn.primary { background:#238636; border-color:#238636; }
+.btn.small { font-size:12px; padding:4px 8px; }
+.btn.danger { background:#8b1e2b; border-color:#8b1e2b; }
+.array-editor-item { display:flex; justify-content:space-between; gap:8px; border:1px solid #30363d; padding:8px; border-radius:6px; margin-top:6px; }
+.array-editor-header { display:flex; justify-content:space-between; align-items:center; }
+.error { color: #ff7b72; margin-bottom: 8px; }
+.editor-modal-overlay { position: fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; }
+.editor-modal { width: 540px; max-width: 90vw; background:#0d1117; border:1px solid #30363d; border-radius:10px; padding:16px; }
+.editor-modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
