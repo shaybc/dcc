@@ -9,6 +9,8 @@ const devProjectsTable = document.getElementById("devProjectsTable");
 const addDevRootButton = document.getElementById("addDevRoot");
 const saveDevRootsButton = document.getElementById("saveDevRoots");
 const devRootsNotice = document.getElementById("devRootsNotice");
+const themeToggle = document.getElementById("themeToggle");
+const themeToggleLabel = document.getElementById("themeToggleLabel");
 
 function setNotice(message, isError = false) {
   notice.textContent = message;
@@ -18,6 +20,23 @@ function setNotice(message, isError = false) {
 function setDevRootsNotice(message, isError = false) {
   devRootsNotice.textContent = message;
   devRootsNotice.style.color = isError ? "#dc2626" : "#6b7280";
+}
+
+function updateThemeToggleLabel(isLightMode) {
+  themeToggleLabel.textContent = isLightMode ? "Light mode" : "Dark mode";
+}
+
+if (themeToggle) {
+  const currentTheme = window.dccTheme?.getPreferredTheme?.() || "dark";
+  const isLightMode = currentTheme === "light";
+  themeToggle.checked = isLightMode;
+  updateThemeToggleLabel(isLightMode);
+
+  themeToggle.addEventListener("change", (event) => {
+    const nextTheme = event.target.checked ? "light" : "dark";
+    const appliedTheme = window.dccTheme?.setPreferredTheme?.(nextTheme) || nextTheme;
+    updateThemeToggleLabel(appliedTheme === "light");
+  });
 }
 
 function createDevRootRow(value = "") {
