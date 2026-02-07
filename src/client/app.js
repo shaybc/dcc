@@ -19,7 +19,6 @@ const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
-const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
@@ -949,36 +948,6 @@ async function deleteDefinitionFromRepo(id) {
 }
 
 
-async function pickDestinationFolderPath() {
-  return new Promise((resolve) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.setAttribute("nwdirectory", "");
-    input.setAttribute("webkitdirectory", "");
-    input.style.position = "fixed";
-    input.style.opacity = "0";
-    input.style.pointerEvents = "none";
-    document.body.appendChild(input);
-
-    input.addEventListener("change", () => {
-      let folderPath = "";
-      const firstFile = input.files && input.files.length > 0 ? input.files[0] : null;
-      const firstFilePath = firstFile && typeof firstFile.path === "string" ? firstFile.path : "";
-
-      if (firstFilePath) {
-        folderPath = firstFilePath.replace(/[\\/][^\\/]+$/, "");
-      } else if (typeof input.value === "string") {
-        folderPath = input.value;
-      }
-
-      input.remove();
-      resolve(folderPath.trim());
-    }, { once: true });
-
-    input.click();
-  });
-}
-
 async function pushDefinitionToUpstream(id, commitMessage) {
   return fetchWithErrorHandling(`/api/definitions/${id}/push-upstream`, {
     method: "POST",
@@ -1050,52 +1019,6 @@ deleteDefinitionButton.addEventListener("click", async () => {
     window.alert(result?.message || "Definition deleted from the repository.");
   } catch (error) {
     window.alert(error.message || "Unable to delete definition.");
-  }
-});
-
-duplicateDefinitionButton.addEventListener("click", async () => {
-  if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
-    return;
-  }
-
-  const suggestedName = `${currentDetailDefinitionName || "definition"}_copy`;
-  const extension = (currentDetailDefinitionPath.split(".").pop() || "yaml").toLowerCase();
-  const suggestedFileName = `${suggestedName}.${extension}`;
-  const fileName = window.prompt("Enter duplicated file name", suggestedFileName);
-  if (fileName === null) {
-    return;
-  }
-
-  const trimmedFileName = fileName.trim();
-  if (!trimmedFileName) {
-    window.alert("File name is required.");
-    return;
-  }
-
-  try {
-    const folderPath = await pickDestinationFolderPath();
-    if (!folderPath) {
-      return;
-    }
-
-    const separator = folderPath.includes("\\") ? "\\" : "/";
-    const destinationPath = folderPath.endsWith("/") || folderPath.endsWith("\\")
-      ? `${folderPath}${trimmedFileName}`
-      : `${folderPath}${separator}${trimmedFileName}`;
-
-    const result = await fetchWithErrorHandling(`/api/definitions/${currentDetailDefinitionId}/duplicate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ destinationPath, name: suggestedName })
-    }, "Unable to duplicate definition.");
-
-    await fetchDefinitions();
-    window.alert(result?.message || "Definition duplicated locally.");
-  } catch (error) {
-    if (error?.name !== "AbortError") {
-      window.alert(error.message || "Unable to duplicate definition.");
-    }
-    return;
   }
 });
 
