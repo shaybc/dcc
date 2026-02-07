@@ -807,6 +807,7 @@ function setDefinitionTab(activeTab) {
 }
 
 async function showDetails(id) {
+  pushUpstreamDefinitionButton.hidden = true;
   const response = await fetch(`/api/definitions/${id}`);
   const def = await response.json();
   currentDetailDefinitionId = def.id;
@@ -844,8 +845,10 @@ async function showDetails(id) {
   definitionTabSource.textContent = tabLabel;
 
   definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent, def);
+  const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
   deleteDefinitionButton.hidden = currentDetailDefinitionSource !== "repo";
-  pushUpstreamDefinitionButton.hidden = currentDetailDefinitionSource !== "untracked";
+  pushUpstreamDefinitionButton.hidden = !isUntrackedDefinition;
+  pushUpstreamDefinitionButton.disabled = !isUntrackedDefinition;
   definitionTabPreview.disabled = false;
   setDefinitionTab("preview");
   showDetailPage();
@@ -867,6 +870,7 @@ function showHubPage() {
   currentDetailDefinitionPath = "";
   deleteDefinitionButton.hidden = true;
   pushUpstreamDefinitionButton.hidden = true;
+  pushUpstreamDefinitionButton.disabled = true;
   hubHeader.hidden = false;
   hubMain.hidden = false;
   document.body.classList.remove("detail-page-open");
