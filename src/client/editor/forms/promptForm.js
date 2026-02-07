@@ -1,33 +1,73 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
-function textField(root, label, onInput) {
-  const wrap = document.createElement("label");
-  wrap.className = "editor-field";
-  const span = document.createElement("span");
-  span.textContent = label;
+function createTextInput({ mount, label, state, key, onChange }) {
+  const row = document.createElement("label");
+  row.className = "editor-field";
+  row.innerHTML = `<span>${label}</span>`;
   const input = document.createElement("input");
   input.type = "text";
-  input.addEventListener("input", () => onInput(input.value));
-  wrap.append(span, input);
-  root.append(wrap);
+  input.addEventListener("input", () => {
+    state[key] = input.value;
+    onChange();
+  });
+  row.append(input);
+  mount.append(row);
   return input;
 }
 
 export function createPromptForm({ mount, onChange }) {
-  const state = { name: "", description: "", version: "", tags: [], prompts: [] };
-  const nameInput = textField(mount, "name", (v) => { state.name = v; onChange(); });
-  const descriptionInput = textField(mount, "description", (v) => { state.description = v; onChange(); });
-  const versionInput = textField(mount, "version", (v) => { state.version = v; onChange(); });
-  const tags = createArrayEditor({ mount, label: "tags", fields: [{ name: "value", label: "Tag" }], onChange: (v) => { state.tags = v; onChange(); } });
-  const prompts = createArrayEditor({ mount, label: "prompts", fields: [{ name: "name", label: "Name" }, { name: "description", label: "Description" }, { name: "prompt", label: "Prompt", multiline: true }], onChange: (v) => { state.prompts = v; onChange(); } });
+  const state = {
+    name: "",
+    version: "",
+    schema: "",
+    description: "",
+    tags: [],
+    prompts: []
+  };
+
+  const nameInput = createTextInput({ mount, label: "name", state, key: "name", onChange });
+  const versionInput = createTextInput({ mount, label: "version", state, key: "version", onChange });
+  const schemaInput = createTextInput({ mount, label: "schema", state, key: "schema", onChange });
+  const descriptionInput = createTextInput({ mount, label: "description", state, key: "description", onChange });
+
+  const tags = createArrayEditor({
+    mount,
+    label: "tags",
+    fields: [{ name: "value", label: "Tag" }],
+    onChange: (nextItems) => {
+      state.tags = nextItems;
+      onChange();
+    }
+  });
+
+  const prompts = createArrayEditor({
+    mount,
+    label: "prompts",
+    fields: [
+      { name: "name", label: "name" },
+      { name: "description", label: "description" },
+      { name: "prompt", label: "prompt", multiline: true }
+    ],
+    onChange: (nextItems) => {
+      state.prompts = nextItems;
+      onChange();
+    }
+  });
 
   return {
-    getState() { return { ...state, tags: tags.getItems(), prompts: prompts.getItems() }; },
-    setState(next) {
-      Object.assign(state, next || {});
+    getState() {
+      return {
+        ...state,
+        tags: tags.getItems(),
+        prompts: prompts.getItems()
+      };
+    },
+    setState(nextState) {
+      Object.assign(state, nextState || {});
       nameInput.value = state.name || "";
-      descriptionInput.value = state.description || "";
       versionInput.value = state.version || "";
+      schemaInput.value = state.schema || "";
+      descriptionInput.value = state.description || "";
       tags.setItems(state.tags || []);
       prompts.setItems(state.prompts || []);
     }

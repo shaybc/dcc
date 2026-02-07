@@ -44,7 +44,16 @@ function normalizeModelEntries(models) {
 
 
 const handlers = {
-  prompt: { createForm: createPromptForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
+  prompt: {
+    createForm: createPromptForm,
+    parse: (txt) => YAML.parse(txt || "") || {},
+    serialize: (state) => YAML.stringify({
+      ...unknown,
+      ...state,
+      tags: normalizeStringArray(state.tags),
+      prompts: Array.isArray(state.prompts) ? state.prompts : []
+    })
+  },
   mcpServer: { createForm: createMcpServerForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => YAML.stringify({ ...unknown, ...state }) },
   model: {
     createForm: createModelForm,
@@ -89,7 +98,14 @@ const handlers = {
 
 function normalizeState(type, parsed) {
   const data = parsed || {};
-  if (type === "prompt") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], prompts: data.prompts || [] };
+  if (type === "prompt") return {
+    name: data.name || "",
+    version: data.version || "",
+    schema: data.schema || "",
+    description: data.description || "",
+    tags: normalizeStringArray(data.tags),
+    prompts: Array.isArray(data.prompts) ? data.prompts : []
+  };
   if (type === "mcpServer") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], mcpServers: data.mcpServers || [] };
   if (type === "agent") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], tools: data.tools || [], rules: data.rules || [], body: data.body || "" };
   if (type === "rule") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
@@ -107,7 +123,7 @@ function normalizeState(type, parsed) {
 
 function captureUnknownFields(type, parsed) {
   const knownByType = {
-    prompt: ["name", "description", "version", "tags", "prompts"],
+    prompt: ["name", "description", "version", "schema", "tags", "prompts"],
     mcpServer: ["name", "description", "version", "tags", "mcpServers"],
     agent: ["name", "description", "version", "tags", "tools", "rules", "body"],
     rule: ["name", "description", "version", "tags", "body"],
