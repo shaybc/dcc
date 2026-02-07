@@ -845,7 +845,8 @@ async function showDetails(id) {
 
   definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent, def);
   const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
-  deleteDefinitionButton.hidden = currentDetailDefinitionSource !== "repo";
+  const canDeleteDefinition = currentDetailDefinitionSource === "repo" || isUntrackedDefinition;
+  deleteDefinitionButton.hidden = !canDeleteDefinition;
   pushUpstreamDefinitionButton.hidden = !isUntrackedDefinition;
   pushUpstreamDefinitionButton.disabled = !isUntrackedDefinition;
   definitionTabPreview.disabled = false;
@@ -1003,9 +1004,12 @@ deleteDefinitionButton.addEventListener("click", async () => {
     return;
   }
 
-  const isConfirmed = window.confirm(
-    "Are you sure you want to delete this definition from team repository? Note: projects that already have this definition installed - will not be deleted, but you will not be able to install this definition to new projects or update existing installations. If you want to remove this definition from specific project(s) only - please select the project,and click 'Remove from project' button from the definition card or details page."
-  );
+  const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
+  const confirmationMessage = isUntrackedDefinition
+    ? "Are you sure you want to delete this untracked local definition file? This only removes the local file and does not sync with the team repository."
+    : "Are you sure you want to delete this definition from team repository? Note: projects that already have this definition installed - will not be deleted, but you will not be able to install this definition to new projects or update existing installations. If you want to remove this definition from specific project(s) only - please select the project,and click 'Remove from project' button from the definition card or details page.";
+
+  const isConfirmed = window.confirm(confirmationMessage);
 
   if (!isConfirmed) {
     return;
@@ -1016,7 +1020,10 @@ deleteDefinitionButton.addEventListener("click", async () => {
     await fetchDefinitions();
     updateRouteForHub(true);
     showHubPage();
-    window.alert(result?.message || "Definition deleted from the repository.");
+    const successMessage = isUntrackedDefinition
+      ? "Definition deleted from local files."
+      : "Definition deleted from the repository.";
+    window.alert(result?.message || successMessage);
   } catch (error) {
     window.alert(error.message || "Unable to delete definition.");
   }
