@@ -30,6 +30,23 @@
         <p>Discover, sync, and deploy Continue definitions from your team hub.</p>
       </div>
       <div class="actions">
+        <div class="new-definition-dropdown">
+          <button class="btn" id="newDefinitionButton" type="button" aria-expanded="false">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 5v14"></path><path d="M5 12h14"></path>
+            </svg>
+            New
+          </button>
+          <div class="new-definition-menu" id="newDefinitionMenu" role="menu" aria-label="Create definition">
+            <button type="button" data-new-type="prompts">Create new Prompt</button>
+            <button type="button" data-new-type="mcp servers">Create new MCP Server</button>
+            <button type="button" data-new-type="agents">Create new Agent</button>
+            <button type="button" data-new-type="rules">Create new Rule</button>
+            <button type="button" data-new-type="models">Create new Model</button>
+            <button type="button" data-new-type="workflows">Create new Workflow</button>
+            <button type="button" data-new-type="context">Create new Context</button>
+          </div>
+        </div>
         <a class="btn" href="/settings">⚙ Settings</a>
       </div>
     </header>
@@ -151,6 +168,11 @@
                     <rect x="2" y="2" width="13" height="13" rx="2"></rect>
                   </svg>
                 </button>
+                <button class="copy-btn" id="editDefinition" type="button" aria-label="Edit definition" title="Edit definition">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                  </svg>
+                </button>
                 <button class="copy-btn" id="copyDefinition" type="button" aria-label="Copy definition" title="Copy definition">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
@@ -170,6 +192,31 @@
       </div>
     </main>
 
+
+    <main class="definition-form-page" id="definitionFormPage" hidden>
+      <div class="detail-page-shell">
+        <div class="detail-page-content">
+          <div class="modal-topbar">
+            <div class="modal-kicker" id="definitionFormKicker">Definition form</div>
+            <div class="definition-form-actions">
+              <button class="btn" id="definitionFormCancel" type="button">Cancel</button>
+              <button class="btn btn-primary" id="definitionFormSave" type="button">Save</button>
+            </div>
+          </div>
+          <h2 id="definitionFormTitle">Definition</h2>
+          <p id="definitionFormMessage" class="definition-form-message"></p>
+          <div class="definition-form-grid">
+            <div id="definitionFormFields"></div>
+            <div>
+              <label class="definition-form-label" for="definitionFormSource">YAML / Markdown source</label>
+              <textarea id="definitionFormSource" class="definition-form-source" spellcheck="false"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="/definition-form.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
