@@ -19,6 +19,7 @@ const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
+const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
@@ -957,6 +958,38 @@ async function pushDefinitionToUpstream(id, commitMessage) {
   }, "Unable to push definition.");
 }
 
+function createDuplicateDefaults(definitionName, definitionPath) {
+  const defaultName = `${String(definitionName || "definition").trim() || "definition"}_copy`;
+  const originalFileName = pathBasename(definitionPath) || "definition.md";
+  const extension = pathExtname(originalFileName);
+  const baseName = extension ? originalFileName.slice(0, -extension.length) : originalFileName;
+  const defaultFileName = `${baseName}_copy${extension}`;
+  return { defaultName, defaultFileName };
+}
+
+function pathBasename(filePath) {
+  const normalized = String(filePath || "").replace(/\\/g, "/");
+  const segments = normalized.split("/").filter(Boolean);
+  return segments[segments.length - 1] || "";
+}
+
+function pathExtname(fileName) {
+  const value = String(fileName || "");
+  const dotIndex = value.lastIndexOf(".");
+  if (dotIndex <= 0) {
+    return "";
+  }
+  return value.slice(dotIndex);
+}
+
+async function duplicateDefinition(id, name, fileName) {
+  return fetchWithErrorHandling(`/api/definitions/${id}/duplicate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, fileName })
+  }, "Unable to duplicate definition.");
+}
+
 searchInput.addEventListener("input", (event) => {
   setSearchValue(event.target.value);
   renderCards();
@@ -1062,6 +1095,48 @@ copyDefinitionButton.addEventListener("click", async () => {
     }, 1200);
   } catch (_error) {
     copyDefinitionButton.setAttribute("title", "Unable to copy");
+  }
+});
+
+duplicateDefinitionButton.addEventListener("click", async () => {
+  if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
+    return;
+  }
+
+  const { defaultName, defaultFileName } = createDuplicateDefaults(currentDetailDefinitionName, currentDetailDefinitionPath);
+  const duplicateName = window.prompt("New definition name", defaultName);
+  if (duplicateName === null) {
+    return;
+  }
+
+  const normalizedName = duplicateName.trim();
+  if (!normalizedName) {
+    window.alert("Definition name cannot be empty.");
+    return;
+  }
+
+  const duplicateFileName = window.prompt("New definition file name", defaultFileName);
+  if (duplicateFileName === null) {
+    return;
+  }
+
+  const normalizedFileName = duplicateFileName.trim();
+  if (!normalizedFileName) {
+    window.alert("Definition file name cannot be empty.");
+    return;
+  }
+
+  try {
+    const result = await duplicateDefinition(currentDetailDefinitionId, normalizedName, normalizedFileName);
+    await fetchDefinitions();
+    if (Number.isFinite(Number(result?.id)) && result.id > 0) {
+      updateRouteForDetails(result.id);
+      await showDetails(result.id);
+      return;
+    }
+    window.alert("Definition duplicated, but unable to locate the new copy.");
+  } catch (error) {
+    window.alert(error.message || "Unable to duplicate definition.");
   }
 });
 
