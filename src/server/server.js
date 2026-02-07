@@ -151,6 +151,24 @@ function allDb(sql, params = []) {
   });
 }
 
+
+function extractCommandErrorMessage(error, fallbackMessage) {
+  const message = String(error?.message || fallbackMessage || "Operation failed.");
+  const lines = message.split("\n").map((line) => line.trim()).filter(Boolean);
+  return lines[lines.length - 1] || fallbackMessage || message;
+}
+
+function classifyGitError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  if (message.includes("conflict") || message.includes("merge conflict") || message.includes("not possible to fast-forward") || message.includes("could not apply")) {
+    return "conflict";
+  }
+  if (message.includes("permission denied") || message.includes("access denied") || message.includes("403") || message.includes("authentication failed") || message.includes("could not read from remote repository") || message.includes("not authorized") || message.includes("insufficient permission") || message.includes("write access to repository not granted") || message.includes("remote: permission")) {
+    return "permission";
+  }
+  return "other";
+}
+
 async function walkFiles(dir) {
   const entries = await fsp.readdir(dir, { withFileTypes: true });
   const files = [];
@@ -512,19 +530,25 @@ async function loadDefinitions() {
   const repoFiles = await walkFiles(repoPath);
   const teamFiles = await collectTeamFiles();
 
+  const normalizedRepoFiles = repoFiles.filter((filePath) => !filePath.includes(path.join(repoPath, ".git")));
+  const repoKeyMap = new Map();
   const teamKeyMap = new Set();
-  for (const file of teamFiles) {
-    const type = path.basename(path.dirname(file)).toLowerCase();
-    const key = buildKey(type, file);
+
+  for (const filePath of normalizedRepoFiles) {
+    const type = path.basename(path.dirname(filePath)).toLowerCase();
+    const key = buildKey(type, filePath);
+    repoKeyMap.set(key, filePath);
+  }
+
+  for (const filePath of teamFiles) {
+    const type = path.basename(path.dirname(filePath)).toLowerCase();
+    const key = buildKey(type, filePath);
     teamKeyMap.add(key);
   }
 
   const now = new Date().toISOString();
 
-  for (const filePath of repoFiles) {
-    if (filePath.includes(path.join(repoPath, ".git"))) {
-      continue;
-    }
+  for (const filePath of normalizedRepoFiles) {
     const definition = await parseDefinition(filePath);
     const inTeam = teamKeyMap.has(definition.key) ? 1 : 0;
     const status = inTeam ? "saved" : "repo";
@@ -577,7 +601,7 @@ async function loadDefinitions() {
   for (const filePath of teamFiles) {
     const type = path.basename(path.dirname(filePath)).toLowerCase();
     const key = buildKey(type, filePath);
-    if (repoFiles.some((repoFile) => buildKey(type, repoFile) === key)) {
+    if (repoKeyMap.has(key)) {
       continue;
     }
     const definition = await parseDefinition(filePath);
@@ -626,7 +650,25 @@ async function loadDefinitions() {
     });
   }
 
-  return { repoCount: repoFiles.length, teamCount: teamFiles.length };
+  const repoKeys = [...repoKeyMap.keys()];
+  if (repoKeys.length > 0) {
+    const placeholders = repoKeys.map(() => "?").join(", ");
+    await runDb(`DELETE FROM definitions WHERE source = 'repo' AND key NOT IN (${placeholders})`, repoKeys);
+  } else {
+    await runDb("DELETE FROM definitions WHERE source = 'repo'");
+  }
+
+  const teamKeys = [...teamKeyMap];
+  if (teamKeys.length > 0) {
+    const placeholders = teamKeys.map(() => "?").join(", ");
+    await runDb(`DELETE FROM definitions WHERE source = 'team' AND key NOT IN (${placeholders})`, teamKeys);
+  } else {
+    await runDb("DELETE FROM definitions WHERE source = 'team'");
+  }
+
+  await runDb("DELETE FROM project_definition_copies WHERE definitionKey NOT IN (SELECT key FROM definitions)");
+
+  return { repoCount: normalizedRepoFiles.length, teamCount: teamFiles.length };
 }
 
 async function scanDevProjects(roots) {
@@ -950,6 +992,112 @@ app.post("/api/definitions/:id/publish", async (req, res) => {
       );
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  });
+});
+
+
+app.post("/api/definitions/:id/delete-repo", async (req, res) => {
+  db.get("SELECT * FROM definitions WHERE id = ?", [req.params.id], async (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    if (!row) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const repoPath = await getSetting("repoPath");
+    if (!repoPath) {
+      res.status(400).json({ error: "Repo path not configured." });
+      return;
+    }
+
+    const absoluteRepoPath = path.resolve(repoPath);
+    const absoluteDefinitionPath = path.resolve(row.filePath || "");
+    if (!absoluteDefinitionPath.startsWith(`${absoluteRepoPath}${path.sep}`)) {
+      res.status(400).json({ error: "Definition file is not in the configured repository." });
+      return;
+    }
+
+    const relativePath = path.relative(absoluteRepoPath, absoluteDefinitionPath);
+
+    try {
+      await runCommand("git pull", { cwd: absoluteRepoPath });
+    } catch (pullError) {
+      if (classifyGitError(pullError) === "conflict") {
+        try {
+          await runCommand("git reset --hard HEAD", { cwd: absoluteRepoPath });
+          await runCommand("git clean -fd", { cwd: absoluteRepoPath });
+          await runCommand("git pull --rebase", { cwd: absoluteRepoPath });
+          await loadDefinitions();
+        } catch (_rollbackError) {}
+
+        res.status(409).json({
+          error: "Deletion cancelled due to merge conflicts while syncing the repository. Please resolve this deletion manually in the Git repository.",
+        });
+        return;
+      }
+      res.status(500).json({ error: extractCommandErrorMessage(pullError, "Failed to sync repository before deletion.") });
+      return;
+    }
+
+    if (!fs.existsSync(absoluteDefinitionPath)) {
+      await loadDefinitions();
+      res.status(404).json({ error: "Definition file was not found in the repository." });
+      return;
+    }
+
+    try {
+      await fsp.unlink(absoluteDefinitionPath);
+      await runCommand(`git add ${JSON.stringify(relativePath)}`, { cwd: absoluteRepoPath });
+      await runCommand(`git commit -m "Delete definition ${row.name}"`, { cwd: absoluteRepoPath });
+    } catch (localError) {
+      try {
+        await runCommand("git reset --hard HEAD", { cwd: absoluteRepoPath });
+        await runCommand("git clean -fd", { cwd: absoluteRepoPath });
+      } catch (_resetError) {}
+      await loadDefinitions();
+      res.status(500).json({ error: extractCommandErrorMessage(localError, "Failed to prepare deletion commit.") });
+      return;
+    }
+
+    try {
+      await runCommand("git push", { cwd: absoluteRepoPath });
+      await loadDefinitions();
+      res.json({
+        ok: true,
+        message: "Definition deleted from the cloned repository and pushed to the team repository.",
+      });
+    } catch (pushError) {
+      const category = classifyGitError(pushError);
+      try {
+        await runCommand("git reset --hard HEAD~1", { cwd: absoluteRepoPath });
+        await runCommand("git clean -fd", { cwd: absoluteRepoPath });
+        await runCommand("git pull --rebase", { cwd: absoluteRepoPath });
+        await loadDefinitions();
+      } catch (_rollbackError) {
+        try {
+          await loadDefinitions();
+        } catch (_loadError) {}
+      }
+
+      if (category === "permission") {
+        res.status(403).json({
+          error: "Deletion was cancelled because you do not have permission to push this change. Ask the DCC administrators if you need this permission.",
+        });
+        return;
+      }
+
+      if (category === "conflict") {
+        res.status(409).json({
+          error: "Deletion cancelled due to merge conflicts while pushing. Please resolve this deletion manually in the Git repository.",
+        });
+        return;
+      }
+
+      res.status(500).json({ error: extractCommandErrorMessage(pushError, "Failed to push deletion commit.") });
     }
   });
 });

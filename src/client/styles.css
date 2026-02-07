@@ -768,6 +768,12 @@ body.detail-page-open {
   background: var(--surface-muted);
 }
 
+.definition-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .definition-tab-buttons {
   display: flex;
   gap: 0;
@@ -960,6 +966,16 @@ body.detail-page-open {
 .copy-btn.copied {
   border-color: var(--success);
   color: var(--success);
+}
+
+#deleteDefinition {
+  color: #fda4af;
+}
+
+#deleteDefinition:hover {
+  border-color: #fb7185;
+  background: rgba(244, 63, 94, 0.15);
+  color: #fecdd3;
 }
 
 .detail-page-content pre {

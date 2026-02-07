@@ -19,6 +19,7 @@ const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
+const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
 const definitionPreviewPanel = document.getElementById("definitionPreviewPanel");
@@ -31,6 +32,8 @@ let definitions = [];
 let activeFilter = "all";
 let searchTerm = "";
 let devProjects = [];
+let currentDetailDefinitionId = null;
+let currentDetailDefinitionSource = "";
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
@@ -52,6 +55,35 @@ function normalizeFilterType(type) {
 
 function normalizeTagValue(tag) {
   return String(tag || "").trim().toLowerCase();
+}
+
+function parseErrorMessage(payload, fallbackMessage) {
+  if (!payload) {
+    return fallbackMessage;
+  }
+  if (typeof payload === "string") {
+    return payload;
+  }
+  if (payload.error) {
+    return String(payload.error);
+  }
+  return fallbackMessage;
+}
+
+async function fetchWithErrorHandling(url, options = {}, fallbackMessage = "Request failed.") {
+  const response = await fetch(url, options);
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (_error) {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(parseErrorMessage(payload, fallbackMessage));
+  }
+
+  return payload;
 }
 
 function parseDefinitionTags(rawTags) {
@@ -402,14 +434,18 @@ function renderCards() {
       const action = event.target.closest("[data-action]");
       if (action) {
         event.stopPropagation();
-        if (def.status === "saved") {
-          await removeDefinition(def.id);
-        } else if (def.status === "local-only") {
-          await publishDefinition(def.id);
-        } else if (def.status !== "saved") {
-          await saveDefinition(def.id);
+        try {
+          if (def.status === "saved") {
+            await removeDefinition(def.id);
+          } else if (def.status === "local-only") {
+            await publishDefinition(def.id);
+          } else if (def.status !== "saved") {
+            await saveDefinition(def.id);
+          }
+          await fetchDefinitions();
+        } catch (error) {
+          window.alert(error.message || "Action failed.");
         }
-        await fetchDefinitions();
         return;
       }
       await showDetails(def.id);
@@ -743,6 +779,8 @@ function setDefinitionTab(activeTab) {
 async function showDetails(id) {
   const response = await fetch(`/api/definitions/${id}`);
   const def = await response.json();
+  currentDetailDefinitionId = def.id;
+  currentDetailDefinitionSource = String(def.source || "").toLowerCase();
   detailTitle.textContent = def.name;
   detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
   const definitionContent = def.content || "";
@@ -774,6 +812,7 @@ async function showDetails(id) {
   definitionTabSource.textContent = tabLabel;
 
   definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent, def);
+  deleteDefinitionButton.hidden = currentDetailDefinitionSource !== "repo";
   definitionTabPreview.disabled = false;
   setDefinitionTab("preview");
   showDetailPage();
@@ -789,6 +828,9 @@ function showDetailPage() {
 
 function showHubPage() {
   detailPage.hidden = true;
+  currentDetailDefinitionId = null;
+  currentDetailDefinitionSource = "";
+  deleteDefinitionButton.hidden = true;
   hubHeader.hidden = false;
   hubMain.hidden = false;
   document.body.classList.remove("detail-page-open");
@@ -851,15 +893,19 @@ async function saveDefinition(id) {
     window.alert("Please select a project first.");
     return;
   }
-  await fetch(`/api/definitions/${id}/save`, { method: "POST" });
+  await fetchWithErrorHandling(`/api/definitions/${id}/save`, { method: "POST" }, "Unable to save definition.");
 }
 
 async function publishDefinition(id) {
-  await fetch(`/api/definitions/${id}/publish`, { method: "POST" });
+  await fetchWithErrorHandling(`/api/definitions/${id}/publish`, { method: "POST" }, "Unable to publish definition.");
 }
 
 async function removeDefinition(id) {
-  await fetch(`/api/definitions/${id}/remove`, { method: "POST" });
+  await fetchWithErrorHandling(`/api/definitions/${id}/remove`, { method: "POST" }, "Unable to remove definition.");
+}
+
+async function deleteDefinitionFromRepo(id) {
+  await fetchWithErrorHandling(`/api/definitions/${id}/delete-repo`, { method: "POST" }, "Unable to delete definition.");
 }
 
 searchInput.addEventListener("input", (event) => {
@@ -902,6 +948,31 @@ clearSearchButton.addEventListener("click", () => {
   renderCards();
 });
 
+
+
+deleteDefinitionButton.addEventListener("click", async () => {
+  if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
+    return;
+  }
+
+  const isConfirmed = window.confirm(
+    "Are you sure you want to delete this definition from the local machine and the local cloned repository? Definitions already installed in projects will remain and will not be removed."
+  );
+
+  if (!isConfirmed) {
+    return;
+  }
+
+  try {
+    const result = await deleteDefinitionFromRepo(currentDetailDefinitionId);
+    await fetchDefinitions();
+    updateRouteForHub(true);
+    showHubPage();
+    window.alert(result?.message || "Definition deleted from the repository.");
+  } catch (error) {
+    window.alert(error.message || "Unable to delete definition.");
+  }
+});
 
 copyDefinitionButton.addEventListener("click", async () => {
   try {
