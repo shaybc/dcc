@@ -800,6 +800,12 @@ body.detail-page-open {
   min-height: 100px;
 }
 
+.preview-grid > .preview-card:only-child {
+  justify-self: start;
+  width: fit-content;
+  max-width: 100%;
+}
+
 .preview-card-title {
   font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;
 }
