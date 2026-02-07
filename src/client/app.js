@@ -19,11 +19,7 @@ const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
-const editDefinitionButton = document.getElementById("editDefinition");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
-const newDefinitionButton = document.getElementById("newDefinitionButton");
-const newDefinitionMenu = document.getElementById("newDefinitionMenu");
-const definitionFormPage = document.getElementById("definitionFormPage");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
@@ -863,23 +859,12 @@ function showDetailPage() {
   hubHeader.hidden = true;
   hubMain.hidden = true;
   detailPage.hidden = false;
-  definitionFormPage.hidden = true;
-  document.body.classList.add("detail-page-open");
-  window.scrollTo(0, 0);
-}
-
-function showDefinitionFormPage() {
-  hubHeader.hidden = true;
-  hubMain.hidden = true;
-  detailPage.hidden = true;
-  definitionFormPage.hidden = false;
   document.body.classList.add("detail-page-open");
   window.scrollTo(0, 0);
 }
 
 function showHubPage() {
   detailPage.hidden = true;
-  definitionFormPage.hidden = true;
   currentDetailDefinitionId = null;
   currentDetailDefinitionSource = "";
   currentDetailDefinitionName = "";
@@ -1029,37 +1014,14 @@ function closeFilterMenu() {
   filterButton.setAttribute("aria-expanded", "false");
 }
 
-function closeNewDefinitionMenu() {
-  newDefinitionMenu.classList.remove("open");
-  newDefinitionButton.setAttribute("aria-expanded", "false");
-}
-
 filterButton.addEventListener("click", () => {
   const isOpen = filterMenu.classList.toggle("open");
   filterButton.setAttribute("aria-expanded", String(isOpen));
 });
 
-newDefinitionButton.addEventListener("click", () => {
-  const isOpen = newDefinitionMenu.classList.toggle("open");
-  newDefinitionButton.setAttribute("aria-expanded", String(isOpen));
-});
-
-newDefinitionMenu.querySelectorAll("[data-create-type]").forEach((button) => {
-  button.addEventListener("click", () => {
-    const type = button.getAttribute("data-create-type");
-    closeNewDefinitionMenu();
-    window.DefinitionFormManager.openForCreate(type, async () => {
-      showHubPage();
-      await fetchDefinitions();
-    });
-    showDefinitionFormPage();
-  });
-});
-
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".filter-dropdown")) {
     closeFilterMenu();
-    closeNewDefinitionMenu();
   }
 });
 
@@ -1118,21 +1080,6 @@ pushUpstreamDefinitionButton.addEventListener("click", async () => {
   } catch (error) {
     window.alert(error.message || "Unable to push definition.");
   }
-});
-
-editDefinitionButton.addEventListener("click", async () => {
-  if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
-    return;
-  }
-
-  const payload = await fetchWithErrorHandling(`/api/definitions/${currentDetailDefinitionId}`, {}, "Unable to load definition.");
-  window.DefinitionFormManager.openForEdit(payload, async () => {
-    await fetchDefinitions();
-    if (Number.isFinite(Number(currentDetailDefinitionId)) && currentDetailDefinitionId > 0) {
-      await showDetails(currentDetailDefinitionId);
-    }
-  });
-  showDefinitionFormPage();
 });
 
 copyDefinitionButton.addEventListener("click", async () => {

@@ -30,18 +30,6 @@
         <p>Discover, sync, and deploy Continue definitions from your team hub.</p>
       </div>
       <div class="actions">
-        <div class="filter-dropdown">
-          <button class="btn" id="newDefinitionButton" type="button" aria-expanded="false">＋ New</button>
-          <div class="filter-menu" id="newDefinitionMenu" role="menu" aria-label="Create definition">
-            <button class="filter-menu-item" type="button" data-create-type="prompts">create new Prompt</button>
-            <button class="filter-menu-item" type="button" data-create-type="mcp servers">create new MCP Server</button>
-            <button class="filter-menu-item" type="button" data-create-type="agents">create new Agent</button>
-            <button class="filter-menu-item" type="button" data-create-type="rules">create new Rule</button>
-            <button class="filter-menu-item" type="button" data-create-type="models">create new Model</button>
-            <button class="filter-menu-item" type="button" data-create-type="workflows">create new Workflow</button>
-            <button class="filter-menu-item" type="button" data-create-type="context">create new Context</button>
-          </div>
-        </div>
         <a class="btn" href="/settings">⚙ Settings</a>
       </div>
     </header>
@@ -169,12 +157,6 @@
                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
                   </svg>
                 </button>
-                <button class="copy-btn" id="editDefinition" type="button" aria-label="Edit definition" title="Edit definition">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 20h9"></path>
-                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
-                  </svg>
-                </button>
               </div>
             </div>
             <div class="definition-tab-panel" id="definitionPreviewPanel" role="tabpanel" aria-labelledby="definitionTabPreview" hidden>
@@ -188,34 +170,6 @@
       </div>
     </main>
 
-    <main class="detail-page" id="definitionFormPage" hidden>
-      <div class="detail-page-shell">
-        <div class="detail-page-content">
-          <div class="modal-topbar">
-            <div class="modal-kicker" id="definitionFormTitle">Definition form</div>
-          </div>
-          <div class="settings-form" style="max-width:100%;margin-top:16px;">
-            <div id="definitionFormFields" class="definition-form-fields"></div>
-            <label>YAML / Markdown
-              <textarea id="definitionYamlEditor" rows="14"></textarea>
-            </label>
-            <label>File Name
-              <input id="definitionFileName" type="text" placeholder="example.yaml" />
-            </label>
-            <label>Directory Path
-              <input id="definitionFilePath" type="text" placeholder="prompts" />
-            </label>
-            <div class="table-actions">
-              <button class="btn btn-primary" id="definitionFormSave" type="button">Save</button>
-              <button class="btn" id="definitionFormCancel" type="button">Cancel</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <script src="/definition-form-schema.js"></script>
-    <script src="/definition-form.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
