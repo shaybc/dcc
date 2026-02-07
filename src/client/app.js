@@ -414,15 +414,15 @@ function renderCards() {
     const showPushAction = String(def.source || "").toLowerCase() === "untracked";
     card.innerHTML = `
       <div class="card-actions">
-        <div class="icon-btn" data-action-save>
-          ${iconSvg(def.status)}
-        </div>
         ${showPushAction ? `<div class="icon-btn" data-action-push title="Push to upstream" aria-label="Push to upstream">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M10 16V4" />
             <path d="M5 9l5-5 5 5" />
           </svg>
         </div>` : ""}
+        <div class="icon-btn" data-action-save>
+          ${iconSvg(def.status)}
+        </div>
       </div>
       <h3>${def.name}</h3>
       <p>${getCardDescription(def.description)}</p>
@@ -1006,7 +1006,7 @@ deleteDefinitionButton.addEventListener("click", async () => {
 
   const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
   const confirmationMessage = isUntrackedDefinition
-    ? "Are you sure you want to delete this untracked local definition file? This only removes the local file and does not sync with the team repository."
+    ? "Are you sure you want to delete this untracked local definition file? Note: if this definition is already installed in any project - it will not be deleted from those projects."
     : "Are you sure you want to delete this definition from team repository? Note: projects that already have this definition installed - will not be deleted, but you will not be able to install this definition to new projects or update existing installations. If you want to remove this definition from specific project(s) only - please select the project,and click 'Remove from project' button from the definition card or details page.";
 
   const isConfirmed = window.confirm(confirmationMessage);
