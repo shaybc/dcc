@@ -19,6 +19,7 @@ const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
 const copyDefinitionButton = document.getElementById("copyDefinition");
+const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
@@ -34,6 +35,8 @@ let searchTerm = "";
 let devProjects = [];
 let currentDetailDefinitionId = null;
 let currentDetailDefinitionSource = "";
+let currentDetailDefinitionName = "";
+let currentDetailDefinitionPath = "";
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
@@ -166,14 +169,15 @@ function iconSvg(status) {
   `;
 }
 
-function statusLabel(status) {
+function statusLabel(status, source = "") {
+  const suffix = String(source || "").toLowerCase() === "untracked" ? " · Untracked" : "";
   if (status === "saved") {
-    return "Saved to team";
+    return `Saved to team${suffix}`;
   }
   if (status === "local-only") {
-    return "Local only";
+    return `Local only${suffix}`;
   }
-  return "Available";
+  return `Available${suffix}`;
 }
 
 function formatFilterLabel(type) {
@@ -407,15 +411,24 @@ function renderCards() {
     if (def.status === "saved" && devProjectInput.value.trim()) {
       card.classList.add("card-in-project");
     }
+    const showPushAction = String(def.source || "").toLowerCase() === "untracked";
     card.innerHTML = `
-      <div class="icon-btn" data-action>
-        ${iconSvg(def.status)}
+      <div class="card-actions">
+        <div class="icon-btn" data-action-save>
+          ${iconSvg(def.status)}
+        </div>
+        ${showPushAction ? `<div class="icon-btn" data-action-push title="Push to upstream" aria-label="Push to upstream">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 16V4" />
+            <path d="M5 9l5-5 5 5" />
+          </svg>
+        </div>` : ""}
       </div>
       <h3>${def.name}</h3>
       <p>${getCardDescription(def.description)}</p>
       ${def.tags.length > 0 ? `<div class="tag-pills card-tag-pills">${renderTagPills(def.tags, { truncate: true })}</div>` : ""}
       <div class="meta-row">
-        <div class="meta-status">${statusLabel(def.status)}</div>
+        <div class="meta-status">${statusLabel(def.status, def.source)}</div>
         <div class="type-pill ${typeClassName(def.type)}">
           <span class="type-pill-icon">${filterIconSvg(def.type)}</span>
           <span>${formatTypePillLabel(def.type)}</span>
@@ -431,8 +444,24 @@ function renderCards() {
         renderCards();
         return;
       }
-      const action = event.target.closest("[data-action]");
-      if (action) {
+      const pushAction = event.target.closest("[data-action-push]");
+      if (pushAction) {
+        event.stopPropagation();
+        const commitMessage = window.prompt("Commit message", `Add definition ${def.name || ""}`);
+        if (commitMessage === null) {
+          return;
+        }
+        try {
+          await pushDefinitionToUpstream(def.id, commitMessage);
+          await fetchDefinitions();
+        } catch (error) {
+          window.alert(error.message || "Unable to push definition.");
+        }
+        return;
+      }
+
+      const saveAction = event.target.closest("[data-action-save]");
+      if (saveAction) {
         event.stopPropagation();
         try {
           if (def.status === "saved") {
@@ -777,15 +806,18 @@ function setDefinitionTab(activeTab) {
 }
 
 async function showDetails(id) {
+  pushUpstreamDefinitionButton.hidden = true;
   const response = await fetch(`/api/definitions/${id}`);
   const def = await response.json();
   currentDetailDefinitionId = def.id;
   currentDetailDefinitionSource = String(def.source || "").toLowerCase();
+  currentDetailDefinitionName = String(def.name || "");
+  currentDetailDefinitionPath = String(def.filePath || "");
   detailTitle.textContent = def.name;
   detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
   const definitionContent = def.content || "";
   detailContent.textContent = definitionContent;
-  detailStatus.textContent = statusLabel(def.status);
+  detailStatus.textContent = statusLabel(def.status, def.source);
   detailStatus.className = `status-pill ${def.status}`;
 
   const normalizedType = normalizeFilterType(def.type);
@@ -812,7 +844,10 @@ async function showDetails(id) {
   definitionTabSource.textContent = tabLabel;
 
   definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent, def);
+  const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
   deleteDefinitionButton.hidden = currentDetailDefinitionSource !== "repo";
+  pushUpstreamDefinitionButton.hidden = !isUntrackedDefinition;
+  pushUpstreamDefinitionButton.disabled = !isUntrackedDefinition;
   definitionTabPreview.disabled = false;
   setDefinitionTab("preview");
   showDetailPage();
@@ -830,7 +865,11 @@ function showHubPage() {
   detailPage.hidden = true;
   currentDetailDefinitionId = null;
   currentDetailDefinitionSource = "";
+  currentDetailDefinitionName = "";
+  currentDetailDefinitionPath = "";
   deleteDefinitionButton.hidden = true;
+  pushUpstreamDefinitionButton.hidden = true;
+  pushUpstreamDefinitionButton.disabled = true;
   hubHeader.hidden = false;
   hubMain.hidden = false;
   document.body.classList.remove("detail-page-open");
@@ -908,6 +947,15 @@ async function deleteDefinitionFromRepo(id) {
   await fetchWithErrorHandling(`/api/definitions/${id}/delete-repo`, { method: "POST" }, "Unable to delete definition.");
 }
 
+
+async function pushDefinitionToUpstream(id, commitMessage) {
+  return fetchWithErrorHandling(`/api/definitions/${id}/push-upstream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ commitMessage })
+  }, "Unable to push definition.");
+}
+
 searchInput.addEventListener("input", (event) => {
   setSearchValue(event.target.value);
   renderCards();
@@ -971,6 +1019,26 @@ deleteDefinitionButton.addEventListener("click", async () => {
     window.alert(result?.message || "Definition deleted from the repository.");
   } catch (error) {
     window.alert(error.message || "Unable to delete definition.");
+  }
+});
+
+pushUpstreamDefinitionButton.addEventListener("click", async () => {
+  if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
+    return;
+  }
+
+  const commitMessage = window.prompt("Commit message", `Add definition ${currentDetailDefinitionName || ""}`);
+  if (commitMessage === null) {
+    return;
+  }
+
+  try {
+    const result = await pushDefinitionToUpstream(currentDetailDefinitionId, commitMessage);
+    await fetchDefinitions();
+    await showDetails(currentDetailDefinitionId);
+    window.alert(result?.message || "Definition pushed to upstream repository.");
+  } catch (error) {
+    window.alert(error.message || "Unable to push definition.");
   }
 });
 
