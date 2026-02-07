@@ -46,3 +46,5 @@ input, textarea { background:#161b22; color:#e6edf3; border:1px solid #30363d; b
 .editor-modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
 
 #rawText { width: 500px; min-height: 600px; max-width: 100%; }
+
+.agent-body-textarea { width: 675px; min-height: 146px; max-width: 100%; }

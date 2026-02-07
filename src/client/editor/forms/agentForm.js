@@ -17,6 +17,7 @@ export function createAgentForm({ mount, onChange }) {
   const rules = createArrayEditor({ mount, label: "rules", fields: [{ name: "value", label: "Rule" }], onChange: (v) => { state.rules = v; onChange(); } });
   const bodyRow = document.createElement("label"); bodyRow.className = "editor-field"; bodyRow.innerHTML = "<span>body</span>";
   const body = document.createElement("textarea");
+  body.className = "agent-body-textarea";
   body.addEventListener("input", () => { state.body = body.value; onChange(); });
   bodyRow.append(body); mount.append(bodyRow);
 
