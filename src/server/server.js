@@ -155,6 +155,18 @@ function allDb(sql, params = []) {
   });
 }
 
+function getDb(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(row || null);
+    });
+  });
+}
+
 
 function extractCommandErrorMessage(error, fallbackMessage) {
   const message = String(error?.message || fallbackMessage || "Operation failed.");
