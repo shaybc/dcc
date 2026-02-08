@@ -1,8 +1,121 @@
+const AUTOCOMPLETE_DEBUG_PREFIX = "[tag-autocomplete]";
+
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
   if (className) el.className = className;
   if (text !== undefined) el.textContent = text;
   return el;
+}
+
+function attachAutocomplete(input, options) {
+  console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} attachAutocomplete: called with options`, options);
+  let values = Array.from(new Set((Array.isArray(options) ? options : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)));
+  let requestedFallback = false;
+  console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} attachAutocomplete: normalized options`, values);
+
+  const menu = createElement("div", "autocomplete-menu");
+  menu.hidden = true;
+  menu.classList.add("autocomplete-menu-floating");
+  document.body.append(menu);
+
+  const positionMenu = () => {
+    const rect = input.getBoundingClientRect();
+    menu.style.left = `${rect.left}px`;
+    menu.style.top = `${rect.bottom + 4}px`;
+    menu.style.width = `${rect.width}px`;
+  };
+
+  const filterValues = (query) => {
+    const normalized = String(query || "").trim().toLowerCase();
+    if (!normalized) return values.slice(0, 8);
+    return values
+      .filter((value) => value.toLowerCase().includes(normalized))
+      .slice(0, 8);
+  };
+
+  const hideMenu = () => {
+    menu.hidden = true;
+    menu.innerHTML = "";
+  };
+
+  const tryLoadFallbackValues = async () => {
+    console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: invoked; current values`, values);
+    if (values.length || requestedFallback) {
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: skipped`, { hasValues: values.length > 0, requestedFallback });
+      return;
+    }
+
+    requestedFallback = true;
+    try {
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: requesting /api/definition-tags`);
+      const response = await fetch("/api/definition-tags");
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: response status`, response.status);
+      if (!response.ok) {
+        return;
+      }
+      const payload = await response.json();
+      values = Array.from(new Set((Array.isArray(payload) ? payload : [])
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)));
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: loaded values`, values);
+    } catch (error) {
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: request failed`, error);
+    }
+  };
+
+  const showMenu = async () => {
+    console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} showMenu: start with input value`, input.value);
+    await tryLoadFallbackValues();
+
+    const matches = filterValues(input.value)
+      .filter((value) => value !== input.value);
+
+    console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} showMenu: matches`, matches);
+
+    if (!matches.length) {
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} showMenu: no matches, hiding menu`);
+      hideMenu();
+      return;
+    }
+
+    menu.innerHTML = "";
+    positionMenu();
+    matches.forEach((value) => {
+      const option = createElement("button", "autocomplete-option", value);
+      option.type = "button";
+      option.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        input.value = value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        hideMenu();
+      });
+      menu.append(option);
+    });
+
+    menu.hidden = false;
+    console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} showMenu: menu shown with options`, matches.length);
+  };
+
+  input.addEventListener("focus", () => {
+    showMenu();
+  });
+  input.addEventListener("input", () => {
+    showMenu();
+  });
+  input.addEventListener("blur", () => {
+    window.setTimeout(hideMenu, 120);
+  });
+
+  window.addEventListener("resize", positionMenu);
+  window.addEventListener("scroll", positionMenu, true);
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      hideMenu();
+    }
+  });
 }
 
 function renderItemLabel(item, fields) {
@@ -49,6 +162,9 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
         if (!field.multiline) input.type = "text";
         input.value = state[field.name] || "";
         input.placeholder = field.placeholder || "";
+        if (!field.multiline && field.autocompleteOptions) {
+          attachAutocomplete(input, field.autocompleteOptions);
+        }
         input.addEventListener("input", () => {
           state[field.name] = input.value;
         });

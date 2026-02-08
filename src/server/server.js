@@ -966,6 +966,20 @@ app.post("/api/load-definitions", async (req, res) => {
   }
 });
 
+app.get("/api/definition-tags", async (_req, res) => {
+  try {
+    const rows = await allDb("SELECT tags FROM definitions");
+    const tags = Array.from(new Set(rows
+      .flatMap((row) => String(row?.tags || "").split(","))
+      .map((tag) => tag.trim())
+      .filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b));
+    res.json(tags);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/definitions", async (req, res) => {
   try {
     const currentDevProject = await getSetting("currentDevProject");

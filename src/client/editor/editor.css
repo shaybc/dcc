@@ -53,3 +53,34 @@ input, textarea { background:#161b22; color:#e6edf3; border:1px solid #30363d; b
 .agent-body-textarea { width: 675px; min-height: 146px; max-width: 100%; }
 
 .rule-body-textarea { width: 675px; min-height: 146px; max-width: 100%; }
+
+
+.autocomplete-menu {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #0d1117;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.autocomplete-option {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: #e6edf3;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.autocomplete-option:hover {
+  background: #1f2937;
+}
+
+.autocomplete-menu-floating {
+  position: fixed;
+  z-index: 2000;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+}

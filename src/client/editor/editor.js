@@ -25,6 +25,8 @@ let sync;
 let definitionType = typeParam;
 let format = "yaml";
 let unknown = {};
+let availableTags = [];
+const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
 
 function typeDisplayLabel(type) {
   if (type === "mcpServer") return "MCP Server";
@@ -338,7 +340,7 @@ function captureUnknownFields(type, parsed) {
 function setupForType(type, initialRaw) {
   formMount.innerHTML = "";
   const handler = handlers[type];
-  formController = handler.createForm({ mount: formMount, onChange: () => sync.updateTextFromForm() });
+  formController = handler.createForm({ mount: formMount, onChange: () => sync.updateTextFromForm(), availableTags });
   sync = createTextFormSync({
     textArea: rawText,
     errorNode: parseError,
@@ -361,6 +363,22 @@ function setupForType(type, initialRaw) {
 
 async function boot() {
   let raw = "";
+  try {
+    console.debug(`${TAG_DEBUG_PREFIX} boot: requesting /api/definition-tags`);
+    const tagsResponse = await fetch("/api/definition-tags");
+    console.debug(`${TAG_DEBUG_PREFIX} boot: response status`, tagsResponse.status);
+    if (tagsResponse.ok) {
+      const tagsPayload = await tagsResponse.json();
+      availableTags = Array.isArray(tagsPayload) ? tagsPayload : [];
+      console.debug(`${TAG_DEBUG_PREFIX} boot: loaded tags`, availableTags);
+    }
+  } catch (error) {
+    availableTags = [];
+    console.debug(`${TAG_DEBUG_PREFIX} boot: failed loading tags`, error);
+  }
+
+  console.debug(`${TAG_DEBUG_PREFIX} boot: initializing form type`, definitionType, "with tags count", availableTags.length);
+
   if (mode === "edit") {
     const response = await fetch(`/api/editor/definition?path=${encodeURIComponent(pathParam)}`);
     const payload = await response.json();
