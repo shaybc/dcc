@@ -1368,8 +1368,15 @@ body.detail-page-open {
   font-size: 14px;
 }
 
-.validation-option input[type="checkbox"] {
-  margin-right: 8px;
+.validation-option-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.validation-option-inline input[type="checkbox"] {
+  margin: 0;
 }
 
 .validation-option select {
@@ -1395,6 +1402,27 @@ body.detail-page-open {
 .validation-summary {
   font-weight: 700;
   margin-bottom: 10px;
+}
+
+.validation-status-icon {
+  margin-right: 8px;
+}
+
+.check-result-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  margin-right: 6px;
+  font-weight: 900;
+}
+
+.check-result-pass {
+  color: #22c55e;
+}
+
+.check-result-fail {
+  color: #ef4444;
 }
 
 .validation-group h4 {

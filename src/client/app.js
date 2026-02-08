@@ -819,7 +819,12 @@ function renderDefinitionPreview(definitionContent, definitionMeta = {}) {
 }
 function formatValidationSummary(status, summary) {
   const label = String(status || "").toUpperCase() || "UNKNOWN";
-  return `<div class="validation-summary status-${escapeHtml(status || "unknown")}">${label} · ${summary.errors} errors · ${summary.warnings} warnings · ${summary.infos} info</div>`;
+  const statusIcon = status === "success" ? "✅" : status === "failure" ? "❌" : "⚠️";
+  return `<div class="validation-summary status-${escapeHtml(status || "unknown")}"><span class="validation-status-icon" aria-hidden="true">${statusIcon}</span>${label} · ${summary.errors} errors · ${summary.warnings} warnings · ${summary.infos} info</div>`;
+}
+
+function validationCheckIcon(check) {
+  return check.passed ? '<span class="check-result-icon check-result-pass" aria-hidden="true">✓</span>' : '<span class="check-result-icon check-result-fail" aria-hidden="true">✕</span>';
 }
 
 function renderValidationChecks(checks, severityFilter) {
@@ -838,7 +843,7 @@ function renderValidationChecks(checks, severityFilter) {
       ? '<div class="validation-group-empty">No checks in this category.</div>'
       : entries.map((check) => {
         const location = check.location?.line ? ` <span class="validation-location">(L${check.location.line}${check.location.col ? `:C${check.location.col}` : ""})</span>` : "";
-        return `<li><span class="severity-badge severity-${check.severity}">${check.severity}</span> ${escapeHtml(check.message)}${location}${check.path ? ` <code>${escapeHtml(check.path)}</code>` : ""}</li>`;
+        return `<li>${validationCheckIcon(check)}<span class="severity-badge severity-${check.severity}">${check.severity}</span> ${escapeHtml(check.message)}${location}${check.path ? ` <code>${escapeHtml(check.path)}</code>` : ""}</li>`;
       }).join("");
 
     return `<div class="validation-group"><h4>${title} checks</h4>${entries.length ? `<ul>${body}</ul>` : body}</div>`;
