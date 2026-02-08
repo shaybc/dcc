@@ -187,3 +187,25 @@ flowchart LR
   Server --> Utils
 ```
 
+
+
+---
+
+## 7) Definition version history flow
+
+The details-page Version History feature spans server, persistence, and UI:
+
+1. **Server cache + git extraction (`src/server/server.js`)**
+   - Boot-time schema creates `definition_versions` table and indexes.
+   - `loadVersionHistoryFromGit` gathers commit timeline via `git log --follow` and file snapshots via `git show`.
+   - `getVersionHistory` serves cached rows and refreshes when latest git hash diverges.
+
+2. **History endpoints**
+   - `GET /api/definitions/:id/versions` → dropdown list model
+   - `GET /api/definitions/:id/versions/:version` → historical content/metadata payload
+   - `POST /api/definitions/:id/versions/:version/restore` → restore selected content into current file
+
+3. **Hub client (`src/client/index.html`, `src/client/app.js`, `src/client/styles.css`)**
+   - Adds history button to action row and version badges in hero metadata.
+   - Renders searchable dropdown, historical banner, and restore/back actions.
+   - Swaps content/preview panels in-place when historical versions are selected.

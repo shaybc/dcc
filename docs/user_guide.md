@@ -193,3 +193,29 @@ curl -X POST http://localhost:3000/v1/embeddings \
 - Some actions run shell git commands directly from server process.
 - Always validate resulting files in your project `.continue` folders after save/remove operations.
 
+
+---
+
+## 11) Use Version History on a Definition
+
+From the definition details page you can now inspect and restore historical versions.
+
+### Open version history
+1. Open any definition card to reach the detail page.
+2. Click the **Version History** (clock) action button in the source/preview toolbar.
+3. Use **Search versions** to filter by version label.
+4. Click **View all versions** to expand beyond the default truncated list.
+
+### View an older version
+- Select a version entry to load that content in the detail panel.
+- The page switches to historical mode and shows:
+  - a historical version badge near the title,
+  - a banner with **Restore this version** and **Back to current** actions.
+
+### Restore a historical version
+- Click **Restore this version** in the banner.
+- DCC writes that historical content back to the definition file and updates current metadata/version in the local index.
+
+### Notes
+- If no explicit `version` field exists in an older commit, DCC falls back to a commit-based synthetic version key (for example `commit-abc1234`).
+- Version history is cached in SQLite and refreshed when git history for the file changes.
