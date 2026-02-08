@@ -30,12 +30,14 @@ const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
+const definitionTabTest = document.getElementById("definitionTabTest");
 const definitionPreviewPanel = document.getElementById("definitionPreviewPanel");
 const definitionSourcePanel = document.getElementById("definitionSourcePanel");
+const definitionTestPanel = document.getElementById("definitionTestPanel");
 const definitionPreviewContent = document.getElementById("definitionPreviewContent");
+const definitionTestContent = document.getElementById("definitionTestContent");
 const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
-
 let definitions = [];
 let activeFilter = "all";
 let searchTerm = "";
@@ -47,11 +49,9 @@ let currentDetailDefinitionPath = "";
 let currentDefinitionVersion = "";
 let activeHistoricalVersion = "";
 let activeVersionDropdown = null;
-
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const MAX_CARD_TAG_PILLS = 3;
-
 function normalizeFilterType(type) {
   const normalized = String(type || "").trim().toLowerCase();
   if (["model", "models"].includes(normalized)) return "models";
@@ -64,12 +64,9 @@ function normalizeFilterType(type) {
   if (["user", "users", "org", "orgs", "ai_assets", "ai assets"].includes(normalized)) return "unknown";
   return FILTER_TYPE_SET.has(normalized) ? normalized : "unknown";
 }
-
-
 function normalizeTagValue(tag) {
   return String(tag || "").trim().toLowerCase();
 }
-
 function parseErrorMessage(payload, fallbackMessage) {
   if (!payload) {
     return fallbackMessage;
@@ -82,7 +79,6 @@ function parseErrorMessage(payload, fallbackMessage) {
   }
   return fallbackMessage;
 }
-
 async function fetchWithErrorHandling(url, options = {}, fallbackMessage = "Request failed.") {
   const response = await fetch(url, options);
   let payload = null;
@@ -91,19 +87,15 @@ async function fetchWithErrorHandling(url, options = {}, fallbackMessage = "Requ
   } catch (_error) {
     payload = null;
   }
-
   if (!response.ok) {
     throw new Error(parseErrorMessage(payload, fallbackMessage));
   }
-
   return payload;
 }
-
 function parseDefinitionTags(rawTags) {
   const source = Array.isArray(rawTags) ? rawTags.join(",") : String(rawTags || "");
   const seen = new Set();
   const tags = [];
-
   source
     .split(",")
     .map((tag) => tag.trim())
@@ -116,45 +108,36 @@ function parseDefinitionTags(rawTags) {
       seen.add(normalized);
       tags.push(tag);
     });
-
   return tags;
 }
-
 function parseTagSearchQuery(rawSearch) {
   return String(rawSearch || "")
     .split(",")
     .map((entry) => normalizeTagValue(entry))
     .filter(Boolean);
 }
-
 function isTagOnlyQuery(queryTags) {
   if (queryTags.length === 0) {
     return false;
   }
-
   return queryTags.every((tag) => definitions.some((def) => def.tagsNormalized.includes(tag)));
 }
-
 function setSearchValue(value) {
   searchTerm = String(value || "").toLowerCase();
   searchInput.value = value || "";
   searchField.classList.toggle("has-value", searchTerm.length > 0);
 }
-
 function renderTagPills(tags, { truncate = false } = {}) {
   const visibleTags = truncate ? tags.slice(0, MAX_CARD_TAG_PILLS) : tags;
   const hiddenCount = Math.max(tags.length - visibleTags.length, 0);
   const pills = visibleTags
     .map((tag) => `<button class="tag-pill" type="button" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`)
     .join("");
-
   if (!hiddenCount) {
     return pills;
   }
-
   return `${pills}<span class="tag-pill tag-pill-more" aria-label="${hiddenCount} more tags">...</span>`;
 }
-
 function iconSvg(status) {
   if (status === "saved") {
     return `
@@ -178,7 +161,6 @@ function iconSvg(status) {
     </svg>
   `;
 }
-
 function statusLabel(status, source = "") {
   const suffix = String(source || "").toLowerCase() === "untracked" ? " · Untracked" : "";
   if (status === "saved") {
@@ -189,7 +171,6 @@ function statusLabel(status, source = "") {
   }
   return `Available${suffix}`;
 }
-
 function formatFilterLabel(type) {
   if (type === "all") {
     return "All";
@@ -199,7 +180,6 @@ function formatFilterLabel(type) {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
-
 function formatTypePillLabel(type) {
   const normalizedType = normalizeFilterType(type);
   if (normalizedType === "models") return "Model";
@@ -211,31 +191,24 @@ function formatTypePillLabel(type) {
   if (normalizedType === "workflows") return "Workflow";
   return "Unknown";
 }
-
 function typeClassName(type) {
   return `type-${normalizeFilterType(type).replace(/\s+/g, "-")}`;
 }
-
-
 function getCardDescription(description) {
   const fallback = "No description provided.";
   if (!description) {
     return fallback;
   }
-
   const normalized = String(description).replace(/\s+/g, " ").trim();
   if (!normalized) {
     return fallback;
   }
-
   const maxLength = 170;
   if (normalized.length <= maxLength) {
     return normalized;
   }
-
   return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
 }
-
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -244,23 +217,19 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
-
 function renderDescriptionMarkdown(description) {
   const raw = String(description || "").replace(/\r\n/g, "\n");
   if (!raw.trim()) {
     return "<p>No description provided.</p>";
   }
-
   const codeBlocks = [];
   let html = escapeHtml(raw).replace(/```([\s\S]*?)```/g, (_, code) => {
     const trimmed = code.replace(/^\n+|\n+$/g, "");
     const index = codeBlocks.push(`<pre><code>${trimmed}</code></pre>`) - 1;
     return `@@CODE_BLOCK_${index}@@`;
   });
-
   html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
   html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-
   const blocks = html
     .split(/\n{2,}/)
     .map((block) => block.trim())
@@ -271,11 +240,9 @@ function renderDescriptionMarkdown(description) {
       }
       return `<p>${block.replace(/\n/g, "<br>")}</p>`;
     });
-
   const withParagraphs = blocks.join("");
   return withParagraphs.replace(/@@CODE_BLOCK_(\d+)@@/g, (_, index) => codeBlocks[Number(index)] || "");
 }
-
 function filterIconSvg(type) {
   if (type === "prompt" || type === "prompts") {
     return `
@@ -345,7 +312,6 @@ function filterIconSvg(type) {
     </svg>
   `;
 }
-
 function renderFilters() {
   const definitionTypes = definitions.map((def) => normalizeFilterType(def.type));
   const uniqueTypes = new Set(
@@ -382,7 +348,6 @@ function renderFilters() {
       });
       filtersContainer.appendChild(chip);
     }
-
     const menuItem = document.createElement("button");
     menuItem.className = "filter-menu-item";
     menuItem.type = "button";
@@ -400,11 +365,9 @@ function renderFilters() {
     filterMenu.appendChild(menuItem);
   });
 }
-
 function renderCards() {
   const queryTags = parseTagSearchQuery(searchTerm);
   const tagOnlyMode = isTagOnlyQuery(queryTags);
-
   const filtered = definitions.filter((def) => {
     const matchesFilter = activeFilter === "all" || def.type === activeFilter;
     const text = `${def.name} ${def.description}`.toLowerCase();
@@ -412,9 +375,7 @@ function renderCards() {
     const matchesSearch = tagOnlyMode ? matchesTagSearch : text.includes(searchTerm);
     return matchesFilter && matchesSearch;
   });
-
   cardsContainer.innerHTML = "";
-
   filtered.forEach((def) => {
     const card = document.createElement("div");
     card.className = "card";
@@ -445,7 +406,6 @@ function renderCards() {
         </div>
       </div>
     `;
-
     card.addEventListener("click", async (event) => {
       const clickedTag = event.target.closest("[data-tag]");
       if (clickedTag) {
@@ -469,7 +429,6 @@ function renderCards() {
         }
         return;
       }
-
       const saveAction = event.target.closest("[data-action-save]");
       if (saveAction) {
         event.stopPropagation();
@@ -493,7 +452,6 @@ function renderCards() {
     cardsContainer.appendChild(card);
   });
 }
-
 function renderDevProjectsOptions(projects) {
   devProjectOptions.innerHTML = "";
   projects.forEach((project) => {
@@ -502,7 +460,6 @@ function renderDevProjectsOptions(projects) {
     devProjectOptions.appendChild(option);
   });
 }
-
 async function loadDevProjects() {
   const response = await fetch("/api/dev-projects");
   if (!response.ok) {
@@ -512,7 +469,6 @@ async function loadDevProjects() {
   devProjects = data.map((project) => project.path || project).filter(Boolean);
   renderDevProjectsOptions(devProjects);
 }
-
 async function loadCurrentDevProject() {
   const response = await fetch("/api/current-dev-project");
   if (!response.ok) {
@@ -521,7 +477,6 @@ async function loadCurrentDevProject() {
   const data = await response.json();
   devProjectInput.value = data.path || "";
 }
-
 async function setCurrentDevProject(path) {
   await fetch("/api/current-dev-project", {
     method: "POST",
@@ -529,7 +484,6 @@ async function setCurrentDevProject(path) {
     body: JSON.stringify({ path })
   });
 }
-
 async function fetchDefinitions() {
   const response = await fetch("/api/definitions");
   const rawDefinitions = await response.json();
@@ -545,35 +499,27 @@ async function fetchDefinitions() {
   renderFilters();
   renderCards();
 }
-
-
 function formatCreatedDate(value) {
   if (!value) {
     return "Created date unavailable";
   }
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return "Created date unavailable";
   }
-
   return `Created on ${date.toLocaleDateString()}`;
 }
-
-
 function inferDefinitionFormat(definition) {
   const filePath = String(definition?.filePath || "").toLowerCase();
   if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) return "yaml";
   if (filePath.endsWith(".md") || filePath.endsWith(".markdown")) return "md";
   if (filePath.endsWith(".json")) return "json";
   if (filePath.endsWith(".txt")) return "txt";
-
   const content = String(definition?.content || "").trim();
   if (content.startsWith("#") || content.includes("\n#")) return "md";
   if (content.includes(":") && content.includes("\n")) return "yaml";
   return "txt";
 }
-
 function formatTabLabel(format) {
   if (format === "yaml") return "YAML";
   if (format === "md") return "MD";
@@ -581,8 +527,6 @@ function formatTabLabel(format) {
   if (format === "txt") return "TXT";
   return "SOURCE";
 }
-
-
 const PREVIEW_SECTION_CONFIG = [
   { key: "models", label: "Models", empty: "No Models configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#models" },
   { key: "mcpServers", label: "MCP Servers", empty: "No MCP Servers configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#mcpServers" },
@@ -590,82 +534,67 @@ const PREVIEW_SECTION_CONFIG = [
   { key: "prompts", label: "Prompts", empty: "No Prompts configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#prompts" },
   { key: "context", label: "Context", empty: "No Context configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#context" }
 ];
-
 function prettifyName(rawValue) {
   const raw = String(rawValue || "").trim();
   if (!raw) {
     return "Unnamed";
   }
-
   const tail = raw.includes("/") ? raw.split("/").pop() : raw;
   return tail
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
-
 function extractField(block, field) {
   const pattern = new RegExp(`(?:^|\\n)\\s*${field}\\s*:\\s*([^\\n]+)`, "i");
   const match = block.match(pattern);
   return match ? match[1].trim().replace(/^['\"]|['\"]$/g, "") : "";
 }
-
 function parseTopLevelListSection(content, sectionName) {
   const lines = String(content || "").replace(/\r\n/g, "\n").split("\n");
   const sectionRegex = new RegExp(`^${sectionName}\\s*:\\s*$`, "i");
-
   let inSection = false;
   let currentItemLines = [];
   const blocks = [];
-
   const flushCurrent = () => {
     if (currentItemLines.length > 0) {
       blocks.push(currentItemLines.join("\n"));
       currentItemLines = [];
     }
   };
-
   for (const line of lines) {
     const trimmed = line.trim();
     const topLevelKeyMatch = trimmed.match(/^[A-Za-z][A-Za-z0-9_-]*\s*:\s*$/);
-
     if (!inSection) {
       if (sectionRegex.test(trimmed)) {
         inSection = true;
       }
       continue;
     }
-
     if (topLevelKeyMatch && !sectionRegex.test(trimmed)) {
       flushCurrent();
       break;
     }
-
     const itemMatch = line.match(/^\s*-\s*(.*)$/);
     if (itemMatch) {
       flushCurrent();
       currentItemLines.push(itemMatch[1] || "");
       continue;
     }
-
     if (currentItemLines.length > 0) {
       currentItemLines.push(line.replace(/^\s+/, ""));
     }
   }
-
   flushCurrent();
   return blocks;
 }
-
 function buildItemFromBlock(typeKey, block) {
   const text = String(block || "").trim();
   const uses = extractField(text, "uses");
   const name = extractField(text, "name");
   const provider = extractField(text, "provider");
   const description = extractField(text, "description");
-
   const titleSeed = uses || name || provider || text.split("\n")[0] || "Item";
   const title = prettifyName(titleSeed);
-
   if (typeKey === "models") {
     const derivedProvider = provider || (uses.includes("/") ? uses.split("/")[0] : "model");
     const roleMatches = [...text.matchAll(/-\s*(chat|edit|apply|autocomplete)\b/gi)].map((match) => match[1].toLowerCase());
@@ -677,20 +606,17 @@ function buildItemFromBlock(typeKey, block) {
       description: description || ""
     };
   }
-
   if (typeKey === "context") {
     return {
       title: title.startsWith("@") ? title : `@${title.replace(/\s+/g, "").toLowerCase()}`,
       subtitle: description || provider || "Context provider"
     };
   }
-
   return {
     title,
     subtitle: description || provider || `${PREVIEW_SECTION_CONFIG.find((section) => section.key === typeKey)?.label || "Item"} item`
   };
 }
-
 function getFallbackPreviewSectionKey(normalizedType) {
   if (normalizedType === "rules") return "rules";
   if (normalizedType === "prompts") return "prompts";
@@ -699,14 +625,12 @@ function getFallbackPreviewSectionKey(normalizedType) {
   if (normalizedType === "mcp servers") return "mcpServers";
   return null;
 }
-
 function buildFallbackPreviewItem(definitionMeta) {
   return {
     title: prettifyName(definitionMeta?.name || definitionMeta?.filePath || "Definition"),
     subtitle: definitionMeta?.description || "Markdown definition"
   };
 }
-
 function collectPreviewSections(definitionContent, definitionMeta = {}) {
   const mappings = {
     models: ["models"],
@@ -715,11 +639,9 @@ function collectPreviewSections(definitionContent, definitionMeta = {}) {
     prompts: ["prompts"],
     context: ["context"]
   };
-
   const normalizedType = normalizeFilterType(definitionMeta?.type);
   const isMarkdown = inferDefinitionFormat(definitionMeta) === "md";
   const sourceContent = String(definitionContent || "");
-
   if (isMarkdown) {
     const markdownSectionKey = getFallbackPreviewSectionKey(normalizedType);
     const markdownItem = buildFallbackPreviewItem(definitionMeta);
@@ -728,7 +650,6 @@ function collectPreviewSections(definitionContent, definitionMeta = {}) {
       items: section.key === markdownSectionKey ? [markdownItem] : []
     }));
   }
-
   return PREVIEW_SECTION_CONFIG.map((section) => {
     if (isMarkdown) {
       return {
@@ -736,16 +657,13 @@ function collectPreviewSections(definitionContent, definitionMeta = {}) {
         items: section.key === fallbackSectionKey ? [fallbackItem] : []
       };
     }
-
     const aliases = mappings[section.key] || [section.key];
     const blocks = aliases.flatMap((alias) => parseTopLevelListSection(sourceContent, alias));
     const items = blocks.map((block) => buildItemFromBlock(section.key, block)).filter((item) => item.title);
     return { ...section, items };
   });
-
   const hasItems = sections.some((section) => section.items.length > 0);
   const fallbackSectionKey = getFallbackPreviewSectionKey(normalizedType);
-
   if (!hasItems && isMarkdown && fallbackSectionKey) {
     const fallbackItem = buildFallbackPreviewItem(definitionMeta);
     return sections.map((section) => (
@@ -754,10 +672,8 @@ function collectPreviewSections(definitionContent, definitionMeta = {}) {
         : section
     ));
   }
-
   return sections;
 }
-
 function renderPreviewSection(section) {
   const header = `
     <div class="preview-section-header">
@@ -772,7 +688,6 @@ function renderPreviewSection(section) {
       </a>
     </div>
   `;
-
   if (section.items.length === 0) {
     return `
       <section class="preview-section">
@@ -781,7 +696,6 @@ function renderPreviewSection(section) {
       </section>
     `;
   }
-
   const cards = section.items
     .map((item) => `
       <article class="preview-card">
@@ -791,7 +705,6 @@ function renderPreviewSection(section) {
       </article>
     `)
     .join("");
-
   return `
     <section class="preview-section">
       ${header}
@@ -799,22 +712,355 @@ function renderPreviewSection(section) {
     </section>
   `;
 }
-
 function renderDefinitionPreview(definitionContent, definitionMeta = {}) {
   const sections = collectPreviewSections(definitionContent, definitionMeta);
   return sections.map((section) => renderPreviewSection(section)).join("");
 }
-
-function setDefinitionTab(activeTab) {
-  const isPreview = activeTab === "preview";
-  definitionTabPreview.classList.toggle("active", isPreview);
-  definitionTabSource.classList.toggle("active", !isPreview);
-  definitionTabPreview.setAttribute("aria-selected", String(isPreview));
-  definitionTabSource.setAttribute("aria-selected", String(!isPreview));
-  definitionPreviewPanel.hidden = !isPreview;
-  definitionSourcePanel.hidden = isPreview;
+function getTestConfigForDefinitionType(type) {
+  const normalizedType = normalizeFilterType(type);
+  const configs = {
+    "context": {
+      testName: "Test Context Provider",
+      requiresAI: false,
+      helpText: "Can this provider retrieve context data?",
+      actionLabel: "▶ Test Providers",
+      saveLabel: "💾 Save Test Config"
+    },
+    "prompts": {
+      testName: "Test Prompt",
+      requiresAI: true,
+      helpText: "Does this prompt produce useful AI responses?",
+      actionLabel: "▶ Run Test",
+      saveLabel: "💾 Save Test Case"
+    },
+    "models": {
+      testName: "Test Model",
+      requiresAI: true,
+      helpText: "Is this model configured correctly and accessible?",
+      actionLabel: "▶ Test Model",
+      saveLabel: "💾 Save Test Case"
+    },
+    "mcp servers": {
+      testName: "Test MCP Server",
+      requiresAI: false,
+      helpText: "Can we connect to this MCP server and use its tools?",
+      actionLabel: "▶ Test Server",
+      saveLabel: "💾 Save Test Case"
+    },
+    "rules": {
+      testName: "Validate Rule",
+      requiresAI: false,
+      helpText: "Is this rule properly formatted and complete?",
+      actionLabel: "✓ Validate Rule",
+      saveLabel: "💾 Save Validation"
+    },
+    "agents": {
+      testName: "Test Agent",
+      requiresAI: true,
+      helpText: "Is this agent configured correctly with expected tools?",
+      actionLabel: "▶ Test Agent",
+      saveLabel: "💾 Save Scenario"
+    },
+    "workflows": {
+      testName: "Validate Workflow",
+      requiresAI: false,
+      helpText: "Is this workflow structure valid with correct dependencies?",
+      actionLabel: "✓ Validate Workflow",
+      saveLabel: "💾 Save Validation"
+    }
+  };
+  return configs[normalizedType] || {
+    testName: "Test Definition",
+    requiresAI: false,
+    helpText: "Run a dry-run validation for this definition.",
+    actionLabel: "▶ Run Test",
+    saveLabel: "💾 Save Test Case"
+  };
 }
 
+function getTestLabelForType(type) {
+  const normalizedType = normalizeFilterType(type);
+  if (normalizedType === "prompts") return "🧪 Test Prompt";
+  if (normalizedType === "models") return "🧪 Test Model Configuration";
+  if (normalizedType === "mcp servers") return "🧪 Test MCP Server";
+  if (normalizedType === "agents") return "🧪 Test Agent";
+  if (normalizedType === "rules") return "🧪 Validate Rule";
+  if (normalizedType === "context") return "🧪 Test Context Providers";
+  if (normalizedType === "workflows") return "🧪 Test Workflow";
+  return "🧪 Test Definition";
+}
+function parsePromptVariables(content) {
+  const matches = String(content || "").match(/\{([a-zA-Z0-9_.-]+)\}/g) || [];
+  const seen = new Set();
+  const vars = [];
+  matches.forEach((match) => {
+    const name = match.slice(1, -1).trim();
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    vars.push(name);
+  });
+  return vars;
+}
+function renderContextHelpBanner() {
+  return `
+    <div class="test-help-banner">
+      <button class="help-banner-toggle" type="button" id="contextHelpBannerToggle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        What does this test do?
+      </button>
+      <div class="help-banner-content" id="helpBannerContent" hidden>
+        <h4>Context Provider Testing Explained</h4>
+        <div class="help-section">
+          <h5>🎯 What Context Providers Do</h5>
+          <p>Context providers automatically inject information into AI conversations.</p>
+          <ul>
+            <li><strong>@Current File</strong> - Adds the currently open file content</li>
+            <li><strong>@File Tree</strong> - Adds your project directory structure</li>
+            <li><strong>@Git Diff</strong> - Adds uncommitted changes</li>
+          </ul>
+          <p>When used in your IDE, the AI receives your prompt plus this context data automatically.</p>
+        </div>
+        <div class="help-section">
+          <h5>🧪 What This Test Does</h5>
+          <ol>
+            <li>Verifies provider access to data sources (files/git)</li>
+            <li>Shows exact context data that would be injected</li>
+            <li>Checks data format and non-empty output</li>
+            <li>Surfaces configuration or access errors</li>
+          </ol>
+        </div>
+        <div class="help-section">
+          <h5>✅ What Success Means</h5>
+          <ul>
+            <li>The provider can access its data source</li>
+            <li>It retrieves expected information</li>
+            <li>Data is correctly formatted for the AI</li>
+            <li>It is ready to use in your IDE</li>
+          </ul>
+        </div>
+        <div class="help-example"><strong>Example:</strong> testing @Current File should show the exact file content to be sent to the AI.</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderContextInputHelp() {
+  return `
+    <div class="test-help-section">
+      <h4>ℹ️ What am I testing?</h4>
+      <p><strong>What is being tested:</strong> Can the provider access and retrieve its context data?</p>
+      <p><strong>What you will see:</strong> The exact data that would be automatically injected into AI conversations.</p>
+      <p class="help-note">💡 <strong>Why test this:</strong> Verify providers can access files, git, or other data sources before deploying to your project.</p>
+    </div>
+  `;
+}
+
+function renderTestInputs(definition) {
+  const normalizedType = normalizeFilterType(definition.type);
+  if (normalizedType === "prompts") {
+    const variables = parsePromptVariables(definition.content || "");
+    const variableInputs = variables.length > 0
+      ? variables.map((variable) => `
+        <div class="variable-input">
+          <label for="testVar-${escapeHtml(variable)}">Variable: {${escapeHtml(variable)}}</label>
+          <textarea id="testVar-${escapeHtml(variable)}" data-test-var="${escapeHtml(variable)}" rows="3" placeholder="Enter value for {${escapeHtml(variable)}}"></textarea>
+        </div>
+      `).join("")
+      : `<p class="test-inline-note">No template variables detected. The prompt content will be tested as-is.</p>`;
+    return `
+      <div class="test-section">
+        <label>Input Variables</label>
+        ${variableInputs}
+      </div>
+      <div class="test-section">
+        <label for="testModel">Model</label>
+        <input id="testModel" type="text" value="gemini-2.0-flash-exp" placeholder="gemini-2.0-flash-exp">
+      </div>
+      <div class="test-section options-grid">
+        <div>
+          <label for="testTemperature">Temperature</label>
+          <input id="testTemperature" type="number" value="0.7" min="0" max="2" step="0.1">
+        </div>
+        <div>
+          <label for="testMaxTokens">Max Tokens</label>
+          <input id="testMaxTokens" type="number" value="1000" min="1" step="1">
+        </div>
+      </div>
+    `;
+  }
+  if (normalizedType === "models") {
+    return `
+      <div class="test-section">
+        <label for="testMessage">Test Message</label>
+        <textarea id="testMessage" rows="4" placeholder="Write a haiku about coding"></textarea>
+      </div>
+      <div class="test-section">
+        <label for="testMode">Test Mode</label>
+        <select id="testMode">
+          <option value="dry_run">Simple completion</option>
+          <option value="simulation">Streaming simulation</option>
+        </select>
+      </div>
+      <div class="test-section options-grid">
+        <div>
+          <label for="testTemperature">Temperature</label>
+          <input id="testTemperature" type="number" value="0.7" min="0" max="2" step="0.1">
+        </div>
+        <div>
+          <label for="testMaxTokens">Max Tokens</label>
+          <input id="testMaxTokens" type="number" value="1000" min="1" step="1">
+        </div>
+      </div>
+    `;
+  }
+  if (normalizedType === "mcp servers") {
+    return `
+      <div class="test-section">
+        <label for="testMcpType">Test Type</label>
+        <select id="testMcpType">
+          <option value="connection">Connection Test</option>
+          <option value="list_tools">List Tools</option>
+          <option value="call_tool">Call Tool (simulated)</option>
+        </select>
+      </div>
+      <div class="test-section">
+        <label for="testMcpToolName">Tool</label>
+        <input id="testMcpToolName" type="text" value="read_file" placeholder="read_file">
+      </div>
+      <div class="test-section">
+        <label for="testMcpToolParams">Tool Parameters (JSON)</label>
+        <textarea id="testMcpToolParams" rows="4">{"path":"/tmp/test.txt"}</textarea>
+      </div>
+      <p class="test-inline-note">Connection/list-tools are dry-run validations. Call Tool is a simulated execution check.</p>
+    `;
+  }
+  if (normalizedType === "rules") {
+    return `
+      <div class="test-section">
+        <p class="test-inline-note">Runs frontmatter, required field, markdown, and content validation checks.</p>
+      </div>
+      <div class="test-section">
+        <label for="testRuleSample">Test Application (optional)</label>
+        <textarea id="testRuleSample" rows="4" placeholder="Paste code snippet to validate against this rule"></textarea>
+      </div>
+    `;
+  }
+  if (normalizedType === "workflows") {
+    return `
+      <div class="test-section">
+        <p class="test-inline-note">Validates workflow structure, step dependencies, and reference integrity.</p>
+      </div>
+      <div class="test-section">
+        <label><input id="testWorkflowDryRun" type="checkbox" checked> Include dry-run simulation estimates</label>
+      </div>
+    `;
+  }
+  if (normalizedType === "agents") {
+    return `
+      <div class="test-section">
+        <label for="testAgentScenario">Scenario</label>
+        <textarea id="testAgentScenario" rows="4" placeholder="Find all TODO comments in the current file"></textarea>
+      </div>
+      <div class="test-section">
+        <label><input id="testUseMocks" type="checkbox" checked> Enable tool mocking</label>
+      </div>
+    `;
+  }
+  if (normalizedType === "context") {
+    return `
+      ${renderContextHelpBanner()}
+      ${renderContextInputHelp()}
+      <div class="test-section">
+        <label>Mock Environment</label>
+        <p class="section-description">Set up a simulated environment for the provider to retrieve data from.</p>
+        <div class="mock-environment">
+          <div class="mock-field">
+            <label for="mockCurrentFile">Current File Path</label>
+            <input id="mockCurrentFile" type="text" value="/mock/project/src/app.js" placeholder="/path/to/file.js">
+          </div>
+          <div class="mock-field">
+            <label for="mockProjectRoot">Project Root</label>
+            <input id="mockProjectRoot" type="text" value="/mock/project" placeholder="/path/to/project">
+          </div>
+          <div class="mock-field">
+            <label for="mockWorkingDir">Working Directory</label>
+            <input id="mockWorkingDir" type="text" value="/mock/project/src" placeholder="/path/to/workspace">
+          </div>
+        </div>
+      </div>
+      <div class="test-section">
+        <label>Select Providers to Test</label>
+        <p class="section-description">Choose providers to simulate. Each will attempt to retrieve its respective data.</p>
+        <div class="provider-selection">
+          <label class="provider-checkbox"><input type="checkbox" id="providerCurrentFile" checked><span class="provider-name">@Current File</span><span class="provider-description">Retrieves content of the current file</span></label>
+          <label class="provider-checkbox"><input type="checkbox" id="providerFileTree" checked><span class="provider-name">@File Tree</span><span class="provider-description">Retrieves project directory structure</span></label>
+          <label class="provider-checkbox"><input type="checkbox" id="providerGitDiff"><span class="provider-name">@Git Diff</span><span class="provider-description">Retrieves uncommitted changes</span></label>
+        </div>
+        <div class="inline-help">This is a dry-run provider retrieval test; no AI call is made.</div>
+      </div>
+    `;
+  }
+  return `<p class="test-inline-note">Testing is not available for this definition type.</p>`;
+}
+function renderDefinitionTest(definition) {
+  const normalizedType = normalizeFilterType(definition.type);
+  const isContext = normalizedType === "context";
+  const config = getTestConfigForDefinitionType(definition.type);
+  return `
+    <div class="test-interface" data-definition-id="${definition.id}" data-definition-type="${normalizedType}">
+      <section class="test-input-panel">
+        <h3>${getTestLabelForType(definition.type)}</h3>
+        <p class="section-description"><strong>${escapeHtml(config.testName)}:</strong> ${escapeHtml(config.helpText)}</p>
+        ${renderTestInputs(definition)}
+        <div class="test-actions">
+          <button type="button" class="primary-btn" id="runDefinitionTestButton">${config.actionLabel}</button>
+          <button type="button" class="secondary-btn" id="saveDefinitionTestCaseButton">${config.saveLabel}</button>
+        </div>
+      </section>
+      <section class="test-results-panel">
+        <div class="results-header">
+          <h3>${isContext ? "Context Data Retrieved" : "Results & Validation"}</h3>
+          <button type="button" class="secondary-btn" id="definitionTestHistoryButton">📜 History</button>
+        </div>
+        <div class="test-result-header"><h4>Test Results for: ${escapeHtml(definition.name || "Unnamed definition")}</h4><span class="definition-type-pill">${escapeHtml(formatTypePillLabel(definition.type || normalizedType))}</span></div>
+        ${isContext ? `<div class="results-explanation"><p><strong>Context providers work automatically</strong> - when you type a prompt with @Current File, the AI receives your prompt plus the context data shown below.</p><p>This test verifies providers can retrieve that data correctly.</p></div>` : ""}
+        ${isContext ? `
+          <div class="results-help-header">
+            <h4>Understanding Results</h4>
+            <button class="help-toggle" type="button" id="resultsHelpToggle">?</button>
+          </div>
+          <div class="results-help-content" id="resultsHelp" hidden>
+            <div class="help-item"><span class="help-icon">✅</span><div><strong>SUCCESS</strong> - Provider successfully retrieved context data</div></div>
+            <div class="help-item"><span class="help-icon">❌</span><div><strong>ERROR</strong> - Provider failed to access a data source or is misconfigured</div></div>
+            <div class="help-divider"></div>
+            <p><strong>Retrieved Data:</strong> the exact context that would be injected into AI conversation.</p>
+            <p><strong>Validation Checks:</strong> verifies source access, retrieval success, non-empty data, and format correctness.</p>
+            <p class="help-note">💡 This is a dry-run simulation. No AI is called.</p>
+          </div>
+        ` : ""}
+        <div id="definitionTestResultsContent" class="empty-state">Run a test to see results.</div>
+      </section>
+    </div>
+  `;
+}
+function setDefinitionTab(activeTab) {
+  const isPreview = activeTab === "preview";
+  const isSource = activeTab === "source";
+  const isTest = activeTab === "test";
+  definitionTabPreview.classList.toggle("active", isPreview);
+  definitionTabSource.classList.toggle("active", isSource);
+  definitionTabTest.classList.toggle("active", isTest);
+  definitionTabPreview.setAttribute("aria-selected", String(isPreview));
+  definitionTabSource.setAttribute("aria-selected", String(isSource));
+  definitionTabTest.setAttribute("aria-selected", String(isTest));
+  definitionPreviewPanel.hidden = !isPreview;
+  definitionSourcePanel.hidden = !isSource;
+  definitionTestPanel.hidden = !isTest;
+}
 function formatVersionCommitDate(value) {
   if (!value) return "";
   const date = new Date(value);
@@ -823,7 +1069,6 @@ function formatVersionCommitDate(value) {
   }
   return date.toLocaleDateString();
 }
-
 function renderVersionMeta(currentVersion, historicalVersion = "") {
   if (!detailVersionMeta) {
     return;
@@ -833,11 +1078,9 @@ function renderVersionMeta(currentVersion, historicalVersion = "") {
     detailVersionMeta.innerHTML = "";
     return;
   }
-
   const historicalSuffix = historicalVersion ? "<span class=\"version-mode-badge\">Historical</span>" : "";
   detailVersionMeta.innerHTML = `<span class="version-badge">v${escapeHtml(version)}</span>${historicalSuffix}`;
 }
-
 function closeVersionDropdown() {
   if (!activeVersionDropdown) {
     return;
@@ -845,7 +1088,6 @@ function closeVersionDropdown() {
   activeVersionDropdown.remove();
   activeVersionDropdown = null;
 }
-
 function renderVersionBanner(historicalVersion) {
   if (!versionBanner) {
     return;
@@ -855,7 +1097,6 @@ function renderVersionBanner(historicalVersion) {
     versionBanner.innerHTML = "";
     return;
   }
-
   versionBanner.hidden = false;
   versionBanner.innerHTML = `
     <span>Viewing version ${escapeHtml(historicalVersion)} (Current: ${escapeHtml(currentDefinitionVersion || "unknown")})</span>
@@ -864,7 +1105,6 @@ function renderVersionBanner(historicalVersion) {
       <button type="button" data-action="back">Back to current</button>
     </div>
   `;
-
   versionBanner.querySelector('[data-action="restore"]')?.addEventListener("click", async () => {
     if (!currentDetailDefinitionId || !activeHistoricalVersion) {
       return;
@@ -886,7 +1126,6 @@ function renderVersionBanner(historicalVersion) {
       window.alert(error.message || "Unable to restore version.");
     }
   });
-
   versionBanner.querySelector('[data-action="back"]')?.addEventListener("click", async () => {
     if (!currentDetailDefinitionId) {
       return;
@@ -894,7 +1133,6 @@ function renderVersionBanner(historicalVersion) {
     await showDetails(currentDetailDefinitionId);
   });
 }
-
 async function loadDefinitionVersion(version) {
   if (!currentDetailDefinitionId) {
     return;
@@ -904,7 +1142,6 @@ async function loadDefinitionVersion(version) {
     {},
     "Unable to load definition version."
   );
-
   activeHistoricalVersion = payload.version;
   const versionContent = payload.content || "";
   detailContent.textContent = versionContent;
@@ -913,7 +1150,6 @@ async function loadDefinitionVersion(version) {
   renderVersionBanner(activeHistoricalVersion);
   closeVersionDropdown();
 }
-
 function createVersionDropdown({ versions, currentVersion }) {
   const dropdown = document.createElement("div");
   dropdown.className = "version-dropdown";
@@ -922,32 +1158,25 @@ function createVersionDropdown({ versions, currentVersion }) {
     <button class="version-option view-all" type="button">View all versions</button>
     <div class="version-list"></div>
   `;
-
   const searchInputEl = dropdown.querySelector(".version-search input");
   const list = dropdown.querySelector(".version-list");
   const viewAllButton = dropdown.querySelector(".view-all");
-
   let showAllVersions = false;
-
   function renderVersionList() {
     if (!list) {
       return;
     }
-
     const query = String(searchInputEl?.value || "").trim().toLowerCase();
     const visibleSource = showAllVersions ? versions : versions.slice(0, 25);
     const filteredVersions = visibleSource.filter((version) => String(version.version || "").toLowerCase().includes(query));
-
     if (viewAllButton) {
       const shouldShowViewAll = !showAllVersions && query.length === 0 && versions.length > 25;
       viewAllButton.hidden = !shouldShowViewAll;
     }
-
     if (filteredVersions.length === 0) {
       list.innerHTML = '<div class="version-empty">No matching versions</div>';
       return;
     }
-
     list.innerHTML = filteredVersions.map((version) => `
       <button class="version-option ${version.version === currentVersion ? "current" : ""}" type="button" data-version="${escapeHtml(version.version)}">
         <span class="version-number">${escapeHtml(version.version)}</span>
@@ -955,28 +1184,22 @@ function createVersionDropdown({ versions, currentVersion }) {
         ${version.version === currentVersion ? '<span class="checkmark">✓</span>' : ""}
       </button>
     `).join("");
-
     [...list.querySelectorAll(".version-option[data-version]")].forEach((button) => {
       button.addEventListener("click", async () => {
         await loadDefinitionVersion(button.getAttribute("data-version") || "");
       });
     });
   }
-
   searchInputEl?.addEventListener("input", () => {
     renderVersionList();
   });
-
   viewAllButton?.addEventListener("click", () => {
     showAllVersions = true;
     renderVersionList();
   });
-
   renderVersionList();
-
   return dropdown;
 }
-
 async function openVersionHistoryDropdown() {
   if (!currentDetailDefinitionId || !versionHistoryButton) {
     return;
@@ -985,7 +1208,6 @@ async function openVersionHistoryDropdown() {
     closeVersionDropdown();
     return;
   }
-
   const payload = await fetchWithErrorHandling(
     `/api/definitions/${currentDetailDefinitionId}/versions`,
     {},
@@ -996,14 +1218,296 @@ async function openVersionHistoryDropdown() {
     window.alert("No history available for this definition.");
     return;
   }
-
   activeVersionDropdown = createVersionDropdown({ versions, currentVersion: payload.currentVersion || "" });
   document.body.appendChild(activeVersionDropdown);
   const rect = versionHistoryButton.getBoundingClientRect();
   activeVersionDropdown.style.top = `${rect.bottom + window.scrollY + 8}px`;
   activeVersionDropdown.style.left = `${Math.max(rect.left + window.scrollX - 220, 8)}px`;
 }
+function showDefinitionTestLoading() {
+  const content = document.getElementById("definitionTestResultsContent");
+  if (!content) return;
+  content.innerHTML = `
+    <div class="test-loading">
+      <div class="spinner" aria-hidden="true"></div>
+      <div>Running test…</div>
+    </div>
+  `;
+}
+function formatCheckName(raw) {
+  return String(raw || "")
+    .replace(/_/g, " ")
+    .replace(/\w/g, (char) => char.toUpperCase());
+}
+function safeJsonParseClient(raw, fallback = {}) {
+  try {
+    return JSON.parse(String(raw || ""));
+  } catch (_error) {
+    return fallback;
+  }
+}
 
+function formatBytes(value) {
+  const bytes = Number(value || 0);
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getProviderIcon(name) {
+  if (name === "@Current File") return "📄";
+  if (name === "@File Tree") return "🌲";
+  if (name === "@Git Diff") return "🧬";
+  return "📦";
+}
+
+function displayContextProviderResults(contextResults) {
+  const content = document.getElementById("definitionTestResultsContent");
+  if (!content) return;
+  const providers = Array.isArray(contextResults?.providers) ? contextResults.providers : [];
+  const totalSize = Number(contextResults?.totalSize || 0);
+  const successful = Number(contextResults?.successful || 0);
+  const failed = Number(contextResults?.failed || 0);
+
+  content.innerHTML = `
+    <div class="context-test-results">
+      ${providers.map((provider) => `
+        <div class="provider-result ${provider.status}">
+          <div class="provider-header">
+            <div class="provider-info">
+              <span class="provider-icon">${getProviderIcon(provider.name)}</span>
+              <span class="provider-name">${escapeHtml(provider.name || "Unknown provider")}</span>
+              <span class="status-badge ${provider.status}">${provider.status === "success" ? "✅" : "❌"} ${escapeHtml(String(provider.status || "unknown").toUpperCase())}</span>
+            </div>
+            <span class="retrieval-time">${Number(provider.duration || 0)}ms</span>
+          </div>
+          ${provider.status === "success" ? `
+            <div class="context-data-section">
+              <div class="section-header"><h4>📦 Retrieved Context Data</h4><span class="data-size">${formatBytes(String(provider.data || "").length)}</span></div>
+              <p class="data-description">This is what would be automatically added to your AI prompt.</p>
+              <div class="context-data"><pre><code>${escapeHtml(String(provider.data || ""))}</code></pre></div>
+            </div>
+            <div class="validation-section">
+              <h4>Validation Checks</h4>
+              <div class="validation-checks">
+                ${(provider.validations || []).map((v) => `<div class="validation-item ${v.passed ? "passed" : "failed"}">${v.passed ? "✓" : "✗"} ${escapeHtml(formatCheckName(v.check))}${v.details ? `<span class="check-details">${escapeHtml(String(v.details))}</span>` : ""}</div>`).join("")}
+              </div>
+            </div>` : `
+            <div class="error-section">
+              <h4>❌ Error Details</h4>
+              <p class="error-message">${escapeHtml(provider.error || "Unknown error")}</p>
+              ${(provider.suggestions || []).length ? `<div class="error-suggestions"><h5>Possible fixes:</h5><ul>${provider.suggestions.map((s) => `<li>${escapeHtml(String(s))}</li>`).join("")}</ul></div>` : ""}
+            </div>`}
+        </div>
+      `).join("")}
+      <div class="test-summary">
+        <h4>📊 Test Summary</h4>
+        <div class="summary-stats">
+          <div class="stat"><span class="stat-label">Providers Tested:</span><span class="stat-value">${providers.length}</span></div>
+          <div class="stat"><span class="stat-label">Successful:</span><span class="stat-value success">${successful}</span></div>
+          <div class="stat"><span class="stat-label">Failed:</span><span class="stat-value error">${failed}</span></div>
+          <div class="stat"><span class="stat-label">Total Data Size:</span><span class="stat-value">${formatBytes(totalSize)}</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function displayDefinitionTestResults(result) {
+  const content = document.getElementById("definitionTestResultsContent");
+  if (!content) return;
+  const activeType = document.querySelector(".test-interface")?.dataset.definitionType || "";
+  if (activeType === "context" && result?.results?.providers) {
+    displayContextProviderResults(result.results);
+    return;
+  }
+  const status = String(result?.status || "unknown");
+  const statusIcon = status === "success" ? "✅" : status === "warning" ? "⚠️" : "❌";
+  const metadata = result?.results?.metadata || {};
+  const output = escapeHtml(String(result?.results?.output || ""));
+  const checks = Array.isArray(result?.results?.validation) ? result.results.validation : [];
+  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+  const errors = Array.isArray(result?.errors) ? result.errors : [];
+  const isContext = activeType === "context";
+  content.innerHTML = `
+    <div class="test-result ${status}">
+      <div class="result-header">
+        <span class="status-badge ${status}">${statusIcon} ${escapeHtml(status.toUpperCase())}</span>
+        <span class="duration">Duration: ${Number(result?.duration || 0) / 1000}s</span>
+      </div>
+      <div class="result-metadata">
+        <div class="metadata-item"><span class="label">Model</span><span class="value">${escapeHtml(String(metadata.model || "n/a"))}</span></div>
+        <div class="metadata-item"><span class="label">Tokens</span><span class="value">${escapeHtml(String(metadata.tokensUsed?.prompt || 0))} + ${escapeHtml(String(metadata.tokensUsed?.completion || 0))}</span></div>
+      </div>
+      <div class="result-output">
+        <h4>Response</h4>
+        ${isContext ? `<div class="inline-help">This is the actual data your AI assistant would receive. Verify it contains the information you expect.</div>` : ""}
+        <div class="output-content"><pre>${output || "No output."}</pre></div>
+      </div>
+      <div class="validation-checks">
+        <h4>Validation Checks</h4>
+        ${isContext ? `<div class="inline-help">Automatic checks ensure your provider is configured correctly:<ul><li><strong>query_provided</strong> - Test query was submitted</li><li><strong>provider_exists</strong> - Provider is defined in configuration</li><li><strong>response_received</strong> - Provider returned data successfully</li><li><strong>response_not_empty</strong> - Provider returned meaningful content</li></ul></div>` : ""}
+        ${checks.length ? checks.map((check) => `
+          <div class="validation-item ${check.passed ? "passed" : "failed"}">
+            ${check.passed ? "✓" : "✗"} ${escapeHtml(formatCheckName(check.check))}
+            ${check.value ? `<span class="check-value">${escapeHtml(String(check.value))}</span>` : ""}
+          </div>`).join("") : `<div class="test-inline-note">No validation checks reported.</div>`}
+      </div>
+      ${warnings.length ? `<div class="warnings"><h4>Warnings</h4>${warnings.map((item) => `<div class="warning-item">⚠️ ${escapeHtml(String(item))}</div>`).join("")}</div>` : ""}
+      ${errors.length ? `<div class="errors"><h4>Errors</h4>${errors.map((item) => `<div class="error-item">❌ ${escapeHtml(String(item))}</div>`).join("")}</div>` : ""}
+    </div>
+  `;
+}
+function collectDefinitionTestPayload(definition) {
+  const normalizedType = normalizeFilterType(definition.type);
+  const config = {
+    model: document.getElementById("testModel")?.value || "gemini-2.0-flash-exp",
+    temperature: Number.parseFloat(document.getElementById("testTemperature")?.value || "0.7"),
+    maxTokens: Number.parseInt(document.getElementById("testMaxTokens")?.value || "1000", 10)
+  };
+  if (normalizedType === "prompts") {
+    const variables = {};
+    document.querySelectorAll("[data-test-var]").forEach((element) => {
+      const key = element.getAttribute("data-test-var");
+      if (!key) return;
+      variables[key] = element.value;
+    });
+    return { testType: "dry_run", input: { variables }, config };
+  }
+  if (normalizedType === "models") {
+    return {
+      testType: document.getElementById("testMode")?.value || "dry_run",
+      input: { message: document.getElementById("testMessage")?.value || "" },
+      config
+    };
+  }
+  if (normalizedType === "mcp servers") {
+    return {
+      testType: document.getElementById("testMcpType")?.value || "connection",
+      input: {
+        testType: document.getElementById("testMcpType")?.value || "connection",
+        toolName: document.getElementById("testMcpToolName")?.value || "read_file",
+        parameters: safeJsonParseClient(document.getElementById("testMcpToolParams")?.value || "{}", {})
+      },
+      config: {}
+    };
+  }
+  if (normalizedType === "rules") {
+    return { testType: "validation", input: { sampleCode: document.getElementById("testRuleSample")?.value || "" }, config: {} };
+  }
+  if (normalizedType === "workflows") {
+    return { testType: "validation", input: { dryRun: Boolean(document.getElementById("testWorkflowDryRun")?.checked) }, config: {} };
+  }
+  if (normalizedType === "agents") {
+    return {
+      testType: "simulation",
+      input: { scenario: document.getElementById("testAgentScenario")?.value || "", useMocks: Boolean(document.getElementById("testUseMocks")?.checked) },
+      config: {}
+    };
+  }
+  if (normalizedType === "context") {
+    const selectedProviders = [];
+    if (document.getElementById("providerCurrentFile")?.checked) selectedProviders.push("@Current File");
+    if (document.getElementById("providerFileTree")?.checked) selectedProviders.push("@File Tree");
+    if (document.getElementById("providerGitDiff")?.checked) selectedProviders.push("@Git Diff");
+
+    return {
+      testType: "simulation",
+      input: {
+        mockEnv: {
+          currentFile: document.getElementById("mockCurrentFile")?.value || "",
+          projectRoot: document.getElementById("mockProjectRoot")?.value || "",
+          workingDir: document.getElementById("mockWorkingDir")?.value || ""
+        },
+        selectedProviders
+      },
+      config: {}
+    };
+  }
+  return { testType: "validation", input: {}, config: {} };
+}
+async function runDefinitionTest(definition) {
+  if (!definition?.id) return;
+  showDefinitionTestLoading();
+  const payload = collectDefinitionTestPayload(definition);
+  try {
+    const response = await fetchWithErrorHandling(
+      `/api/definitions/${definition.id}/test`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      },
+      "Unable to run test."
+    );
+    displayDefinitionTestResults(response);
+  } catch (error) {
+    displayDefinitionTestResults({ status: "error", duration: 0, results: { output: "", validation: [] }, errors: [error.message || "Test failed."] });
+  }
+}
+async function saveDefinitionTestCase(definition) {
+  if (!definition?.id) return;
+  const name = window.prompt("Test case name", "Ad-hoc test case");
+  if (name === null) return;
+  const payload = collectDefinitionTestPayload(definition);
+  try {
+    await fetchWithErrorHandling(
+      `/api/definitions/${definition.id}/test-cases`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim() || "Ad-hoc test case",
+          description: "Saved from definition detail test tab",
+          testType: payload.testType,
+          inputData: payload.input,
+          expectedOutput: null
+        })
+      },
+      "Unable to save test case."
+    );
+    window.alert("Test case saved.");
+  } catch (error) {
+    window.alert(error.message || "Unable to save test case.");
+  }
+}
+async function showDefinitionTestHistory(definition) {
+  if (!definition?.id) return;
+  try {
+    const payload = await fetchWithErrorHandling(`/api/definitions/${definition.id}/test-results?limit=10`, {}, "Unable to load test history.");
+    const rows = Array.isArray(payload.results) ? payload.results : [];
+    if (rows.length === 0) {
+      window.alert("No test history available yet.");
+      return;
+    }
+    const lines = rows.map((row) => {
+      const stamp = row.createdAt ? new Date(row.createdAt).toLocaleString() : "Unknown time";
+      return `${row.status?.toUpperCase() || "UNKNOWN"} • ${stamp} • ${(Number(row.duration || 0) / 1000).toFixed(2)}s`;
+    });
+    window.alert(`Recent test runs\n\n${lines.join("\n")}`);
+  } catch (error) {
+    window.alert(error.message || "Unable to load test history.");
+  }
+}
+function toggleHelpBanner() {
+  const section = document.getElementById("helpBannerContent");
+  if (!section) return;
+  section.hidden = !section.hidden;
+}
+
+function toggleResultsHelp() {
+  const section = document.getElementById("resultsHelp");
+  if (!section) return;
+  section.hidden = !section.hidden;
+}
+
+function bindDefinitionTestActions(definition) {
+  document.getElementById("runDefinitionTestButton")?.addEventListener("click", () => runDefinitionTest(definition));
+  document.getElementById("saveDefinitionTestCaseButton")?.addEventListener("click", () => saveDefinitionTestCase(definition));
+  document.getElementById("definitionTestHistoryButton")?.addEventListener("click", () => showDefinitionTestHistory(definition));
+  document.getElementById("contextHelpBannerToggle")?.addEventListener("click", toggleHelpBanner);
+  document.getElementById("resultsHelpToggle")?.addEventListener("click", toggleResultsHelp);
+}
 async function showDetails(id) {
   closeVersionDropdown();
   pushUpstreamDefinitionButton.hidden = true;
@@ -1022,7 +1526,6 @@ async function showDetails(id) {
   detailContent.textContent = definitionContent;
   detailStatus.textContent = statusLabel(def.status, def.source);
   detailStatus.className = `status-pill ${def.status}`;
-
   const normalizedType = normalizeFilterType(def.type);
   const typeLabel = formatTypePillLabel(normalizedType);
   const typeIcon = filterIconSvg(normalizedType);
@@ -1030,7 +1533,6 @@ async function showDetails(id) {
   detailTypeMetaIcon.innerHTML = typeIcon;
   detailTypeText.textContent = typeLabel;
   detailCreatedDate.textContent = formatCreatedDate(def.createdAt);
-
   const tags = parseDefinitionTags(def.tags);
   detailTags.innerHTML = tags.length > 0 ? `<div class="tag-pills">${renderTagPills(tags)}</div>` : "";
   detailTags.querySelectorAll("[data-tag]").forEach((element) => {
@@ -1041,23 +1543,24 @@ async function showDetails(id) {
       renderCards();
     });
   });
-
   const format = inferDefinitionFormat(def);
   const tabLabel = formatTabLabel(format);
   definitionTabSource.textContent = tabLabel;
-
   definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent, def);
+  definitionTestContent.innerHTML = renderDefinitionTest(def);
+  bindDefinitionTestActions(def);
   const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
   const canDeleteDefinition = currentDetailDefinitionSource === "repo" || isUntrackedDefinition;
   deleteDefinitionButton.hidden = !canDeleteDefinition;
   pushUpstreamDefinitionButton.hidden = !isUntrackedDefinition;
   pushUpstreamDefinitionButton.disabled = !isUntrackedDefinition;
   definitionTabPreview.disabled = false;
+  definitionTabSource.disabled = false;
+  definitionTabTest.disabled = false;
   setDefinitionTab("preview");
   renderVersionBanner("");
   showDetailPage();
 }
-
 function showDetailPage() {
   hubHeader.hidden = true;
   hubMain.hidden = true;
@@ -1065,7 +1568,6 @@ function showDetailPage() {
   document.body.classList.add("detail-page-open");
   window.scrollTo(0, 0);
 }
-
 function showHubPage() {
   detailPage.hidden = true;
   closeVersionDropdown();
@@ -1082,49 +1584,40 @@ function showHubPage() {
   hubMain.hidden = false;
   document.body.classList.remove("detail-page-open");
 }
-
 function updateRouteForDetails(id) {
   const url = new URL(window.location.href);
   url.searchParams.set("definition", String(id));
   window.history.pushState({}, "", url);
 }
-
 function updateRouteForHub(replace = false) {
   const url = new URL(window.location.href);
   url.searchParams.delete("definition");
   const historyMethod = replace ? "replaceState" : "pushState";
   window.history[historyMethod]({}, "", url);
 }
-
 async function handleRoute() {
   const definitionId = new URL(window.location.href).searchParams.get("definition");
   if (!definitionId) {
     showHubPage();
     return;
   }
-
   const numericId = Number(definitionId);
   if (!Number.isFinite(numericId) || numericId <= 0) {
     updateRouteForHub(true);
     showHubPage();
     return;
   }
-
   await showDetails(numericId);
 }
-
-
 async function copyDefinitionToClipboard() {
   const definitionText = detailContent.textContent || "";
   if (!definitionText.trim()) {
     return;
   }
-
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(definitionText);
     return;
   }
-
   const fallbackTextArea = document.createElement("textarea");
   fallbackTextArea.value = definitionText;
   fallbackTextArea.style.position = "fixed";
@@ -1134,7 +1627,6 @@ async function copyDefinitionToClipboard() {
   document.execCommand("copy");
   fallbackTextArea.remove();
 }
-
 async function saveDefinition(id) {
   if (!devProjectInput.value.trim()) {
     window.alert("Please select a project first.");
@@ -1142,20 +1634,15 @@ async function saveDefinition(id) {
   }
   await fetchWithErrorHandling(`/api/definitions/${id}/save`, { method: "POST" }, "Unable to save definition.");
 }
-
 async function publishDefinition(id) {
   await fetchWithErrorHandling(`/api/definitions/${id}/publish`, { method: "POST" }, "Unable to publish definition.");
 }
-
 async function removeDefinition(id) {
   await fetchWithErrorHandling(`/api/definitions/${id}/remove`, { method: "POST" }, "Unable to remove definition.");
 }
-
 async function deleteDefinitionFromRepo(id) {
   await fetchWithErrorHandling(`/api/definitions/${id}/delete-repo`, { method: "POST" }, "Unable to delete definition.");
 }
-
-
 async function pushDefinitionToUpstream(id, commitMessage) {
   return fetchWithErrorHandling(`/api/definitions/${id}/push-upstream`, {
     method: "POST",
@@ -1163,7 +1650,6 @@ async function pushDefinitionToUpstream(id, commitMessage) {
     body: JSON.stringify({ commitMessage })
   }, "Unable to push definition.");
 }
-
 function createDuplicateDefaults(definitionName, definitionPath) {
   const defaultName = `${String(definitionName || "definition").trim() || "definition"}_copy`;
   const originalFileName = pathBasename(definitionPath) || "definition.md";
@@ -1172,13 +1658,11 @@ function createDuplicateDefaults(definitionName, definitionPath) {
   const defaultFileName = `${baseName}_copy${extension}`;
   return { defaultName, defaultFileName };
 }
-
 function pathBasename(filePath) {
   const normalized = String(filePath || "").replace(/\\/g, "/");
   const segments = normalized.split("/").filter(Boolean);
   return segments[segments.length - 1] || "";
 }
-
 function pathExtname(fileName) {
   const value = String(fileName || "");
   const dotIndex = value.lastIndexOf(".");
@@ -1187,7 +1671,6 @@ function pathExtname(fileName) {
   }
   return value.slice(dotIndex);
 }
-
 async function duplicateDefinition(id, name, fileName) {
   return fetchWithErrorHandling(`/api/definitions/${id}/duplicate`, {
     method: "POST",
@@ -1195,12 +1678,10 @@ async function duplicateDefinition(id, name, fileName) {
     body: JSON.stringify({ name, fileName })
   }, "Unable to duplicate definition.");
 }
-
 searchInput.addEventListener("input", (event) => {
   setSearchValue(event.target.value);
   renderCards();
 });
-
 devProjectInput.addEventListener("change", async (event) => {
   const selected = event.target.value.trim();
   if (!selected) {
@@ -1214,29 +1695,23 @@ devProjectInput.addEventListener("change", async (event) => {
   await setCurrentDevProject(selected);
   await fetchDefinitions();
 });
-
-
 function openEditorForCurrentDefinition() {
   if (!currentDetailDefinitionPath) return;
   window.location.assign(`/editor/editor.html?mode=edit&path=${encodeURIComponent(currentDetailDefinitionPath)}`);
 }
-
 function toggleNewMenu() {
   if (!newDefinitionMenu || !newDefinitionButton) return;
   newDefinitionMenu.hidden = !newDefinitionMenu.hidden;
   newDefinitionButton.setAttribute("aria-expanded", String(!newDefinitionMenu.hidden));
 }
-
 function closeFilterMenu() {
   filterMenu.classList.remove("open");
   filterButton.setAttribute("aria-expanded", "false");
 }
-
 filterButton.addEventListener("click", () => {
   const isOpen = filterMenu.classList.toggle("open");
   filterButton.setAttribute("aria-expanded", String(isOpen));
 });
-
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".filter-dropdown")) {
     closeFilterMenu();
@@ -1245,30 +1720,22 @@ document.addEventListener("click", (event) => {
     closeVersionDropdown();
   }
 });
-
 clearSearchButton.addEventListener("click", () => {
   setSearchValue("");
   renderCards();
 });
-
-
-
 deleteDefinitionButton.addEventListener("click", async () => {
   if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
     return;
   }
-
   const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
   const confirmationMessage = isUntrackedDefinition
     ? "Are you sure you want to delete this untracked local definition file? Note: if this definition is already installed in any project - it will not be deleted from those projects."
     : "Are you sure you want to delete this definition from team repository? Note: projects that already have this definition installed - will not be deleted, but you will not be able to install this definition to new projects or update existing installations. If you want to remove this definition from specific project(s) only - please select the project,and click 'Remove from project' button from the definition card or details page.";
-
   const isConfirmed = window.confirm(confirmationMessage);
-
   if (!isConfirmed) {
     return;
   }
-
   try {
     const result = await deleteDefinitionFromRepo(currentDetailDefinitionId);
     await fetchDefinitions();
@@ -1282,17 +1749,14 @@ deleteDefinitionButton.addEventListener("click", async () => {
     window.alert(error.message || "Unable to delete definition.");
   }
 });
-
 pushUpstreamDefinitionButton.addEventListener("click", async () => {
   if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
     return;
   }
-
   const commitMessage = window.prompt("Commit message", `Add definition ${currentDetailDefinitionName || ""}`);
   if (commitMessage === null) {
     return;
   }
-
   try {
     const result = await pushDefinitionToUpstream(currentDetailDefinitionId, commitMessage);
     await fetchDefinitions();
@@ -1302,7 +1766,6 @@ pushUpstreamDefinitionButton.addEventListener("click", async () => {
     window.alert(error.message || "Unable to push definition.");
   }
 });
-
 copyDefinitionButton.addEventListener("click", async () => {
   try {
     await copyDefinitionToClipboard();
@@ -1318,35 +1781,29 @@ copyDefinitionButton.addEventListener("click", async () => {
     copyDefinitionButton.setAttribute("title", "Unable to copy");
   }
 });
-
 duplicateDefinitionButton.addEventListener("click", async () => {
   if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
     return;
   }
-
   const { defaultName, defaultFileName } = createDuplicateDefaults(currentDetailDefinitionName, currentDetailDefinitionPath);
   const duplicateName = window.prompt("New definition name", defaultName);
   if (duplicateName === null) {
     return;
   }
-
   const normalizedName = duplicateName.trim();
   if (!normalizedName) {
     window.alert("Definition name cannot be empty.");
     return;
   }
-
   const duplicateFileName = window.prompt("New definition file name", defaultFileName);
   if (duplicateFileName === null) {
     return;
   }
-
   const normalizedFileName = duplicateFileName.trim();
   if (!normalizedFileName) {
     window.alert("Definition file name cannot be empty.");
     return;
   }
-
   try {
     const result = await duplicateDefinition(currentDetailDefinitionId, normalizedName, normalizedFileName);
     await fetchDefinitions();
@@ -1360,25 +1817,22 @@ duplicateDefinitionButton.addEventListener("click", async () => {
     window.alert(error.message || "Unable to duplicate definition.");
   }
 });
-
-
 definitionTabPreview.addEventListener("click", () => {
   setDefinitionTab("preview");
 });
-
 definitionTabSource.addEventListener("click", () => {
   setDefinitionTab("source");
 });
-
+definitionTabTest.addEventListener("click", () => {
+  setDefinitionTab("test");
+});
 closeModal.addEventListener("click", () => {
   showHubPage();
   updateRouteForHub();
 });
-
 window.addEventListener("popstate", () => {
   handleRoute();
 });
-
 document.addEventListener("click", (event) => {
   if (newDefinitionMenu && !event.target.closest(".new-menu-wrap")) {
     newDefinitionMenu.hidden = true;
@@ -1387,14 +1841,12 @@ document.addEventListener("click", (event) => {
     }
   }
 });
-
 if (newDefinitionButton) {
   newDefinitionButton.addEventListener("click", (event) => {
     event.stopPropagation();
     toggleNewMenu();
   });
 }
-
 if (newDefinitionMenu) {
   newDefinitionMenu.querySelectorAll("[data-new-type]").forEach((button) => {
     const type = button.getAttribute("data-new-type") || "prompt";
@@ -1405,13 +1857,11 @@ if (newDefinitionMenu) {
     });
   });
 }
-
 if (editDefinitionButton) {
   editDefinitionButton.addEventListener("click", () => {
     openEditorForCurrentDefinition();
   });
 }
-
 if (versionHistoryButton) {
   versionHistoryButton.addEventListener("click", async () => {
     try {
@@ -1421,7 +1871,5 @@ if (versionHistoryButton) {
     }
   });
 }
-
-
 loadDevProjects();
 loadCurrentDevProject().then(fetchDefinitions).then(handleRoute);
