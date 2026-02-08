@@ -1,11 +1,12 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
-function createTextInput({ mount, label, state, key, onChange }) {
+function createTextInput({ mount, label, state, key, placeholder, onChange }) {
   const row = document.createElement("label");
   row.className = "editor-field";
   row.innerHTML = `<span>${label}</span>`;
   const input = document.createElement("input");
   input.type = "text";
+  input.placeholder = placeholder || "";
   input.addEventListener("input", () => {
     state[key] = input.value;
     onChange();
@@ -28,15 +29,15 @@ export function createWorkflowForm({ mount, onChange }) {
     rules: []
   };
 
-  const name = createTextInput({ mount, label: "name", state, key: "name", onChange });
-  const version = createTextInput({ mount, label: "version", state, key: "version", onChange });
-  const schema = createTextInput({ mount, label: "schema", state, key: "schema", onChange });
-  const description = createTextInput({ mount, label: "description", state, key: "description", onChange });
+  const name = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., 'Docs Update Workflow'", onChange });
+  const version = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '1.0.7'", onChange });
+  const schema = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
+  const description = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'the description of this workflow'", onChange });
 
   const tags = createArrayEditor({
     mount,
     label: "tags",
-    fields: [{ name: "value", label: "Tag" }],
+    fields: [{ name: "value", label: "tags", placeholder: "e.g., 'tag1, tag2, tag3'" }],
     onChange: (nextItems) => {
       state.tags = nextItems;
       onChange();
@@ -47,9 +48,22 @@ export function createWorkflowForm({ mount, onChange }) {
     mount,
     label: "models",
     fields: [
-      { name: "uses", label: "uses" },
-      { name: "withAnthropicApiKey", label: "with.ANTHROPIC_API_KEY" },
-      { name: "roles", label: "override.roles", kind: "array", itemLabel: "role" }
+      { name: "uses", label: "uses", placeholder: "e.g., 'anthropic/claude-4-sonnet'" },
+      {
+        name: "with",
+        label: "with",
+        kind: "array",
+        nestedFields: [
+          { name: "key", label: "environment variable", placeholder: "e.g., 'ANTHROPIC_API_KEY'" },
+          { name: "value", label: "value", placeholder: "e.g., '${{ secrets.ANTHROPIC_API_KEY }}'" }
+        ]
+      },
+      {
+        name: "roles",
+        label: "override.roles",
+        kind: "array",
+        nestedFields: [{ name: "value", label: "role", placeholder: "e.g., 'chat'" }]
+      }
     ],
     onChange: (nextItems) => {
       state.models = nextItems;
@@ -60,7 +74,7 @@ export function createWorkflowForm({ mount, onChange }) {
   const context = createArrayEditor({
     mount,
     label: "context",
-    fields: [{ name: "uses", label: "uses" }],
+    fields: [{ name: "uses", label: "uses", placeholder: "e.g., 'continuedev/diff-context'" }],
     onChange: (nextItems) => {
       state.context = nextItems;
       onChange();
@@ -70,7 +84,7 @@ export function createWorkflowForm({ mount, onChange }) {
   const mcpServers = createArrayEditor({
     mount,
     label: "mcpServers",
-    fields: [{ name: "uses", label: "uses" }],
+    fields: [{ name: "uses", label: "uses", placeholder: "e.g., 'continuedev/context7-mcp-sse'" }],
     onChange: (nextItems) => {
       state.mcpServers = nextItems;
       onChange();
@@ -80,7 +94,7 @@ export function createWorkflowForm({ mount, onChange }) {
   const rules = createArrayEditor({
     mount,
     label: "rules",
-    fields: [{ name: "uses", label: "uses" }],
+    fields: [{ name: "uses", label: "uses", placeholder: "e.g., 'continuedev/continue-docs-standards'" }],
     onChange: (nextItems) => {
       state.rules = nextItems;
       onChange();

@@ -93,7 +93,9 @@ function normalizeMcpServers(servers) {
 function normalizeWorkflowModels(models) {
   return (Array.isArray(models) ? models : []).map((entry) => ({
     ...entry,
-    withAnthropicApiKey: entry?.with?.ANTHROPIC_API_KEY || "",
+    with: entry?.with && typeof entry.with === "object"
+      ? Object.entries(entry.with).map(([key, value]) => ({ key, value: String(value ?? "") }))
+      : [],
     roles: Array.isArray(entry?.override?.roles) ? entry.override.roles : []
   }));
 }
@@ -110,15 +112,24 @@ function normalizeUsesArray(items) {
 function serializeWorkflowModels(models) {
   return (Array.isArray(models) ? models : []).map((entry) => {
     const out = { ...entry };
-    if (out.withAnthropicApiKey) {
-      out.with = { ...(out.with || {}), ANTHROPIC_API_KEY: out.withAnthropicApiKey };
+    const withList = Array.isArray(out.with) ? out.with : [];
+    const withObject = {};
+    withList.forEach((item) => {
+      const key = String(item?.key || "").trim();
+      if (!key) return;
+      withObject[key] = String(item?.value ?? "");
+    });
+    if (Object.keys(withObject).length > 0) {
+      out.with = withObject;
+    } else {
+      delete out.with;
     }
+
     if (Array.isArray(out.roles) && out.roles.length > 0) {
       out.override = { ...(out.override || {}), roles: out.roles };
     }
-    delete out.withAnthropicApiKey;
+
     delete out.roles;
-    if (out.with && Object.keys(out.with).length === 0) delete out.with;
     if (out.override && Object.keys(out.override).length === 0) delete out.override;
     return out;
   });
