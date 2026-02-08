@@ -47,7 +47,14 @@ export function createPromptForm({ mount, onChange, availableTags = [] }) {
     fields: [
       { name: "name", label: "prompt name", placeholder: "e.g., 'New Component'" },
       { name: "description", label: "prompt description", placeholder: "e.g., 'Create a new Angular component'" },
-      { name: "prompt", label: "prompt text", multiline: true, placeholder: "e.g., 'Please create a new Angular component ...'" }
+      {
+        name: "prompt",
+        label: "prompt text",
+        multiline: true,
+        placeholder: "e.g., 'Please create a new Angular component ...'",
+        enablePromptEnhance: true,
+        enhanceFieldLabel: "prompt text"
+      }
     ],
     onChange: (nextItems) => {
       state.prompts = nextItems;
