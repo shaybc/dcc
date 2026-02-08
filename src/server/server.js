@@ -348,9 +348,10 @@ async function runDefinitionTestPipeline(definition, payload = {}) {
   }
 
   const continueCli = await runContinueCliValidation(definition, payload?.input || {});
+  const definitionSpecificValidation = Array.isArray(result?.results?.validation) ? result.results.validation : [];
   const mergedValidation = [
     ...genericValidation,
-    ...(Array.isArray(result?.results?.validation) ? result.results.validation : []),
+    ...definitionSpecificValidation,
     ...(Array.isArray(continueCli.validation) ? continueCli.validation : [])
   ];
   const warnings = [...(result?.warnings || []), ...(continueCli.warnings || [])];
@@ -363,6 +364,11 @@ async function runDefinitionTestPipeline(definition, payload = {}) {
     results: {
       ...(result?.results || {}),
       validation: mergedValidation,
+      pipeline: {
+        genericValidation,
+        definitionValidation: definitionSpecificValidation,
+        continueCliValidation: Array.isArray(continueCli.validation) ? continueCli.validation : []
+      },
       metadata: {
         ...(result?.results?.metadata || {}),
         definitionKey: definition?.key || "",

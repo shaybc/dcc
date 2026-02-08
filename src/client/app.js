@@ -1047,8 +1047,12 @@ function renderDefinitionTest(definition) {
           <label for="testValidationPrompt">Prompt</label>
           <textarea id="testValidationPrompt" rows="3" placeholder="Enter the prompt to validate with this definition"></textarea>
         </div>
+        <div class="test-section">
+          <label>Test pipeline</label>
+          <div class="test-inline-note">1) Generic definition validation → 2) Definition-type test → 3) Continue CLI validation for this definition.</div>
+        </div>
         <div class="test-actions">
-          <button type="button" class="primary-btn" id="runDefinitionTestButton">${config.actionLabel}</button>
+          <button type="button" class="primary-btn" id="runDefinitionTestButton">Run Validation Pipeline</button>
           <button type="button" class="secondary-btn" id="saveDefinitionTestCaseButton">${config.saveLabel}</button>
         </div>
       </section>
@@ -1292,6 +1296,20 @@ function getProviderIcon(name) {
   return "📦";
 }
 
+function renderValidationGroup(title, checks = []) {
+  const rows = Array.isArray(checks) ? checks : [];
+  return `
+    <div class="validation-group">
+      <h5>${escapeHtml(title)}</h5>
+      ${rows.length ? rows.map((check) => `
+        <div class="validation-item ${check.passed ? "passed" : "failed"}">
+          ${check.passed ? "✓" : "✗"} ${escapeHtml(formatCheckName(check.check))}
+          ${check.value ? `<span class="check-value">${escapeHtml(String(check.value))}</span>` : ""}
+        </div>`).join("") : `<div class="test-inline-note">No checks reported.</div>`}
+    </div>
+  `;
+}
+
 function displayContextProviderResults(contextResults) {
   const content = document.getElementById("definitionTestResultsContent");
   if (!content) return;
@@ -1357,6 +1375,10 @@ function displayDefinitionTestResults(result) {
   const metadata = result?.results?.metadata || {};
   const output = escapeHtml(String(result?.results?.output || ""));
   const checks = Array.isArray(result?.results?.validation) ? result.results.validation : [];
+  const pipeline = result?.results?.pipeline || {};
+  const genericChecks = Array.isArray(pipeline.genericValidation) ? pipeline.genericValidation : [];
+  const definitionChecks = Array.isArray(pipeline.definitionValidation) ? pipeline.definitionValidation : [];
+  const continueChecks = Array.isArray(pipeline.continueCliValidation) ? pipeline.continueCliValidation : [];
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
   const errors = Array.isArray(result?.errors) ? result.errors : [];
   const isContext = activeType === "context";
@@ -1376,13 +1398,11 @@ function displayDefinitionTestResults(result) {
         <div class="output-content"><pre>${output || "No output."}</pre></div>
       </div>
       <div class="validation-checks">
-        <h4>Validation Checks</h4>
+        <h4>Validation Pipeline</h4>
         ${isContext ? `<div class="inline-help">Automatic checks ensure your provider is configured correctly:<ul><li><strong>query_provided</strong> - Test query was submitted</li><li><strong>provider_exists</strong> - Provider is defined in configuration</li><li><strong>response_received</strong> - Provider returned data successfully</li><li><strong>response_not_empty</strong> - Provider returned meaningful content</li></ul></div>` : ""}
-        ${checks.length ? checks.map((check) => `
-          <div class="validation-item ${check.passed ? "passed" : "failed"}">
-            ${check.passed ? "✓" : "✗"} ${escapeHtml(formatCheckName(check.check))}
-            ${check.value ? `<span class="check-value">${escapeHtml(String(check.value))}</span>` : ""}
-          </div>`).join("") : `<div class="test-inline-note">No validation checks reported.</div>`}
+        ${genericChecks.length || definitionChecks.length || continueChecks.length
+          ? `${renderValidationGroup("1) Generic definition validation", genericChecks)}${renderValidationGroup("2) Definition-specific test", definitionChecks)}${renderValidationGroup("3) Continue CLI validation", continueChecks)}`
+          : (checks.length ? renderValidationGroup("Validation checks", checks) : `<div class="test-inline-note">No validation checks reported.</div>`)}
       </div>
       ${warnings.length ? `<div class="warnings"><h4>Warnings</h4>${warnings.map((item) => `<div class="warning-item">⚠️ ${escapeHtml(String(item))}</div>`).join("")}</div>` : ""}
       ${errors.length ? `<div class="errors"><h4>Errors</h4>${errors.map((item) => `<div class="error-item">❌ ${escapeHtml(String(item))}</div>`).join("")}</div>` : ""}
