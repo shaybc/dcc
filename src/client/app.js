@@ -1038,8 +1038,21 @@ function renderDefinitionTest(definition) {
         <h3>${getTestLabelForType(definition.type)}</h3>
         <p class="section-description"><strong>${escapeHtml(config.testName)}:</strong> ${escapeHtml(config.helpText)}</p>
         ${renderTestInputs(definition)}
+        <div class="test-section">
+          <label for="testProjectRootPath">Project Root Path</label>
+          <input id="testProjectRootPath" type="text" placeholder="/path/to/project/root">
+          <div class="test-inline-note">Used for Continue CLI validation against the current definition only.</div>
+        </div>
+        <div class="test-section">
+          <label for="testValidationPrompt">Prompt</label>
+          <textarea id="testValidationPrompt" rows="3" placeholder="Enter the prompt to validate with this definition"></textarea>
+        </div>
+        <div class="test-section">
+          <label>Test pipeline</label>
+          <div class="test-inline-note">1) Generic definition validation → 2) Definition-type test → 3) Continue CLI validation for this definition.</div>
+        </div>
         <div class="test-actions">
-          <button type="button" class="primary-btn" id="runDefinitionTestButton">${config.actionLabel}</button>
+          <button type="button" class="primary-btn" id="runDefinitionTestButton">Run Validation Pipeline</button>
           <button type="button" class="secondary-btn" id="saveDefinitionTestCaseButton">${config.saveLabel}</button>
         </div>
       </section>
@@ -1283,6 +1296,20 @@ function getProviderIcon(name) {
   return "📦";
 }
 
+function renderValidationGroup(title, checks = []) {
+  const rows = Array.isArray(checks) ? checks : [];
+  return `
+    <div class="validation-group">
+      <h5>${escapeHtml(title)}</h5>
+      ${rows.length ? rows.map((check) => `
+        <div class="validation-item ${check.passed ? "passed" : "failed"}">
+          ${check.passed ? "✓" : "✗"} ${escapeHtml(formatCheckName(check.check))}
+          ${check.value ? `<span class="check-value">${escapeHtml(String(check.value))}</span>` : ""}
+        </div>`).join("") : `<div class="test-inline-note">No checks reported.</div>`}
+    </div>
+  `;
+}
+
 function displayContextProviderResults(contextResults) {
   const content = document.getElementById("definitionTestResultsContent");
   if (!content) return;
@@ -1348,6 +1375,10 @@ function displayDefinitionTestResults(result) {
   const metadata = result?.results?.metadata || {};
   const output = escapeHtml(String(result?.results?.output || ""));
   const checks = Array.isArray(result?.results?.validation) ? result.results.validation : [];
+  const pipeline = result?.results?.pipeline || {};
+  const genericChecks = Array.isArray(pipeline.genericValidation) ? pipeline.genericValidation : [];
+  const definitionChecks = Array.isArray(pipeline.definitionValidation) ? pipeline.definitionValidation : [];
+  const continueChecks = Array.isArray(pipeline.continueCliValidation) ? pipeline.continueCliValidation : [];
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
   const errors = Array.isArray(result?.errors) ? result.errors : [];
   const isContext = activeType === "context";
@@ -1367,13 +1398,11 @@ function displayDefinitionTestResults(result) {
         <div class="output-content"><pre>${output || "No output."}</pre></div>
       </div>
       <div class="validation-checks">
-        <h4>Validation Checks</h4>
+        <h4>Validation Pipeline</h4>
         ${isContext ? `<div class="inline-help">Automatic checks ensure your provider is configured correctly:<ul><li><strong>query_provided</strong> - Test query was submitted</li><li><strong>provider_exists</strong> - Provider is defined in configuration</li><li><strong>response_received</strong> - Provider returned data successfully</li><li><strong>response_not_empty</strong> - Provider returned meaningful content</li></ul></div>` : ""}
-        ${checks.length ? checks.map((check) => `
-          <div class="validation-item ${check.passed ? "passed" : "failed"}">
-            ${check.passed ? "✓" : "✗"} ${escapeHtml(formatCheckName(check.check))}
-            ${check.value ? `<span class="check-value">${escapeHtml(String(check.value))}</span>` : ""}
-          </div>`).join("") : `<div class="test-inline-note">No validation checks reported.</div>`}
+        ${genericChecks.length || definitionChecks.length || continueChecks.length
+          ? `${renderValidationGroup("1) Generic definition validation", genericChecks)}${renderValidationGroup("2) Definition-specific test", definitionChecks)}${renderValidationGroup("3) Continue CLI validation", continueChecks)}`
+          : (checks.length ? renderValidationGroup("Validation checks", checks) : `<div class="test-inline-note">No validation checks reported.</div>`)}
       </div>
       ${warnings.length ? `<div class="warnings"><h4>Warnings</h4>${warnings.map((item) => `<div class="warning-item">⚠️ ${escapeHtml(String(item))}</div>`).join("")}</div>` : ""}
       ${errors.length ? `<div class="errors"><h4>Errors</h4>${errors.map((item) => `<div class="error-item">❌ ${escapeHtml(String(item))}</div>`).join("")}</div>` : ""}
@@ -1387,6 +1416,10 @@ function collectDefinitionTestPayload(definition) {
     temperature: Number.parseFloat(document.getElementById("testTemperature")?.value || "0.7"),
     maxTokens: Number.parseInt(document.getElementById("testMaxTokens")?.value || "1000", 10)
   };
+  const continueValidation = {
+    projectRootPath: document.getElementById("testProjectRootPath")?.value?.trim() || "",
+    prompt: document.getElementById("testValidationPrompt")?.value || ""
+  };
   if (normalizedType === "prompts") {
     const variables = {};
     document.querySelectorAll("[data-test-var]").forEach((element) => {
@@ -1394,12 +1427,12 @@ function collectDefinitionTestPayload(definition) {
       if (!key) return;
       variables[key] = element.value;
     });
-    return { testType: "dry_run", input: { variables }, config };
+    return { testType: "dry_run", input: { variables, continueValidation }, config };
   }
   if (normalizedType === "models") {
     return {
       testType: document.getElementById("testMode")?.value || "dry_run",
-      input: { message: document.getElementById("testMessage")?.value || "" },
+      input: { message: document.getElementById("testMessage")?.value || "", continueValidation },
       config
     };
   }
@@ -1409,21 +1442,26 @@ function collectDefinitionTestPayload(definition) {
       input: {
         testType: document.getElementById("testMcpType")?.value || "connection",
         toolName: document.getElementById("testMcpToolName")?.value || "read_file",
-        parameters: safeJsonParseClient(document.getElementById("testMcpToolParams")?.value || "{}", {})
+        parameters: safeJsonParseClient(document.getElementById("testMcpToolParams")?.value || "{}", {}),
+        continueValidation
       },
       config: {}
     };
   }
   if (normalizedType === "rules") {
-    return { testType: "validation", input: { sampleCode: document.getElementById("testRuleSample")?.value || "" }, config: {} };
+    return { testType: "validation", input: { sampleCode: document.getElementById("testRuleSample")?.value || "", continueValidation }, config: {} };
   }
   if (normalizedType === "workflows") {
-    return { testType: "validation", input: { dryRun: Boolean(document.getElementById("testWorkflowDryRun")?.checked) }, config: {} };
+    return { testType: "validation", input: { dryRun: Boolean(document.getElementById("testWorkflowDryRun")?.checked), continueValidation }, config: {} };
   }
   if (normalizedType === "agents") {
     return {
       testType: "simulation",
-      input: { scenario: document.getElementById("testAgentScenario")?.value || "", useMocks: Boolean(document.getElementById("testUseMocks")?.checked) },
+      input: {
+        scenario: document.getElementById("testAgentScenario")?.value || "",
+        useMocks: Boolean(document.getElementById("testUseMocks")?.checked),
+        continueValidation
+      },
       config: {}
     };
   }
@@ -1438,12 +1476,13 @@ function collectDefinitionTestPayload(definition) {
           projectRoot: document.getElementById("mockProjectRoot")?.value || "",
           workingDir: document.getElementById("mockWorkingDir")?.value || ""
         },
-        selectedProviders: [selectedProvider]
+        selectedProviders: [selectedProvider],
+        continueValidation
       },
       config: {}
     };
   }
-  return { testType: "validation", input: {}, config: {} };
+  return { testType: "validation", input: { continueValidation }, config: {} };
 }
 async function runDefinitionTest(definition) {
   if (!definition?.id) return;
