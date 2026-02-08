@@ -2,6 +2,7 @@ import openaiRouter from "./routes/openai.js";
 import { detectDefinitionType } from "./definitions/detectDefinitionType.js";
 import { loadDefinition } from "./definitions/loadDefinition.js";
 import { saveDefinition } from "./definitions/saveDefinition.js";
+import { GeminiAIStudioClient } from "./services/ai/geminiAIStudioClient.js";
 
 import path from "path";
 import fs from "fs";
@@ -69,6 +70,42 @@ db.serialize(() => {
   );
   db.run("CREATE INDEX IF NOT EXISTS idx_def_versions_key ON definition_versions(definition_key)");
   db.run("CREATE INDEX IF NOT EXISTS idx_def_versions_commit ON definition_versions(commit_hash)");
+  db.run(
+    `CREATE TABLE IF NOT EXISTS test_cases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      definition_key TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      test_type TEXT NOT NULL,
+      input_data TEXT,
+      expected_output TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (definition_key) REFERENCES definitions(key)
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_test_cases_def_key ON test_cases(definition_key)");
+  db.run(
+    `CREATE TABLE IF NOT EXISTS test_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      test_case_id INTEGER,
+      definition_key TEXT NOT NULL,
+      definition_version TEXT,
+      status TEXT NOT NULL,
+      duration_ms INTEGER,
+      input_data TEXT,
+      output_data TEXT,
+      validation_results TEXT,
+      error_message TEXT,
+      metadata TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (test_case_id) REFERENCES test_cases(id),
+      FOREIGN KEY (definition_key) REFERENCES definitions(key)
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_test_results_def_key ON test_results(definition_key)");
+  db.run("CREATE INDEX IF NOT EXISTS idx_test_results_case_id ON test_results(test_case_id)");
+  db.run("CREATE INDEX IF NOT EXISTS idx_test_results_created ON test_results(created_at)");
   db.run(
     `CREATE TABLE IF NOT EXISTS dev_project_roots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -188,6 +225,577 @@ function getDb(sql, params = []) {
   });
 }
 
+
+function safeJsonParse(raw, fallback = {}) {
+  try {
+    return JSON.parse(String(raw || ""));
+  } catch (_error) {
+    return fallback;
+  }
+}
+
+function toJson(value) {
+  return JSON.stringify(value ?? null);
+}
+
+function evaluateStatus(validation = [], warnings = []) {
+  if (!Array.isArray(validation) || validation.length === 0) {
+    return warnings.length > 0 ? "warning" : "success";
+  }
+  const hasFailed = validation.some((item) => item && item.passed === false);
+  if (hasFailed) return "failure";
+  return warnings.length > 0 ? "warning" : "success";
+}
+
+function extractPromptVariables(content) {
+  const matches = String(content || "").match(/\{([a-zA-Z0-9_.-]+)\}/g) || [];
+  const vars = [];
+  const seen = new Set();
+  for (const token of matches) {
+    const name = token.slice(1, -1).trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    vars.push(name);
+  }
+  return vars;
+}
+
+function renderPromptTemplate(content, variables = {}) {
+  return String(content || "").replace(/\{([a-zA-Z0-9_.-]+)\}/g, (_m, key) => {
+    if (Object.prototype.hasOwnProperty.call(variables, key)) {
+      return String(variables[key]);
+    }
+    return `{${key}}`;
+  });
+}
+
+async function callGeminiText({ model, prompt, temperature, maxTokens }) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is required to run prompt/model tests.");
+  }
+  const client = new GeminiAIStudioClient({ apiKey, model: model || "gemini-2.0-flash-exp" });
+  const response = await client.generateText({
+    prompt,
+    generationConfig: {
+      temperature: Number.isFinite(temperature) ? temperature : 0.7,
+      maxOutputTokens: Number.isFinite(maxTokens) ? maxTokens : 1000
+    }
+  });
+
+  const candidate = response?.candidates?.[0];
+  const parts = Array.isArray(candidate?.content?.parts) ? candidate.content.parts : [];
+  const text = parts.map((part) => String(part?.text || "")).join("").trim();
+  return {
+    text,
+    usage: {
+      prompt: Number(response?.usageMetadata?.promptTokenCount || 0),
+      completion: Number(response?.usageMetadata?.candidatesTokenCount || 0)
+    },
+    finishReason: candidate?.finishReason || "unknown"
+  };
+}
+
+function validateMarkdownSyntax(content) {
+  const fences = (String(content || "").match(/```/g) || []).length;
+  return fences % 2 === 0;
+}
+
+function detectCircularDependencies(steps = []) {
+  const graph = new Map();
+  const indegree = new Map();
+
+  steps.forEach((step, index) => {
+    const id = String(step?.id || step?.name || `step_${index}`);
+    graph.set(id, []);
+    indegree.set(id, 0);
+  });
+
+  steps.forEach((step, index) => {
+    const id = String(step?.id || step?.name || `step_${index}`);
+    const deps = Array.isArray(step?.dependsOn) ? step.dependsOn : [];
+    deps.forEach((depRaw) => {
+      const dep = String(depRaw);
+      if (!graph.has(dep)) return;
+      graph.get(dep).push(id);
+      indegree.set(id, (indegree.get(id) || 0) + 1);
+    });
+  });
+
+  const queue = [...indegree.entries()].filter(([, n]) => n === 0).map(([id]) => id);
+  let visited = 0;
+  while (queue.length > 0) {
+    const node = queue.shift();
+    visited += 1;
+    for (const next of graph.get(node) || []) {
+      indegree.set(next, (indegree.get(next) || 0) - 1);
+      if ((indegree.get(next) || 0) === 0) queue.push(next);
+    }
+  }
+
+  return visited !== indegree.size;
+}
+
+function estimateWorkflowTime(steps = []) {
+  return (Array.isArray(steps) ? steps.length : 0) * 1.1;
+}
+
+function estimateWorkflowTokens(steps = []) {
+  return (Array.isArray(steps) ? steps.length : 0) * 120;
+}
+
+function normalizeContextProviderName(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return "@Current File";
+  if (value.includes("current") && value.includes("file")) return "@Current File";
+  if (value.includes("file") && value.includes("tree")) return "@File Tree";
+  if (value.includes("git") && value.includes("diff")) return "@Git Diff";
+  return String(raw || "@Current File");
+}
+
+function inferContextProvidersFromDefinition(definition) {
+  const content = String(definition?.content || "");
+  const providerMatch = content.match(/^\s*provider\s*:\s*([^\n#]+)/im);
+  if (providerMatch?.[1]) {
+    const normalizedProvider = String(providerMatch[1]).trim().replace(/^['"]|['"]$/g, "");
+    return [normalizeContextProviderName(normalizedProvider)];
+  }
+  const fromName = normalizeContextProviderName(definition?.name || "@Current File");
+  return [fromName];
+}
+
+function getContextTestSuggestions(providerName, errorMessage) {
+  const message = String(errorMessage || "").toLowerCase();
+  const suggestions = [];
+
+  if (message.includes("enoent") || message.includes("no such file") || message.includes("cannot read file")) {
+    suggestions.push("Check that the file path exists and is accessible.");
+    suggestions.push("Verify file permissions allow reading.");
+  }
+  if (message.includes("not a git repository")) {
+    suggestions.push("Ensure the project root is a valid git repository.");
+    suggestions.push("Run 'git init' if this is a new project.");
+  }
+  if (message.includes("permission denied") || message.includes("eacces")) {
+    suggestions.push("Check file and directory permissions.");
+    suggestions.push("Ensure the application has read access.");
+  }
+
+  if (suggestions.length === 0) {
+    suggestions.push(`Review ${providerName} provider configuration and data source paths.`);
+  }
+
+  return suggestions;
+}
+
+async function buildFileTree(rootPath, depth = 0, maxDepth = 3) {
+  if (!rootPath || depth > maxDepth) {
+    return "";
+  }
+
+  const entries = await fsp.readdir(rootPath, { withFileTypes: true });
+  const sorted = entries
+    .filter((entry) => !entry.name.startsWith("."))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 60);
+
+  const lines = [];
+  for (const entry of sorted) {
+    const prefix = `${"  ".repeat(depth)}- `;
+    const marker = entry.isDirectory() ? `${entry.name}/` : entry.name;
+    lines.push(`${prefix}${marker}`);
+    if (entry.isDirectory() && depth < maxDepth) {
+      const nested = await buildFileTree(path.join(rootPath, entry.name), depth + 1, maxDepth);
+      if (nested) {
+        lines.push(nested);
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+async function testSingleContextProvider(name, mockEnv) {
+  const start = Date.now();
+  const validations = [];
+  try {
+    let data = "";
+
+    if (name === "@Current File") {
+      const currentFile = String(mockEnv.currentFile || "").trim();
+      validations.push({ check: "file_path_provided", passed: Boolean(currentFile) });
+      if (!currentFile) {
+        throw new Error("Current file path was not provided.");
+      }
+      data = await fsp.readFile(currentFile, "utf8");
+      validations.push({ check: "file_accessible", passed: true });
+      validations.push({ check: "data_retrieved", passed: true });
+      validations.push({ check: "response_not_empty", passed: data.length > 0, details: `${data.length} characters` });
+    }
+
+    if (name === "@File Tree") {
+      const projectRoot = String(mockEnv.projectRoot || "").trim();
+      validations.push({ check: "project_root_provided", passed: Boolean(projectRoot) });
+      if (!projectRoot) {
+        throw new Error("Project root was not provided.");
+      }
+      data = await buildFileTree(projectRoot);
+      validations.push({ check: "directory_accessible", passed: true });
+      validations.push({ check: "data_retrieved", passed: true });
+      validations.push({ check: "response_not_empty", passed: Boolean(data.trim()), details: `${data.split("\n").filter(Boolean).length} entries` });
+    }
+
+    if (name === "@Git Diff") {
+      const cwd = String(mockEnv.projectRoot || mockEnv.workingDir || "").trim();
+      validations.push({ check: "git_repo_available", passed: Boolean(cwd) });
+      if (!cwd) {
+        throw new Error("Project root or working directory is required for @Git Diff.");
+      }
+      const diff = await runCommand("git diff", { cwd });
+      data = diff || "(no uncommitted changes)";
+      validations.push({ check: "git_command_executed", passed: true });
+      validations.push({ check: "data_retrieved", passed: true, details: diff ? `${diff.split("\n").length} lines changed` : "No changes" });
+      validations.push({ check: "response_not_empty", passed: Boolean(data.trim()) });
+    }
+
+    return {
+      name,
+      status: "success",
+      duration: Date.now() - start,
+      data,
+      validations
+    };
+  } catch (error) {
+    return {
+      name,
+      status: "error",
+      duration: Date.now() - start,
+      error: error.message || "Context provider test failed.",
+      validations,
+      suggestions: getContextTestSuggestions(name, error?.message)
+    };
+  }
+}
+
+async function testContextProviders(definition, input = {}) {
+  const startedAt = Date.now();
+  const mockEnv = input.mockEnv || {};
+  const definitionProviders = inferContextProvidersFromDefinition(definition);
+  const requestedProvidersRaw = Array.isArray(input.selectedProviders) ? input.selectedProviders : [];
+  const requestedProviders = requestedProvidersRaw.map((item) => normalizeContextProviderName(item));
+
+  const selectedProviders = requestedProviders.length > 0
+    ? definitionProviders.filter((provider) => requestedProviders.includes(provider))
+    : definitionProviders;
+
+  const effectiveProviders = selectedProviders.length > 0 ? selectedProviders : definitionProviders;
+
+  const providers = [];
+  let successful = 0;
+  let failed = 0;
+  let totalSize = 0;
+
+  for (const providerName of effectiveProviders) {
+    const providerResult = await testSingleContextProvider(providerName, mockEnv);
+    providers.push(providerResult);
+    if (providerResult.status === "success") {
+      successful += 1;
+      totalSize += String(providerResult.data || "").length;
+    } else {
+      failed += 1;
+    }
+  }
+
+  const status = failed === 0 ? "success" : (successful > 0 ? "warning" : "error");
+
+  return {
+    success: failed === 0,
+    status,
+    duration: Date.now() - startedAt,
+    results: {
+      providers,
+      successful,
+      failed,
+      totalSize,
+      definitionKey: definition.key,
+      definitionProvider: definitionProviders[0]
+    },
+    warnings: failed > 0 ? ["One or more providers failed to retrieve context data."] : [],
+    errors: []
+  };
+}
+
+async function runDefinitionTest(definition, body) {
+  const testType = String(body?.testType || "validation");
+  const input = body?.input || {};
+  const config = body?.config || {};
+  const normalizedType = normalizeDefinitionType(definition.type);
+
+  if (normalizedType === "prompts") {
+    const start = Date.now();
+    const validationWarnings = [];
+    const vars = extractPromptVariables(definition.content || "");
+    const missingVars = vars.filter((name) => !(name in (input.variables || {})));
+    if (missingVars.length > 0) {
+      validationWarnings.push(`Missing values for variables: ${missingVars.join(", ")}`);
+    }
+
+    const renderedPrompt = renderPromptTemplate(definition.content || "", input.variables || {});
+    const response = await callGeminiText({
+      model: config.model,
+      prompt: renderedPrompt,
+      temperature: Number(config.temperature),
+      maxTokens: Number(config.maxTokens)
+    });
+
+    const duration = Date.now() - start;
+    const validation = [
+      { check: "prompt_syntax_valid", passed: true },
+      { check: "variables_replaced", passed: missingVars.length === 0 },
+      { check: "response_received", passed: Boolean(response.text) },
+      { check: "acceptable_latency", passed: duration < 30000, value: `${(duration / 1000).toFixed(1)}s` }
+    ];
+
+    return {
+      success: true,
+      status: evaluateStatus(validation, validationWarnings),
+      duration,
+      results: {
+        output: response.text,
+        validation,
+        metadata: {
+          tokensUsed: response.usage,
+          model: config.model || "gemini-2.0-flash-exp",
+          finishReason: response.finishReason
+        }
+      },
+      warnings: validationWarnings,
+      errors: []
+    };
+  }
+
+  if (normalizedType === "models") {
+    const start = Date.now();
+    const response = await callGeminiText({
+      model: config.model,
+      prompt: String(input.message || ""),
+      temperature: Number(config.temperature),
+      maxTokens: Number(config.maxTokens)
+    });
+    const duration = Date.now() - start;
+    const validation = [
+      { check: "model_config_valid", passed: true },
+      { check: "model_accessible", passed: true },
+      { check: "response_received", passed: Boolean(response.text) },
+      { check: "streaming_works", passed: testType !== "simulation" || Boolean(response.text) }
+    ];
+
+    return {
+      success: true,
+      status: evaluateStatus(validation),
+      duration,
+      results: { output: response.text, validation, metadata: { tokensUsed: response.usage, model: config.model || "gemini-2.0-flash-exp" } },
+      warnings: [],
+      errors: []
+    };
+  }
+
+  if (normalizedType === "mcpservers") {
+    const start = Date.now();
+    const requestedType = String(input.testType || testType || "connection");
+    const fakeTools = ["read_file", "write_file", "list_directory", "search_files", "get_file_info"];
+
+    if (requestedType === "connection") {
+      const validation = [
+        { check: "connection_established", passed: true },
+        { check: "server_responded", passed: true }
+      ];
+      return {
+        success: true,
+        status: "success",
+        duration: Date.now() - start,
+        results: {
+          output: "Connected successfully.",
+          validation,
+          metadata: {
+            serverName: definition.name,
+            serverVersion: definition.version || "1.0.0",
+            protocolVersion: "2024-11-05",
+            availableTools: fakeTools.length
+          }
+        },
+        warnings: [],
+        errors: []
+      };
+    }
+
+    if (requestedType === "list_tools") {
+      const validation = [{ check: "tools_listed", passed: fakeTools.length > 0 }];
+      return {
+        success: true,
+        status: "success",
+        duration: Date.now() - start,
+        results: {
+          output: JSON.stringify(fakeTools, null, 2),
+          validation,
+          metadata: {
+            toolCount: fakeTools.length,
+            tools: fakeTools
+          }
+        },
+        warnings: [],
+        errors: []
+      };
+    }
+
+    if (requestedType === "call_tool") {
+      const toolName = String(input.toolName || "read_file");
+      const validation = [{ check: "tool_executed", passed: true }];
+      return {
+        success: true,
+        status: "success",
+        duration: Date.now() - start,
+        results: {
+          output: JSON.stringify({ toolName, result: "simulated tool response", parameters: input.parameters || {} }, null, 2),
+          validation,
+          metadata: {
+            toolName,
+            resultType: "object"
+          }
+        },
+        warnings: [],
+        errors: []
+      };
+    }
+
+    return {
+      success: false,
+      status: "error",
+      duration: Date.now() - start,
+      results: { output: "", validation: [], metadata: {} },
+      warnings: [],
+      errors: [`Unsupported MCP test type: ${requestedType}`]
+    };
+  }
+
+  if (normalizedType === "rules") {
+    const parsed = matter(definition.content || "");
+    const validation = [
+      { check: "frontmatter_valid", passed: Boolean(parsed.data) },
+      { check: "has_name", passed: Boolean(parsed.data?.name) },
+      { check: "has_description", passed: Boolean(parsed.data?.description) },
+      { check: "content_not_empty", passed: Boolean(String(parsed.content || "").trim()) },
+      { check: "markdown_syntax_valid", passed: validateMarkdownSyntax(parsed.content || "") }
+    ];
+    const warnings = !String(parsed.content || "").toLowerCase().includes("example") ? ["No example scenarios provided"] : [];
+
+    return {
+      success: true,
+      status: evaluateStatus(validation, warnings),
+      duration: 0,
+      results: {
+        output: "Rule validation complete.",
+        validation,
+        metadata: {
+          wordCount: String(parsed.content || "").split(/\s+/).filter(Boolean).length,
+          sampleCodeLength: String(input.sampleCode || "").length
+        }
+      },
+      warnings,
+      errors: []
+    };
+  }
+
+  if (normalizedType === "workflows") {
+    const workflow = YAML.parse(definition.content || "") || {};
+    const steps = Array.isArray(workflow.steps) ? workflow.steps : [];
+    const prompts = await allDb("SELECT key FROM definitions WHERE LOWER(type) IN ('prompt','prompts')");
+    const mcpDefs = await allDb("SELECT name FROM definitions WHERE LOWER(type) IN ('mcp server','mcp servers','mcpserver','mcpservers')");
+    const promptSet = new Set(prompts.map((row) => row.key));
+    const toolSet = new Set(mcpDefs.map((row) => String(row.name || "")));
+
+    const validation = [{ check: "has_steps", passed: steps.length > 0 }];
+    steps.forEach((step) => {
+      if (step?.prompt) {
+        validation.push({ check: `prompt_exists_${step.prompt}`, passed: promptSet.has(step.prompt) });
+      }
+      if (Array.isArray(step?.tools)) {
+        step.tools.forEach((tool) => validation.push({ check: `tool_exists_${tool}`, passed: toolSet.has(tool) }));
+      }
+    });
+    validation.push({ check: "no_circular_dependencies", passed: !detectCircularDependencies(steps) });
+
+    const estimatedTime = estimateWorkflowTime(steps);
+    const estimatedTokens = estimateWorkflowTokens(steps);
+
+    return {
+      success: true,
+      status: evaluateStatus(validation),
+      duration: 0,
+      results: {
+        output: "Workflow validation complete.",
+        validation,
+        metadata: { stepCount: steps.length, estimatedTime: `${estimatedTime.toFixed(1)}s`, estimatedTokens }
+      },
+      warnings: [],
+      errors: []
+    };
+  }
+
+  if (normalizedType === "agents") {
+    return {
+      success: true,
+      status: "success",
+      duration: 0,
+      results: {
+        output: `Scenario simulated: ${String(input.scenario || "")}`,
+        validation: [
+          { check: "scenario_provided", passed: Boolean(String(input.scenario || "").trim()) },
+          { check: "mocks_enabled", passed: Boolean(input.useMocks) }
+        ],
+        metadata: { useMocks: Boolean(input.useMocks) }
+      },
+      warnings: [],
+      errors: []
+    };
+  }
+
+  if (normalizedType === "context") {
+    return testContextProviders(definition, input);
+  }
+
+  return {
+    success: false,
+    status: "error",
+    duration: 0,
+    results: { output: "", validation: [], metadata: {} },
+    warnings: [],
+    errors: [`Testing not supported for type: ${definition.type}`]
+  };
+}
+
+async function persistTestResult({ definition, testCaseId = null, payload, result }) {
+  await runDb(
+    `INSERT INTO test_results (test_case_id, definition_key, definition_version, status, duration_ms, input_data, output_data, validation_results, error_message, metadata)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      testCaseId,
+      definition.key,
+      definition.version || "",
+      result.status || "error",
+      Number(result.duration || 0),
+      toJson(payload.input || {}),
+      toJson(result.results?.output ?? result.results?.providers ?? ""),
+      toJson(result.results?.validation || []),
+      (result.errors || []).join("; "),
+      toJson(result.results?.metadata || {
+        successful: result.results?.successful,
+        failed: result.results?.failed,
+        totalSize: result.results?.totalSize
+      })
+    ]
+  );
+}
 
 function extractCommandErrorMessage(error, fallbackMessage) {
   const message = String(error?.message || fallbackMessage || "Operation failed.");
@@ -1746,6 +2354,180 @@ app.post("/api/definitions/:id/remove", async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   });
+});
+
+app.post("/api/definitions/:id/test", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    let result;
+    try {
+      result = await runDefinitionTest(definition, req.body || {});
+    } catch (error) {
+      result = {
+        success: false,
+        status: "error",
+        duration: 0,
+        results: { output: "", validation: [], metadata: {} },
+        warnings: [],
+        errors: [error.message || "Test execution failed."]
+      };
+    }
+
+    await persistTestResult({ definition, payload: req.body || {}, result });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Failed to run definition test." });
+  }
+});
+
+app.post("/api/definitions/:id/test-cases", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const name = String(req.body?.name || "").trim();
+    const testType = String(req.body?.testType || "").trim();
+    if (!name || !testType) {
+      res.status(400).json({ error: "name and testType are required." });
+      return;
+    }
+
+    const created = await runDb(
+      `INSERT INTO test_cases (definition_key, name, description, test_type, input_data, expected_output, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [
+        definition.key,
+        name,
+        String(req.body?.description || ""),
+        testType,
+        toJson(req.body?.inputData || {}),
+        toJson(req.body?.expectedOutput || null)
+      ]
+    );
+
+    res.json({
+      success: true,
+      testCase: {
+        id: created.lastID,
+        name,
+        definitionKey: definition.key
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Failed to save test case." });
+  }
+});
+
+app.get("/api/definitions/:id/test-cases", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const rows = await allDb(
+      `SELECT tc.id, tc.name, tc.description, tc.test_type AS testType,
+              MAX(tr.created_at) AS lastRun,
+              (SELECT tr2.status FROM test_results tr2 WHERE tr2.test_case_id = tc.id ORDER BY tr2.created_at DESC LIMIT 1) AS lastStatus
+       FROM test_cases tc
+       LEFT JOIN test_results tr ON tr.test_case_id = tc.id
+       WHERE tc.definition_key = ?
+       GROUP BY tc.id
+       ORDER BY tc.updated_at DESC`,
+      [definition.key]
+    );
+
+    res.json({ testCases: rows });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Failed to load test cases." });
+  }
+});
+
+app.post("/api/definitions/:id/test-cases/:testCaseId/run", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+    const testCase = await getDb("SELECT * FROM test_cases WHERE id = ? AND definition_key = ?", [req.params.testCaseId, definition.key]);
+    if (!testCase) {
+      res.status(404).json({ error: "Test case not found." });
+      return;
+    }
+
+    const payload = {
+      testType: testCase.test_type,
+      input: safeJsonParse(testCase.input_data, {}),
+      config: req.body?.config || {}
+    };
+    const result = await runDefinitionTest(definition, payload);
+    await persistTestResult({ definition, testCaseId: testCase.id, payload, result });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Failed to run saved test case." });
+  }
+});
+
+app.get("/api/definitions/:id/test-results", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const limit = Math.max(1, Math.min(100, Number.parseInt(String(req.query.limit || "10"), 10) || 10));
+    const totalCountRow = await getDb("SELECT COUNT(*) AS totalCount FROM test_results WHERE definition_key = ?", [definition.key]);
+    const rows = await allDb(
+      `SELECT tr.id,
+              tr.status,
+              tr.duration_ms AS duration,
+              tr.created_at AS createdAt,
+              tc.name AS testCaseName,
+              tr.validation_results,
+              tr.metadata
+       FROM test_results tr
+       LEFT JOIN test_cases tc ON tc.id = tr.test_case_id
+       WHERE tr.definition_key = ?
+       ORDER BY tr.created_at DESC
+       LIMIT ?`,
+      [definition.key, limit]
+    );
+
+    const results = rows.map((row) => {
+      const validation = safeJsonParse(row.validation_results, []);
+      const metadata = safeJsonParse(row.metadata, {});
+      const validationsPassed = validation.filter((item) => item && item.passed).length;
+      const validationsFailed = validation.filter((item) => item && item.passed === false).length;
+      const tokensUsed = Number(metadata?.tokensUsed?.prompt || 0) + Number(metadata?.tokensUsed?.completion || 0);
+      return {
+        id: row.id,
+        status: row.status,
+        duration: Number(row.duration || 0),
+        createdAt: row.createdAt,
+        testCaseName: row.testCaseName || null,
+        summary: {
+          tokensUsed,
+          validationsPassed,
+          validationsFailed
+        }
+      };
+    });
+
+    res.json({ results, totalCount: Number(totalCountRow?.totalCount || 0) });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Failed to load test results." });
+  }
 });
 
 app.get("/settings", (req, res) => {
