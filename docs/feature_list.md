@@ -194,12 +194,33 @@ Provides light/dark theme preference toggling from settings page.
 
 ---
 
-## 15) Feature Footprint Summary
+## 15) Definition Version History
+
+### What it does
+Adds per-definition version browsing in the details page backed by git history and cached in SQLite.
+
+### Included capabilities
+- Version History action button in the details action row.
+- Searchable version dropdown with current-version checkmark and “View all versions”.
+- Historical mode banner with “Restore this version” and “Back to current”.
+- Version badge next to definition metadata (`vX.Y.Z`, plus Historical indicator when applicable).
+
+### Backend/API details
+- New cache table: `definition_versions` (`definition_key`, `version`, commit metadata, raw content, metadata JSON).
+- New routes:
+  - `GET /api/definitions/:id/versions`
+  - `GET /api/definitions/:id/versions/:version`
+  - `POST /api/definitions/:id/versions/:version/restore`
+- Git discovery uses `git log --follow` and `git show` for the concrete file path.
+
+---
+
+## 16) Feature Footprint Summary
 
 | Category | Approximate footprint |
 |---|---|
-| REST endpoints in core server | 20 `/api/*` routes |
+| REST endpoints in core server | 24 `/api/*` routes |
 | OpenAI-compatible routes | 4 `/v1/*` routes |
 | Definition editing forms | 7 type-specific form modules |
-| Persistent tables | 5 SQLite tables |
+| Persistent tables | 6 SQLite tables |
 
