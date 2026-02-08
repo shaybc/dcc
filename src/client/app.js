@@ -739,6 +739,57 @@ function parsePromptVariables(content) {
   });
   return vars;
 }
+function renderContextHelpBanner() {
+  return `
+    <div class="test-help-banner">
+      <button class="help-banner-toggle" type="button" id="contextHelpBannerToggle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        What does this test do?
+      </button>
+      <div class="help-banner-content" id="helpBannerContent" hidden>
+        <h4>Context Provider Testing Explained</h4>
+        <div class="help-section">
+          <h5>🎯 Purpose</h5>
+          <p>Context providers are plugins that supply real-time information to AI assistants. For example, a <em>current-file</em> provider gives the AI access to the file you are editing.</p>
+        </div>
+        <div class="help-section">
+          <h5>🧪 How Testing Works</h5>
+          <ol>
+            <li>You enter a test query (what a developer might ask the AI)</li>
+            <li>The system simulates calling your context provider</li>
+            <li>You see exactly what data the provider returns</li>
+            <li>Validation checks confirm configuration correctness</li>
+          </ol>
+        </div>
+        <div class="help-section">
+          <h5>✅ What Success Means</h5>
+          <ul>
+            <li>Your provider configuration is valid</li>
+            <li>The provider responds to queries</li>
+            <li>It returns the expected information type</li>
+            <li>It is ready for project deployment</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderContextInputHelp() {
+  return `
+    <div class="test-help-section">
+      <h4>ℹ️ What am I testing?</h4>
+      <p>Context providers supply information to AI assistants during conversations. This test simulates how your context provider responds to queries.</p>
+      <p><strong>Test Query:</strong> Enter a question or request that would normally be sent to the AI. The test shows what contextual information your provider would supply in response.</p>
+      <p class="help-note">💡 <strong>Example queries:</strong><br>• "What files are in this project?"<br>• "Show me the current file"<br>• "What changed in git?"</p>
+    </div>
+  `;
+}
+
 function renderTestInputs(definition) {
   const normalizedType = normalizeFilterType(definition.type);
   if (normalizedType === "prompts") {
@@ -843,17 +894,22 @@ function renderTestInputs(definition) {
   }
   if (normalizedType === "context") {
     return `
+      ${renderContextHelpBanner()}
+      ${renderContextInputHelp()}
       <div class="test-section">
         <label for="testContextQuery">Test Query</label>
         <textarea id="testContextQuery" rows="4" placeholder="Show me the current file structure"></textarea>
+        <div class="inline-help">This query simulates what a developer might ask. The provider determines what context to return.</div>
       </div>
     `;
   }
   return `<p class="test-inline-note">Testing is not available for this definition type.</p>`;
 }
 function renderDefinitionTest(definition) {
+  const normalizedType = normalizeFilterType(definition.type);
+  const isContext = normalizedType === "context";
   return `
-    <div class="test-interface" data-definition-id="${definition.id}">
+    <div class="test-interface" data-definition-id="${definition.id}" data-definition-type="${normalizedType}">
       <section class="test-input-panel">
         <h3>${getTestLabelForType(definition.type)}</h3>
         ${renderTestInputs(definition)}
@@ -867,6 +923,21 @@ function renderDefinitionTest(definition) {
           <h3>Results & Validation</h3>
           <button type="button" class="secondary-btn" id="definitionTestHistoryButton">📜 History</button>
         </div>
+        ${isContext ? `
+          <div class="results-help-header">
+            <h4>Understanding Results</h4>
+            <button class="help-toggle" type="button" id="resultsHelpToggle">?</button>
+          </div>
+          <div class="results-help-content" id="resultsHelp" hidden>
+            <div class="help-item"><span class="help-icon">✅</span><div><strong>SUCCESS</strong> - Provider responded correctly to your query</div></div>
+            <div class="help-item"><span class="help-icon">⚠️</span><div><strong>WARNING</strong> - Provider responded but validation checks found issues</div></div>
+            <div class="help-item"><span class="help-icon">❌</span><div><strong>ERROR</strong> - Provider failed to respond or configuration is invalid</div></div>
+            <div class="help-divider"></div>
+            <p><strong>Response:</strong> The actual context data returned by your provider. This is what the AI assistant would receive.</p>
+            <p><strong>Validation Checks:</strong> Automated tests ensuring your provider configuration is correct and working as expected.</p>
+            <p class="help-note">💡 In production, context providers run automatically when the AI needs information. This test lets you verify they work before deploying to your project.</p>
+          </div>
+        ` : ""}
         <div id="definitionTestResultsContent" class="empty-state">Run a test to see results.</div>
       </section>
     </div>
@@ -1074,6 +1145,8 @@ function displayDefinitionTestResults(result) {
   const checks = Array.isArray(result?.results?.validation) ? result.results.validation : [];
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
   const errors = Array.isArray(result?.errors) ? result.errors : [];
+  const activeType = document.querySelector(".test-interface")?.dataset.definitionType || "";
+  const isContext = activeType === "context";
   content.innerHTML = `
     <div class="test-result ${status}">
       <div class="result-header">
@@ -1086,10 +1159,12 @@ function displayDefinitionTestResults(result) {
       </div>
       <div class="result-output">
         <h4>Response</h4>
+        ${isContext ? `<div class="inline-help">This is the actual data your AI assistant would receive. Verify it contains the information you expect.</div>` : ""}
         <div class="output-content"><pre>${output || "No output."}</pre></div>
       </div>
       <div class="validation-checks">
         <h4>Validation Checks</h4>
+        ${isContext ? `<div class="inline-help">Automatic checks ensure your provider is configured correctly:<ul><li><strong>query_provided</strong> - Test query was submitted</li><li><strong>provider_exists</strong> - Provider is defined in configuration</li><li><strong>response_received</strong> - Provider returned data successfully</li><li><strong>response_not_empty</strong> - Provider returned meaningful content</li></ul></div>` : ""}
         ${checks.length ? checks.map((check) => `
           <div class="validation-item ${check.passed ? "passed" : "failed"}">
             ${check.passed ? "✓" : "✗"} ${escapeHtml(formatCheckName(check.check))}
@@ -1208,10 +1283,24 @@ async function showDefinitionTestHistory(definition) {
     window.alert(error.message || "Unable to load test history.");
   }
 }
+function toggleHelpBanner() {
+  const section = document.getElementById("helpBannerContent");
+  if (!section) return;
+  section.hidden = !section.hidden;
+}
+
+function toggleResultsHelp() {
+  const section = document.getElementById("resultsHelp");
+  if (!section) return;
+  section.hidden = !section.hidden;
+}
+
 function bindDefinitionTestActions(definition) {
   document.getElementById("runDefinitionTestButton")?.addEventListener("click", () => runDefinitionTest(definition));
   document.getElementById("saveDefinitionTestCaseButton")?.addEventListener("click", () => saveDefinitionTestCase(definition));
   document.getElementById("definitionTestHistoryButton")?.addEventListener("click", () => showDefinitionTestHistory(definition));
+  document.getElementById("contextHelpBannerToggle")?.addEventListener("click", toggleHelpBanner);
+  document.getElementById("resultsHelpToggle")?.addEventListener("click", toggleResultsHelp);
 }
 async function showDetails(id) {
   closeVersionDropdown();

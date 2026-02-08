@@ -1444,3 +1444,129 @@ body.detail-page-open {
     grid-template-columns: 1fr;
   }
 }
+
+/* Context test help */
+.test-help-banner {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.help-banner-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  font-weight: 500;
+  padding: 0;
+}
+
+.help-banner-content {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.help-section {
+  margin-bottom: 16px;
+}
+
+.help-section p,
+.help-section ul,
+.help-section ol {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.help-example {
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 3px solid #3b82f6;
+  padding: 12px;
+  margin-top: 16px;
+}
+
+.inline-help {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  padding-left: 4px;
+  font-style: italic;
+}
+
+.inline-help ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-style: normal;
+}
+
+.inline-help strong {
+  color: var(--text-primary);
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+}
+
+.results-help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.help-toggle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--text-secondary);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.results-help-content {
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.help-item {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.help-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.help-divider {
+  height: 1px;
+  background: rgba(59, 130, 246, 0.2);
+  margin: 16px 0;
+}
+
+.test-help-section {
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.test-help-section h4 {
+  margin: 0 0 12px;
+  color: #3b82f6;
+}
+
+.test-help-section p {
+  margin: 0 0 12px;
+  line-height: 1.6;
+}
