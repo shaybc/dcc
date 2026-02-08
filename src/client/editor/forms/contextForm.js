@@ -16,7 +16,7 @@ function createTextInput({ mount, label, state, key, placeholder, onChange }) {
   return input;
 }
 
-export function createContextForm({ mount, onChange }) {
+export function createContextForm({ mount, onChange, availableTags = [] }) {
   const state = {
     name: "",
     version: "",
@@ -34,7 +34,7 @@ export function createContextForm({ mount, onChange }) {
   const tags = createArrayEditor({
     mount,
     label: "tags",
-    fields: [{ name: "value", label: "tags", placeholder: "e.g., 'tag1, tag2, tag3'" }],
+    fields: [{ name: "value", label: "tags", placeholder: "e.g., 'tag1, tag2, tag3'", autocompleteOptions: availableTags }],
     onChange: (nextItems) => {
       state.tags = nextItems;
       onChange();

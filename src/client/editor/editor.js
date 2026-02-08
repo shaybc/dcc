@@ -25,6 +25,7 @@ let sync;
 let definitionType = typeParam;
 let format = "yaml";
 let unknown = {};
+let availableTags = [];
 
 function typeDisplayLabel(type) {
   if (type === "mcpServer") return "MCP Server";
@@ -338,7 +339,7 @@ function captureUnknownFields(type, parsed) {
 function setupForType(type, initialRaw) {
   formMount.innerHTML = "";
   const handler = handlers[type];
-  formController = handler.createForm({ mount: formMount, onChange: () => sync.updateTextFromForm() });
+  formController = handler.createForm({ mount: formMount, onChange: () => sync.updateTextFromForm(), availableTags });
   sync = createTextFormSync({
     textArea: rawText,
     errorNode: parseError,
@@ -361,6 +362,16 @@ function setupForType(type, initialRaw) {
 
 async function boot() {
   let raw = "";
+  try {
+    const tagsResponse = await fetch("/api/definition-tags");
+    if (tagsResponse.ok) {
+      const tagsPayload = await tagsResponse.json();
+      availableTags = Array.isArray(tagsPayload) ? tagsPayload : [];
+    }
+  } catch (_error) {
+    availableTags = [];
+  }
+
   if (mode === "edit") {
     const response = await fetch(`/api/editor/definition?path=${encodeURIComponent(pathParam)}`);
     const payload = await response.json();
