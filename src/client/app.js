@@ -848,6 +848,25 @@ function renderContextHelpBanner() {
   `;
 }
 
+function normalizeContextProviderName(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return "@Current File";
+  if (value.includes("current") && value.includes("file")) return "@Current File";
+  if (value.includes("file") && value.includes("tree")) return "@File Tree";
+  if (value.includes("git") && value.includes("diff")) return "@Git Diff";
+  return String(raw || "@Current File");
+}
+
+function getContextProviderForDefinition(definition) {
+  const content = String(definition?.content || "");
+  const providerMatch = content.match(/^\s*provider\s*:\s*([^\n#]+)/im);
+  if (providerMatch?.[1]) {
+    const normalizedProvider = String(providerMatch[1]).trim().replace(/^['"]|['"]$/g, "");
+    return normalizeContextProviderName(normalizedProvider);
+  }
+  return normalizeContextProviderName(definition?.name || "@Current File");
+}
+
 function renderContextInputHelp() {
   return `
     <div class="test-help-section">
@@ -993,14 +1012,17 @@ function renderTestInputs(definition) {
         </div>
       </div>
       <div class="test-section">
-        <label>Select Providers to Test</label>
-        <p class="section-description">Choose providers to simulate. Each will attempt to retrieve its respective data.</p>
+        <label>Provider Under Test</label>
+        <p class="section-description">This test runs only the provider defined by the current definition.</p>
         <div class="provider-selection">
-          <label class="provider-checkbox"><input type="checkbox" id="providerCurrentFile" checked><span class="provider-name">@Current File</span><span class="provider-description">Retrieves content of the current file</span></label>
-          <label class="provider-checkbox"><input type="checkbox" id="providerFileTree" checked><span class="provider-name">@File Tree</span><span class="provider-description">Retrieves project directory structure</span></label>
-          <label class="provider-checkbox"><input type="checkbox" id="providerGitDiff"><span class="provider-name">@Git Diff</span><span class="provider-description">Retrieves uncommitted changes</span></label>
+          <label class="provider-checkbox">
+            <input type="checkbox" checked disabled>
+            <span class="provider-name">${escapeHtml(getContextProviderForDefinition(definition))}</span>
+            <span class="provider-description">Loaded from this definition in the details panel</span>
+          </label>
         </div>
-        <div class="inline-help">This is a dry-run provider retrieval test; no AI call is made.</div>
+        <input type="hidden" id="contextProviderName" value="${escapeHtml(getContextProviderForDefinition(definition))}">
+        <div class="inline-help">This is a dry-run provider retrieval test for the current definition only; no AI call is made.</div>
       </div>
     `;
   }
@@ -1406,10 +1428,7 @@ function collectDefinitionTestPayload(definition) {
     };
   }
   if (normalizedType === "context") {
-    const selectedProviders = [];
-    if (document.getElementById("providerCurrentFile")?.checked) selectedProviders.push("@Current File");
-    if (document.getElementById("providerFileTree")?.checked) selectedProviders.push("@File Tree");
-    if (document.getElementById("providerGitDiff")?.checked) selectedProviders.push("@Git Diff");
+    const selectedProvider = document.getElementById("contextProviderName")?.value || getContextProviderForDefinition(definition);
 
     return {
       testType: "simulation",
@@ -1419,7 +1438,7 @@ function collectDefinitionTestPayload(definition) {
           projectRoot: document.getElementById("mockProjectRoot")?.value || "",
           workingDir: document.getElementById("mockWorkingDir")?.value || ""
         },
-        selectedProviders
+        selectedProviders: [selectedProvider]
       },
       config: {}
     };
