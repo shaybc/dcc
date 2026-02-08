@@ -917,55 +917,62 @@ async function loadDefinitionVersion(version) {
 function createVersionDropdown({ versions, currentVersion }) {
   const dropdown = document.createElement("div");
   dropdown.className = "version-dropdown";
-
-  const topVersions = versions.slice(0, 25);
-
   dropdown.innerHTML = `
     <div class="version-search"><input type="search" placeholder="Search versions" aria-label="Search versions"></div>
     <button class="version-option view-all" type="button">View all versions</button>
-    <div class="version-list">
-      ${topVersions.map((version) => `
-        <button class="version-option ${version.version === currentVersion ? "current" : ""}" type="button" data-version="${escapeHtml(version.version)}">
-          <span class="version-number">${escapeHtml(version.version)}</span>
-          <span class="version-date">${escapeHtml(formatVersionCommitDate(version.commitDate))}</span>
-          ${version.version === currentVersion ? '<span class="checkmark">✓</span>' : ""}
-        </button>
-      `).join("")}
-    </div>
+    <div class="version-list"></div>
   `;
 
   const searchInputEl = dropdown.querySelector(".version-search input");
-  const versionButtons = () => [...dropdown.querySelectorAll(".version-option[data-version]")];
-  searchInputEl?.addEventListener("input", () => {
-    const query = String(searchInputEl.value || "").trim().toLowerCase();
-    versionButtons().forEach((button) => {
-      const versionValue = String(button.getAttribute("data-version") || "").toLowerCase();
-      button.hidden = query.length > 0 && !versionValue.includes(query);
-    });
-  });
+  const list = dropdown.querySelector(".version-list");
+  const viewAllButton = dropdown.querySelector(".view-all");
 
-  dropdown.querySelector(".view-all")?.addEventListener("click", () => {
-    const list = dropdown.querySelector(".version-list");
-    if (!list) return;
-    list.innerHTML = versions.map((version) => `
+  let showAllVersions = false;
+
+  function renderVersionList() {
+    if (!list) {
+      return;
+    }
+
+    const query = String(searchInputEl?.value || "").trim().toLowerCase();
+    const visibleSource = showAllVersions ? versions : versions.slice(0, 25);
+    const filteredVersions = visibleSource.filter((version) => String(version.version || "").toLowerCase().includes(query));
+
+    if (viewAllButton) {
+      const shouldShowViewAll = !showAllVersions && query.length === 0 && versions.length > 25;
+      viewAllButton.hidden = !shouldShowViewAll;
+    }
+
+    if (filteredVersions.length === 0) {
+      list.innerHTML = '<div class="version-empty">No matching versions</div>';
+      return;
+    }
+
+    list.innerHTML = filteredVersions.map((version) => `
       <button class="version-option ${version.version === currentVersion ? "current" : ""}" type="button" data-version="${escapeHtml(version.version)}">
         <span class="version-number">${escapeHtml(version.version)}</span>
         <span class="version-date">${escapeHtml(formatVersionCommitDate(version.commitDate))}</span>
         ${version.version === currentVersion ? '<span class="checkmark">✓</span>' : ""}
       </button>
     `).join("");
-    versionButtons().forEach((button) => {
+
+    [...list.querySelectorAll(".version-option[data-version]")].forEach((button) => {
       button.addEventListener("click", async () => {
         await loadDefinitionVersion(button.getAttribute("data-version") || "");
       });
     });
+  }
+
+  searchInputEl?.addEventListener("input", () => {
+    renderVersionList();
   });
 
-  versionButtons().forEach((button) => {
-    button.addEventListener("click", async () => {
-      await loadDefinitionVersion(button.getAttribute("data-version") || "");
-    });
+  viewAllButton?.addEventListener("click", () => {
+    showAllVersions = true;
+    renderVersionList();
   });
+
+  renderVersionList();
 
   return dropdown;
 }
