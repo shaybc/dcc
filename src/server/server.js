@@ -344,26 +344,6 @@ function estimateWorkflowTokens(steps = []) {
   return (Array.isArray(steps) ? steps.length : 0) * 120;
 }
 
-function normalizeContextProviderName(raw) {
-  const value = String(raw || "").trim().toLowerCase();
-  if (!value) return "@Current File";
-  if (value.includes("current") && value.includes("file")) return "@Current File";
-  if (value.includes("file") && value.includes("tree")) return "@File Tree";
-  if (value.includes("git") && value.includes("diff")) return "@Git Diff";
-  return String(raw || "@Current File");
-}
-
-function inferContextProvidersFromDefinition(definition) {
-  const content = String(definition?.content || "");
-  const providerMatch = content.match(/^\s*provider\s*:\s*([^\n#]+)/im);
-  if (providerMatch?.[1]) {
-    const normalizedProvider = String(providerMatch[1]).trim().replace(/^['"]|['"]$/g, "");
-    return [normalizeContextProviderName(normalizedProvider)];
-  }
-  const fromName = normalizeContextProviderName(definition?.name || "@Current File");
-  return [fromName];
-}
-
 function getContextTestSuggestions(providerName, errorMessage) {
   const message = String(errorMessage || "").toLowerCase();
   const suggestions = [];
@@ -480,22 +460,17 @@ async function testSingleContextProvider(name, mockEnv) {
 async function testContextProviders(definition, input = {}) {
   const startedAt = Date.now();
   const mockEnv = input.mockEnv || {};
-  const definitionProviders = inferContextProvidersFromDefinition(definition);
-  const requestedProvidersRaw = Array.isArray(input.selectedProviders) ? input.selectedProviders : [];
-  const requestedProviders = requestedProvidersRaw.map((item) => normalizeContextProviderName(item));
-
-  const selectedProviders = requestedProviders.length > 0
-    ? definitionProviders.filter((provider) => requestedProviders.includes(provider))
-    : definitionProviders;
-
-  const effectiveProviders = selectedProviders.length > 0 ? selectedProviders : definitionProviders;
+  const selectedProvidersRaw = Array.isArray(input.selectedProviders) ? input.selectedProviders : [];
+  const selectedProviders = selectedProvidersRaw.length > 0
+    ? selectedProvidersRaw
+    : ["@Current File"];
 
   const providers = [];
   let successful = 0;
   let failed = 0;
   let totalSize = 0;
 
-  for (const providerName of effectiveProviders) {
+  for (const providerName of selectedProviders) {
     const providerResult = await testSingleContextProvider(providerName, mockEnv);
     providers.push(providerResult);
     if (providerResult.status === "success") {
@@ -517,8 +492,7 @@ async function testContextProviders(definition, input = {}) {
       successful,
       failed,
       totalSize,
-      definitionKey: definition.key,
-      definitionProvider: definitionProviders[0]
+      definitionKey: definition.key
     },
     warnings: failed > 0 ? ["One or more providers failed to retrieve context data."] : [],
     errors: []
