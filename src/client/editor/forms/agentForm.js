@@ -1,4 +1,5 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
+import { attachEnhancePromptBehavior } from "./promptEnhancer.js";
 
 export function createAgentForm({ mount, onChange, availableTags = [] }) {
   const state = { name: "", description: "", version: "", tags: [], tools: [], rules: [], body: "" };
@@ -25,7 +26,24 @@ export function createAgentForm({ mount, onChange, availableTags = [] }) {
   body.className = "agent-body-textarea";
   body.placeholder = 'e.g., "Create a well-structured Jira issue based on this request. If possible, enrich it with relevant repo context, related tickets, and clear acceptance criteria. Always use the Atlassian MCP."';
   body.addEventListener("input", () => { state.body = body.value; onChange(); });
-  bodyRow.append(body); mount.append(bodyRow);
+  const bodyActions = document.createElement("div");
+  bodyActions.className = "editor-enhance-row";
+  const enhanceButton = document.createElement("button");
+  enhanceButton.type = "button";
+  enhanceButton.className = "btn";
+  enhanceButton.textContent = "Enhance Prompt";
+  attachEnhancePromptBehavior({
+    button: enhanceButton,
+    getText: () => body.value,
+    setText: (nextValue) => {
+      body.value = nextValue;
+      state.body = nextValue;
+    },
+    onChange,
+    fieldLabel: "agent instructions"
+  });
+  bodyActions.append(enhanceButton);
+  bodyRow.append(body, bodyActions); mount.append(bodyRow);
 
   return { getState(){ return { ...state, tags: tags.getItems(), tools: tools.getItems(), rules: rules.getItems() }; }, setState(next){ Object.assign(state,next||{}); name.value=state.name||"";desc.value=state.description||"";version.value=state.version||"";body.value=state.body||""; tags.setItems(state.tags||[]); tools.setItems(state.tools||[]); rules.setItems(state.rules||[]);} };
 }
