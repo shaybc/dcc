@@ -142,6 +142,7 @@
               </div>
               <div class="detail-tags" id="detailTags"></div>
               <h2 id="detailTitle"></h2>
+              <div class="detail-version-meta" id="detailVersionMeta"></div>
               <div class="detail-description" id="detailDescription"></div>
               <div class="status-pill" id="detailStatus"></div>
             </div>
@@ -168,6 +169,12 @@
                     <path d="m5 12 7-7 7 7"></path>
                   </svg>
                 </button>
+                <button class="copy-btn" id="versionHistoryButton" type="button" aria-label="Version history" title="Version History">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </button>
                 <button class="copy-btn" id="duplicateDefinition" type="button" aria-label="Duplicate definition" title="Duplicate definition">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect x="9" y="9" width="13" height="13" rx="2"></rect>
@@ -191,6 +198,7 @@
               <div class="detail-description definition-preview-content" id="definitionPreviewContent"></div>
             </div>
             <div class="definition-tab-panel active" id="definitionSourcePanel" role="tabpanel" aria-labelledby="definitionTabSource">
+              <div class="version-banner" id="versionBanner" hidden></div>
               <pre id="detailContent"></pre>
             </div>
           </div>

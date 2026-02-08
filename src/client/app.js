@@ -18,13 +18,16 @@ const detailTypeMetaIcon = document.getElementById("detailTypeMetaIcon");
 const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailTags = document.getElementById("detailTags");
+const detailVersionMeta = document.getElementById("detailVersionMeta");
 const copyDefinitionButton = document.getElementById("copyDefinition");
 const editDefinitionButton = document.getElementById("editDefinition");
 const newDefinitionButton = document.getElementById("newDefinitionButton");
 const newDefinitionMenu = document.getElementById("newDefinitionMenu");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
+const versionHistoryButton = document.getElementById("versionHistoryButton");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
+const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
 const definitionPreviewPanel = document.getElementById("definitionPreviewPanel");
@@ -41,6 +44,9 @@ let currentDetailDefinitionId = null;
 let currentDetailDefinitionSource = "";
 let currentDetailDefinitionName = "";
 let currentDetailDefinitionPath = "";
+let currentDefinitionVersion = "";
+let activeHistoricalVersion = "";
+let activeVersionDropdown = null;
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
@@ -809,7 +815,197 @@ function setDefinitionTab(activeTab) {
   definitionSourcePanel.hidden = isPreview;
 }
 
+function formatVersionCommitDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return date.toLocaleDateString();
+}
+
+function renderVersionMeta(currentVersion, historicalVersion = "") {
+  if (!detailVersionMeta) {
+    return;
+  }
+  const version = historicalVersion || currentVersion;
+  if (!version) {
+    detailVersionMeta.innerHTML = "";
+    return;
+  }
+
+  const historicalSuffix = historicalVersion ? "<span class=\"version-mode-badge\">Historical</span>" : "";
+  detailVersionMeta.innerHTML = `<span class="version-badge">v${escapeHtml(version)}</span>${historicalSuffix}`;
+}
+
+function closeVersionDropdown() {
+  if (!activeVersionDropdown) {
+    return;
+  }
+  activeVersionDropdown.remove();
+  activeVersionDropdown = null;
+}
+
+function renderVersionBanner(historicalVersion) {
+  if (!versionBanner) {
+    return;
+  }
+  if (!historicalVersion || historicalVersion === currentDefinitionVersion) {
+    versionBanner.hidden = true;
+    versionBanner.innerHTML = "";
+    return;
+  }
+
+  versionBanner.hidden = false;
+  versionBanner.innerHTML = `
+    <span>Viewing version ${escapeHtml(historicalVersion)} (Current: ${escapeHtml(currentDefinitionVersion || "unknown")})</span>
+    <div class="version-banner-actions">
+      <button type="button" data-action="restore">Restore this version</button>
+      <button type="button" data-action="back">Back to current</button>
+    </div>
+  `;
+
+  versionBanner.querySelector('[data-action="restore"]')?.addEventListener("click", async () => {
+    if (!currentDetailDefinitionId || !activeHistoricalVersion) {
+      return;
+    }
+    try {
+      const payload = await fetchWithErrorHandling(
+        `/api/definitions/${currentDetailDefinitionId}/versions/${encodeURIComponent(activeHistoricalVersion)}/restore`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ createNewVersion: true })
+        },
+        "Unable to restore version."
+      );
+      window.alert(payload.message || "Version restored successfully.");
+      await fetchDefinitions();
+      await showDetails(currentDetailDefinitionId);
+    } catch (error) {
+      window.alert(error.message || "Unable to restore version.");
+    }
+  });
+
+  versionBanner.querySelector('[data-action="back"]')?.addEventListener("click", async () => {
+    if (!currentDetailDefinitionId) {
+      return;
+    }
+    await showDetails(currentDetailDefinitionId);
+  });
+}
+
+async function loadDefinitionVersion(version) {
+  if (!currentDetailDefinitionId) {
+    return;
+  }
+  const payload = await fetchWithErrorHandling(
+    `/api/definitions/${currentDetailDefinitionId}/versions/${encodeURIComponent(version)}`,
+    {},
+    "Unable to load definition version."
+  );
+
+  activeHistoricalVersion = payload.version;
+  const versionContent = payload.content || "";
+  detailContent.textContent = versionContent;
+  definitionPreviewContent.innerHTML = renderDefinitionPreview(versionContent, payload.metadata || {});
+  renderVersionMeta(currentDefinitionVersion, activeHistoricalVersion);
+  renderVersionBanner(activeHistoricalVersion);
+  closeVersionDropdown();
+}
+
+function createVersionDropdown({ versions, currentVersion }) {
+  const dropdown = document.createElement("div");
+  dropdown.className = "version-dropdown";
+  dropdown.innerHTML = `
+    <div class="version-search"><input type="search" placeholder="Search versions" aria-label="Search versions"></div>
+    <button class="version-option view-all" type="button">View all versions</button>
+    <div class="version-list"></div>
+  `;
+
+  const searchInputEl = dropdown.querySelector(".version-search input");
+  const list = dropdown.querySelector(".version-list");
+  const viewAllButton = dropdown.querySelector(".view-all");
+
+  let showAllVersions = false;
+
+  function renderVersionList() {
+    if (!list) {
+      return;
+    }
+
+    const query = String(searchInputEl?.value || "").trim().toLowerCase();
+    const visibleSource = showAllVersions ? versions : versions.slice(0, 25);
+    const filteredVersions = visibleSource.filter((version) => String(version.version || "").toLowerCase().includes(query));
+
+    if (viewAllButton) {
+      const shouldShowViewAll = !showAllVersions && query.length === 0 && versions.length > 25;
+      viewAllButton.hidden = !shouldShowViewAll;
+    }
+
+    if (filteredVersions.length === 0) {
+      list.innerHTML = '<div class="version-empty">No matching versions</div>';
+      return;
+    }
+
+    list.innerHTML = filteredVersions.map((version) => `
+      <button class="version-option ${version.version === currentVersion ? "current" : ""}" type="button" data-version="${escapeHtml(version.version)}">
+        <span class="version-number">${escapeHtml(version.version)}</span>
+        <span class="version-date">${escapeHtml(formatVersionCommitDate(version.commitDate))}</span>
+        ${version.version === currentVersion ? '<span class="checkmark">✓</span>' : ""}
+      </button>
+    `).join("");
+
+    [...list.querySelectorAll(".version-option[data-version]")].forEach((button) => {
+      button.addEventListener("click", async () => {
+        await loadDefinitionVersion(button.getAttribute("data-version") || "");
+      });
+    });
+  }
+
+  searchInputEl?.addEventListener("input", () => {
+    renderVersionList();
+  });
+
+  viewAllButton?.addEventListener("click", () => {
+    showAllVersions = true;
+    renderVersionList();
+  });
+
+  renderVersionList();
+
+  return dropdown;
+}
+
+async function openVersionHistoryDropdown() {
+  if (!currentDetailDefinitionId || !versionHistoryButton) {
+    return;
+  }
+  if (activeVersionDropdown) {
+    closeVersionDropdown();
+    return;
+  }
+
+  const payload = await fetchWithErrorHandling(
+    `/api/definitions/${currentDetailDefinitionId}/versions`,
+    {},
+    "Unable to load version history."
+  );
+  const versions = Array.isArray(payload.versions) ? payload.versions : [];
+  if (versions.length === 0) {
+    window.alert("No history available for this definition.");
+    return;
+  }
+
+  activeVersionDropdown = createVersionDropdown({ versions, currentVersion: payload.currentVersion || "" });
+  document.body.appendChild(activeVersionDropdown);
+  const rect = versionHistoryButton.getBoundingClientRect();
+  activeVersionDropdown.style.top = `${rect.bottom + window.scrollY + 8}px`;
+  activeVersionDropdown.style.left = `${Math.max(rect.left + window.scrollX - 220, 8)}px`;
+}
+
 async function showDetails(id) {
+  closeVersionDropdown();
   pushUpstreamDefinitionButton.hidden = true;
   const response = await fetch(`/api/definitions/${id}`);
   const def = await response.json();
@@ -817,7 +1013,10 @@ async function showDetails(id) {
   currentDetailDefinitionSource = String(def.source || "").toLowerCase();
   currentDetailDefinitionName = String(def.name || "");
   currentDetailDefinitionPath = String(def.filePath || "");
+  currentDefinitionVersion = String(def.version || "");
+  activeHistoricalVersion = "";
   detailTitle.textContent = def.name;
+  renderVersionMeta(currentDefinitionVersion, "");
   detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
   const definitionContent = def.content || "";
   detailContent.textContent = definitionContent;
@@ -855,6 +1054,7 @@ async function showDetails(id) {
   pushUpstreamDefinitionButton.disabled = !isUntrackedDefinition;
   definitionTabPreview.disabled = false;
   setDefinitionTab("preview");
+  renderVersionBanner("");
   showDetailPage();
 }
 
@@ -868,10 +1068,13 @@ function showDetailPage() {
 
 function showHubPage() {
   detailPage.hidden = true;
+  closeVersionDropdown();
   currentDetailDefinitionId = null;
   currentDetailDefinitionSource = "";
   currentDetailDefinitionName = "";
   currentDetailDefinitionPath = "";
+  currentDefinitionVersion = "";
+  activeHistoricalVersion = "";
   deleteDefinitionButton.hidden = true;
   pushUpstreamDefinitionButton.hidden = true;
   pushUpstreamDefinitionButton.disabled = true;
@@ -1038,6 +1241,9 @@ document.addEventListener("click", (event) => {
   if (!event.target.closest(".filter-dropdown")) {
     closeFilterMenu();
   }
+  if (activeVersionDropdown && !event.target.closest(".version-dropdown") && !event.target.closest("#versionHistoryButton")) {
+    closeVersionDropdown();
+  }
 });
 
 clearSearchButton.addEventListener("click", () => {
@@ -1203,6 +1409,16 @@ if (newDefinitionMenu) {
 if (editDefinitionButton) {
   editDefinitionButton.addEventListener("click", () => {
     openEditorForCurrentDefinition();
+  });
+}
+
+if (versionHistoryButton) {
+  versionHistoryButton.addEventListener("click", async () => {
+    try {
+      await openVersionHistoryDropdown();
+    } catch (error) {
+      window.alert(error.message || "Unable to load version history.");
+    }
   });
 }
 

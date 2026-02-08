@@ -6,6 +6,7 @@ DCC (Developer Control Center) is a **Node.js + Express** local web application 
 - an Express backend,
 - a local SQLite database,
 - YAML/Markdown definition parsing and editing,
+- git-powered version history caching and restore for definitions,
 - and an OpenAI-compatible API facade backed by Google Gemini.
 
 ![DCC dark logo](../src/client/img/dcc_white_logo.png)
@@ -48,12 +49,13 @@ From `package.json`, the project depends on:
 ## 3.2 Persistence
 - **SQLite** is used as an embedded local database.
 - DB location is configurable via `DCC_DB_PATH`; defaults to `data/dcc.sqlite`.
-- Current schema includes **5 tables**:
+- Current schema includes **6 tables**:
   1. `settings`
   2. `definitions`
-  3. `dev_project_roots`
-  4. `dev_projects`
-  5. `project_definition_copies`
+  3. `definition_versions`
+  4. `dev_project_roots`
+  5. `dev_projects`
+  6. `project_definition_copies`
 
 ## 3.3 AI integration layer
 - `/v1` implements an OpenAI-compatible shape for:
@@ -106,9 +108,9 @@ Definition type detection uses content heuristics:
 | HTML files | 3 |
 | CSS files | 2 |
 | Editor form modules | 7 |
-| `/api/*` endpoints in `server.js` | 20 |
+| `/api/*` endpoints in `server.js` | 24 |
 | `/v1/*` OpenAI-compatible endpoints | 4 |
-| SQLite tables created at boot | 5 |
+| SQLite tables created at boot | 6 |
 
 > These figures were derived from repository file and route scans and reflect the current checked-in state.
 
