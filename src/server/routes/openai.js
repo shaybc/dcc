@@ -70,8 +70,17 @@ const CompletionSchema = z.object({
 openaiRouter.post("/completions", async (req, res) => {
   const reqId = req._reqId || "no-id";
   const t0 = Date.now();
+  const enhanceFeature = req.get("X-DCC-Feature") || "";
+  const clientRequestId = req.get("X-DCC-Client-Request-Id") || "none";
 
   try {
+    if (enhanceFeature === "prompt-enhance") {
+      const rawPrompt = String(req.body?.prompt || "");
+      logInfo(
+        `[PROMPT_ENHANCE] id=${reqId} client_id=${clientRequestId} start body_keys=${Object.keys(req.body || {}).join(",")} prompt_len=${rawPrompt.length} prompt_preview=${JSON.stringify(rawPrompt.slice(0, 120))}`
+      );
+    }
+
     const parsed = CompletionSchema.parse(req.body);
 
     logInfo(`[OPENAI] id=${reqId} completions stream=${Boolean(parsed.stream)} model=${parsed.model || env.GEMINI_MODEL}`);
@@ -160,8 +169,23 @@ openaiRouter.post("/completions", async (req, res) => {
     res.json(payload);
 
     logInfo(`[OPENAI] id=${reqId} completions_json_reply_ms=${Date.now() - t0}`);
+    if (enhanceFeature === "prompt-enhance") {
+      logInfo(
+        `[PROMPT_ENHANCE] id=${reqId} client_id=${clientRequestId} success output_len=${text.length} total_ms=${Date.now() - t0}`
+      );
+    }
   } catch (e) {
     const msg = String(e?.message || e);
+    if (enhanceFeature === "prompt-enhance") {
+      if (e instanceof z.ZodError) {
+        logError(
+          `[PROMPT_ENHANCE] id=${reqId} client_id=${clientRequestId} validation_error issues=${JSON.stringify(e.issues)}`
+        );
+      }
+      logError(
+        `[PROMPT_ENHANCE] id=${reqId} client_id=${clientRequestId} error_ms=${Date.now() - t0} message=${msg}`
+      );
+    }
     logError(`[OPENAI] id=${reqId} completions_ERROR ${msg}`);
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
   }
