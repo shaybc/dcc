@@ -5,6 +5,29 @@ function createElement(tag, className, text) {
   return el;
 }
 
+let datalistCounter = 0;
+
+function attachAutocomplete(input, options) {
+  const values = Array.from(new Set((Array.isArray(options) ? options : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)));
+
+  if (!values.length) {
+    return;
+  }
+
+  const listId = `array-editor-list-${datalistCounter += 1}`;
+  const datalist = createElement("datalist");
+  datalist.id = listId;
+  values.forEach((value) => {
+    const option = createElement("option");
+    option.value = value;
+    datalist.append(option);
+  });
+  input.setAttribute("list", listId);
+  input.after(datalist);
+}
+
 function renderItemLabel(item, fields) {
   if (typeof item === "string") return item;
   const parts = fields.map((field) => item?.[field.name]).filter(Boolean);
@@ -49,6 +72,9 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
         if (!field.multiline) input.type = "text";
         input.value = state[field.name] || "";
         input.placeholder = field.placeholder || "";
+        if (!field.multiline && field.autocompleteOptions) {
+          attachAutocomplete(input, field.autocompleteOptions);
+        }
         input.addEventListener("input", () => {
           state[field.name] = input.value;
         });
