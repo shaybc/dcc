@@ -716,68 +716,6 @@ function renderDefinitionPreview(definitionContent, definitionMeta = {}) {
   const sections = collectPreviewSections(definitionContent, definitionMeta);
   return sections.map((section) => renderPreviewSection(section)).join("");
 }
-function getTestConfigForDefinitionType(type) {
-  const normalizedType = normalizeFilterType(type);
-  const configs = {
-    "context": {
-      testName: "Test Context Provider",
-      requiresAI: false,
-      helpText: "Can this provider retrieve context data?",
-      actionLabel: "▶ Test Providers",
-      saveLabel: "💾 Save Test Config"
-    },
-    "prompts": {
-      testName: "Test Prompt",
-      requiresAI: true,
-      helpText: "Does this prompt produce useful AI responses?",
-      actionLabel: "▶ Run Test",
-      saveLabel: "💾 Save Test Case"
-    },
-    "models": {
-      testName: "Test Model",
-      requiresAI: true,
-      helpText: "Is this model configured correctly and accessible?",
-      actionLabel: "▶ Test Model",
-      saveLabel: "💾 Save Test Case"
-    },
-    "mcp servers": {
-      testName: "Test MCP Server",
-      requiresAI: false,
-      helpText: "Can we connect to this MCP server and use its tools?",
-      actionLabel: "▶ Test Server",
-      saveLabel: "💾 Save Test Case"
-    },
-    "rules": {
-      testName: "Validate Rule",
-      requiresAI: false,
-      helpText: "Is this rule properly formatted and complete?",
-      actionLabel: "✓ Validate Rule",
-      saveLabel: "💾 Save Validation"
-    },
-    "agents": {
-      testName: "Test Agent",
-      requiresAI: true,
-      helpText: "Is this agent configured correctly with expected tools?",
-      actionLabel: "▶ Test Agent",
-      saveLabel: "💾 Save Scenario"
-    },
-    "workflows": {
-      testName: "Validate Workflow",
-      requiresAI: false,
-      helpText: "Is this workflow structure valid with correct dependencies?",
-      actionLabel: "✓ Validate Workflow",
-      saveLabel: "💾 Save Validation"
-    }
-  };
-  return configs[normalizedType] || {
-    testName: "Test Definition",
-    requiresAI: false,
-    helpText: "Run a dry-run validation for this definition.",
-    actionLabel: "▶ Run Test",
-    saveLabel: "💾 Save Test Case"
-  };
-}
-
 function getTestLabelForType(type) {
   const normalizedType = normalizeFilterType(type);
   if (normalizedType === "prompts") return "🧪 Test Prompt";
@@ -924,18 +862,9 @@ function renderTestInputs(definition) {
         <select id="testMcpType">
           <option value="connection">Connection Test</option>
           <option value="list_tools">List Tools</option>
-          <option value="call_tool">Call Tool (simulated)</option>
         </select>
       </div>
-      <div class="test-section">
-        <label for="testMcpToolName">Tool</label>
-        <input id="testMcpToolName" type="text" value="read_file" placeholder="read_file">
-      </div>
-      <div class="test-section">
-        <label for="testMcpToolParams">Tool Parameters (JSON)</label>
-        <textarea id="testMcpToolParams" rows="4">{"path":"/tmp/test.txt"}</textarea>
-      </div>
-      <p class="test-inline-note">Connection/list-tools are dry-run validations. Call Tool is a simulated execution check.</p>
+      <p class="test-inline-note">Tool calls are not available in this environment, but connection and listing are supported.</p>
     `;
   }
   if (normalizedType === "rules") {
@@ -1009,16 +938,14 @@ function renderTestInputs(definition) {
 function renderDefinitionTest(definition) {
   const normalizedType = normalizeFilterType(definition.type);
   const isContext = normalizedType === "context";
-  const config = getTestConfigForDefinitionType(definition.type);
   return `
     <div class="test-interface" data-definition-id="${definition.id}" data-definition-type="${normalizedType}">
       <section class="test-input-panel">
         <h3>${getTestLabelForType(definition.type)}</h3>
-        <p class="section-description"><strong>${escapeHtml(config.testName)}:</strong> ${escapeHtml(config.helpText)}</p>
         ${renderTestInputs(definition)}
         <div class="test-actions">
-          <button type="button" class="primary-btn" id="runDefinitionTestButton">${config.actionLabel}</button>
-          <button type="button" class="secondary-btn" id="saveDefinitionTestCaseButton">${config.saveLabel}</button>
+          <button type="button" class="primary-btn" id="runDefinitionTestButton">${isContext ? "▶ Test Providers" : "▶ Run Test"}</button>
+          <button type="button" class="secondary-btn" id="saveDefinitionTestCaseButton">${isContext ? "💾 Save Test Config" : "💾 Save Test Case"}</button>
         </div>
       </section>
       <section class="test-results-panel">
@@ -1026,7 +953,6 @@ function renderDefinitionTest(definition) {
           <h3>${isContext ? "Context Data Retrieved" : "Results & Validation"}</h3>
           <button type="button" class="secondary-btn" id="definitionTestHistoryButton">📜 History</button>
         </div>
-        <div class="test-result-header"><h4>Test Results for: ${escapeHtml(definition.name || "Unnamed definition")}</h4><span class="definition-type-pill">${escapeHtml(formatTypePillLabel(definition.type || normalizedType))}</span></div>
         ${isContext ? `<div class="results-explanation"><p><strong>Context providers work automatically</strong> - when you type a prompt with @Current File, the AI receives your prompt plus the context data shown below.</p><p>This test verifies providers can retrieve that data correctly.</p></div>` : ""}
         ${isContext ? `
           <div class="results-help-header">
@@ -1239,14 +1165,6 @@ function formatCheckName(raw) {
     .replace(/_/g, " ")
     .replace(/\w/g, (char) => char.toUpperCase());
 }
-function safeJsonParseClient(raw, fallback = {}) {
-  try {
-    return JSON.parse(String(raw || ""));
-  } catch (_error) {
-    return fallback;
-  }
-}
-
 function formatBytes(value) {
   const bytes = Number(value || 0);
   if (bytes < 1024) return `${bytes} B`;
@@ -1382,15 +1300,7 @@ function collectDefinitionTestPayload(definition) {
     };
   }
   if (normalizedType === "mcp servers") {
-    return {
-      testType: document.getElementById("testMcpType")?.value || "connection",
-      input: {
-        testType: document.getElementById("testMcpType")?.value || "connection",
-        toolName: document.getElementById("testMcpToolName")?.value || "read_file",
-        parameters: safeJsonParseClient(document.getElementById("testMcpToolParams")?.value || "{}", {})
-      },
-      config: {}
-    };
+    return { testType: document.getElementById("testMcpType")?.value || "connection", input: {}, config: {} };
   }
   if (normalizedType === "rules") {
     return { testType: "validation", input: { sampleCode: document.getElementById("testRuleSample")?.value || "" }, config: {} };
