@@ -2,6 +2,7 @@ import openaiRouter from "./routes/openai.js";
 import { detectDefinitionType } from "./definitions/detectDefinitionType.js";
 import { loadDefinition } from "./definitions/loadDefinition.js";
 import { saveDefinition } from "./definitions/saveDefinition.js";
+import { validateDefinition } from "./definitions/validateDefinition.js";
 
 import path from "path";
 import fs from "fs";
@@ -90,6 +91,20 @@ db.serialize(() => {
       UNIQUE(projectPath, definitionKey)
     )`
   );
+  db.run(
+    `CREATE TABLE IF NOT EXISTS validation_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      definition_key TEXT NOT NULL,
+      definition_version TEXT,
+      status TEXT NOT NULL,
+      duration_ms INTEGER,
+      report_json TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (definition_key) REFERENCES definitions(key)
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_validation_results_def_key ON validation_results(definition_key)");
+  db.run("CREATE INDEX IF NOT EXISTS idx_validation_results_created ON validation_results(created_at)");
 
   db.all("PRAGMA table_info(definitions)", (err, rows = []) => {
     if (err) {
@@ -1348,6 +1363,103 @@ app.get("/api/definitions/:id", (req, res) => {
       res.json({ ...row, content, createdAt });
     }
   );
+});
+
+app.post("/api/definitions/:id/validate", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    let content = definition.content || "";
+    if (definition.filePath && fs.existsSync(definition.filePath)) {
+      try {
+        content = await fsp.readFile(definition.filePath, "utf8");
+      } catch (_error) {
+        content = definition.content || "";
+      }
+    }
+
+    const knownDefinitions = await allDb("SELECT key, name, type FROM definitions");
+    const result = validateDefinition({
+      definition: { ...definition, content },
+      options: req.body?.options || {},
+      knownDefinitions,
+    });
+
+    await runDb(
+      `INSERT INTO validation_results (definition_key, definition_version, status, duration_ms, report_json)
+       VALUES (?, ?, ?, ?, ?)`,
+      [definition.key, definition.version || null, result.status, result.durationMs, JSON.stringify(result)]
+    );
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Validation failed." });
+  }
+});
+
+app.get("/api/definitions/:id/validate/latest", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT key FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const latest = await getDb(
+      `SELECT report_json, created_at FROM validation_results
+       WHERE definition_key = ?
+       ORDER BY datetime(created_at) DESC, id DESC
+       LIMIT 1`,
+      [definition.key]
+    );
+
+    if (!latest) {
+      res.json({ found: false, result: null });
+      return;
+    }
+
+    res.json({ found: true, result: JSON.parse(latest.report_json), createdAt: latest.created_at });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unable to load latest validation." });
+  }
+});
+
+app.get("/api/definitions/:id/validate/history", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT key FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const limitRaw = Number(req.query.limit);
+    const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, limitRaw)) : 20;
+
+    const history = await allDb(
+      `SELECT id, status, duration_ms, report_json, created_at
+       FROM validation_results
+       WHERE definition_key = ?
+       ORDER BY datetime(created_at) DESC, id DESC
+       LIMIT ?`,
+      [definition.key, limit]
+    );
+
+    res.json({
+      history: history.map((entry) => ({
+        id: entry.id,
+        status: entry.status,
+        durationMs: entry.duration_ms,
+        createdAt: entry.created_at,
+        result: JSON.parse(entry.report_json),
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unable to load validation history." });
+  }
 });
 
 app.get("/api/definitions/:id/versions", async (req, res) => {

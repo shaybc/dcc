@@ -152,6 +152,7 @@
               <div class="definition-tab-buttons" role="tablist" aria-label="Definition view tabs">
                 <button class="definition-tab" id="definitionTabPreview" type="button" role="tab" aria-selected="false">Preview</button>
                 <button class="definition-tab active" id="definitionTabSource" type="button" role="tab" aria-selected="true"></button>
+                <button class="definition-tab" id="definitionTabTest" type="button" role="tab" aria-selected="false">Test</button>
               </div>
               <div class="definition-actions">
                 <button class="copy-btn" id="deleteDefinition" type="button" aria-label="Delete definition" title="Delete definition" hidden>
@@ -200,6 +201,33 @@
             <div class="definition-tab-panel active" id="definitionSourcePanel" role="tabpanel" aria-labelledby="definitionTabSource">
               <div class="version-banner" id="versionBanner" hidden></div>
               <pre id="detailContent"></pre>
+            </div>
+            <div class="definition-tab-panel" id="definitionTestPanel" role="tabpanel" aria-labelledby="definitionTabTest" hidden>
+              <div class="validation-layout">
+                <aside class="validation-controls">
+                  <h3>Validation Controls</h3>
+                  <label class="validation-option"><input type="checkbox" id="validationStrictToggle"> Strict mode</label>
+                  <label class="validation-option"><input type="checkbox" id="validationLintToggle" checked> Lint checks</label>
+                  <label class="validation-option"><input type="checkbox" id="validationReferencesToggle" checked> Reference checks</label>
+                  <label class="validation-option"><input type="checkbox" id="validationAutoRunToggle"> Auto-run on open</label>
+                  <label class="validation-option">Severity filter
+                    <select id="validationSeverityFilter">
+                      <option value="all">All severities</option>
+                      <option value="error">Errors</option>
+                      <option value="warning">Warnings</option>
+                      <option value="info">Info</option>
+                    </select>
+                  </label>
+                  <div class="validation-actions">
+                    <button class="btn" id="runValidationButton" type="button">Run Validation</button>
+                    <button class="btn" id="copyValidationReportButton" type="button">Copy JSON report</button>
+                  </div>
+                  <div class="validation-last-run" id="validationLastRun"></div>
+                </aside>
+                <section class="validation-results" id="validationResults">
+                  <div class="validation-empty">Run validation to see schema, lint, and reference checks.</div>
+                </section>
+              </div>
             </div>
           </div>
         </div>
