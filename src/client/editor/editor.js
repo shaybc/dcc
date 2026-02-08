@@ -140,44 +140,50 @@ function normalizeContextEntries(entries) {
     const paramsObject = entry?.params && typeof entry.params === "object" && !Array.isArray(entry.params)
       ? entry.params
       : {};
-    const params = Object.entries(paramsObject).map(([key, value]) => ({
-      key,
-      value: typeof value === "string" ? value : JSON.stringify(value)
-    }));
+
+    const headers = Array.isArray(paramsObject.headers)
+      ? paramsObject.headers.map((item) => {
+          if (item && typeof item === "object") {
+            const [key, value] = Object.entries(item)[0] || ["", ""];
+            return key ? `${key}: ${value ?? ""}` : "";
+          }
+          return String(item || "");
+        }).filter(Boolean)
+      : [];
 
     return {
       ...entry,
       provider: entry?.provider || "",
-      params
+      url: paramsObject.url || "",
+      headers
     };
   });
-}
-
-function parseParamValue(value) {
-  const text = String(value ?? "").trim();
-  if (text === "") return "";
-  if (text === "true") return true;
-  if (text === "false") return false;
-  if (/^-?\d+(?:\.\d+)?$/.test(text)) return Number(text);
-  try {
-    return JSON.parse(text);
-  } catch (_error) {
-    return text;
-  }
 }
 
 function serializeContextEntries(entries) {
   return (Array.isArray(entries) ? entries : []).map((entry) => {
     const out = { ...entry, provider: entry?.provider || "" };
-    const paramsList = Array.isArray(out.params) ? out.params : [];
     const params = {};
-    paramsList.forEach((item) => {
-      const key = String(item?.key || "").trim();
-      if (!key) return;
-      params[key] = parseParamValue(item?.value ?? "");
-    });
-    if (Object.keys(params).length > 0) out.params = params;
-    else delete out.params;
+
+    if (out.url) {
+      params.url = String(out.url);
+    }
+
+    if (Array.isArray(out.headers) && out.headers.length > 0) {
+      params.headers = out.headers
+        .map((line) => String(line || "").trim())
+        .filter(Boolean);
+    }
+
+    delete out.url;
+    delete out.headers;
+
+    if (Object.keys(params).length > 0) {
+      out.params = params;
+    } else {
+      delete out.params;
+    }
+
     return out;
   });
 }

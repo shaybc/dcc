@@ -1,11 +1,12 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
-function createTextInput({ mount, label, state, key, onChange }) {
+function createTextInput({ mount, label, state, key, placeholder, onChange }) {
   const row = document.createElement("label");
   row.className = "editor-field";
   row.innerHTML = `<span>${label}</span>`;
   const input = document.createElement("input");
   input.type = "text";
+  input.placeholder = placeholder || "";
   input.addEventListener("input", () => {
     state[key] = input.value;
     onChange();
@@ -25,15 +26,15 @@ export function createContextForm({ mount, onChange }) {
     context: []
   };
 
-  const name = createTextInput({ mount, label: "name", state, key: "name", onChange });
-  const version = createTextInput({ mount, label: "version", state, key: "version", onChange });
-  const schema = createTextInput({ mount, label: "schema", state, key: "schema", onChange });
-  const description = createTextInput({ mount, label: "description", state, key: "description", onChange });
+  const name = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., '@Clipboard'", onChange });
+  const version = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '1.0.0'", onChange });
+  const schema = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
+  const description = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'Reference recent clipboard items'", onChange });
 
   const tags = createArrayEditor({
     mount,
     label: "tags",
-    fields: [{ name: "value", label: "Tag" }],
+    fields: [{ name: "value", label: "tags", placeholder: "e.g., 'tag1, tag2, tag3'" }],
     onChange: (nextItems) => {
       state.tags = nextItems;
       onChange();
@@ -44,15 +45,13 @@ export function createContextForm({ mount, onChange }) {
     mount,
     label: "context",
     fields: [
-      { name: "provider", label: "provider" },
+      { name: "provider", label: "provider", placeholder: "e.g., 'http'" },
+      { name: "url", label: "params.url", placeholder: "e.g., 'https://api.example.com/v1/users'" },
       {
-        name: "params",
-        label: "params",
+        name: "headers",
+        label: "params.headers",
         kind: "array",
-        nestedFields: [
-          { name: "key", label: "key" },
-          { name: "value", label: "value" }
-        ]
+        nestedFields: [{ name: "value", label: "header", placeholder: "e.g., 'Authorization: Bearer <token>'" }]
       }
     ],
     onChange: (nextItems) => {
