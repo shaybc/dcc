@@ -1,11 +1,12 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
-function createTextInput({ mount, label, state, key, onChange }) {
+function createTextInput({ mount, label, state, key, placeholder, onChange }) {
   const row = document.createElement("label");
   row.className = "editor-field";
   row.innerHTML = `<span>${label}</span>`;
   const input = document.createElement("input");
   input.type = "text";
+  input.placeholder = placeholder || "";
   input.addEventListener("input", () => {
     state[key] = input.value;
     onChange();
@@ -25,15 +26,15 @@ export function createModelForm({ mount, onChange }) {
     models: []
   };
 
-  const name = createTextInput({ mount, label: "name", state, key: "name", onChange });
-  const version = createTextInput({ mount, label: "version", state, key: "version", onChange });
-  const schema = createTextInput({ mount, label: "schema", state, key: "schema", onChange });
-  const description = createTextInput({ mount, label: "description", state, key: "description", onChange });
+  const name = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., 'Mistral Large'", onChange });
+  const version = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '1.0.1'", onChange });
+  const schema = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
+  const description = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'mistral model description'", onChange });
 
   const tags = createArrayEditor({
     mount,
     label: "tags",
-    fields: [{ name: "value", label: "Tag" }],
+    fields: [{ name: "value", label: "tags", placeholder: "e.g., 'tag1, tag2, tag3'" }],
     onChange: (nextItems) => {
       state.tags = nextItems;
       onChange();
@@ -44,12 +45,12 @@ export function createModelForm({ mount, onChange }) {
     mount,
     label: "models",
     fields: [
-      { name: "name", label: "name" },
-      { name: "provider", label: "provider" },
-      { name: "model", label: "model" },
-      { name: "apiKey", label: "apiKey" },
-      { name: "roles", label: "roles", kind: "array", itemLabel: "Role" },
-      { name: "contextLength", label: "defaultCompletionOptions.contextLength" }
+      { name: "name", label: "model name", placeholder: "e.g., 'Mistral Large'" },
+      { name: "provider", label: "provider", placeholder: "e.g., 'mistral'" },
+      { name: "model", label: "model", placeholder: "e.g., 'mistral-large-2411'" },
+      { name: "apiKey", label: "API key", placeholder: "e.g., '${{ inputs.MISTRAL_API_KEY }}'" },
+      { name: "roles", label: "roles", kind: "array", nestedFields: [{ name: "value", label: "role", placeholder: "e.g., 'chat'" }] },
+      { name: "contextLength", label: "context length", placeholder: "e.g., '131000'" }
     ],
     onChange: (nextItems) => {
       state.models = nextItems;
