@@ -247,6 +247,133 @@ function evaluateStatus(validation = [], warnings = []) {
   return warnings.length > 0 ? "warning" : "success";
 }
 
+function shellQuote(value) {
+  return `'${String(value || "").replace(/'/g, `'\\''`)}'`;
+}
+
+function buildGenericDefinitionValidation(definition, normalizedType) {
+  const content = String(definition?.content || "");
+  const validation = [
+    { check: "definition_selected", passed: Boolean(definition?.id) },
+    { check: "content_not_empty", passed: Boolean(content.trim()) },
+    { check: "schema_enforcement", passed: true }
+  ];
+
+  if (normalizedType === "prompts") {
+    validation.push({ check: "syntax_validation", passed: content.includes("{") ? /\{[a-zA-Z0-9_.-]+\}/.test(content) : true });
+    validation.push({ check: "prompt_clarity", passed: content.trim().length >= 20 });
+  } else if (normalizedType === "rules") {
+    validation.push({ check: "syntax_validation", passed: validateMarkdownSyntax(content) });
+    validation.push({ check: "custom_lint_rules", passed: /(^|\n)#+\s+/m.test(content) });
+  } else if (normalizedType === "workflows") {
+    const workflow = safeJsonParse(JSON.stringify(YAML.parse(content || "") || {}), {});
+    validation.push({ check: "syntax_validation", passed: Boolean(workflow) });
+    validation.push({ check: "custom_lint_rules", passed: Array.isArray(workflow.steps) && workflow.steps.length > 0 });
+  } else {
+    validation.push({ check: "syntax_validation", passed: true });
+    validation.push({ check: "custom_lint_rules", passed: true });
+  }
+
+  return validation;
+}
+
+async function runContinueCliValidation(definition, input = {}) {
+  const projectRootPath = String(input?.continueValidation?.projectRootPath || "").trim();
+  const prompt = String(input?.continueValidation?.prompt || "");
+  if (!projectRootPath || !prompt.trim()) {
+    return {
+      validation: [
+        { check: "continue_cli_inputs_provided", passed: false, value: "project root path and prompt are required" }
+      ],
+      warnings: ["Continue CLI validation skipped because project root path or prompt is missing."],
+      errors: []
+    };
+  }
+
+  const cliBinary = process.env.CONTINUE_CLI_BINARY || "continue";
+  const apiBase = `http://127.0.0.1:${PORT}`;
+  const command = [
+    shellQuote(cliBinary),
+    "api",
+    "chat",
+    "--api-base",
+    shellQuote(apiBase),
+    "--project-root",
+    shellQuote(projectRootPath),
+    "--definition-key",
+    shellQuote(String(definition?.key || "")),
+    "--prompt",
+    shellQuote(prompt)
+  ].join(" ");
+
+  try {
+    const output = await runCommand(command, { cwd: projectRootPath, env: process.env, timeout: 90000 });
+    return {
+      validation: [
+        { check: "continue_cli_installed", passed: true },
+        { check: "continue_cli_result_valid", passed: Boolean(String(output || "").trim()), value: `${String(output || "").trim().slice(0, 120)}${String(output || "").length > 120 ? "…" : ""}` }
+      ],
+      warnings: [],
+      errors: []
+    };
+  } catch (error) {
+    return {
+      validation: [
+        { check: "continue_cli_installed", passed: false },
+        { check: "continue_cli_result_valid", passed: false }
+      ],
+      warnings: [],
+      errors: [
+        `Continue CLI validation failed for definition ${definition?.key || "unknown"}: ${extractCommandErrorMessage(error, "Continue CLI execution failed.")}`
+      ]
+    };
+  }
+}
+
+async function runDefinitionTestPipeline(definition, payload = {}) {
+  const normalizedType = normalizeDefinitionType(definition.type);
+  const genericValidation = buildGenericDefinitionValidation(definition, normalizedType);
+  let result;
+  try {
+    result = await runDefinitionTest(definition, payload);
+  } catch (error) {
+    result = {
+      success: false,
+      status: "error",
+      duration: 0,
+      results: { output: "", validation: [], metadata: {} },
+      warnings: [],
+      errors: [error.message || "Test execution failed."]
+    };
+  }
+
+  const continueCli = await runContinueCliValidation(definition, payload?.input || {});
+  const mergedValidation = [
+    ...genericValidation,
+    ...(Array.isArray(result?.results?.validation) ? result.results.validation : []),
+    ...(Array.isArray(continueCli.validation) ? continueCli.validation : [])
+  ];
+  const warnings = [...(result?.warnings || []), ...(continueCli.warnings || [])];
+  const errors = [...(result?.errors || []), ...(continueCli.errors || [])];
+
+  return {
+    ...result,
+    success: errors.length === 0 && !mergedValidation.some((item) => item?.passed === false),
+    status: evaluateStatus(mergedValidation, warnings),
+    results: {
+      ...(result?.results || {}),
+      validation: mergedValidation,
+      metadata: {
+        ...(result?.results?.metadata || {}),
+        definitionKey: definition?.key || "",
+        definitionId: definition?.id || null
+      }
+    },
+    warnings,
+    errors
+  };
+}
+
 function extractPromptVariables(content) {
   const matches = String(content || "").match(/\{([a-zA-Z0-9_.-]+)\}/g) || [];
   const vars = [];
@@ -2364,19 +2491,7 @@ app.post("/api/definitions/:id/test", async (req, res) => {
       return;
     }
 
-    let result;
-    try {
-      result = await runDefinitionTest(definition, req.body || {});
-    } catch (error) {
-      result = {
-        success: false,
-        status: "error",
-        duration: 0,
-        results: { output: "", validation: [], metadata: {} },
-        warnings: [],
-        errors: [error.message || "Test execution failed."]
-      };
-    }
+    const result = await runDefinitionTestPipeline(definition, req.body || {});
 
     await persistTestResult({ definition, payload: req.body || {}, result });
     res.json(result);
@@ -2470,7 +2585,7 @@ app.post("/api/definitions/:id/test-cases/:testCaseId/run", async (req, res) => 
       input: safeJsonParse(testCase.input_data, {}),
       config: req.body?.config || {}
     };
-    const result = await runDefinitionTest(definition, payload);
+    const result = await runDefinitionTestPipeline(definition, payload);
     await persistTestResult({ definition, testCaseId: testCase.id, payload, result });
     res.json(result);
   } catch (error) {
