@@ -753,34 +753,27 @@ function renderContextHelpBanner() {
       <div class="help-banner-content" id="helpBannerContent" hidden>
         <h4>Context Provider Testing Explained</h4>
         <div class="help-section">
-          <h5>🎯 What Context Providers Do</h5>
-          <p>Context providers automatically inject information into AI conversations.</p>
-          <ul>
-            <li><strong>@Current File</strong> - Adds the currently open file content</li>
-            <li><strong>@File Tree</strong> - Adds your project directory structure</li>
-            <li><strong>@Git Diff</strong> - Adds uncommitted changes</li>
-          </ul>
-          <p>When used in your IDE, the AI receives your prompt plus this context data automatically.</p>
+          <h5>🎯 Purpose</h5>
+          <p>Context providers are plugins that supply real-time information to AI assistants. For example, a <em>current-file</em> provider gives the AI access to the file you are editing.</p>
         </div>
         <div class="help-section">
-          <h5>🧪 What This Test Does</h5>
+          <h5>🧪 How Testing Works</h5>
           <ol>
-            <li>Verifies provider access to data sources (files/git)</li>
-            <li>Shows exact context data that would be injected</li>
-            <li>Checks data format and non-empty output</li>
-            <li>Surfaces configuration or access errors</li>
+            <li>You enter a test query (what a developer might ask the AI)</li>
+            <li>The system simulates calling your context provider</li>
+            <li>You see exactly what data the provider returns</li>
+            <li>Validation checks confirm configuration correctness</li>
           </ol>
         </div>
         <div class="help-section">
           <h5>✅ What Success Means</h5>
           <ul>
-            <li>The provider can access its data source</li>
-            <li>It retrieves expected information</li>
-            <li>Data is correctly formatted for the AI</li>
-            <li>It is ready to use in your IDE</li>
+            <li>Your provider configuration is valid</li>
+            <li>The provider responds to queries</li>
+            <li>It returns the expected information type</li>
+            <li>It is ready for project deployment</li>
           </ul>
         </div>
-        <div class="help-example"><strong>Example:</strong> testing @Current File should show the exact file content to be sent to the AI.</div>
       </div>
     </div>
   `;
@@ -790,9 +783,9 @@ function renderContextInputHelp() {
   return `
     <div class="test-help-section">
       <h4>ℹ️ What am I testing?</h4>
-      <p><strong>What is being tested:</strong> Can the provider access and retrieve its context data?</p>
-      <p><strong>What you will see:</strong> The exact data that would be automatically injected into AI conversations.</p>
-      <p class="help-note">💡 <strong>Why test this:</strong> Verify providers can access files, git, or other data sources before deploying to your project.</p>
+      <p>Context providers supply information to AI assistants during conversations. This test simulates how your context provider responds to queries.</p>
+      <p><strong>Test Query:</strong> Enter a question or request that would normally be sent to the AI. The test shows what contextual information your provider would supply in response.</p>
+      <p class="help-note">💡 <strong>Example queries:</strong><br>• "What files are in this project?"<br>• "Show me the current file"<br>• "What changed in git?"</p>
     </div>
   `;
 }
@@ -904,32 +897,9 @@ function renderTestInputs(definition) {
       ${renderContextHelpBanner()}
       ${renderContextInputHelp()}
       <div class="test-section">
-        <label>Mock Environment</label>
-        <p class="section-description">Set up a simulated environment for the provider to retrieve data from.</p>
-        <div class="mock-environment">
-          <div class="mock-field">
-            <label for="mockCurrentFile">Current File Path</label>
-            <input id="mockCurrentFile" type="text" value="/mock/project/src/app.js" placeholder="/path/to/file.js">
-          </div>
-          <div class="mock-field">
-            <label for="mockProjectRoot">Project Root</label>
-            <input id="mockProjectRoot" type="text" value="/mock/project" placeholder="/path/to/project">
-          </div>
-          <div class="mock-field">
-            <label for="mockWorkingDir">Working Directory</label>
-            <input id="mockWorkingDir" type="text" value="/mock/project/src" placeholder="/path/to/workspace">
-          </div>
-        </div>
-      </div>
-      <div class="test-section">
-        <label>Select Providers to Test</label>
-        <p class="section-description">Choose providers to simulate. Each will attempt to retrieve its respective data.</p>
-        <div class="provider-selection">
-          <label class="provider-checkbox"><input type="checkbox" id="providerCurrentFile" checked><span class="provider-name">@Current File</span><span class="provider-description">Retrieves content of the current file</span></label>
-          <label class="provider-checkbox"><input type="checkbox" id="providerFileTree" checked><span class="provider-name">@File Tree</span><span class="provider-description">Retrieves project directory structure</span></label>
-          <label class="provider-checkbox"><input type="checkbox" id="providerGitDiff"><span class="provider-name">@Git Diff</span><span class="provider-description">Retrieves uncommitted changes</span></label>
-        </div>
-        <div class="inline-help">This is a dry-run provider retrieval test; no AI call is made.</div>
+        <label for="testContextQuery">Test Query</label>
+        <textarea id="testContextQuery" rows="4" placeholder="Show me the current file structure"></textarea>
+        <div class="inline-help">This query simulates what a developer might ask. The provider determines what context to return.</div>
       </div>
     `;
   }
@@ -944,28 +914,28 @@ function renderDefinitionTest(definition) {
         <h3>${getTestLabelForType(definition.type)}</h3>
         ${renderTestInputs(definition)}
         <div class="test-actions">
-          <button type="button" class="primary-btn" id="runDefinitionTestButton">${isContext ? "▶ Test Providers" : "▶ Run Test"}</button>
-          <button type="button" class="secondary-btn" id="saveDefinitionTestCaseButton">${isContext ? "💾 Save Test Config" : "💾 Save Test Case"}</button>
+          <button type="button" class="primary-btn" id="runDefinitionTestButton">▶ Run Test</button>
+          <button type="button" class="secondary-btn" id="saveDefinitionTestCaseButton">💾 Save Test Case</button>
         </div>
       </section>
       <section class="test-results-panel">
         <div class="results-header">
-          <h3>${isContext ? "Context Data Retrieved" : "Results & Validation"}</h3>
+          <h3>Results & Validation</h3>
           <button type="button" class="secondary-btn" id="definitionTestHistoryButton">📜 History</button>
         </div>
-        ${isContext ? `<div class="results-explanation"><p><strong>Context providers work automatically</strong> - when you type a prompt with @Current File, the AI receives your prompt plus the context data shown below.</p><p>This test verifies providers can retrieve that data correctly.</p></div>` : ""}
         ${isContext ? `
           <div class="results-help-header">
             <h4>Understanding Results</h4>
             <button class="help-toggle" type="button" id="resultsHelpToggle">?</button>
           </div>
           <div class="results-help-content" id="resultsHelp" hidden>
-            <div class="help-item"><span class="help-icon">✅</span><div><strong>SUCCESS</strong> - Provider successfully retrieved context data</div></div>
-            <div class="help-item"><span class="help-icon">❌</span><div><strong>ERROR</strong> - Provider failed to access a data source or is misconfigured</div></div>
+            <div class="help-item"><span class="help-icon">✅</span><div><strong>SUCCESS</strong> - Provider responded correctly to your query</div></div>
+            <div class="help-item"><span class="help-icon">⚠️</span><div><strong>WARNING</strong> - Provider responded but validation checks found issues</div></div>
+            <div class="help-item"><span class="help-icon">❌</span><div><strong>ERROR</strong> - Provider failed to respond or configuration is invalid</div></div>
             <div class="help-divider"></div>
-            <p><strong>Retrieved Data:</strong> the exact context that would be injected into AI conversation.</p>
-            <p><strong>Validation Checks:</strong> verifies source access, retrieval success, non-empty data, and format correctness.</p>
-            <p class="help-note">💡 This is a dry-run simulation. No AI is called.</p>
+            <p><strong>Response:</strong> The actual context data returned by your provider. This is what the AI assistant would receive.</p>
+            <p><strong>Validation Checks:</strong> Automated tests ensuring your provider configuration is correct and working as expected.</p>
+            <p class="help-note">💡 In production, context providers run automatically when the AI needs information. This test lets you verify they work before deploying to your project.</p>
           </div>
         ` : ""}
         <div id="definitionTestResultsContent" class="empty-state">Run a test to see results.</div>
@@ -1165,80 +1135,9 @@ function formatCheckName(raw) {
     .replace(/_/g, " ")
     .replace(/\w/g, (char) => char.toUpperCase());
 }
-function formatBytes(value) {
-  const bytes = Number(value || 0);
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getProviderIcon(name) {
-  if (name === "@Current File") return "📄";
-  if (name === "@File Tree") return "🌲";
-  if (name === "@Git Diff") return "🧬";
-  return "📦";
-}
-
-function displayContextProviderResults(contextResults) {
-  const content = document.getElementById("definitionTestResultsContent");
-  if (!content) return;
-  const providers = Array.isArray(contextResults?.providers) ? contextResults.providers : [];
-  const totalSize = Number(contextResults?.totalSize || 0);
-  const successful = Number(contextResults?.successful || 0);
-  const failed = Number(contextResults?.failed || 0);
-
-  content.innerHTML = `
-    <div class="context-test-results">
-      ${providers.map((provider) => `
-        <div class="provider-result ${provider.status}">
-          <div class="provider-header">
-            <div class="provider-info">
-              <span class="provider-icon">${getProviderIcon(provider.name)}</span>
-              <span class="provider-name">${escapeHtml(provider.name || "Unknown provider")}</span>
-              <span class="status-badge ${provider.status}">${provider.status === "success" ? "✅" : "❌"} ${escapeHtml(String(provider.status || "unknown").toUpperCase())}</span>
-            </div>
-            <span class="retrieval-time">${Number(provider.duration || 0)}ms</span>
-          </div>
-          ${provider.status === "success" ? `
-            <div class="context-data-section">
-              <div class="section-header"><h4>📦 Retrieved Context Data</h4><span class="data-size">${formatBytes(String(provider.data || "").length)}</span></div>
-              <p class="data-description">This is what would be automatically added to your AI prompt.</p>
-              <div class="context-data"><pre><code>${escapeHtml(String(provider.data || ""))}</code></pre></div>
-            </div>
-            <div class="validation-section">
-              <h4>Validation Checks</h4>
-              <div class="validation-checks">
-                ${(provider.validations || []).map((v) => `<div class="validation-item ${v.passed ? "passed" : "failed"}">${v.passed ? "✓" : "✗"} ${escapeHtml(formatCheckName(v.check))}${v.details ? `<span class="check-details">${escapeHtml(String(v.details))}</span>` : ""}</div>`).join("")}
-              </div>
-            </div>` : `
-            <div class="error-section">
-              <h4>❌ Error Details</h4>
-              <p class="error-message">${escapeHtml(provider.error || "Unknown error")}</p>
-              ${(provider.suggestions || []).length ? `<div class="error-suggestions"><h5>Possible fixes:</h5><ul>${provider.suggestions.map((s) => `<li>${escapeHtml(String(s))}</li>`).join("")}</ul></div>` : ""}
-            </div>`}
-        </div>
-      `).join("")}
-      <div class="test-summary">
-        <h4>📊 Test Summary</h4>
-        <div class="summary-stats">
-          <div class="stat"><span class="stat-label">Providers Tested:</span><span class="stat-value">${providers.length}</span></div>
-          <div class="stat"><span class="stat-label">Successful:</span><span class="stat-value success">${successful}</span></div>
-          <div class="stat"><span class="stat-label">Failed:</span><span class="stat-value error">${failed}</span></div>
-          <div class="stat"><span class="stat-label">Total Data Size:</span><span class="stat-value">${formatBytes(totalSize)}</span></div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
 function displayDefinitionTestResults(result) {
   const content = document.getElementById("definitionTestResultsContent");
   if (!content) return;
-  const activeType = document.querySelector(".test-interface")?.dataset.definitionType || "";
-  if (activeType === "context" && result?.results?.providers) {
-    displayContextProviderResults(result.results);
-    return;
-  }
   const status = String(result?.status || "unknown");
   const statusIcon = status === "success" ? "✅" : status === "warning" ? "⚠️" : "❌";
   const metadata = result?.results?.metadata || {};
@@ -1246,6 +1145,7 @@ function displayDefinitionTestResults(result) {
   const checks = Array.isArray(result?.results?.validation) ? result.results.validation : [];
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
   const errors = Array.isArray(result?.errors) ? result.errors : [];
+  const activeType = document.querySelector(".test-interface")?.dataset.definitionType || "";
   const isContext = activeType === "context";
   content.innerHTML = `
     <div class="test-result ${status}">
@@ -1316,23 +1216,7 @@ function collectDefinitionTestPayload(definition) {
     };
   }
   if (normalizedType === "context") {
-    const selectedProviders = [];
-    if (document.getElementById("providerCurrentFile")?.checked) selectedProviders.push("@Current File");
-    if (document.getElementById("providerFileTree")?.checked) selectedProviders.push("@File Tree");
-    if (document.getElementById("providerGitDiff")?.checked) selectedProviders.push("@Git Diff");
-
-    return {
-      testType: "simulation",
-      input: {
-        mockEnv: {
-          currentFile: document.getElementById("mockCurrentFile")?.value || "",
-          projectRoot: document.getElementById("mockProjectRoot")?.value || "",
-          workingDir: document.getElementById("mockWorkingDir")?.value || ""
-        },
-        selectedProviders
-      },
-      config: {}
-    };
+    return { testType: "simulation", input: { query: document.getElementById("testContextQuery")?.value || "" }, config: {} };
   }
   return { testType: "validation", input: {}, config: {} };
 }
