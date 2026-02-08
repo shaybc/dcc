@@ -1,11 +1,12 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
-function createTextInput({ mount, label, state, key, onChange }) {
+function createTextInput({ mount, label, state, key, placeholder, onChange }) {
   const row = document.createElement("label");
   row.className = "editor-field";
   row.innerHTML = `<span>${label}</span>`;
   const input = document.createElement("input");
   input.type = "text";
+  input.placeholder = placeholder || "";
   input.addEventListener("input", () => {
     state[key] = input.value;
     onChange();
@@ -25,15 +26,15 @@ export function createMcpServerForm({ mount, onChange }) {
     mcpServers: []
   };
 
-  const nameInput = createTextInput({ mount, label: "name", state, key: "name", onChange });
-  const versionInput = createTextInput({ mount, label: "version", state, key: "version", onChange });
-  const schemaInput = createTextInput({ mount, label: "schema", state, key: "schema", onChange });
-  const descriptionInput = createTextInput({ mount, label: "description", state, key: "description", onChange });
+  const nameInput = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., 'Playwright MCP'", onChange });
+  const versionInput = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '0.0.1'", onChange });
+  const schemaInput = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
+  const descriptionInput = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'this is a playwrite mcp server description'", onChange });
 
   const tags = createArrayEditor({
     mount,
     label: "tags",
-    fields: [{ name: "value", label: "Tag" }],
+    fields: [{ name: "value", label: "tags", placeholder: "e.g., 'tag1, tag2, tag3'" }],
     onChange: (nextItems) => {
       state.tags = nextItems;
       onChange();
@@ -44,9 +45,9 @@ export function createMcpServerForm({ mount, onChange }) {
     mount,
     label: "mcpServers",
     fields: [
-      { name: "name", label: "name" },
-      { name: "command", label: "command" },
-      { name: "args", label: "args", kind: "array", itemLabel: "arg" }
+      { name: "name", label: "server name", placeholder: "e.g., 'Playwright MCP'" },
+      { name: "command", label: "command", placeholder: "e.g., 'npx'" },
+      { name: "args", label: "args", kind: "array", nestedFields: [{ name: "value", label: "argument", placeholder: "e.g., '@playwright/mcp@latest'" }] }
     ],
     onChange: (nextItems) => {
       state.mcpServers = nextItems;
