@@ -31,31 +31,39 @@ function schemaForType(type, strict) {
     name: z.string().min(1, "name is required"),
     description: z.string().min(1, "description is required"),
   };
+  const commonMetadata = {
+    version: z.string().min(1).optional(),
+    schema: z.string().min(1).optional(),
+    tags: z.union([z.array(z.string()), z.string()]).optional(),
+    invokable: z.boolean().optional(),
+    key: z.string().optional(),
+    type: z.string().optional(),
+  };
   const passthrough = strict ? "strict" : "passthrough";
   const applyMode = (schema) => (passthrough === "strict" ? schema.strict() : schema.passthrough());
 
   if (type === "prompts") {
-    return applyMode(z.object({ ...base, prompt: z.string().optional(), messages: z.array(z.any()).optional() }));
+    return applyMode(z.object({ ...base, ...commonMetadata, prompt: z.string().optional(), messages: z.array(z.any()).optional() }));
   }
   if (type === "rules") {
-    return applyMode(z.object({ ...base }));
+    return applyMode(z.object({ ...base, ...commonMetadata }));
   }
   if (type === "workflows") {
-    return applyMode(z.object({ ...base, steps: z.array(z.object({ id: z.string().min(1).optional() })).min(1) }));
+    return applyMode(z.object({ ...base, ...commonMetadata, steps: z.array(z.object({ id: z.string().min(1).optional() })).min(1) }));
   }
   if (type === "agents") {
-    return applyMode(z.object({ ...base }));
+    return applyMode(z.object({ ...base, ...commonMetadata }));
   }
   if (type === "models") {
-    return applyMode(z.object({ ...base, provider: z.string().optional(), model: z.string().optional() }));
+    return applyMode(z.object({ ...base, ...commonMetadata, provider: z.string().optional(), model: z.string().optional() }));
   }
   if (type === "context") {
-    return applyMode(z.object({ ...base, provider: z.string().optional() }));
+    return applyMode(z.object({ ...base, ...commonMetadata, provider: z.string().optional() }));
   }
   if (type === "mcpservers") {
-    return applyMode(z.object({ ...base, transport: z.string().optional(), tools: z.array(z.any()).optional() }));
+    return applyMode(z.object({ ...base, ...commonMetadata, transport: z.string().optional(), tools: z.array(z.any()).optional() }));
   }
-  return applyMode(z.object(base));
+  return applyMode(z.object({ ...base, ...commonMetadata }));
 }
 
 function lintCommon(rawSource, checks) {
