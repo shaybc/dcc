@@ -1668,3 +1668,24 @@ body.detail-page-open {
 
 .stat-value.success { color: #16a34a; }
 .stat-value.error { color: #dc2626; }
+
+.test-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.test-result-header h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.definition-type-pill {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
