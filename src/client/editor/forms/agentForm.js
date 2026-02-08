@@ -1,6 +1,6 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
-export function createAgentForm({ mount, onChange }) {
+export function createAgentForm({ mount, onChange, availableTags = [] }) {
   const state = { name: "", description: "", version: "", tags: [], tools: [], rules: [], body: "" };
   const makeInput = (label, key, placeholder = "") => {
     const row = document.createElement("label"); row.className = "editor-field";
@@ -17,7 +17,7 @@ export function createAgentForm({ mount, onChange }) {
     'e.g., "Triage Assistant (Jira) helps you create high-quality Jira issues with minimal input. It transforms a short request into a structured ticket, adds context from the repo or related issues, and ensures consistent formatting. It\'s designed to speed up triage, reduce noisy tickets, and make issues easier to understand and act on."'
   );
   const version = makeInput("version", "version");
-  const tags = createArrayEditor({ mount, label: "tags", fields: [{ name: "value", label: "Tag", placeholder: 'e.g., "tag1, tag2, tag3"' }], onChange: (v) => { state.tags = v; onChange(); } });
+  const tags = createArrayEditor({ mount, label: "tags", fields: [{ name: "value", label: "Tag", placeholder: 'e.g., "tag1, tag2, tag3"', autocompleteOptions: availableTags }], onChange: (v) => { state.tags = v; onChange(); } });
   const tools = createArrayEditor({ mount, label: "tools", fields: [{ name: "value", label: "Tool", placeholder: 'e.g., "built_in, atlassian/atlassian-mcp"' }], onChange: (v) => { state.tools = v; onChange(); } });
   const rules = createArrayEditor({ mount, label: "rules", fields: [{ name: "value", label: "Rule", placeholder: 'e.g., "continuedev/create-standard-issue"' }], onChange: (v) => { state.rules = v; onChange(); } });
   const bodyRow = document.createElement("label"); bodyRow.className = "editor-field"; bodyRow.innerHTML = "<span>agent instructions</span>";
