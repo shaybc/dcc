@@ -17,7 +17,15 @@ function attachAutocomplete(input, options) {
 
   const menu = createElement("div", "autocomplete-menu");
   menu.hidden = true;
-  input.after(menu);
+  menu.classList.add("autocomplete-menu-floating");
+  document.body.append(menu);
+
+  const positionMenu = () => {
+    const rect = input.getBoundingClientRect();
+    menu.style.left = `${rect.left}px`;
+    menu.style.top = `${rect.bottom + 4}px`;
+    menu.style.width = `${rect.width}px`;
+  };
 
   const filterValues = (query) => {
     const normalized = String(query || "").trim().toLowerCase();
@@ -73,6 +81,7 @@ function attachAutocomplete(input, options) {
     }
 
     menu.innerHTML = "";
+    positionMenu();
     matches.forEach((value) => {
       const option = createElement("button", "autocomplete-option", value);
       option.type = "button";
@@ -97,6 +106,15 @@ function attachAutocomplete(input, options) {
   });
   input.addEventListener("blur", () => {
     window.setTimeout(hideMenu, 120);
+  });
+
+  window.addEventListener("resize", positionMenu);
+  window.addEventListener("scroll", positionMenu, true);
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      hideMenu();
+    }
   });
 }
 

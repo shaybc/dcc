@@ -78,3 +78,9 @@ input, textarea { background:#161b22; color:#e6edf3; border:1px solid #30363d; b
 .autocomplete-option:hover {
   background: #1f2937;
 }
+
+.autocomplete-menu-floating {
+  position: fixed;
+  z-index: 2000;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+}
