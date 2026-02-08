@@ -1,3 +1,5 @@
+const AUTOCOMPLETE_DEBUG_PREFIX = "[tag-autocomplete]";
+
 function createElement(tag, className, text) {
   const el = document.createElement(tag);
   if (className) el.className = className;
@@ -6,10 +8,12 @@ function createElement(tag, className, text) {
 }
 
 function attachAutocomplete(input, options) {
+  console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} attachAutocomplete: called with options`, options);
   let values = Array.from(new Set((Array.isArray(options) ? options : [])
     .map((item) => String(item || "").trim())
     .filter(Boolean)));
   let requestedFallback = false;
+  console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} attachAutocomplete: normalized options`, values);
 
   const menu = createElement("div", "autocomplete-menu");
   menu.hidden = true;
@@ -29,13 +33,17 @@ function attachAutocomplete(input, options) {
   };
 
   const tryLoadFallbackValues = async () => {
+    console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: invoked; current values`, values);
     if (values.length || requestedFallback) {
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: skipped`, { hasValues: values.length > 0, requestedFallback });
       return;
     }
 
     requestedFallback = true;
     try {
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: requesting /api/definition-tags`);
       const response = await fetch("/api/definition-tags");
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: response status`, response.status);
       if (!response.ok) {
         return;
       }
@@ -43,18 +51,23 @@ function attachAutocomplete(input, options) {
       values = Array.from(new Set((Array.isArray(payload) ? payload : [])
         .map((item) => String(item || "").trim())
         .filter(Boolean)));
-    } catch (_error) {
-      // keep local values only
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: loaded values`, values);
+    } catch (error) {
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: request failed`, error);
     }
   };
 
   const showMenu = async () => {
+    console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} showMenu: start with input value`, input.value);
     await tryLoadFallbackValues();
 
     const matches = filterValues(input.value)
       .filter((value) => value !== input.value);
 
+    console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} showMenu: matches`, matches);
+
     if (!matches.length) {
+      console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} showMenu: no matches, hiding menu`);
       hideMenu();
       return;
     }
@@ -73,6 +86,7 @@ function attachAutocomplete(input, options) {
     });
 
     menu.hidden = false;
+    console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} showMenu: menu shown with options`, matches.length);
   };
 
   input.addEventListener("focus", () => {
