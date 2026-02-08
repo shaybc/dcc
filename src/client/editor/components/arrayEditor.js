@@ -48,6 +48,7 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
         const input = field.multiline ? document.createElement("textarea") : document.createElement("input");
         if (!field.multiline) input.type = "text";
         input.value = state[field.name] || "";
+        input.placeholder = field.placeholder || "";
         input.addEventListener("input", () => {
           state[field.name] = input.value;
         });
