@@ -52,6 +52,24 @@ db.serialize(() => {
     )`
   );
   db.run(
+    `CREATE TABLE IF NOT EXISTS definition_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      definition_key TEXT NOT NULL,
+      version TEXT NOT NULL,
+      commit_hash TEXT,
+      commit_message TEXT,
+      commit_author TEXT,
+      commit_date TEXT,
+      content TEXT NOT NULL,
+      metadata TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (definition_key) REFERENCES definitions(key),
+      UNIQUE(definition_key, version)
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_def_versions_key ON definition_versions(definition_key)");
+  db.run("CREATE INDEX IF NOT EXISTS idx_def_versions_commit ON definition_versions(commit_hash)");
+  db.run(
     `CREATE TABLE IF NOT EXISTS dev_project_roots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       path TEXT UNIQUE
@@ -323,6 +341,10 @@ function parseYamlHeaderFields(raw) {
 
 async function parseDefinition(filePath) {
   const raw = await fsp.readFile(filePath, "utf8");
+  return parseDefinitionContent(raw, filePath);
+}
+
+function parseDefinitionContent(raw, filePath) {
   let parsed = { data: {}, content: raw };
   const ext = path.extname(filePath).toLowerCase();
 
@@ -368,6 +390,190 @@ async function parseDefinition(filePath) {
     filePath,
     key: buildKey(type, filePath)
   };
+}
+
+function parseGitLogEntries(logOutput) {
+  return String(logOutput || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [hash = "", authorName = "", authorEmail = "", date = "", ...messageParts] = line.split("|");
+      return {
+        hash,
+        author: [authorName, authorEmail && `<${authorEmail}>`].filter(Boolean).join(" ").trim(),
+        date,
+        message: messageParts.join("|")
+      };
+    })
+    .filter((entry) => entry.hash);
+}
+
+function normalizeHistoricalVersion(rawVersion, commitHash, takenVersions) {
+  const normalized = String(rawVersion || "").trim();
+  const fallback = `commit-${String(commitHash || "").slice(0, 7) || "unknown"}`;
+  let nextVersion = normalized || fallback;
+  if (!takenVersions.has(nextVersion)) {
+    takenVersions.add(nextVersion);
+    return nextVersion;
+  }
+  let suffix = 1;
+  while (takenVersions.has(`${nextVersion}-${suffix}`)) {
+    suffix += 1;
+  }
+  const uniqueVersion = `${nextVersion}-${suffix}`;
+  takenVersions.add(uniqueVersion);
+  return uniqueVersion;
+}
+
+async function loadVersionHistoryFromGit(definition) {
+  const repoPath = await getSetting("repoPath");
+  if (!repoPath || !definition?.filePath) {
+    return [];
+  }
+
+  const absoluteRepoPath = path.resolve(repoPath);
+  const absoluteDefinitionPath = path.resolve(definition.filePath);
+  if (!absoluteDefinitionPath.startsWith(`${absoluteRepoPath}${path.sep}`)) {
+    return [];
+  }
+
+  const relativePath = path.relative(absoluteRepoPath, absoluteDefinitionPath).replace(/\\/g, "/");
+  const escapedPath = relativePath.replace(/["\\]/g, "\\$&");
+  const gitLog = await runCommand(
+    `git log --follow --pretty=format:"%H|%an|%ae|%ad|%s" --date=iso -- ${JSON.stringify(relativePath)}`,
+    { cwd: absoluteRepoPath }
+  );
+
+  const commits = parseGitLogEntries(gitLog);
+  const takenVersions = new Set();
+  const versions = [];
+  for (const commit of commits) {
+    try {
+      const content = await runCommand(`git show ${commit.hash}:"${escapedPath}"`, { cwd: absoluteRepoPath });
+      const parsed = parseDefinitionContent(content, definition.filePath);
+      const version = normalizeHistoricalVersion(parsed.version, commit.hash, takenVersions);
+      versions.push({
+        definition_key: definition.key,
+        version,
+        commit_hash: commit.hash,
+        commit_message: commit.message,
+        commit_author: commit.author,
+        commit_date: new Date(commit.date).toISOString(),
+        content,
+        metadata: JSON.stringify({
+          name: parsed.name,
+          description: parsed.description,
+          tags: parseDefinitionTagsForMetadata(parsed.tags),
+          schema: parsed.schema,
+          type: parsed.type
+        })
+      });
+    } catch (_error) {
+      // Ignore commits where file content cannot be materialized.
+    }
+  }
+
+  return versions;
+}
+
+function parseDefinitionTagsForMetadata(rawTags) {
+  return String(rawTags || "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+async function refreshDefinitionVersionCache(definition) {
+  const versions = await loadVersionHistoryFromGit(definition);
+  await runDb("DELETE FROM definition_versions WHERE definition_key = ?", [definition.key]);
+  for (const version of versions) {
+    await runDb(
+      `INSERT OR REPLACE INTO definition_versions
+      (definition_key, version, commit_hash, commit_message, commit_author, commit_date, content, metadata)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        version.definition_key,
+        version.version,
+        version.commit_hash,
+        version.commit_message,
+        version.commit_author,
+        version.commit_date,
+        version.content,
+        version.metadata
+      ]
+    );
+  }
+  return versions;
+}
+
+async function getCachedDefinitionVersions(definitionKey) {
+  return allDb(
+    `SELECT id, definition_key, version, commit_hash, commit_message, commit_author, commit_date, metadata, created_at
+     FROM definition_versions
+     WHERE definition_key = ?
+     ORDER BY datetime(commit_date) DESC, id DESC`,
+    [definitionKey]
+  );
+}
+
+async function getVersionHistory(definition) {
+  const cachedVersions = await getCachedDefinitionVersions(definition.key);
+  if (cachedVersions.length === 0) {
+    await refreshDefinitionVersionCache(definition);
+    return getCachedDefinitionVersions(definition.key);
+  }
+
+  const latestCached = cachedVersions[0];
+  if (!latestCached?.commit_hash) {
+    await refreshDefinitionVersionCache(definition);
+    return getCachedDefinitionVersions(definition.key);
+  }
+
+  try {
+    const repoPath = await getSetting("repoPath");
+    if (!repoPath || !definition?.filePath) {
+      return cachedVersions;
+    }
+    const absoluteRepoPath = path.resolve(repoPath);
+    const absoluteDefinitionPath = path.resolve(definition.filePath);
+    if (!absoluteDefinitionPath.startsWith(`${absoluteRepoPath}${path.sep}`)) {
+      return cachedVersions;
+    }
+    const relativePath = path.relative(absoluteRepoPath, absoluteDefinitionPath).replace(/\\/g, "/");
+    const latestHash = await runCommand(`git log -n 1 --pretty=format:%H -- ${JSON.stringify(relativePath)}`, {
+      cwd: absoluteRepoPath
+    });
+    if (latestHash && latestHash !== latestCached.commit_hash) {
+      await refreshDefinitionVersionCache(definition);
+      return getCachedDefinitionVersions(definition.key);
+    }
+  } catch (_error) {
+    return cachedVersions;
+  }
+
+  return cachedVersions;
+}
+
+function bumpPatchVersion(version) {
+  const match = String(version || "").trim().match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) {
+    return "1.0.0";
+  }
+  return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
+}
+
+function applyVersionToContent(content, filePath, version) {
+  const ext = path.extname(filePath).toLowerCase();
+  if ([".yml", ".yaml"].includes(ext)) {
+    const parsed = YAML.parse(content) || {};
+    parsed.version = version;
+    return YAML.stringify(parsed);
+  }
+
+  const parsed = matter(content || "");
+  parsed.data.version = version;
+  return matter.stringify(parsed.content, parsed.data);
 }
 
 function normalizeTags(rawTags) {
@@ -1142,6 +1348,118 @@ app.get("/api/definitions/:id", (req, res) => {
       res.json({ ...row, content, createdAt });
     }
   );
+});
+
+app.get("/api/definitions/:id/versions", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const versions = await getVersionHistory(definition);
+    const responseVersions = versions.map((versionRow) => ({
+      version: versionRow.version,
+      commitHash: versionRow.commit_hash,
+      commitMessage: versionRow.commit_message,
+      commitAuthor: versionRow.commit_author,
+      commitDate: versionRow.commit_date,
+      isCurrent: String(versionRow.version) === String(definition.version || "")
+    }));
+
+    res.json({ versions: responseVersions, currentVersion: definition.version || "" });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unable to load version history." });
+  }
+});
+
+app.get("/api/definitions/:id/versions/:version", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    await getVersionHistory(definition);
+    const versionRow = await getDb(
+      `SELECT version, content, metadata, commit_hash, commit_message, commit_author, commit_date
+       FROM definition_versions WHERE definition_key = ? AND version = ?`,
+      [definition.key, req.params.version]
+    );
+
+    if (!versionRow) {
+      res.status(404).json({ error: "Version not found." });
+      return;
+    }
+
+    let metadata = {};
+    try {
+      metadata = JSON.parse(versionRow.metadata || "{}") || {};
+    } catch (_error) {
+      metadata = {};
+    }
+
+    res.json({
+      version: versionRow.version,
+      content: versionRow.content,
+      metadata,
+      commitInfo: {
+        hash: versionRow.commit_hash,
+        message: versionRow.commit_message,
+        author: versionRow.commit_author,
+        date: versionRow.commit_date
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unable to load version content." });
+  }
+});
+
+app.post("/api/definitions/:id/versions/:version/restore", async (req, res) => {
+  try {
+    const definition = await getDb("SELECT * FROM definitions WHERE id = ?", [req.params.id]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    await getVersionHistory(definition);
+    const versionRow = await getDb(
+      "SELECT version, content FROM definition_versions WHERE definition_key = ? AND version = ?",
+      [definition.key, req.params.version]
+    );
+    if (!versionRow) {
+      res.status(404).json({ error: "Version not found." });
+      return;
+    }
+
+    const createNewVersion = req.body?.createNewVersion !== false;
+    const newVersion = createNewVersion ? bumpPatchVersion(definition.version) : versionRow.version;
+    const contentToWrite = applyVersionToContent(versionRow.content, definition.filePath, newVersion);
+    await fsp.writeFile(definition.filePath, contentToWrite, "utf8");
+
+    const now = new Date().toISOString();
+    await runDb(
+      "UPDATE definitions SET content = ?, version = ?, updatedAt = ? WHERE id = ?",
+      [contentToWrite, newVersion, now, definition.id]
+    );
+
+    try {
+      await refreshDefinitionVersionCache({ ...definition, version: newVersion });
+    } catch (_error) {
+      // Best effort cache refresh.
+    }
+
+    res.json({
+      success: true,
+      newVersion,
+      message: "Version restored successfully"
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unable to restore version." });
+  }
 });
 
 app.post("/api/definitions/:id/save", async (req, res) => {

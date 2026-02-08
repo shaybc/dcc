@@ -755,6 +755,37 @@ body.detail-page-open {
   font-weight: 700;
 }
 
+.detail-version-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 6px;
+}
+
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.version-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: rgba(14, 165, 233, 0.17);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  color: #7dd3fc;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 
 
 .definition-tabs {
@@ -821,6 +852,101 @@ body.detail-page-open {
 
 .definition-tab-panel #detailContent {
   margin: 0;
+}
+
+.version-banner {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 4px solid #38bdf8;
+  background: rgba(14, 165, 233, 0.12);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.version-banner-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-banner button {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--text);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.version-banner button:hover {
+  border-color: var(--accent);
+}
+
+.version-dropdown {
+  position: absolute;
+  z-index: 1200;
+  min-width: 280px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.version-search {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.version-search input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 8px;
+}
+
+.version-option {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  background: transparent;
+  color: var(--text);
+  padding: 10px 12px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.version-option:hover {
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.version-option.current {
+  background: rgba(139, 92, 246, 0.18);
+}
+
+.version-option.view-all {
+  color: #c4b5fd;
+  font-weight: 600;
+}
+
+.version-date {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.checkmark {
+  color: #22c55e;
+  font-weight: 700;
 }
 
 .definition-preview-content {
