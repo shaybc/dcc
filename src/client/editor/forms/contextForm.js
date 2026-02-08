@@ -46,12 +46,14 @@ export function createContextForm({ mount, onChange, availableTags = [] }) {
     label: "context",
     fields: [
       { name: "provider", label: "provider", placeholder: "e.g., 'http'" },
-      { name: "url", label: "params.url", placeholder: "e.g., 'https://api.example.com/v1/users'" },
       {
-        name: "headers",
-        label: "params.headers",
+        name: "params",
+        label: "params",
         kind: "array",
-        nestedFields: [{ name: "value", label: "header", placeholder: "e.g., 'Authorization: Bearer <token>'" }]
+        nestedFields: [
+          { name: "key", label: "key", placeholder: "e.g., 'url'" },
+          { name: "value", label: "value", placeholder: "e.g., 'https://api.example.com/v1/users'" }
+        ]
       }
     ],
     onChange: (nextItems) => {

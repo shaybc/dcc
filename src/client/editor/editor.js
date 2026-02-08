@@ -139,51 +139,39 @@ function serializeWorkflowModels(models) {
 
 function normalizeContextEntries(entries) {
   return (Array.isArray(entries) ? entries : []).map((entry) => {
-    const paramsObject = entry?.params && typeof entry.params === "object" && !Array.isArray(entry.params)
+    const paramsArray = Array.isArray(entry?.params)
       ? entry.params
-      : {};
-
-    const headers = Array.isArray(paramsObject.headers)
-      ? paramsObject.headers.map((item) => {
-          if (item && typeof item === "object") {
-            const [key, value] = Object.entries(item)[0] || ["", ""];
-            return key ? `${key}: ${value ?? ""}` : "";
-          }
-          return String(item || "");
-        }).filter(Boolean)
-      : [];
+      : entry?.params && typeof entry.params === "object"
+        ? Object.entries(entry.params).map(([key, value]) => ({ key, value: value == null ? "" : String(value) }))
+        : [];
 
     return {
-      ...entry,
       provider: entry?.provider || "",
-      url: paramsObject.url || "",
-      headers
+      params: paramsArray
+        .map((item) => ({
+          key: item?.key == null ? "" : String(item.key),
+          value: item?.value == null ? "" : String(item.value)
+        }))
+        .filter((item) => item.key || item.value)
     };
   });
 }
 
 function serializeContextEntries(entries) {
   return (Array.isArray(entries) ? entries : []).map((entry) => {
-    const out = { ...entry, provider: entry?.provider || "" };
-    const params = {};
+    const out = { provider: entry?.provider || "" };
 
-    if (out.url) {
-      params.url = String(out.url);
-    }
+    if (Array.isArray(entry?.params)) {
+      const params = entry.params
+        .map((item) => ({
+          key: item?.key == null ? "" : String(item.key).trim(),
+          value: item?.value == null ? "" : String(item.value)
+        }))
+        .filter((item) => item.key);
 
-    if (Array.isArray(out.headers) && out.headers.length > 0) {
-      params.headers = out.headers
-        .map((line) => String(line || "").trim())
-        .filter(Boolean);
-    }
-
-    delete out.url;
-    delete out.headers;
-
-    if (Object.keys(params).length > 0) {
-      out.params = params;
-    } else {
-      delete out.params;
+      if (params.length > 0) {
+        out.params = params;
+      }
     }
 
     return out;
