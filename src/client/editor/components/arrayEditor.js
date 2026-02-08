@@ -1,3 +1,5 @@
+import { attachEnhancePromptBehavior } from "../forms/promptEnhancer.js";
+
 const AUTOCOMPLETE_DEBUG_PREFIX = "[tag-autocomplete]";
 
 function createElement(tag, className, text) {
@@ -169,6 +171,26 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
           state[field.name] = input.value;
         });
         row.append(input);
+
+        if (field.multiline && field.enablePromptEnhance) {
+          const enhanceRow = createElement("div", "editor-enhance-row");
+          const enhanceButton = createElement("button", "btn", "Enhance Prompt");
+          enhanceButton.type = "button";
+          attachEnhancePromptBehavior({
+            button: enhanceButton,
+            getText: () => input.value,
+            setText: (nextValue) => {
+              input.value = nextValue;
+              state[field.name] = nextValue;
+            },
+            onChange: () => {
+              state[field.name] = input.value;
+            },
+            fieldLabel: field.enhanceFieldLabel || field.label || "prompt"
+          });
+          enhanceRow.append(enhanceButton);
+          row.append(enhanceRow);
+        }
       }
       form.append(row);
     });
