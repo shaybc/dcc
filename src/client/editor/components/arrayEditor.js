@@ -6,13 +6,10 @@ function createElement(tag, className, text) {
 }
 
 function attachAutocomplete(input, options) {
-  const values = Array.from(new Set((Array.isArray(options) ? options : [])
+  let values = Array.from(new Set((Array.isArray(options) ? options : [])
     .map((item) => String(item || "").trim())
     .filter(Boolean)));
-
-  if (!values.length) {
-    return;
-  }
+  let requestedFallback = false;
 
   const menu = createElement("div", "autocomplete-menu");
   menu.hidden = true;
@@ -31,7 +28,29 @@ function attachAutocomplete(input, options) {
     menu.innerHTML = "";
   };
 
-  const showMenu = () => {
+  const tryLoadFallbackValues = async () => {
+    if (values.length || requestedFallback) {
+      return;
+    }
+
+    requestedFallback = true;
+    try {
+      const response = await fetch("/api/definition-tags");
+      if (!response.ok) {
+        return;
+      }
+      const payload = await response.json();
+      values = Array.from(new Set((Array.isArray(payload) ? payload : [])
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)));
+    } catch (_error) {
+      // keep local values only
+    }
+  };
+
+  const showMenu = async () => {
+    await tryLoadFallbackValues();
+
     const matches = filterValues(input.value)
       .filter((value) => value !== input.value);
 
@@ -56,8 +75,12 @@ function attachAutocomplete(input, options) {
     menu.hidden = false;
   };
 
-  input.addEventListener("focus", showMenu);
-  input.addEventListener("input", showMenu);
+  input.addEventListener("focus", () => {
+    showMenu();
+  });
+  input.addEventListener("input", () => {
+    showMenu();
+  });
   input.addEventListener("blur", () => {
     window.setTimeout(hideMenu, 120);
   });
