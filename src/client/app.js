@@ -30,9 +30,20 @@ const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
+const definitionTabTest = document.getElementById("definitionTabTest");
 const definitionPreviewPanel = document.getElementById("definitionPreviewPanel");
 const definitionSourcePanel = document.getElementById("definitionSourcePanel");
+const definitionTestPanel = document.getElementById("definitionTestPanel");
 const definitionPreviewContent = document.getElementById("definitionPreviewContent");
+const runValidationButton = document.getElementById("runValidationButton");
+const copyValidationReportButton = document.getElementById("copyValidationReportButton");
+const validationStrictToggle = document.getElementById("validationStrictToggle");
+const validationLintToggle = document.getElementById("validationLintToggle");
+const validationReferencesToggle = document.getElementById("validationReferencesToggle");
+const validationAutoRunToggle = document.getElementById("validationAutoRunToggle");
+const validationSeverityFilter = document.getElementById("validationSeverityFilter");
+const validationResults = document.getElementById("validationResults");
+const validationLastRun = document.getElementById("validationLastRun");
 const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
 
@@ -47,6 +58,8 @@ let currentDetailDefinitionPath = "";
 let currentDefinitionVersion = "";
 let activeHistoricalVersion = "";
 let activeVersionDropdown = null;
+let lastValidationResult = null;
+let validationAutoRunTimeout = null;
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
@@ -575,11 +588,11 @@ function inferDefinitionFormat(definition) {
 }
 
 function formatTabLabel(format) {
-  if (format === "yaml") return "YAML";
-  if (format === "md") return "MD";
-  if (format === "json") return "JSON";
-  if (format === "txt") return "TXT";
-  return "SOURCE";
+  if (format === "yaml") return "Source (YAML)";
+  if (format === "md") return "Source (MD)";
+  if (format === "json") return "Source (JSON)";
+  if (format === "txt") return "Source (TXT)";
+  return "Source";
 }
 
 
@@ -804,15 +817,116 @@ function renderDefinitionPreview(definitionContent, definitionMeta = {}) {
   const sections = collectPreviewSections(definitionContent, definitionMeta);
   return sections.map((section) => renderPreviewSection(section)).join("");
 }
+function formatValidationSummary(status, summary) {
+  const label = String(status || "").toUpperCase() || "UNKNOWN";
+  const statusIcon = status === "success" ? "✅" : status === "failure" ? "❌" : "⚠️";
+  return `<div class="validation-summary status-${escapeHtml(status || "unknown")}"><span class="validation-status-icon" aria-hidden="true">${statusIcon}</span>${label} · ${summary.errors} errors · ${summary.warnings} warnings · ${summary.infos} info</div>`;
+}
+
+function validationCheckIcon(check) {
+  return check.passed ? '<span class="check-result-icon check-result-pass" aria-hidden="true">✓</span>' : '<span class="check-result-icon check-result-fail" aria-hidden="true">✕</span>';
+}
+
+function renderValidationChecks(checks, severityFilter) {
+  const grouped = { schema: [], lint: [], reference: [] };
+  checks.forEach((check) => {
+    if (severityFilter !== "all" && check.severity !== severityFilter) {
+      return;
+    }
+    const category = grouped[check.category] ? check.category : "lint";
+    grouped[category].push(check);
+  });
+
+  return Object.entries(grouped).map(([category, entries]) => {
+    const title = category.charAt(0).toUpperCase() + category.slice(1);
+    const body = entries.length === 0
+      ? '<div class="validation-group-empty">No checks in this category.</div>'
+      : entries.map((check) => {
+        const location = check.location?.line ? ` <span class="validation-location">(L${check.location.line}${check.location.col ? `:C${check.location.col}` : ""})</span>` : "";
+        return `<li>${validationCheckIcon(check)}<span class="severity-badge severity-${check.severity}">${check.severity}</span> ${escapeHtml(check.message)}${location}${check.path ? ` <code>${escapeHtml(check.path)}</code>` : ""}</li>`;
+      }).join("");
+
+    return `<div class="validation-group"><h4>${title} checks</h4>${entries.length ? `<ul>${body}</ul>` : body}</div>`;
+  }).join("");
+}
+
+function renderValidationResult(result) {
+  const severityFilter = validationSeverityFilter?.value || "all";
+  const checksHtml = renderValidationChecks(Array.isArray(result?.checks) ? result.checks : [], severityFilter);
+  validationResults.innerHTML = `
+    ${formatValidationSummary(result?.status || "unknown", result?.summary || { errors: 0, warnings: 0, infos: 0 })}
+    ${checksHtml}
+    <details class="validation-raw-report">
+      <summary>Raw report</summary>
+      <pre>${escapeHtml(JSON.stringify(result, null, 2))}</pre>
+    </details>
+  `;
+}
+
+function updateValidationLastRun() {
+  if (!validationLastRun) {
+    return;
+  }
+  validationLastRun.textContent = `Last run: ${new Date().toLocaleString()}`;
+}
+
+async function runValidationForCurrentDefinition() {
+  if (!currentDetailDefinitionId) {
+    return;
+  }
+  runValidationButton.disabled = true;
+  try {
+    const payload = await fetchWithErrorHandling(
+      `/api/definitions/${currentDetailDefinitionId}/validate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          options: {
+            strict: Boolean(validationStrictToggle?.checked),
+            lint: Boolean(validationLintToggle?.checked),
+            references: Boolean(validationReferencesToggle?.checked),
+          },
+        }),
+      },
+      "Unable to validate definition."
+    );
+    lastValidationResult = payload;
+    renderValidationResult(payload);
+    updateValidationLastRun();
+  } catch (error) {
+    validationResults.innerHTML = `<div class="validation-error">${escapeHtml(error.message || "Validation failed")}</div>`;
+  } finally {
+    runValidationButton.disabled = false;
+  }
+}
+
+function scheduleValidationRun() {
+  if (validationAutoRunTimeout) {
+    window.clearTimeout(validationAutoRunTimeout);
+  }
+  validationAutoRunTimeout = window.setTimeout(() => {
+    runValidationForCurrentDefinition();
+  }, 350);
+}
 
 function setDefinitionTab(activeTab) {
   const isPreview = activeTab === "preview";
+  const isSource = activeTab === "source";
+  const isTest = activeTab === "test";
   definitionTabPreview.classList.toggle("active", isPreview);
-  definitionTabSource.classList.toggle("active", !isPreview);
+  definitionTabSource.classList.toggle("active", isSource);
+  definitionTabTest.classList.toggle("active", isTest);
   definitionTabPreview.setAttribute("aria-selected", String(isPreview));
-  definitionTabSource.setAttribute("aria-selected", String(!isPreview));
+  definitionTabSource.setAttribute("aria-selected", String(isSource));
+  definitionTabTest.setAttribute("aria-selected", String(isTest));
   definitionPreviewPanel.hidden = !isPreview;
-  definitionSourcePanel.hidden = isPreview;
+  definitionSourcePanel.hidden = !isSource;
+  definitionTestPanel.hidden = !isTest;
+
+  if (isTest && validationAutoRunToggle?.checked) {
+    scheduleValidationRun();
+  }
 }
 
 function formatVersionCommitDate(value) {
@@ -1053,6 +1167,9 @@ async function showDetails(id) {
   pushUpstreamDefinitionButton.hidden = !isUntrackedDefinition;
   pushUpstreamDefinitionButton.disabled = !isUntrackedDefinition;
   definitionTabPreview.disabled = false;
+  lastValidationResult = null;
+  validationResults.innerHTML = `<div class="validation-empty">Run validation to see schema, lint, and reference checks.</div>`;
+  validationLastRun.textContent = "";
   setDefinitionTab("preview");
   renderVersionBanner("");
   showDetailPage();
@@ -1368,6 +1485,30 @@ definitionTabPreview.addEventListener("click", () => {
 
 definitionTabSource.addEventListener("click", () => {
   setDefinitionTab("source");
+});
+
+definitionTabTest.addEventListener("click", () => {
+  setDefinitionTab("test");
+});
+
+runValidationButton?.addEventListener("click", () => {
+  runValidationForCurrentDefinition();
+});
+
+copyValidationReportButton?.addEventListener("click", async () => {
+  if (!lastValidationResult) {
+    return;
+  }
+  const raw = JSON.stringify(lastValidationResult, null, 2);
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(raw);
+  }
+});
+
+validationSeverityFilter?.addEventListener("change", () => {
+  if (lastValidationResult) {
+    renderValidationResult(lastValidationResult);
+  }
 });
 
 closeModal.addEventListener("click", () => {
