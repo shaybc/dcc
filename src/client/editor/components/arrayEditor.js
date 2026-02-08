@@ -5,8 +5,6 @@ function createElement(tag, className, text) {
   return el;
 }
 
-let datalistCounter = 0;
-
 function attachAutocomplete(input, options) {
   const values = Array.from(new Set((Array.isArray(options) ? options : [])
     .map((item) => String(item || "").trim())
@@ -16,16 +14,53 @@ function attachAutocomplete(input, options) {
     return;
   }
 
-  const listId = `array-editor-list-${datalistCounter += 1}`;
-  const datalist = createElement("datalist");
-  datalist.id = listId;
-  values.forEach((value) => {
-    const option = createElement("option");
-    option.value = value;
-    datalist.append(option);
+  const menu = createElement("div", "autocomplete-menu");
+  menu.hidden = true;
+  input.after(menu);
+
+  const filterValues = (query) => {
+    const normalized = String(query || "").trim().toLowerCase();
+    if (!normalized) return values.slice(0, 8);
+    return values
+      .filter((value) => value.toLowerCase().includes(normalized))
+      .slice(0, 8);
+  };
+
+  const hideMenu = () => {
+    menu.hidden = true;
+    menu.innerHTML = "";
+  };
+
+  const showMenu = () => {
+    const matches = filterValues(input.value)
+      .filter((value) => value !== input.value);
+
+    if (!matches.length) {
+      hideMenu();
+      return;
+    }
+
+    menu.innerHTML = "";
+    matches.forEach((value) => {
+      const option = createElement("button", "autocomplete-option", value);
+      option.type = "button";
+      option.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        input.value = value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        hideMenu();
+      });
+      menu.append(option);
+    });
+
+    menu.hidden = false;
+  };
+
+  input.addEventListener("focus", showMenu);
+  input.addEventListener("input", showMenu);
+  input.addEventListener("blur", () => {
+    window.setTimeout(hideMenu, 120);
   });
-  input.setAttribute("list", listId);
-  input.after(datalist);
 }
 
 function renderItemLabel(item, fields) {
