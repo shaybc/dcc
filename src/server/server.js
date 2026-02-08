@@ -344,6 +344,161 @@ function estimateWorkflowTokens(steps = []) {
   return (Array.isArray(steps) ? steps.length : 0) * 120;
 }
 
+function getContextTestSuggestions(providerName, errorMessage) {
+  const message = String(errorMessage || "").toLowerCase();
+  const suggestions = [];
+
+  if (message.includes("enoent") || message.includes("no such file") || message.includes("cannot read file")) {
+    suggestions.push("Check that the file path exists and is accessible.");
+    suggestions.push("Verify file permissions allow reading.");
+  }
+  if (message.includes("not a git repository")) {
+    suggestions.push("Ensure the project root is a valid git repository.");
+    suggestions.push("Run 'git init' if this is a new project.");
+  }
+  if (message.includes("permission denied") || message.includes("eacces")) {
+    suggestions.push("Check file and directory permissions.");
+    suggestions.push("Ensure the application has read access.");
+  }
+
+  if (suggestions.length === 0) {
+    suggestions.push(`Review ${providerName} provider configuration and data source paths.`);
+  }
+
+  return suggestions;
+}
+
+async function buildFileTree(rootPath, depth = 0, maxDepth = 3) {
+  if (!rootPath || depth > maxDepth) {
+    return "";
+  }
+
+  const entries = await fsp.readdir(rootPath, { withFileTypes: true });
+  const sorted = entries
+    .filter((entry) => !entry.name.startsWith("."))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 60);
+
+  const lines = [];
+  for (const entry of sorted) {
+    const prefix = `${"  ".repeat(depth)}- `;
+    const marker = entry.isDirectory() ? `${entry.name}/` : entry.name;
+    lines.push(`${prefix}${marker}`);
+    if (entry.isDirectory() && depth < maxDepth) {
+      const nested = await buildFileTree(path.join(rootPath, entry.name), depth + 1, maxDepth);
+      if (nested) {
+        lines.push(nested);
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+async function testSingleContextProvider(name, mockEnv) {
+  const start = Date.now();
+  const validations = [];
+  try {
+    let data = "";
+
+    if (name === "@Current File") {
+      const currentFile = String(mockEnv.currentFile || "").trim();
+      validations.push({ check: "file_path_provided", passed: Boolean(currentFile) });
+      if (!currentFile) {
+        throw new Error("Current file path was not provided.");
+      }
+      data = await fsp.readFile(currentFile, "utf8");
+      validations.push({ check: "file_accessible", passed: true });
+      validations.push({ check: "data_retrieved", passed: true });
+      validations.push({ check: "response_not_empty", passed: data.length > 0, details: `${data.length} characters` });
+    }
+
+    if (name === "@File Tree") {
+      const projectRoot = String(mockEnv.projectRoot || "").trim();
+      validations.push({ check: "project_root_provided", passed: Boolean(projectRoot) });
+      if (!projectRoot) {
+        throw new Error("Project root was not provided.");
+      }
+      data = await buildFileTree(projectRoot);
+      validations.push({ check: "directory_accessible", passed: true });
+      validations.push({ check: "data_retrieved", passed: true });
+      validations.push({ check: "response_not_empty", passed: Boolean(data.trim()), details: `${data.split("\n").filter(Boolean).length} entries` });
+    }
+
+    if (name === "@Git Diff") {
+      const cwd = String(mockEnv.projectRoot || mockEnv.workingDir || "").trim();
+      validations.push({ check: "git_repo_available", passed: Boolean(cwd) });
+      if (!cwd) {
+        throw new Error("Project root or working directory is required for @Git Diff.");
+      }
+      const diff = await runCommand("git diff", { cwd });
+      data = diff || "(no uncommitted changes)";
+      validations.push({ check: "git_command_executed", passed: true });
+      validations.push({ check: "data_retrieved", passed: true, details: diff ? `${diff.split("\n").length} lines changed` : "No changes" });
+      validations.push({ check: "response_not_empty", passed: Boolean(data.trim()) });
+    }
+
+    return {
+      name,
+      status: "success",
+      duration: Date.now() - start,
+      data,
+      validations
+    };
+  } catch (error) {
+    return {
+      name,
+      status: "error",
+      duration: Date.now() - start,
+      error: error.message || "Context provider test failed.",
+      validations,
+      suggestions: getContextTestSuggestions(name, error?.message)
+    };
+  }
+}
+
+async function testContextProviders(definition, input = {}) {
+  const startedAt = Date.now();
+  const mockEnv = input.mockEnv || {};
+  const selectedProvidersRaw = Array.isArray(input.selectedProviders) ? input.selectedProviders : [];
+  const selectedProviders = selectedProvidersRaw.length > 0
+    ? selectedProvidersRaw
+    : ["@Current File"];
+
+  const providers = [];
+  let successful = 0;
+  let failed = 0;
+  let totalSize = 0;
+
+  for (const providerName of selectedProviders) {
+    const providerResult = await testSingleContextProvider(providerName, mockEnv);
+    providers.push(providerResult);
+    if (providerResult.status === "success") {
+      successful += 1;
+      totalSize += String(providerResult.data || "").length;
+    } else {
+      failed += 1;
+    }
+  }
+
+  const status = failed === 0 ? "success" : (successful > 0 ? "warning" : "error");
+
+  return {
+    success: failed === 0,
+    status,
+    duration: Date.now() - startedAt,
+    results: {
+      providers,
+      successful,
+      failed,
+      totalSize,
+      definitionKey: definition.key
+    },
+    warnings: failed > 0 ? ["One or more providers failed to retrieve context data."] : [],
+    errors: []
+  };
+}
+
 async function runDefinitionTest(definition, body) {
   const testType = String(body?.testType || "validation");
   const input = body?.input || {};
@@ -523,18 +678,7 @@ async function runDefinitionTest(definition, body) {
   }
 
   if (normalizedType === "context") {
-    return {
-      success: true,
-      status: "success",
-      duration: 0,
-      results: {
-        output: `Context query simulated: ${String(input.query || "")}`,
-        validation: [{ check: "query_provided", passed: Boolean(String(input.query || "").trim()) }],
-        metadata: {}
-      },
-      warnings: [],
-      errors: []
-    };
+    return testContextProviders(definition, input);
   }
 
   return {
@@ -558,10 +702,14 @@ async function persistTestResult({ definition, testCaseId = null, payload, resul
       result.status || "error",
       Number(result.duration || 0),
       toJson(payload.input || {}),
-      toJson(result.results?.output || ""),
+      toJson(result.results?.output ?? result.results?.providers ?? ""),
       toJson(result.results?.validation || []),
       (result.errors || []).join("; "),
-      toJson(result.results?.metadata || {})
+      toJson(result.results?.metadata || {
+        successful: result.results?.successful,
+        failed: result.results?.failed,
+        totalSize: result.results?.totalSize
+      })
     ]
   );
 }
