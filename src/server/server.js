@@ -286,7 +286,7 @@ function updateDefinitionNameInContent(content, fileName, nextName) {
   return content.replace(/^---\r?\n/, `---\nname: ${trimmedName}\n`);
 }
 
-const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "tags"]);
+const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "tags", "dcc_uri"]);
 
 function parseYamlHeaderFields(raw) {
   const headers = {};
@@ -351,6 +351,65 @@ function parseYamlHeaderFields(raw) {
   }
 
   return headers;
+}
+
+
+function extractDccUriFromDefinitionContent(content, { filePath = "", format = "" } = {}) {
+  const normalizedFormat = String(format || "").toLowerCase();
+  const ext = path.extname(String(filePath || "")).toLowerCase();
+  const treatAsMarkdown = normalizedFormat === "markdown" || [".md", ".markdown"].includes(ext);
+
+  if (treatAsMarkdown) {
+    try {
+      const parsed = matter(String(content || ""));
+      return String(parsed?.data?.dcc_uri || "").trim();
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  try {
+    const parsedYaml = YAML.parse(String(content || ""));
+    if (parsedYaml && typeof parsedYaml === "object" && !Array.isArray(parsedYaml)) {
+      return String(parsedYaml.dcc_uri || "").trim();
+    }
+  } catch (_error) {
+    // fallback to header field parsing
+  }
+
+  const headers = parseYamlHeaderFields(String(content || ""));
+  return String(headers.dcc_uri || "").trim();
+}
+
+async function validateDccUriForEditorSave({ mode, definitionPath, content, format, repoPath }) {
+  const dccUri = extractDccUriFromDefinitionContent(content, { filePath: definitionPath, format });
+  if (!dccUri) {
+    throw new Error("DCC URI is required.");
+  }
+
+  const normalizedIncoming = dccUri.toLowerCase();
+  const activePath = mode === "edit" && definitionPath
+    ? path.resolve(path.resolve(repoPath), String(definitionPath || ""))
+    : "";
+
+  const existingDefinitions = await allDb("SELECT id, name, filePath, content FROM definitions");
+  for (const item of existingDefinitions) {
+    const existingPath = item?.filePath ? path.resolve(item.filePath) : "";
+    if (activePath && existingPath && activePath === existingPath) {
+      continue;
+    }
+
+    const existingDccUri = extractDccUriFromDefinitionContent(item?.content || "", {
+      filePath: item?.filePath || "",
+      format: item?.filePath && [".md", ".markdown"].includes(path.extname(String(item.filePath)).toLowerCase()) ? "markdown" : "yaml"
+    });
+
+    if (existingDccUri && existingDccUri.toLowerCase() === normalizedIncoming) {
+      throw new Error(`DCC URI '${dccUri}' is already used by definition '${item?.name || item?.filePath || "unknown"}'.`);
+    }
+  }
+
+  return dccUri;
 }
 
 
@@ -1058,6 +1117,14 @@ app.post("/api/editor/save", async (req, res) => {
       res.status(400).json({ error: "Repo path not configured." });
       return;
     }
+
+    await validateDccUriForEditorSave({
+      mode: req.body?.mode,
+      definitionPath: req.body?.path,
+      content: req.body?.content || "",
+      format: req.body?.format || "yaml",
+      repoPath
+    });
 
     const result = await saveDefinition({
       mode: req.body?.mode,

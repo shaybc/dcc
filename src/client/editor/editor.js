@@ -266,6 +266,7 @@ function normalizeState(type, parsed) {
   const data = parsed || {};
   if (type === "prompt") return {
     name: data.name || "",
+    dcc_uri: data.dcc_uri || "",
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
@@ -274,17 +275,19 @@ function normalizeState(type, parsed) {
   };
   if (type === "mcpServer") return {
     name: data.name || "",
+    dcc_uri: data.dcc_uri || "",
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
     tags: normalizeStringArray(data.tags),
     mcpServers: normalizeMcpServers(data.mcpServers)
   };
-  if (type === "agent") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
-  if (type === "rule") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
+  if (type === "agent") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
+  if (type === "rule") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
   if (type === "model") return {
     name: data.name || "",
     description: data.description || "",
+    dcc_uri: data.dcc_uri || "",
     version: data.version || "",
     schema: data.schema || "",
     tags: normalizeStringArray(data.tags),
@@ -292,6 +295,7 @@ function normalizeState(type, parsed) {
   };
   if (type === "workflow") return {
     name: data.name || "",
+    dcc_uri: data.dcc_uri || "",
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
@@ -303,6 +307,7 @@ function normalizeState(type, parsed) {
   };
   return {
     name: data.name || "",
+    dcc_uri: data.dcc_uri || "",
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
@@ -313,13 +318,13 @@ function normalizeState(type, parsed) {
 
 function captureUnknownFields(type, parsed) {
   const knownByType = {
-    prompt: ["name", "description", "version", "schema", "tags", "prompts"],
-    mcpServer: ["name", "description", "version", "schema", "tags", "mcpServers"],
-    agent: ["name", "description", "version", "tags", "body"],
-    rule: ["name", "description", "version", "tags", "body"],
-    model: ["name", "description", "version", "schema", "tags", "models"],
-    workflow: ["name", "description", "version", "schema", "tags", "models", "context", "mcpServers", "rules"],
-    context: ["name", "description", "version", "schema", "tags", "context"]
+    prompt: ["name", "dcc_uri", "description", "version", "schema", "tags", "prompts"],
+    mcpServer: ["name", "dcc_uri", "description", "version", "schema", "tags", "mcpServers"],
+    agent: ["name", "dcc_uri", "description", "version", "tags", "body"],
+    rule: ["name", "dcc_uri", "description", "version", "tags", "body"],
+    model: ["name", "dcc_uri", "description", "version", "schema", "tags", "models"],
+    workflow: ["name", "dcc_uri", "description", "version", "schema", "tags", "models", "context", "mcpServers", "rules"],
+    context: ["name", "dcc_uri", "description", "version", "schema", "tags", "context"]
   };
   const known = new Set(knownByType[type] || []);
   unknown = Object.fromEntries(Object.entries(parsed || {}).filter(([key]) => !known.has(key)));
@@ -385,6 +390,13 @@ document.getElementById("saveButton").addEventListener("click", async () => {
     filename = window.prompt("Filename (with extension)");
     if (!filename) return;
     targetPath = window.prompt("Folder path relative to repo", "") || "";
+  }
+
+  const currentState = formController?.getState?.() || {};
+  if (!String(currentState.dcc_uri || "").trim()) {
+    parseError.hidden = false;
+    parseError.textContent = "DCC URI is required.";
+    return;
   }
 
   const response = await fetch("/api/editor/save", {

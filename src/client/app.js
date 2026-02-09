@@ -17,6 +17,7 @@ const detailTypeIcon = document.getElementById("detailTypeIcon");
 const detailTypeMetaIcon = document.getElementById("detailTypeMetaIcon");
 const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
+const detailDccUri = document.getElementById("detailDccUri");
 const detailTags = document.getElementById("detailTags");
 const detailVersionMeta = document.getElementById("detailVersionMeta");
 const copyDefinitionButton = document.getElementById("copyDefinition");
@@ -78,6 +79,28 @@ function normalizeFilterType(type) {
   return FILTER_TYPE_SET.has(normalized) ? normalized : "unknown";
 }
 
+
+function extractDccUriFromDefinitionContent(content, filePath = "") {
+  const raw = String(content || "");
+  const ext = String(filePath || "").toLowerCase();
+  const frontmatterMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (frontmatterMatch) {
+    const frontmatterValue = frontmatterMatch[1].match(/^\s*dcc_uri\s*:\s*(.+?)\s*$/m);
+    if (frontmatterValue?.[1]) {
+      return frontmatterValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
+    }
+  }
+
+  if (ext.endsWith(".md") || ext.endsWith(".markdown")) {
+    return "";
+  }
+
+  const yamlValue = raw.match(/^\s*dcc_uri\s*:\s*(.+?)\s*$/m);
+  if (!yamlValue?.[1]) {
+    return "";
+  }
+  return yamlValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
+}
 
 function normalizeTagValue(tag) {
   return String(tag || "").trim().toLowerCase();
@@ -1145,6 +1168,15 @@ async function showDetails(id) {
   detailTypeText.textContent = typeLabel;
   detailCreatedDate.textContent = formatCreatedDate(def.createdAt);
 
+  const dccUri = extractDccUriFromDefinitionContent(definitionContent, def.filePath);
+  if (dccUri) {
+    detailDccUri.hidden = false;
+    detailDccUri.textContent = `DCC URI: ${dccUri}`;
+  } else {
+    detailDccUri.hidden = true;
+    detailDccUri.textContent = "";
+  }
+
   const tags = parseDefinitionTags(def.tags);
   detailTags.innerHTML = tags.length > 0 ? `<div class="tag-pills">${renderTagPills(tags)}</div>` : "";
   detailTags.querySelectorAll("[data-tag]").forEach((element) => {
@@ -1191,6 +1223,8 @@ function showHubPage() {
   currentDetailDefinitionName = "";
   currentDetailDefinitionPath = "";
   currentDefinitionVersion = "";
+  detailDccUri.hidden = true;
+  detailDccUri.textContent = "";
   activeHistoricalVersion = "";
   deleteDefinitionButton.hidden = true;
   pushUpstreamDefinitionButton.hidden = true;

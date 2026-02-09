@@ -2,7 +2,7 @@ import { createArrayEditor } from "../components/arrayEditor.js";
 import { attachEnhancePromptBehavior } from "./promptEnhancer.js";
 
 export function createAgentForm({ mount, onChange, availableTags = [] }) {
-  const state = { name: "", description: "", version: "", tags: [], body: "" };
+  const state = { name: "", dcc_uri: "", description: "", version: "", tags: [], body: "" };
   const makeInput = (label, key, placeholder = "") => {
     const row = document.createElement("label"); row.className = "editor-field";
     row.innerHTML = `<span>${label}</span>`;
@@ -12,6 +12,7 @@ export function createAgentForm({ mount, onChange, availableTags = [] }) {
     row.append(input); mount.append(row); return input;
   };
   const name = makeInput("name", "name", 'e.g., "Atlassian Continuous AI - Jira"');
+  const dccUri = makeInput("DCC URI", "dcc_uri", "e.g., \"agents/triage_assistant\"");
   const desc = makeInput(
     "description",
     "description",
@@ -43,5 +44,5 @@ export function createAgentForm({ mount, onChange, availableTags = [] }) {
   bodyActions.append(enhanceButton);
   bodyRow.append(body, bodyActions); mount.append(bodyRow);
 
-  return { getState(){ return { ...state, tags: tags.getItems() }; }, setState(next){ Object.assign(state,next||{}); name.value=state.name||"";desc.value=state.description||"";version.value=state.version||"";body.value=state.body||""; tags.setItems(state.tags||[]);} };
+  return { getState(){ return { ...state, tags: tags.getItems() }; }, setState(next){ Object.assign(state,next||{}); name.value=state.name||"";dccUri.value=state.dcc_uri||"";desc.value=state.description||"";version.value=state.version||"";body.value=state.body||""; tags.setItems(state.tags||[]);} };
 }

@@ -19,6 +19,7 @@ function createTextInput({ mount, label, state, key, placeholder, onChange }) {
 export function createMcpServerForm({ mount, onChange, availableTags = [] }) {
   const state = {
     name: "",
+    dcc_uri: "",
     version: "",
     schema: "",
     description: "",
@@ -27,6 +28,7 @@ export function createMcpServerForm({ mount, onChange, availableTags = [] }) {
   };
 
   const nameInput = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., 'Playwright MCP'", onChange });
+  const dccUriInput = createTextInput({ mount, label: "DCC URI", state, key: "dcc_uri", placeholder: "e.g., 'mcp_servers/playwright'", onChange });
   const versionInput = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '0.0.1'", onChange });
   const schemaInput = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
   const descriptionInput = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'this is a playwrite mcp server description'", onChange });
@@ -66,6 +68,7 @@ export function createMcpServerForm({ mount, onChange, availableTags = [] }) {
     setState(nextState) {
       Object.assign(state, nextState || {});
       nameInput.value = state.name || "";
+      dccUriInput.value = state.dcc_uri || "";
       versionInput.value = state.version || "";
       schemaInput.value = state.schema || "";
       descriptionInput.value = state.description || "";

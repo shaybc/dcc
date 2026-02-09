@@ -19,6 +19,7 @@ function createTextInput({ mount, label, state, key, placeholder, onChange }) {
 export function createPromptForm({ mount, onChange, availableTags = [] }) {
   const state = {
     name: "",
+    dcc_uri: "",
     version: "",
     schema: "",
     description: "",
@@ -27,6 +28,7 @@ export function createPromptForm({ mount, onChange, availableTags = [] }) {
   };
 
   const nameInput = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., 'New Angular Component'", onChange });
+  const dccUriInput = createTextInput({ mount, label: "DCC URI", state, key: "dcc_uri", placeholder: "e.g., 'prompts/new_component'", onChange });
   const versionInput = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '0.0.3'", onChange });
   const schemaInput = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
   const descriptionInput = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'the angular component description'", onChange });
@@ -73,6 +75,7 @@ export function createPromptForm({ mount, onChange, availableTags = [] }) {
     setState(nextState) {
       Object.assign(state, nextState || {});
       nameInput.value = state.name || "";
+      dccUriInput.value = state.dcc_uri || "";
       versionInput.value = state.version || "";
       schemaInput.value = state.schema || "";
       descriptionInput.value = state.description || "";

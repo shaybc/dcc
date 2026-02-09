@@ -29,6 +29,7 @@ function addCheck(checks, check) {
 function schemaForType(type, strict) {
   const base = {
     name: z.string().min(1, "name is required"),
+    dcc_uri: z.string().min(1, "dcc_uri is required"),
     description: z.string().min(1, "description is required"),
   };
   const commonMetadata = {

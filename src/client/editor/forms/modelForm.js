@@ -19,6 +19,7 @@ function createTextInput({ mount, label, state, key, placeholder, onChange }) {
 export function createModelForm({ mount, onChange, availableTags = [] }) {
   const state = {
     name: "",
+    dcc_uri: "",
     description: "",
     version: "",
     schema: "",
@@ -27,6 +28,7 @@ export function createModelForm({ mount, onChange, availableTags = [] }) {
   };
 
   const name = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., 'Mistral Large'", onChange });
+  const dccUri = createTextInput({ mount, label: "DCC URI", state, key: "dcc_uri", placeholder: "e.g., 'models/mistral_large'", onChange });
   const version = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '1.0.1'", onChange });
   const schema = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
   const description = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'mistral model description'", onChange });
@@ -69,6 +71,7 @@ export function createModelForm({ mount, onChange, availableTags = [] }) {
     setState(nextState) {
       Object.assign(state, nextState || {});
       name.value = state.name || "";
+      dccUri.value = state.dcc_uri || "";
       version.value = state.version || "";
       schema.value = state.schema || "";
       description.value = state.description || "";
