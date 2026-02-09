@@ -286,7 +286,7 @@ function updateDefinitionNameInContent(content, fileName, nextName) {
   return content.replace(/^---\r?\n/, `---\nname: ${trimmedName}\n`);
 }
 
-const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "tags", "dcc_uri"]);
+const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "tags", "dcc_tags", "dcc_uri"]);
 
 function parseYamlHeaderFields(raw) {
   const headers = {};
@@ -448,7 +448,7 @@ function parseDefinitionContent(raw, filePath) {
     }
   }
   const type = deriveType(filePath, parsed.data);
-  const tags = normalizeTags(parsed.data.tags);
+  const tags = normalizeTags(parsed.data.dcc_tags || parsed.data.tags);
   const name = parsed.data.name || path.basename(filePath);
   const description = parsed.data.description || "";
   const schema = parsed.data.schema || "";

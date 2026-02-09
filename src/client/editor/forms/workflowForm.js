@@ -38,8 +38,8 @@ export function createWorkflowForm({ mount, onChange, availableTags = [] }) {
 
   const tags = createArrayEditor({
     mount,
-    label: "tags",
-    fields: [{ name: "value", label: "tags", placeholder: "e.g., 'tag1, tag2, tag3'", autocompleteOptions: availableTags }],
+    label: "dcc_tags",
+    fields: [{ name: "value", label: "dcc_tags", placeholder: "e.g., 'tag1, tag2, tag3'", autocompleteOptions: availableTags }],
     onChange: (nextItems) => {
       state.tags = nextItems;
       onChange();
