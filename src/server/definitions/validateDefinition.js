@@ -69,7 +69,6 @@ function schemaForType(type, strict) {
     return applyMode(z.object({
       ...base,
       ...commonMetadata,
-      configFileName: z.string().regex(/\.ya?ml$/i, "configFileName must be a YAML file name"),
       dcc_config_type: z.enum(["agents", "ide"]),
       dcc: z.object({ config_type: z.enum(["agents", "ide"]) }).optional(),
       models: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),

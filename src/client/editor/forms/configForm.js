@@ -33,7 +33,6 @@ export function createConfigForm({ mount, onChange, availableTags = [], definiti
     schema: "",
     description: "",
     tags: [],
-    configFileName: "config.yaml",
     dcc_config_type: "agents",
     models: [],
     context: [],
@@ -50,7 +49,6 @@ export function createConfigForm({ mount, onChange, availableTags = [], definiti
 
   const name = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., 'My Team Config'", onChange });
   const dccUri = createTextInput({ mount, label: "DCC URI", state, key: "dcc_uri", placeholder: "e.g., 'configs/my_team_config'", onChange });
-  const configFileName = createTextInput({ mount, label: "config file name", state, key: "configFileName", placeholder: "e.g., 'team-config.yaml'", onChange });
   const version = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '1.0.0'", onChange });
   const schema = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
   const description = createTextInput({ mount, label: "description", state, key: "description", placeholder: "Describe this config", onChange });
@@ -116,7 +114,6 @@ export function createConfigForm({ mount, onChange, availableTags = [], definiti
       Object.assign(state, nextState || {});
       name.value = state.name || "";
       dccUri.value = state.dcc_uri || "";
-      configFileName.value = state.configFileName || "config.yaml";
       version.value = state.version || "";
       schema.value = state.schema || "";
       description.value = state.description || "";
