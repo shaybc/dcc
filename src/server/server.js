@@ -459,8 +459,9 @@ function stripDccMetadataDeep(value) {
   const cleaned = {};
   for (const [key, nestedValue] of Object.entries(value)) {
     const normalizedKey = String(key || "").trim().toLowerCase();
+    const isLegacyTagsKey = normalizedKey === "tags";
     const isDccKey = normalizedKey === "dcc" || normalizedKey.startsWith("dcc_");
-    if (isDccKey) {
+    if (isDccKey || isLegacyTagsKey) {
       continue;
     }
     cleaned[key] = stripDccMetadataDeep(nestedValue);
@@ -471,7 +472,7 @@ function stripDccMetadataDeep(value) {
 function stripDccProjectMetadata(content, filePath) {
   const raw = String(content || "");
   const ext = path.extname(String(filePath || "")).toLowerCase();
-  const keysToStrip = ["dcc_tags", "dcc_uri", "dcc_config_type"];
+  const keysToStrip = ["tags", "dcc_tags", "dcc_uri", "dcc_config_type"];
 
   if ([".yml", ".yaml"].includes(ext)) {
     try {
