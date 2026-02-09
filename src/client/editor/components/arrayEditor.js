@@ -9,7 +9,7 @@ function createElement(tag, className, text) {
   return el;
 }
 
-function attachAutocomplete(input, options) {
+function attachAutocomplete(input, options, { allowTagFallback = false } = {}) {
   console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} attachAutocomplete: called with options`, options);
   let values = Array.from(new Set((Array.isArray(options) ? options : [])
     .map((item) => String(item || "").trim())
@@ -44,7 +44,7 @@ function attachAutocomplete(input, options) {
 
   const tryLoadFallbackValues = async () => {
     console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: invoked; current values`, values);
-    if (values.length || requestedFallback) {
+    if (!allowTagFallback || values.length || requestedFallback) {
       console.debug(`${AUTOCOMPLETE_DEBUG_PREFIX} fallback: skipped`, { hasValues: values.length > 0, requestedFallback });
       return;
     }
@@ -164,8 +164,12 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
         if (!field.multiline) input.type = "text";
         input.value = state[field.name] || "";
         input.placeholder = field.placeholder || "";
-        if (!field.multiline && field.autocompleteOptions) {
-          attachAutocomplete(input, field.autocompleteOptions);
+        const hasAutocompleteOptions = Array.isArray(field.autocompleteOptions)
+          ? field.autocompleteOptions.length > 0
+          : Boolean(field.autocompleteOptions);
+        const allowTagFallback = field.name === "value" && String(field.label || "").toLowerCase() === "dcc_tags";
+        if (!field.multiline && (hasAutocompleteOptions || allowTagFallback)) {
+          attachAutocomplete(input, field.autocompleteOptions, { allowTagFallback });
         }
         input.addEventListener("input", () => {
           state[field.name] = input.value;
