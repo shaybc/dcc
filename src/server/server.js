@@ -235,10 +235,28 @@ async function walkFiles(dir) {
   return files;
 }
 
-function deriveType(filePath, data) {
+function deriveType(filePath, data, rawContent = "") {
   if (data && data.type) {
     return String(data.type).toLowerCase();
   }
+
+  const dccUri = String(data?.dcc_uri || "").trim().toLowerCase();
+  if (dccUri) {
+    const [prefix] = dccUri.split("/");
+    if (["rules", "prompts", "workflows", "models", "agents", "mcpservers", "mcpserver", "context", "docs", "configs", "config"].includes(prefix)) {
+      return prefix;
+    }
+  }
+
+  try {
+    const detected = detectDefinitionType(rawContent || "", filePath || "");
+    if (detected) {
+      return String(detected).toLowerCase();
+    }
+  } catch (_error) {
+    // Best-effort only; fallback to folder inference below.
+  }
+
   const parts = filePath.split(path.sep);
   const folder = parts[parts.length - 2] || "unknown";
   return folder.toLowerCase();
@@ -554,7 +572,7 @@ function parseDefinitionContent(raw, filePath) {
       parsed = { data: {}, content: raw };
     }
   }
-  const type = deriveType(filePath, parsed.data);
+  const type = deriveType(filePath, parsed.data, raw);
   const tags = normalizeTags(parsed.data.dcc_tags || parsed.data.tags);
   const name = parsed.data.name || path.basename(filePath);
   const description = parsed.data.description || "";
