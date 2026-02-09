@@ -491,9 +491,11 @@ async function validateDccUriForEditorSave({ mode, definitionPath, content, form
     : "";
 
   const existingDefinitions = await allDb("SELECT id, name, filePath, content FROM definitions");
+  let activeDefinitionId = null;
   for (const item of existingDefinitions) {
     const existingPath = item?.filePath ? path.resolve(item.filePath) : "";
     if (activePath && existingPath && activePath === existingPath) {
+      activeDefinitionId = item?.id;
       continue;
     }
 
@@ -505,6 +507,13 @@ async function validateDccUriForEditorSave({ mode, definitionPath, content, form
     if (existingDccUri && existingDccUri.toLowerCase() === normalizedIncoming) {
       throw new Error(`DCC URI '${dccUri}' is already used by definition '${item?.name || item?.filePath || "unknown"}'.`);
     }
+  }
+
+  const detectedType = normalizeDefinitionType(detectDefinitionType(content || "", definitionPath || ""));
+  if (detectedType === "configs") {
+    const configDoc = parseConfigDefinition(content || "");
+    const configFileName = normalizeConfigFileName(configDoc.configFileName || "");
+    await assertConfigFileNameUnique(configFileName, { activeDefinitionId });
   }
 
   return dccUri;
@@ -800,6 +809,7 @@ function normalizeDefinitionType(type) {
   if (["mcp server", "mcp servers", "mcpserver", "mcpservers"].includes(normalized)) return "mcpservers";
   if (["context", "contexts"].includes(normalized)) return "context";
   if (["doc", "docs", "documentation"].includes(normalized)) return "docs";
+  if (["config", "configs"].includes(normalized)) return "configs";
   return normalized;
 }
 
@@ -813,7 +823,8 @@ function getProjectDestinationInfo(projectPath, type, filePath) {
     models: ["models", "models"],
     agents: ["agents", "agents"],
     mcpservers: ["mcpServers", "mcpServers"],
-    docs: ["docs", "docs"]
+    docs: ["docs", "docs"],
+    configs: ["", "config"]
   };
   const mapped = mappings[normalizedType];
   if (!mapped) {
@@ -829,6 +840,100 @@ function sanitizeYamlHeaderScalars(raw) {
     /^(\s*)(name|version|schema|description)\s*:\s*(@[^#\r\n]*)(\s*(?:#.*)?)$/gim,
     (_, indent, key, value, suffix) => `${indent}${key}: "${String(value).trim()}"${suffix || ""}`
   );
+}
+
+function parseConfigDefinition(content) {
+  const parsed = YAML.parse(sanitizeYamlHeaderScalars(content)) || {};
+  return parsed && typeof parsed === "object" ? parsed : {};
+}
+
+function normalizeConfigFileName(fileName) {
+  const normalized = path.basename(String(fileName || "").trim());
+  if (!normalized || !/\.ya?ml$/i.test(normalized)) {
+    throw new Error("Config file name is required and must end with .yaml or .yml.");
+  }
+  if (/[\/]/.test(normalized)) {
+    throw new Error("Config file name must not include path separators.");
+  }
+  return normalized;
+}
+
+function readDefinitionYamlData(rawContent, filePath = "") {
+  const ext = path.extname(String(filePath || "")).toLowerCase();
+  if ([".md", ".markdown", ".mdx"].includes(ext)) {
+    const parsed = matter(String(rawContent || ""));
+    const body = String(parsed.content || "").trim();
+    return { data: parsed.data || {}, body };
+  }
+  const data = YAML.parse(sanitizeYamlHeaderScalars(rawContent || "")) || {};
+  return { data: (data && typeof data === "object") ? data : {}, body: "" };
+}
+
+function mergeConfigSection(merged, key, rawContent, filePath = "") {
+  const { data, body } = readDefinitionYamlData(rawContent, filePath);
+  if (key === "rules" || key === "prompts") {
+    if (body) {
+      merged[key].push(body);
+    }
+    return;
+  }
+  if (!Array.isArray(data[key])) {
+    return;
+  }
+  merged[key].push(...data[key]);
+}
+
+async function buildMergedConfigContent(configDoc, definitionsByDccUri) {
+  const merged = {
+    name: configDoc.name || "",
+    version: configDoc.version || "",
+    schema: configDoc.schema || "v1",
+    dcc_uri: configDoc.dcc_uri || "",
+    description: configDoc.description || "",
+    tags: configDoc.tags || configDoc.dcc_tags || [],
+    dcc: configDoc.dcc || {},
+    models: [],
+    context: [],
+    rules: [],
+    prompts: [],
+    docs: [],
+    mcpServers: []
+  };
+
+  for (const section of ["models", "context", "rules", "prompts", "docs", "mcpServers"]) {
+    const refs = Array.isArray(configDoc[section]) ? configDoc[section] : [];
+    for (const ref of refs) {
+      const dccUse = String(ref?.dcc_use || "").trim();
+      if (!dccUse) {
+        continue;
+      }
+      const referenced = definitionsByDccUri.get(dccUse.toLowerCase());
+      if (!referenced) {
+        throw new Error(`Config references unknown definition '${dccUse}'.`);
+      }
+      mergeConfigSection(merged, section, referenced.content || "", referenced.filePath || "");
+    }
+  }
+
+  return YAML.stringify(merged);
+}
+
+async function assertConfigFileNameUnique(configFileName, { activeDefinitionId = null } = {}) {
+  const normalizedName = String(configFileName || "").trim().toLowerCase();
+  if (!normalizedName) {
+    throw new Error("Config file name is required.");
+  }
+  const rows = await allDb("SELECT id, content FROM definitions WHERE lower(type) IN ('config', 'configs')");
+  for (const row of rows) {
+    if (activeDefinitionId && Number(row.id) === Number(activeDefinitionId)) {
+      continue;
+    }
+    const doc = parseConfigDefinition(row.content || "");
+    const existingName = String(doc.configFileName || "").trim().toLowerCase();
+    if (existingName && existingName === normalizedName) {
+      throw new Error(`Config file name '${configFileName}' is already used by another config definition.`);
+    }
+  }
 }
 
 function parseContextProviders(content) {
@@ -1368,6 +1473,25 @@ app.get("/api/definition-tags", async (_req, res) => {
   }
 });
 
+app.get("/api/definitions/references", async (_req, res) => {
+  try {
+    const rows = await allDb("SELECT type, name, content, filePath FROM definitions");
+    const refs = rows
+      .map((row) => {
+        const dcc_uri = extractDccUriFromDefinitionContent(row?.content || "", { filePath: row?.filePath || "" });
+        return {
+          type: normalizeDefinitionType(row?.type || ""),
+          name: row?.name || "",
+          dcc_uri
+        };
+      })
+      .filter((item) => item.dcc_uri);
+    res.json(refs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/definitions", async (req, res) => {
   try {
     const currentDevProject = await getSetting("currentDevProject");
@@ -1763,6 +1887,28 @@ app.post("/api/definitions/:id/save", async (req, res) => {
       if (normalizedType === "context") {
         console.log(`[definition-save] saving context definition id=${row.id} key=${row.key} project=${currentDevProject}`);
         await upsertContextProviders(currentDevProject, row.content || "");
+      } else if (normalizedType === "configs") {
+        const destinationInfo = getProjectDestinationInfo(currentDevProject, row.type, row.filePath);
+        if (!destinationInfo) {
+          res.status(400).json({ error: `Unsupported definition type: ${row.type}` });
+          return;
+        }
+        const configDoc = parseConfigDefinition(row.content || "");
+        const configFileName = normalizeConfigFileName(configDoc.configFileName || "");
+        await fsp.mkdir(destinationInfo.destDir, { recursive: true });
+
+        const knownDefinitions = await allDb("SELECT content, filePath FROM definitions");
+        const definitionsByDccUri = new Map();
+        knownDefinitions.forEach((item) => {
+          const dccUri = extractDccUriFromDefinitionContent(item?.content || "", { filePath: item?.filePath || "" });
+          if (dccUri) {
+            definitionsByDccUri.set(dccUri.toLowerCase(), item);
+          }
+        });
+
+        const mergedContent = await buildMergedConfigContent(configDoc, definitionsByDccUri);
+        const configDestPath = path.join(destinationInfo.destDir, configFileName);
+        await fsp.writeFile(configDestPath, mergedContent, "utf8");
       } else {
         const destinationInfo = getProjectDestinationInfo(currentDevProject, row.type, row.filePath);
         if (!destinationInfo) {
@@ -1996,6 +2142,18 @@ app.post("/api/definitions/:id/remove", async (req, res) => {
       const normalizedType = normalizeDefinitionType(row.type);
       if (normalizedType === "context") {
         await removeContextProviders(currentDevProject, row.content || "");
+      } else if (normalizedType === "configs") {
+        const destinationInfo = getProjectDestinationInfo(currentDevProject, row.type, row.filePath);
+        if (!destinationInfo) {
+          res.status(400).json({ error: `Unsupported definition type: ${row.type}` });
+          return;
+        }
+        const configDoc = parseConfigDefinition(row.content || "");
+        const configFileName = normalizeConfigFileName(configDoc.configFileName || "");
+        const configDestPath = path.join(destinationInfo.destDir, configFileName);
+        if (fs.existsSync(configDestPath)) {
+          await fsp.unlink(configDestPath);
+        }
       } else {
         const destinationInfo = getProjectDestinationInfo(currentDevProject, row.type, row.filePath);
         if (!destinationInfo) {

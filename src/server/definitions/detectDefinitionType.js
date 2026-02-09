@@ -48,6 +48,14 @@ export function detectDefinitionType(content = "", filePath = "") {
   const hasContext = hasArrayWithValues(data.context);
   const hasRules = hasArrayWithValues(data.rules);
 
+  const hasConfigRefs = ["models", "context", "rules", "prompts", "docs", "mcpServers"].some((key) =>
+    Array.isArray(data[key]) && data[key].some((entry) => entry && typeof entry === "object" && entry.dcc_use)
+  );
+  const configType = String(data?.dcc?.config_type || "").toLowerCase();
+  if (hasConfigRefs || ["agents", "ide"].includes(configType) || String(data?.dcc_uri || "").toLowerCase().startsWith("configs/")) {
+    return "config";
+  }
+
   if (hasModels && hasContext && hasRules) {
     return "workflow";
   }
