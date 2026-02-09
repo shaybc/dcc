@@ -280,7 +280,7 @@ function normalizeState(type, parsed) {
     tags: normalizeStringArray(data.tags),
     mcpServers: normalizeMcpServers(data.mcpServers)
   };
-  if (type === "agent") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], tools: data.tools || [], rules: data.rules || [], body: data.body || "" };
+  if (type === "agent") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
   if (type === "rule") return { name: data.name || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
   if (type === "model") return {
     name: data.name || "",
@@ -315,7 +315,7 @@ function captureUnknownFields(type, parsed) {
   const knownByType = {
     prompt: ["name", "description", "version", "schema", "tags", "prompts"],
     mcpServer: ["name", "description", "version", "schema", "tags", "mcpServers"],
-    agent: ["name", "description", "version", "tags", "tools", "rules", "body"],
+    agent: ["name", "description", "version", "tags", "body"],
     rule: ["name", "description", "version", "tags", "body"],
     model: ["name", "description", "version", "schema", "tags", "models"],
     workflow: ["name", "description", "version", "schema", "tags", "models", "context", "mcpServers", "rules"],
