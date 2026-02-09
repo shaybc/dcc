@@ -40,6 +40,10 @@ export function detectDefinitionType(content = "", filePath = "") {
     return "mcpServer";
   }
 
+  if (hasArrayWithValues(data.docs)) {
+    return "doc";
+  }
+
   const hasModels = hasArrayWithValues(data.models);
   const hasContext = hasArrayWithValues(data.context);
   const hasRules = hasArrayWithValues(data.rules);

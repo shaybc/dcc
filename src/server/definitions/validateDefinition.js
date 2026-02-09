@@ -64,6 +64,17 @@ function schemaForType(type, strict) {
   if (type === "mcpservers") {
     return applyMode(z.object({ ...base, ...commonMetadata, transport: z.string().optional(), tools: z.array(z.any()).optional() }));
   }
+  if (type === "docs") {
+    return applyMode(z.object({
+      ...base,
+      ...commonMetadata,
+      docs: z.array(z.object({
+        name: z.string().min(1),
+        startUrl: z.string().url(),
+        favicon: z.string().url().optional()
+      })).min(1)
+    }));
+  }
   return applyMode(z.object({ ...base, ...commonMetadata }));
 }
 
