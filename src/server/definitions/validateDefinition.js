@@ -65,6 +65,21 @@ function schemaForType(type, strict) {
   if (type === "mcpservers") {
     return applyMode(z.object({ ...base, ...commonMetadata, transport: z.string().optional(), tools: z.array(z.any()).optional() }));
   }
+  if (type === "configs") {
+    return applyMode(z.object({
+      ...base,
+      ...commonMetadata,
+      configFileName: z.string().regex(/\.ya?ml$/i, "configFileName must be a YAML file name"),
+      dcc: z.object({ config_type: z.enum(["agents", "ide"]) }),
+      models: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),
+      context: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),
+      rules: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),
+      prompts: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),
+      docs: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),
+      mcpServers: z.array(z.object({ dcc_use: z.string().min(1) })).optional()
+    }));
+  }
+
   if (type === "docs") {
     return applyMode(z.object({
       ...base,
