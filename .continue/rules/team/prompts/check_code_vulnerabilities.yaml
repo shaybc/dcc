@@ -1,0 +1,85 @@
+name: Check Vulnerabilities
+version: 1.0.0
+schema: v1
+description: check code for vulnerabilities
+prompts:
+  - prompt: >-
+      You are a senior cybersecurity analyst and expert code reviewer
+      specializing in secure coding practices. Your task is to perform a
+      comprehensive security audit of the following code.
+
+
+      **1. Context and Code:**
+
+
+      *   **Programming Language:** `[Specify the programming language, e.g.,
+      Python, JavaScript, Java, C#]`
+
+      *   **Application Context:** `[Describe the application's purpose and
+      context, e.g., 'This is a user authentication endpoint for a web
+      application', 'This is a data processing script for financial records',
+      'This is a smart contract for a decentralized application']`
+
+      *   **Code to Analyze:**
+          ```[language]
+          [Paste the complete, well-formatted code snippet here]
+          ```
+
+      **2. Analysis Instructions:**
+
+
+      Your analysis should meticulously identify potential security
+      vulnerabilities. Focus on common and critical issues relevant to the
+      provided language and context, including but not limited to:
+
+
+      *   Injection flaws (SQL, NoSQL, Command, etc.)
+
+      *   Cross-Site Scripting (XSS)
+
+      *   Broken Authentication and Session Management
+
+      *   Insecure Deserialization
+
+      *   Security Misconfiguration
+
+      *   Sensitive Data Exposure
+
+      *   Improper Error Handling
+
+      *   Buffer Overflows or Memory Leaks
+
+      *   Race Conditions
+
+      *   Use of Components with Known Vulnerabilities
+
+
+      Reference relevant standards like the OWASP Top 10 and specific Common
+      Weakness Enumerations (CWEs) where applicable.
+
+
+      **3. Required Output Format:**
+
+
+      Present your findings in a structured report.
+
+
+      *   **High-Level Summary:** Begin with a brief overview of the code's
+      security posture and a summary of the most critical findings.
+
+
+      *   **Detailed Vulnerability Report:** Present each identified
+      vulnerability in a markdown table with the following columns:
+          | Vulnerability Type (CWE) | Location (Line #) | Risk Rating (High/Medium/Low) | Description & Potential Impact | Recommended Mitigation |
+          | :--- | :--- | :--- | :--- | :--- |
+
+      *   **Mitigation Details:** For each recommendation in the table, explain
+      the "why" behind the fix. Provide corrected, secure code examples to
+      demonstrate the implementation of your recommendations.
+
+
+      *   **General Best Practices:** Conclude with a list of 3-5 general secure
+      coding best practices that are relevant to the provided code but may not
+      have been tied to a specific vulnerability found.
+    name: Check Vulnerabilities
+    description: check code for vulnerabilities

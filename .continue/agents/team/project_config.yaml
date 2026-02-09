@@ -2,11 +2,16 @@ name: Team Project Config
 version: 1.0.0
 schema: v1
 context:
+  - provider: clipboard
+  - provider: code
+  - provider: currentFile
   - provider: debugger
     params:
       stackDepth: 3
-  - provider: currentFile
-  - provider: repo-map
+  - provider: open
     params:
-      includeSignatures: false
-  - provider: clipboard
+      onlyPinned: true
+  - provider: diff
+  - provider: file
+  - provider: problems
+  - provider: terminal
