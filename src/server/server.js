@@ -310,6 +310,38 @@ function parseYamlHeaderFields(raw) {
     }
 
     const trimmedValue = value.trim();
+    if (!trimmedValue) {
+      const listItems = [];
+      const blockIndent = indent.length;
+
+      for (let next = i + 1; next < lines.length; next += 1) {
+        const nextLine = lines[next];
+        if (!nextLine.trim()) {
+          continue;
+        }
+
+        const nextIndent = (nextLine.match(/^\s*/) || [""])[0].length;
+        if (nextIndent <= blockIndent) {
+          break;
+        }
+
+        const listMatch = nextLine.trim().match(/^-\s+(.*)$/);
+        if (!listMatch) {
+          break;
+        }
+
+        const item = listMatch[1].replace(/^(\"|\')(.*)\1$/, "$2").trim();
+        if (item) {
+          listItems.push(item);
+        }
+      }
+
+      if (listItems.length > 0) {
+        headers[key] = listItems;
+      }
+      continue;
+    }
+
     if (["|", ">", "|-", ">-", "|+", ">+"].includes(trimmedValue)) {
       const blockLines = [];
       const blockIndent = indent.length;
@@ -501,8 +533,8 @@ function parseDefinitionContent(raw, filePath) {
 
     parsed = {
       data: {
-        ...yamlData,
-        ...parseYamlHeaderFields(raw)
+        ...parseYamlHeaderFields(raw),
+        ...yamlData
       },
       content: raw
     };
