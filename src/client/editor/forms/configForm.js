@@ -34,7 +34,7 @@ export function createConfigForm({ mount, onChange, availableTags = [], definiti
     description: "",
     tags: [],
     configFileName: "config.yaml",
-    dcc: { config_type: "agents" },
+    dcc_config_type: "agents",
     models: [],
     context: [],
     rules: [],
@@ -66,7 +66,7 @@ export function createConfigForm({ mount, onChange, availableTags = [], definiti
     configTypeSelect.append(option);
   });
   configTypeSelect.addEventListener("change", () => {
-    state.dcc = { ...(state.dcc || {}), config_type: configTypeSelect.value };
+    state.dcc_config_type = configTypeSelect.value;
     onChange();
   });
   configTypeRow.append(configTypeSelect);
@@ -120,7 +120,7 @@ export function createConfigForm({ mount, onChange, availableTags = [], definiti
       version.value = state.version || "";
       schema.value = state.schema || "";
       description.value = state.description || "";
-      configTypeSelect.value = state?.dcc?.config_type || "agents";
+      configTypeSelect.value = state.dcc_config_type || state?.dcc?.config_type || "agents";
       tags.setItems(state.tags || []);
       models.setItems(toReferenceItems(state.models));
       context.setItems(toReferenceItems(state.context));
