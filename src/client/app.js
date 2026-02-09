@@ -248,6 +248,7 @@ function formatTypePillLabel(type) {
   if (normalizedType === "context") return "Context";
   if (normalizedType === "workflows") return "Workflow";
   if (normalizedType === "docs") return "Doc";
+  if (normalizedType === "configs") return "Config";
   return "Unknown";
 }
 
