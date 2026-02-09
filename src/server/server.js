@@ -401,21 +401,29 @@ function stripDccProjectMetadata(content, filePath) {
     return stripTopLevelYamlKeys(raw, keysToStrip);
   }
 
-  const frontmatterMatch = raw.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)(\r?\n|$)/);
-  if (!frontmatterMatch) {
-    return raw;
+  if ([".md", ".markdown", ".mdx"].includes(ext)) {
+    try {
+      const parsed = matter(raw);
+      if (!parsed?.matter) {
+        return raw;
+      }
+      for (const key of keysToStrip) {
+        delete parsed.data[key];
+      }
+      return matter.stringify(parsed.content, parsed.data);
+    } catch (_error) {
+      return raw;
+    }
   }
 
-  const [, start, header, end, separator] = frontmatterMatch;
-  const strippedHeader = stripTopLevelYamlKeys(header, keysToStrip);
-  return `${start}${strippedHeader}${end}${separator}${raw.slice(frontmatterMatch[0].length)}`;
+  return raw;
 }
 
 
 function extractDccUriFromDefinitionContent(content, { filePath = "", format = "" } = {}) {
   const normalizedFormat = String(format || "").toLowerCase();
   const ext = path.extname(String(filePath || "")).toLowerCase();
-  const treatAsMarkdown = normalizedFormat === "markdown" || [".md", ".markdown"].includes(ext);
+  const treatAsMarkdown = normalizedFormat === "markdown" || [".md", ".markdown", ".mdx"].includes(ext);
 
   if (treatAsMarkdown) {
     try {
@@ -459,7 +467,7 @@ async function validateDccUriForEditorSave({ mode, definitionPath, content, form
 
     const existingDccUri = extractDccUriFromDefinitionContent(item?.content || "", {
       filePath: item?.filePath || "",
-      format: item?.filePath && [".md", ".markdown"].includes(path.extname(String(item.filePath)).toLowerCase()) ? "markdown" : "yaml"
+      format: item?.filePath && [".md", ".markdown", ".mdx"].includes(path.extname(String(item.filePath)).toLowerCase()) ? "markdown" : "yaml"
     });
 
     if (existingDccUri && existingDccUri.toLowerCase() === normalizedIncoming) {
