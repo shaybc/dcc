@@ -262,8 +262,13 @@ function deriveType(filePath, data, rawContent = "") {
   return folder.toLowerCase();
 }
 
-function buildKey(type, filePath) {
-  return `${type}/${path.basename(filePath)}`;
+function buildKey(type, filePath, { dccUri = "" } = {}) {
+  const normalizedType = normalizeDefinitionType(type) || "unknown";
+  const normalizedDccUri = String(dccUri || "").trim().toLowerCase();
+  if (normalizedDccUri) {
+    return `${normalizedType}::${normalizedDccUri}`;
+  }
+  return `${normalizedType}/${path.basename(filePath)}`;
 }
 
 function sanitizeDuplicateFileName(fileName) {
@@ -587,7 +592,7 @@ function parseDefinitionContent(raw, filePath) {
     content: raw,
     type,
     filePath,
-    key: buildKey(type, filePath)
+    key: buildKey(type, filePath, { dccUri: parsed.data?.dcc_uri })
   };
 }
 
@@ -1103,27 +1108,17 @@ async function loadDefinitions() {
       trackedRepoFiles.add(path.resolve(filePath));
     }
   }
-  const repoKeyMap = new Map();
-  const teamKeyMap = new Set();
+  const repoDefinitions = await Promise.all(normalizedRepoFiles.map((filePath) => parseDefinition(filePath)));
+  const teamDefinitions = await Promise.all(teamFiles.map((filePath) => parseDefinition(filePath)));
 
-  for (const filePath of normalizedRepoFiles) {
-    const type = path.basename(path.dirname(filePath)).toLowerCase();
-    const key = buildKey(type, filePath);
-    repoKeyMap.set(key, filePath);
-  }
-
-  for (const filePath of teamFiles) {
-    const type = path.basename(path.dirname(filePath)).toLowerCase();
-    const key = buildKey(type, filePath);
-    teamKeyMap.add(key);
-  }
+  const repoKeyMap = new Map(repoDefinitions.map((definition) => [definition.key, definition.filePath]));
+  const teamKeyMap = new Set(teamDefinitions.map((definition) => definition.key));
 
   const now = new Date().toISOString();
 
-  for (const filePath of normalizedRepoFiles) {
-    const definition = await parseDefinition(filePath);
+  for (const definition of repoDefinitions) {
     const inTeam = teamKeyMap.has(definition.key) ? 1 : 0;
-    const absoluteFilePath = path.resolve(filePath);
+    const absoluteFilePath = path.resolve(definition.filePath);
     const source = trackedRepoFiles.has(absoluteFilePath) ? "repo" : "untracked";
     const status = inTeam ? "saved" : "repo";
 
@@ -1172,13 +1167,11 @@ async function loadDefinitions() {
     });
   }
 
-  for (const filePath of teamFiles) {
-    const type = path.basename(path.dirname(filePath)).toLowerCase();
-    const key = buildKey(type, filePath);
-    if (repoKeyMap.has(key)) {
+  for (const definition of teamDefinitions) {
+    if (repoKeyMap.has(definition.key)) {
       continue;
     }
-    const definition = await parseDefinition(filePath);
+    const type = path.basename(path.dirname(definition.filePath)).toLowerCase();
     await new Promise((resolve, reject) => {
       db.run(
         `INSERT INTO definitions
@@ -1199,7 +1192,7 @@ async function loadDefinitions() {
             updatedAt = excluded.updatedAt
         `,
         [
-          key,
+          definition.key,
           definition.name,
           definition.description,
           definition.tags,
@@ -1207,7 +1200,7 @@ async function loadDefinitions() {
           definition.version,
           definition.content,
           type,
-          filePath,
+          definition.filePath,
           "team",
           1,
           "local-only",
