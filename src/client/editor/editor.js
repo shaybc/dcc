@@ -9,6 +9,7 @@ import { createModelForm } from "./forms/modelForm.js";
 import { createWorkflowForm } from "./forms/workflowForm.js";
 import { createContextForm } from "./forms/contextForm.js";
 import { createDocForm } from "./forms/docForm.js";
+import { createConfigForm } from "./forms/configForm.js";
 
 const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode") || "create";
@@ -27,6 +28,7 @@ let definitionType = typeParam;
 let format = "yaml";
 let unknown = {};
 let availableTags = [];
+let definitionReferences = [];
 const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
 
 function typeDisplayLabel(type) {
@@ -58,6 +60,9 @@ function typeIconSvg(type) {
   }
   if (type === "doc") {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path><path d="M15 4v4h4"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg>';
+  }
+  if (type === "config") {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5a1.5 1.5 0 0 1 1-1.5z"></path><path d="M15 3.5v4h4"></path><path d="M9 11h6"></path><path d="M9 15h6"></path><path d="M9 19h4"></path></svg>';
   }
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"></circle></svg>';
 }
@@ -280,6 +285,24 @@ const handlers = {
       });
     }
   },
+  config: {
+    createForm: createConfigForm,
+    parse: (txt) => YAML.parse(txt || "") || {},
+    serialize: (state) => {
+      const { tags, ...rest } = state;
+      return YAML.stringify({
+        ...unknown,
+        ...rest,
+        dcc_tags: normalizeStringArray(tags),
+        models: normalizeUsesArray(state.models).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
+        context: normalizeUsesArray(state.context).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
+        rules: normalizeUsesArray(state.rules).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
+        prompts: normalizeUsesArray(state.prompts).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
+        docs: normalizeUsesArray(state.docs).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
+        mcpServers: normalizeUsesArray(state.mcpServers).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" }))
+      });
+    }
+  },
   agent: {
     createForm: createAgentForm,
     parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
@@ -350,6 +373,22 @@ function normalizeState(type, parsed) {
     tags: normalizeStringArray(data.dcc_tags || data.tags),
     docs: Array.isArray(data.docs) ? data.docs : []
   };
+  if (type === "config") return {
+    name: data.name || "",
+    dcc_uri: data.dcc_uri || "",
+    version: data.version || "",
+    schema: data.schema || "",
+    description: data.description || "",
+    tags: normalizeStringArray(data.dcc_tags || data.tags),
+    configFileName: data.configFileName || "config.yaml",
+    dcc: data.dcc && typeof data.dcc === "object" ? data.dcc : { config_type: "agents" },
+    models: normalizeUsesArray(data.models).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
+    context: normalizeUsesArray(data.context).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
+    rules: normalizeUsesArray(data.rules).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
+    prompts: normalizeUsesArray(data.prompts).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
+    docs: normalizeUsesArray(data.docs).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
+    mcpServers: normalizeUsesArray(data.mcpServers).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" }))
+  };
   return {
     name: data.name || "",
     dcc_uri: data.dcc_uri || "",
@@ -370,7 +409,8 @@ function captureUnknownFields(type, parsed) {
     model: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models"],
     workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
     context: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "context"],
-    doc: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "docs"]
+    doc: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "docs"],
+    config: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "configFileName", "dcc", "models", "context", "rules", "prompts", "docs", "mcpServers"]
   };
   const known = new Set(knownByType[type] || []);
   unknown = Object.fromEntries(Object.entries(parsed || {}).filter(([key]) => !known.has(key)));
@@ -379,7 +419,7 @@ function captureUnknownFields(type, parsed) {
 function setupForType(type, initialRaw) {
   formMount.innerHTML = "";
   const handler = handlers[type];
-  formController = handler.createForm({ mount: formMount, onChange: () => sync.updateTextFromForm(), availableTags });
+  formController = handler.createForm({ mount: formMount, onChange: () => sync.updateTextFromForm(), availableTags, definitionReferences });
   sync = createTextFormSync({
     textArea: rawText,
     errorNode: parseError,
@@ -414,6 +454,16 @@ async function boot() {
   } catch (error) {
     availableTags = [];
     console.debug(`${TAG_DEBUG_PREFIX} boot: failed loading tags`, error);
+  }
+
+  try {
+    const refsResponse = await fetch("/api/definitions/references");
+    if (refsResponse.ok) {
+      const refsPayload = await refsResponse.json();
+      definitionReferences = Array.isArray(refsPayload) ? refsPayload : [];
+    }
+  } catch (_error) {
+    definitionReferences = [];
   }
 
   console.debug(`${TAG_DEBUG_PREFIX} boot: initializing form type`, definitionType, "with tags count", availableTags.length);
