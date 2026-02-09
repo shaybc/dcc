@@ -447,12 +447,41 @@ function stripTopLevelYamlKeys(raw, keysToStrip) {
   return keptLines.join("\n");
 }
 
+function stripDccMetadataDeep(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripDccMetadataDeep(item));
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const cleaned = {};
+  for (const [key, nestedValue] of Object.entries(value)) {
+    const normalizedKey = String(key || "").trim().toLowerCase();
+    const isDccKey = normalizedKey === "dcc" || normalizedKey.startsWith("dcc_");
+    if (isDccKey) {
+      continue;
+    }
+    cleaned[key] = stripDccMetadataDeep(nestedValue);
+  }
+  return cleaned;
+}
+
 function stripDccProjectMetadata(content, filePath) {
   const raw = String(content || "");
   const ext = path.extname(String(filePath || "")).toLowerCase();
-  const keysToStrip = ["dcc_tags", "dcc_uri"];
+  const keysToStrip = ["dcc_tags", "dcc_uri", "dcc_config_type"];
 
   if ([".yml", ".yaml"].includes(ext)) {
+    try {
+      const parsedYaml = YAML.parse(raw);
+      if (parsedYaml && typeof parsedYaml === "object") {
+        return `${YAML.stringify(stripDccMetadataDeep(parsedYaml)).replace(/\n$/, "")}\n`;
+      }
+    } catch (_error) {
+      // fallback to line-based stripping
+    }
     return stripTopLevelYamlKeys(raw, keysToStrip);
   }
 
@@ -462,10 +491,7 @@ function stripDccProjectMetadata(content, filePath) {
       if (!parsed?.matter) {
         return raw;
       }
-      for (const key of keysToStrip) {
-        delete parsed.data[key];
-      }
-      return matter.stringify(parsed.content, parsed.data);
+      return matter.stringify(parsed.content, stripDccMetadataDeep(parsed.data));
     } catch (_error) {
       return raw;
     }
@@ -899,10 +925,8 @@ async function buildMergedConfigContent(configDoc, definitionsByDccUri) {
     name: configDoc.name || "",
     version: configDoc.version || "",
     schema: configDoc.schema || "v1",
-    dcc_uri: configDoc.dcc_uri || "",
     description: configDoc.description || "",
-    tags: configDoc.tags || configDoc.dcc_tags || [],
-    dcc: configDoc.dcc || {},
+    tags: configDoc.tags || [],
     models: [],
     context: [],
     rules: [],
@@ -926,7 +950,7 @@ async function buildMergedConfigContent(configDoc, definitionsByDccUri) {
     }
   }
 
-  return YAML.stringify(merged);
+  return YAML.stringify(stripDccMetadataDeep(merged));
 }
 
 function parseContextProviders(content) {
