@@ -299,7 +299,8 @@ const handlers = {
         rules: normalizeUsesArray(state.rules).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
         prompts: normalizeUsesArray(state.prompts).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
         docs: normalizeUsesArray(state.docs).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
-        mcpServers: normalizeUsesArray(state.mcpServers).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" }))
+        mcpServers: normalizeUsesArray(state.mcpServers).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
+        dcc_config_type: state.dcc_config_type || "agents"
       });
     }
   },
@@ -381,7 +382,7 @@ function normalizeState(type, parsed) {
     description: data.description || "",
     tags: normalizeStringArray(data.dcc_tags || data.tags),
     configFileName: data.configFileName || "config.yaml",
-    dcc: data.dcc && typeof data.dcc === "object" ? data.dcc : { config_type: "agents" },
+    dcc_config_type: data.dcc_config_type || data?.dcc?.config_type || "agents",
     models: normalizeUsesArray(data.models).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
     context: normalizeUsesArray(data.context).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
     rules: normalizeUsesArray(data.rules).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
@@ -410,7 +411,7 @@ function captureUnknownFields(type, parsed) {
     workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
     context: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "context"],
     doc: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "docs"],
-    config: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "configFileName", "dcc", "models", "context", "rules", "prompts", "docs", "mcpServers"]
+    config: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "configFileName", "dcc_config_type", "dcc", "models", "context", "rules", "prompts", "docs", "mcpServers"]
   };
   const known = new Set(knownByType[type] || []);
   unknown = Object.fromEntries(Object.entries(parsed || {}).filter(([key]) => !known.has(key)));
