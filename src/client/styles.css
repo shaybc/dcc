@@ -550,6 +550,10 @@ main {
   background: rgba(92, 118, 132, 0.22);
 }
 
+.type-pill.type-configs {
+  background: rgba(92, 118, 132, 0.22);
+}
+
 .type-pill.type-unknown {
   background: rgba(92, 118, 132, 0.22);
 }
