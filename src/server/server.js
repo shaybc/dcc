@@ -353,11 +353,77 @@ function parseYamlHeaderFields(raw) {
   return headers;
 }
 
+function stripTopLevelYamlKeys(raw, keysToStrip) {
+  const keys = new Set((keysToStrip || []).map((key) => String(key || "").trim()).filter(Boolean));
+  if (!keys.size) {
+    return raw;
+  }
+
+  const lines = String(raw || "").split(/\r?\n/);
+  const keptLines = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const match = line.match(/^(\s*)([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/);
+    const indent = match ? match[1] : "";
+    const key = match ? match[2] : "";
+
+    const shouldStrip = match && indent.length === 0 && keys.has(key);
+    if (!shouldStrip) {
+      keptLines.push(line);
+      continue;
+    }
+
+    for (let next = index + 1; next < lines.length; next += 1) {
+      const nextLine = lines[next];
+      if (!nextLine.trim()) {
+        index = next;
+        continue;
+      }
+      const nextIndent = (nextLine.match(/^\s*/) || [""])[0].length;
+      if (nextIndent > 0) {
+        index = next;
+        continue;
+      }
+      break;
+    }
+  }
+
+  return keptLines.join("\n");
+}
+
+function stripDccProjectMetadata(content, filePath) {
+  const raw = String(content || "");
+  const ext = path.extname(String(filePath || "")).toLowerCase();
+  const keysToStrip = ["dcc_tags", "dcc_uri"];
+
+  if ([".yml", ".yaml"].includes(ext)) {
+    return stripTopLevelYamlKeys(raw, keysToStrip);
+  }
+
+  if ([".md", ".markdown", ".mdx"].includes(ext)) {
+    try {
+      const parsed = matter(raw);
+      if (!parsed?.matter) {
+        return raw;
+      }
+      for (const key of keysToStrip) {
+        delete parsed.data[key];
+      }
+      return matter.stringify(parsed.content, parsed.data);
+    } catch (_error) {
+      return raw;
+    }
+  }
+
+  return raw;
+}
+
 
 function extractDccUriFromDefinitionContent(content, { filePath = "", format = "" } = {}) {
   const normalizedFormat = String(format || "").toLowerCase();
   const ext = path.extname(String(filePath || "")).toLowerCase();
-  const treatAsMarkdown = normalizedFormat === "markdown" || [".md", ".markdown"].includes(ext);
+  const treatAsMarkdown = normalizedFormat === "markdown" || [".md", ".markdown", ".mdx"].includes(ext);
 
   if (treatAsMarkdown) {
     try {
@@ -401,7 +467,7 @@ async function validateDccUriForEditorSave({ mode, definitionPath, content, form
 
     const existingDccUri = extractDccUriFromDefinitionContent(item?.content || "", {
       filePath: item?.filePath || "",
-      format: item?.filePath && [".md", ".markdown"].includes(path.extname(String(item.filePath)).toLowerCase()) ? "markdown" : "yaml"
+      format: item?.filePath && [".md", ".markdown", ".mdx"].includes(path.extname(String(item.filePath)).toLowerCase()) ? "markdown" : "yaml"
     });
 
     if (existingDccUri && existingDccUri.toLowerCase() === normalizedIncoming) {
@@ -1672,7 +1738,9 @@ app.post("/api/definitions/:id/save", async (req, res) => {
           return;
         }
         await fsp.mkdir(destinationInfo.destDir, { recursive: true });
-        await fsp.copyFile(row.filePath, destinationInfo.destPath);
+        const definitionContent = await fsp.readFile(row.filePath, "utf8");
+        const sanitizedContent = stripDccProjectMetadata(definitionContent, row.filePath);
+        await fsp.writeFile(destinationInfo.destPath, sanitizedContent, "utf8");
       }
 
       await runDb(
