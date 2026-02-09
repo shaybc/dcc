@@ -62,7 +62,7 @@ let activeVersionDropdown = null;
 let lastValidationResult = null;
 let validationAutoRunTimeout = null;
 
-const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "unknown"];
+const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const MAX_CARD_TAG_PILLS = 3;
 
@@ -76,6 +76,7 @@ function normalizeFilterType(type) {
   if (["context", "contexts"].includes(normalized)) return "context";
   if (["workflow", "workflows"].includes(normalized)) return "workflows";
   if (["doc", "docs", "documentation"].includes(normalized)) return "docs";
+  if (["config", "configs"].includes(normalized)) return "configs";
   if (["user", "users", "org", "orgs", "ai_assets", "ai assets"].includes(normalized)) return "unknown";
   return FILTER_TYPE_SET.has(normalized) ? normalized : "unknown";
 }
@@ -247,6 +248,7 @@ function formatTypePillLabel(type) {
   if (normalizedType === "context") return "Context";
   if (normalizedType === "workflows") return "Workflow";
   if (normalizedType === "docs") return "Doc";
+  if (normalizedType === "configs") return "Config";
   return "Unknown";
 }
 
@@ -365,6 +367,17 @@ function filterIconSvg(type) {
         <path d="M15 4v4h4"></path>
         <path d="M9 13h6"></path>
         <path d="M9 17h4"></path>
+      </svg>
+    `;
+  }
+  if (type === "configs" || type === "config") {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5a1.5 1.5 0 0 1 1-1.5z"></path>
+        <path d="M15 3.5v4h4"></path>
+        <path d="M9 11h6"></path>
+        <path d="M9 15h6"></path>
+        <path d="M9 19h4"></path>
       </svg>
     `;
   }
