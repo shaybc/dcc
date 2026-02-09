@@ -869,7 +869,7 @@ function getProjectDestinationInfo(projectPath, type, filePath) {
     agents: ["agents", "agents"],
     mcpservers: ["mcpServers", "mcpServers"],
     docs: ["docs", "docs"],
-    configs: ["", "config"]
+    configs: ["config", ""]
   };
   const mapped = mappings[normalizedType];
   if (!mapped) {
