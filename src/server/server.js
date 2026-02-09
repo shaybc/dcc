@@ -925,10 +925,8 @@ async function buildMergedConfigContent(configDoc, definitionsByDccUri) {
     name: configDoc.name || "",
     version: configDoc.version || "",
     schema: configDoc.schema || "v1",
-    dcc_uri: configDoc.dcc_uri || "",
     description: configDoc.description || "",
-    tags: configDoc.tags || configDoc.dcc_tags || [],
-    dcc: configDoc.dcc || {},
+    tags: configDoc.tags || [],
     models: [],
     context: [],
     rules: [],
@@ -952,7 +950,7 @@ async function buildMergedConfigContent(configDoc, definitionsByDccUri) {
     }
   }
 
-  return YAML.stringify(merged);
+  return YAML.stringify(stripDccMetadataDeep(merged));
 }
 
 function parseContextProviders(content) {
