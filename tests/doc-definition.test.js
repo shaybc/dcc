@@ -9,7 +9,7 @@ version: 0.0.1
 schema: v1
 dcc_uri: docs/continueDocs
 description: this is a playwrite mcp server description
-tags: tag1, tag2, tag3
+dcc_tags: tag1, tag2, tag3
 
 docs:
   - name: Continue

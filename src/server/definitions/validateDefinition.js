@@ -35,6 +35,7 @@ function schemaForType(type, strict) {
   const commonMetadata = {
     version: z.string().min(1).optional(),
     schema: z.string().min(1).optional(),
+    dcc_tags: z.union([z.array(z.string()), z.string()]).optional(),
     tags: z.union([z.array(z.string()), z.string()]).optional(),
     invokable: z.boolean().optional(),
     key: z.string().optional(),

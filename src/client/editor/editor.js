@@ -187,22 +187,28 @@ const handlers = {
   prompt: {
     createForm: createPromptForm,
     parse: (txt) => YAML.parse(txt || "") || {},
-    serialize: (state) => YAML.stringify({
-      ...unknown,
-      ...state,
-      tags: normalizeStringArray(state.tags),
-      prompts: Array.isArray(state.prompts) ? state.prompts : []
-    })
+    serialize: (state) => {
+      const { tags, ...rest } = state;
+      return YAML.stringify({
+        ...unknown,
+        ...rest,
+        dcc_tags: normalizeStringArray(tags),
+        prompts: Array.isArray(state.prompts) ? state.prompts : []
+      });
+    }
   },
   mcpServer: {
     createForm: createMcpServerForm,
     parse: (txt) => YAML.parse(txt || "") || {},
-    serialize: (state) => YAML.stringify({
-      ...unknown,
-      ...state,
-      tags: normalizeStringArray(state.tags),
-      mcpServers: normalizeMcpServers(state.mcpServers)
-    })
+    serialize: (state) => {
+      const { tags, ...rest } = state;
+      return YAML.stringify({
+        ...unknown,
+        ...rest,
+        dcc_tags: normalizeStringArray(tags),
+        mcpServers: normalizeMcpServers(state.mcpServers)
+      });
+    }
   },
   model: {
     createForm: createModelForm,
@@ -223,10 +229,11 @@ const handlers = {
         return rest;
       });
 
+      const { tags, ...rest } = state;
       return YAML.stringify({
         ...unknown,
-        ...state,
-        tags: normalizeStringArray(state.tags),
+        ...rest,
+        dcc_tags: normalizeStringArray(tags),
         models: normalizedModels
       });
     }
@@ -234,45 +241,60 @@ const handlers = {
   workflow: {
     createForm: createWorkflowForm,
     parse: (txt) => YAML.parse(txt || "") || {},
-    serialize: (state) => YAML.stringify({
-      ...unknown,
-      ...state,
-      tags: normalizeStringArray(state.tags),
-      models: serializeWorkflowModels(state.models),
-      context: normalizeUsesArray(state.context),
-      mcpServers: normalizeUsesArray(state.mcpServers),
-      rules: normalizeUsesArray(state.rules)
-    })
+    serialize: (state) => {
+      const { tags, ...rest } = state;
+      return YAML.stringify({
+        ...unknown,
+        ...rest,
+        dcc_tags: normalizeStringArray(tags),
+        models: serializeWorkflowModels(state.models),
+        context: normalizeUsesArray(state.context),
+        mcpServers: normalizeUsesArray(state.mcpServers),
+        rules: normalizeUsesArray(state.rules)
+      });
+    }
   },
   context: {
     createForm: createContextForm,
     parse: (txt) => YAML.parse(txt || "") || {},
-    serialize: (state) => YAML.stringify({
-      ...unknown,
-      ...state,
-      tags: normalizeStringArray(state.tags),
-      context: serializeContextEntries(state.context)
-    })
+    serialize: (state) => {
+      const { tags, ...rest } = state;
+      return YAML.stringify({
+        ...unknown,
+        ...rest,
+        dcc_tags: normalizeStringArray(tags),
+        context: serializeContextEntries(state.context)
+      });
+    }
   },
   doc: {
     createForm: createDocForm,
     parse: (txt) => YAML.parse(txt || "") || {},
-    serialize: (state) => YAML.stringify({
-      ...unknown,
-      ...state,
-      tags: normalizeStringArray(state.tags),
-      docs: Array.isArray(state.docs) ? state.docs : []
-    })
+    serialize: (state) => {
+      const { tags, ...rest } = state;
+      return YAML.stringify({
+        ...unknown,
+        ...rest,
+        dcc_tags: normalizeStringArray(tags),
+        docs: Array.isArray(state.docs) ? state.docs : []
+      });
+    }
   },
   agent: {
     createForm: createAgentForm,
     parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
-    serialize: (state) => { const { body = "", ...frontmatter } = { ...unknown, ...state }; return matter.stringify(body, frontmatter); }
+    serialize: (state) => {
+      const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
+      return matter.stringify(body, { ...frontmatter, dcc_tags: normalizeStringArray(tags) });
+    }
   },
   rule: {
     createForm: createRuleForm,
     parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
-    serialize: (state) => { const { body = "", ...frontmatter } = { ...unknown, ...state }; return matter.stringify(body, frontmatter); }
+    serialize: (state) => {
+      const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
+      return matter.stringify(body, { ...frontmatter, dcc_tags: normalizeStringArray(tags) });
+    }
   }
 };
 
@@ -284,7 +306,7 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.tags),
+    tags: normalizeStringArray(data.dcc_tags || data.tags),
     prompts: Array.isArray(data.prompts) ? data.prompts : []
   };
   if (type === "mcpServer") return {
@@ -293,18 +315,18 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.tags),
+    tags: normalizeStringArray(data.dcc_tags || data.tags),
     mcpServers: normalizeMcpServers(data.mcpServers)
   };
-  if (type === "agent") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
-  if (type === "rule") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.tags || [], body: data.body || "" };
+  if (type === "agent") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.dcc_tags || data.tags || [], body: data.body || "" };
+  if (type === "rule") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.dcc_tags || data.tags || [], body: data.body || "" };
   if (type === "model") return {
     name: data.name || "",
     description: data.description || "",
     dcc_uri: data.dcc_uri || "",
     version: data.version || "",
     schema: data.schema || "",
-    tags: normalizeStringArray(data.tags),
+    tags: normalizeStringArray(data.dcc_tags || data.tags),
     models: normalizeModelEntries(data.models)
   };
   if (type === "workflow") return {
@@ -313,7 +335,7 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.tags),
+    tags: normalizeStringArray(data.dcc_tags || data.tags),
     models: normalizeWorkflowModels(data.models),
     context: normalizeUsesArray(data.context),
     mcpServers: normalizeUsesArray(data.mcpServers),
@@ -325,7 +347,7 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.tags),
+    tags: normalizeStringArray(data.dcc_tags || data.tags),
     docs: Array.isArray(data.docs) ? data.docs : []
   };
   return {
@@ -334,21 +356,21 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.tags),
+    tags: normalizeStringArray(data.dcc_tags || data.tags),
     context: normalizeContextEntries(data.context)
   };
 }
 
 function captureUnknownFields(type, parsed) {
   const knownByType = {
-    prompt: ["name", "dcc_uri", "description", "version", "schema", "tags", "prompts"],
-    mcpServer: ["name", "dcc_uri", "description", "version", "schema", "tags", "mcpServers"],
-    agent: ["name", "dcc_uri", "description", "version", "tags", "body"],
-    rule: ["name", "dcc_uri", "description", "version", "tags", "body"],
-    model: ["name", "dcc_uri", "description", "version", "schema", "tags", "models"],
-    workflow: ["name", "dcc_uri", "description", "version", "schema", "tags", "models", "context", "mcpServers", "rules"],
-    context: ["name", "dcc_uri", "description", "version", "schema", "tags", "context"],
-    doc: ["name", "dcc_uri", "description", "version", "schema", "tags", "docs"]
+    prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts"],
+    mcpServer: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "mcpServers"],
+    agent: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
+    rule: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
+    model: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models"],
+    workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
+    context: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "context"],
+    doc: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "docs"]
   };
   const known = new Set(knownByType[type] || []);
   unknown = Object.fromEntries(Object.entries(parsed || {}).filter(([key]) => !known.has(key)));
