@@ -701,6 +701,7 @@ function normalizeDefinitionType(type) {
   if (["agent", "agents"].includes(normalized)) return "agents";
   if (["mcp server", "mcp servers", "mcpserver", "mcpservers"].includes(normalized)) return "mcpservers";
   if (["context", "contexts"].includes(normalized)) return "context";
+  if (["doc", "docs", "documentation"].includes(normalized)) return "docs";
   return normalized;
 }
 
@@ -713,7 +714,8 @@ function getProjectDestinationInfo(projectPath, type, filePath) {
     workflows: ["workflows", "workflows"],
     models: ["models", "models"],
     agents: ["agents", "agents"],
-    mcpservers: ["mcpServers", "mcpServers"]
+    mcpservers: ["mcpServers", "mcpServers"],
+    docs: ["docs", "docs"]
   };
   const mapped = mappings[normalizedType];
   if (!mapped) {

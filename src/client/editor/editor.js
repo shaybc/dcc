@@ -8,6 +8,7 @@ import { createRuleForm } from "./forms/ruleForm.js";
 import { createModelForm } from "./forms/modelForm.js";
 import { createWorkflowForm } from "./forms/workflowForm.js";
 import { createContextForm } from "./forms/contextForm.js";
+import { createDocForm } from "./forms/docForm.js";
 
 const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode") || "create";
@@ -54,6 +55,9 @@ function typeIconSvg(type) {
   }
   if (type === "context") {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.35-7-10a7 7 0 1 1 14 0c0 5.65-7 10-7 10z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>';
+  }
+  if (type === "doc") {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path><path d="M15 4v4h4"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg>';
   }
   return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"></circle></svg>';
 }
@@ -250,6 +254,16 @@ const handlers = {
       context: serializeContextEntries(state.context)
     })
   },
+  doc: {
+    createForm: createDocForm,
+    parse: (txt) => YAML.parse(txt || "") || {},
+    serialize: (state) => YAML.stringify({
+      ...unknown,
+      ...state,
+      tags: normalizeStringArray(state.tags),
+      docs: Array.isArray(state.docs) ? state.docs : []
+    })
+  },
   agent: {
     createForm: createAgentForm,
     parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
@@ -303,7 +317,16 @@ function normalizeState(type, parsed) {
     models: normalizeWorkflowModels(data.models),
     context: normalizeUsesArray(data.context),
     mcpServers: normalizeUsesArray(data.mcpServers),
-    rules: normalizeUsesArray(data.rules)
+      rules: normalizeUsesArray(data.rules)
+  };
+  if (type === "doc") return {
+    name: data.name || "",
+    dcc_uri: data.dcc_uri || "",
+    version: data.version || "",
+    schema: data.schema || "",
+    description: data.description || "",
+    tags: normalizeStringArray(data.tags),
+    docs: Array.isArray(data.docs) ? data.docs : []
   };
   return {
     name: data.name || "",
@@ -324,7 +347,8 @@ function captureUnknownFields(type, parsed) {
     rule: ["name", "dcc_uri", "description", "version", "tags", "body"],
     model: ["name", "dcc_uri", "description", "version", "schema", "tags", "models"],
     workflow: ["name", "dcc_uri", "description", "version", "schema", "tags", "models", "context", "mcpServers", "rules"],
-    context: ["name", "dcc_uri", "description", "version", "schema", "tags", "context"]
+    context: ["name", "dcc_uri", "description", "version", "schema", "tags", "context"],
+    doc: ["name", "dcc_uri", "description", "version", "schema", "tags", "docs"]
   };
   const known = new Set(knownByType[type] || []);
   unknown = Object.fromEntries(Object.entries(parsed || {}).filter(([key]) => !known.has(key)));
