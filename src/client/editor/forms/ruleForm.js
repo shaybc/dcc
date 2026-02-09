@@ -2,7 +2,7 @@ import { createArrayEditor } from "../components/arrayEditor.js";
 import { attachEnhancePromptBehavior } from "./promptEnhancer.js";
 
 export function createRuleForm({ mount, onChange, availableTags = [] }) {
-  const state = { name: "", description: "", version: "", tags: [], body: "" };
+  const state = { name: "", dcc_uri: "", description: "", version: "", tags: [], body: "" };
   const row = (label, key, placeholder = "") => {
     const l = document.createElement("label");
     l.className = "editor-field";
@@ -20,6 +20,7 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
   };
 
   const name = row("name", "name", 'e.g., "Java Rules"');
+  const dccUri = row("DCC URI", "dcc_uri", 'e.g., "rules/java_rules"');
   const description = row("description", "description", 'e.g., "this are the java rules"');
   const version = row("version", "version");
 
@@ -73,6 +74,7 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
     setState(next) {
       Object.assign(state, next || {});
       name.value = state.name || "";
+      dccUri.value = state.dcc_uri || "";
       description.value = state.description || "";
       version.value = state.version || "";
       body.value = state.body || "";
