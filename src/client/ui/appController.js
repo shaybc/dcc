@@ -568,7 +568,7 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
     card.classList.add("card-in-project");
   }
 
-  const showPushAction = String(definition.source || "").toLowerCase() === "untracked";
+  const showPushAction = !isRecommended && String(definition.source || "").toLowerCase() === "untracked";
   const recommendationMeta = recommendationRank !== null && !isRecommended
     ? `<div class="recommendation-meta">#${recommendationRank} · Score ${recommendationScore || 0}</div>`
     : "";
@@ -576,11 +576,11 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
     ? `<p class="recommendation-reasons">${escapeHtml(recommendationReasons.slice(0, 2).join(" • "))}</p>`
     : "";
   const cardMetaText = isRecommended
-    ? `Recommended · Rank #${recommendationRank}`
+    ? `Score: ${Number(recommendationScore) || 0}`
     : statusLabel(definition.status, definition.source);
-
-  card.innerHTML = `
-    <div class="card-actions">
+  const cardActions = isRecommended
+    ? ""
+    : `<div class="card-actions">
       ${showPushAction ? `<div class="icon-btn" data-action-push title="Push to upstream" aria-label="Push to upstream">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M10 16V4" />
@@ -590,12 +590,19 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
       <div class="icon-btn" data-action-save>
         ${iconSvg(definition.status)}
       </div>
-    </div>
+    </div>`;
+  const descriptionText = isRecommended ? "" : `<p>${getCardDescription(definition.description)}</p>`;
+  const tagsMarkup = (!isRecommended && definition.tags.length > 0)
+    ? `<div class="tag-pills card-tag-pills">${renderTagPills(definition.tags, { truncate: true })}</div>`
+    : "";
+
+  card.innerHTML = `
+    ${cardActions}
     ${recommendationMeta}
     <h3>${definition.name}</h3>
-    <p>${getCardDescription(definition.description)}</p>
+    ${descriptionText}
     ${recommendationReasonText}
-    ${definition.tags.length > 0 ? `<div class="tag-pills card-tag-pills">${renderTagPills(definition.tags, { truncate: true })}</div>` : ""}
+    ${tagsMarkup}
     <div class="meta-row">
       <div class="meta-status">${cardMetaText}</div>
       <div class="type-pill ${typeClassName(definition.type)}">

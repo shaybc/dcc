@@ -26,6 +26,16 @@
 
 .card-recommended {
   background: #c6ffc6;
+  height: 110px;
+  width: 240px;
+  max-width: 240px;
+  padding: 14px;
+  gap: 8px;
+}
+
+.card-recommended h3 {
+  font-size: 16px;
+  line-height: 1.25;
 }
 
 .card:hover {
