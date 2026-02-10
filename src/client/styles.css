@@ -1498,3 +1498,66 @@ body.detail-page-open {
     grid-template-columns: 1fr;
   }
 }
+
+.duplicate-definition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(2, 6, 23, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.duplicate-definition-modal {
+  width: min(760px, 96vw);
+  max-height: 90vh;
+  overflow: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.duplicate-definition-modal h3 {
+  margin: 0;
+}
+
+.duplicate-definition-subtitle {
+  color: var(--muted);
+  margin-top: 8px;
+  margin-bottom: 18px;
+}
+
+.duplicate-definition-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+.duplicate-definition-field input,
+.duplicate-definition-field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+}
+
+.duplicate-definition-field textarea {
+  min-height: 240px;
+  resize: vertical;
+}
+
+.duplicate-definition-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
