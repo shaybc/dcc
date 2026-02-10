@@ -1,95 +1,300 @@
-# System Architecture
+# DCC System Architecture
 
-## 1) High-Level Topology
-DCC is a local-first web app with three layers:
-1. Browser client (Hub, Settings, Editor).
-2. Express server (REST API + OpenAI-compatible facade).
-3. Local persistence/integration (SQLite + filesystem + git + optional Gemini API).
+## Overview
+
+DCC (Definition Catalog & Coordinator) is a **local-first web application** that manages software definitions — structured configuration or code artifacts — across a team catalog and multiple local development projects. It provides a browser-based UI, a local Express backend, and optional AI-assisted inference, all running on the developer's own machine with no cloud dependency beyond an optional Gemini API integration.
+
+The system is composed of three conceptual layers:
+
+- **Browser UI** — Hub, Settings, and Editor interfaces
+- **Backend Server** — REST API, validation engine, and an OpenAI-compatible inference facade
+- **Local Data Layer** — SQLite database, local filesystem, a team git repository, and the Google Gemini API
+
+---
+
+## 1. High-Level Topology
 
 ```mermaid
-flowchart LR
-  subgraph Browser
-    Hub[index.html + app.js]
-    Settings[settings.html + settings.js]
-    Editor[editor/editor.html + editor.js]
+flowchart TB
+  subgraph Browser["🖥️ Browser (Client)"]
+    Hub["Hub\nindex.html + app.js"]
+    Settings["Settings\nsettings.html + settings.js"]
+    Editor["Editor\neditor/editor.html + editor.js"]
   end
 
-  subgraph Backend
-    API[/api/*/]
-    V1[/v1/*/]
-    DefMods[definitions/*]
+  subgraph Backend["⚙️ Backend (Express Server)"]
+    API["/api/*\nREST API"]
+    V1["/v1/*\nOpenAI-compatible Facade"]
+    DefMods["Definition Modules\ndefinitions/*"]
   end
 
-  subgraph Data
-    DB[(SQLite)]
-    TeamRepo[(Team git repo)]
-    DevProjects[(Local dev projects)]
-    Gemini[(Google Gemini API)]
+  subgraph Data["💾 Data Layer"]
+    DB[("SQLite\nDatabase")]
+    TeamRepo[("Team Git Repo\n(remote or local path)")]
+    DevProjects[("Local Dev Projects\n(filesystem)")]
+    Gemini[("Google Gemini API\n(optional)")]
   end
 
-  Hub --> API
-  Settings --> API
-  Editor --> API
+  Hub -->|REST calls| API
+  Settings -->|REST calls| API
+  Editor -->|REST calls| API
+
   API --> DefMods
   API --> DB
   API --> TeamRepo
   API --> DevProjects
-  V1 --> Gemini
+
+  V1 -->|proxied inference| Gemini
 ```
 
-## 2) Persistence Model
-`src/server/server.js` initializes 7 core tables:
-- `settings`
-- `definitions`
-- `definition_versions`
-- `dev_project_roots`
-- `dev_projects`
-- `project_definition_copies`
-- `validation_results`
+The Hub is the primary workspace for browsing, installing, and validating definitions. The Settings page configures the git repo source and project roots. The Editor provides a structured form-based interface for authoring or modifying definitions. All three communicate exclusively through the backend REST API.
 
-### Key relationships
-- `definitions.key` is the central definition identifier.
-- `definition_versions.definition_key` references current catalog entries.
-- `project_definition_copies` tracks where definitions are installed.
-- `validation_results` stores per-definition validation runs and reports.
+---
 
-## 3) Main Runtime Flows
+## 2. Data Model & Persistence
 
-### 3.1 Repository sync and indexing
-1. Settings page saves repo URL/path.
-2. `POST /api/clone-pull` runs clone-or-pull.
-3. `POST /api/load-definitions` scans, parses, and upserts definitions.
+The server initializes a SQLite database with **7 core tables** on startup. The schema is designed around definitions as the central entity, with supporting tables for versioning, project placement, and validation history.
 
-### 3.2 Definition install/remove into current project
-1. User selects active dev project.
-2. `POST /api/definitions/:id/save` copies or merges into `.continue` structure.
-3. `POST /api/definitions/:id/remove` reverses file copy/merge.
-4. DB mapping table reflects saved state.
+```mermaid
+erDiagram
+  settings {
+    string key PK
+    string value
+  }
 
-### 3.3 Validation flow
-1. Hub requests `POST /api/definitions/:id/validate`.
-2. Server runs schema/lint/reference checks.
-3. Result is stored in `validation_results`.
-4. UI can load latest or history via dedicated endpoints.
+  definitions {
+    string key PK
+    string type
+    string content
+    string source_path
+  }
 
-### 3.4 Version history flow
-1. User requests versions for a definition.
-2. Server compares cached `definition_versions` to git latest hash.
-3. If stale/missing, git history is re-hydrated and cached.
-4. User can fetch historical content or restore a selected version.
+  definition_versions {
+    int id PK
+    string definition_key FK
+    string git_hash
+    string content
+    datetime created_at
+  }
 
-### 3.5 OpenAI-compatible inference flow
-1. Client sends request to `/v1/*`.
-2. Router validates payload with Zod.
-3. Gemini adapter executes request.
-4. Response is normalized to OpenAI-compatible JSON/SSE.
+  dev_project_roots {
+    int id PK
+    string path
+    string label
+  }
 
-## 4) API Surface Areas
-- Main product API in `server.js` under `/api/*` (settings, projects, definitions, validation, versions, editor helpers).
-- LLM compatibility API in `routes/openai.js` under `/v1/*`.
+  dev_projects {
+    int id PK
+    int root_id FK
+    string name
+    string path
+  }
 
-## 5) Architectural Characteristics
-- **Local-first**: state and files remain on the local machine.
-- **Git-native**: sync, history extraction, publish, and push workflows all rely on git commands.
-- **Type-aware definition platform**: parsing, validation, and editor forms are definition-type specific.
-- **Project-aware deployment**: catalog items can be materialized into many local projects with tracked state.
+  project_definition_copies {
+    int id PK
+    string definition_key FK
+    int dev_project_id FK
+    string installed_path
+    datetime installed_at
+  }
+
+  validation_results {
+    int id PK
+    string definition_key FK
+    string status
+    string report
+    datetime run_at
+  }
+
+  definitions ||--o{ definition_versions : "versioned by"
+  definitions ||--o{ project_definition_copies : "installed into"
+  definitions ||--o{ validation_results : "validated as"
+  dev_project_roots ||--o{ dev_projects : "contains"
+  dev_projects ||--o{ project_definition_copies : "receives"
+```
+
+**Key relationships:**
+
+- `definitions.key` is the canonical identifier used throughout the system.
+- `definition_versions` caches git history per definition, keyed to a git commit hash.
+- `project_definition_copies` is the mapping table that tracks exactly which definitions are installed into which local project.
+- `validation_results` stores each validation run's outcome, enabling both latest-result lookups and historical auditing.
+
+---
+
+## 3. Core Runtime Flows
+
+### 3.1 Repository Sync & Indexing
+
+Definitions are sourced from a shared team git repository. Syncing brings the local cache up to date.
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Settings as Settings UI
+  participant API as Express API
+  participant Git as Git (local/remote)
+  participant DB as SQLite
+
+  User->>Settings: Enter repo URL or local path
+  Settings->>API: POST /api/clone-pull
+  API->>Git: Clone or pull latest
+  Git-->>API: Working tree updated
+  API->>API: POST /api/load-definitions
+  API->>Git: Scan repo for definition files
+  API->>API: Parse definition files
+  API->>DB: Upsert definitions & versions
+  DB-->>API: OK
+  API-->>Settings: Sync complete
+```
+
+### 3.2 Definition Install & Remove
+
+Users can materialize a catalog definition into any active local development project. The install process copies or merges definition files into the project's `.continue` directory structure, and the database mapping table is updated accordingly.
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Hub as Hub UI
+  participant API as Express API
+  participant FS as Filesystem
+  participant DB as SQLite
+
+  User->>Hub: Select dev project + definition
+  Hub->>API: POST /api/definitions/:id/save
+  API->>FS: Copy/merge files into .continue/
+  API->>DB: Insert into project_definition_copies
+  DB-->>API: OK
+  API-->>Hub: Installed
+
+  User->>Hub: Remove definition
+  Hub->>API: POST /api/definitions/:id/remove
+  API->>FS: Delete or unmerge files
+  API->>DB: Delete from project_definition_copies
+  API-->>Hub: Removed
+```
+
+### 3.3 Validation
+
+Definitions can be validated against schema, lint rules, and cross-reference checks. Results are persisted so users can view the latest run or browse historical outcomes.
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Hub as Hub UI
+  participant API as Express API
+  participant Engine as Validation Engine
+  participant DB as SQLite
+
+  User->>Hub: Trigger validation
+  Hub->>API: POST /api/definitions/:id/validate
+  API->>Engine: Run schema check
+  API->>Engine: Run lint check
+  API->>Engine: Run reference check
+  Engine-->>API: Aggregated result
+  API->>DB: INSERT into validation_results
+  DB-->>API: OK
+  API-->>Hub: Pass / Fail + report
+
+  User->>Hub: View history
+  Hub->>API: GET /api/definitions/:id/validation-history
+  API->>DB: SELECT * FROM validation_results
+  DB-->>API: Historical results
+  API-->>Hub: Render history list
+```
+
+### 3.4 Version History
+
+Definition versions are lazily hydrated from git history and cached in SQLite. The cache is invalidated when the current git commit hash for a file has changed since the last cache write.
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Hub as Hub UI
+  participant API as Express API
+  participant DB as SQLite
+  participant Git as Git
+
+  User->>Hub: Open version history
+  Hub->>API: GET /api/definitions/:id/versions
+  API->>DB: Lookup cached versions + latest hash
+  alt Cache is fresh
+    DB-->>API: Return cached versions
+  else Cache is stale or missing
+    API->>Git: Read full commit history for file
+    Git-->>API: Commit log + blobs
+    API->>DB: Upsert definition_versions
+    DB-->>API: Updated cache
+  end
+  API-->>Hub: Version list
+
+  User->>Hub: Restore a version
+  Hub->>API: POST /api/definitions/:id/restore?hash=abc123
+  API->>DB: Fetch content at that hash
+  API-->>Hub: Historical content loaded into editor
+```
+
+### 3.5 OpenAI-Compatible Inference
+
+The `/v1/*` routes expose an OpenAI-compatible API surface backed by Google Gemini. This allows tools or extensions that expect an OpenAI endpoint to work transparently with local Gemini-powered inference.
+
+```mermaid
+flowchart LR
+  Client["Client\n(any OpenAI-compatible tool)"]
+  Router["/v1/* Router\n(routes/openai.js)"]
+  Zod["Zod\nPayload Validator"]
+  Adapter["Gemini Adapter"]
+  Gemini["Google Gemini API"]
+  Normalizer["Response Normalizer\n(OpenAI JSON / SSE)"]
+
+  Client -->|POST /v1/chat/completions| Router
+  Router --> Zod
+  Zod -->|validated payload| Adapter
+  Adapter --> Gemini
+  Gemini -->|raw response| Adapter
+  Adapter --> Normalizer
+  Normalizer -->|normalized response| Client
+```
+
+---
+
+## 4. API Surface
+
+### Product API — `/api/*`
+
+Served by `server.js`. Covers all core application functionality.
+
+| Area | Endpoints |
+|---|---|
+| **Settings** | Read/write app configuration |
+| **Repository** | Clone, pull, load definitions from git repo |
+| **Projects** | Manage dev project roots and discovered projects |
+| **Definitions** | List, read, save, remove, and validate definitions |
+| **Validation** | Trigger validation runs; read latest and historical results |
+| **Versions** | List versions, fetch content at a given hash, restore |
+| **Editor** | Helper endpoints for structured definition authoring |
+
+### Inference API — `/v1/*`
+
+Served by `routes/openai.js`. Provides an OpenAI-compatible interface backed by Gemini.
+
+| Route | Purpose |
+|---|---|
+| `POST /v1/chat/completions` | Chat completions (streaming and non-streaming) |
+| Other `/v1/*` routes | Additional OpenAI-compatible endpoints as implemented |
+
+---
+
+## 5. Architectural Characteristics
+
+### Local-First
+All state — the SQLite database, synced definition files, and installed project copies — lives on the local machine. The only network calls are to the team git remote (for sync) and optionally to the Gemini API (for inference). No user data is sent to a cloud service.
+
+### Git-Native
+Git is the authoritative source for the definition catalog. Sync, version history extraction, and any publish or push workflows are all implemented directly as git operations, ensuring that definitions are always traceable and recoverable.
+
+### Type-Aware Definition Platform
+The validation engine, editor form generation, and file merge logic are all definition-type aware. Each definition type can have its own schema, lint rules, and install behavior, making the platform extensible to new definition kinds without changing the core runtime.
+
+### Project-Aware Deployment
+A single catalog definition can be installed into multiple local development projects simultaneously. The `project_definition_copies` table tracks the installed state of every definition in every project, enabling the Hub to surface per-project installation status at a glance.

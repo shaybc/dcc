@@ -1,0 +1,8 @@
+name: Continue Docs
+version: "1.1"
+schema: v1
+description: this is continue.dev official documentation
+docs:
+  - name: Continue
+    startUrl: https://docs.continue.dev/intro
+    favicon: https://docs.continue.dev/favicon.ico

@@ -15,3 +15,8 @@ context:
   - provider: file
   - provider: problems
   - provider: terminal
+  - provider: http
+    params:
+      url: "!<api_url>"
+      headers:
+        - Authorization: Bearer !<token>
