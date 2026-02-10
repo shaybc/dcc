@@ -1,0 +1,126 @@
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.card-in-project {
+  background: var(--card-in-project-bg);
+  border-color: var(--card-in-project-border);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: var(--shadow);
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.card .meta-row {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.card .meta-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.card-actions {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.card .icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.4);
+  display: grid;
+  place-items: center;
+}
+
+.card .icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.preview-card {
+  border: 1px solid rgba(139, 92, 246, 0.6);
+  border-radius: 10px;
+  background: var(--preview-card-bg);
+  padding: 12px;
+  min-width: 250px;
+  min-height: 100px;
+}
+
+.preview-grid > .preview-card:only-child {
+  justify-self: start;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.preview-card-title {
+  font-family: var(--font-mono);
+}
+
+.preview-card-subtitle {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.preview-card-chips {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.preview-card-chips span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.preview-empty {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 18px;
+  padding-bottom: 15px;
+}

@@ -1,0 +1,30 @@
+.version-banner {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 4px solid #38bdf8;
+  background: rgba(14, 165, 233, 0.12);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.version-banner-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-banner button {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--text);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.version-banner button:hover {
+  border-color: var(--accent);
+}

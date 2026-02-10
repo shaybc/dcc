@@ -1,0 +1,8 @@
+/**
+ * Shadow tokens
+ */
+:root {
+  --shadow-soft: 0 12px 28px rgba(15, 23, 42, 0.12);
+  --shadow-strong: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 8px 18px rgba(139, 92, 246, 0.2);
+}

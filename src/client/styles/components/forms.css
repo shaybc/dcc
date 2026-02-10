@@ -1,0 +1,25 @@
+.settings-form input:not([type="checkbox"]):not([type="radio"]) {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+  background: var(--bg-soft);
+  color: var(--text);
+}
+
+.duplicate-definition-field input,
+.duplicate-definition-field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+}
+
+.duplicate-definition-field textarea {
+  min-height: 240px;
+  resize: vertical;
+}
