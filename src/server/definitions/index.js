@@ -24,9 +24,23 @@ export async function loadDefinitions() {
 
   const repoFiles = [];
   const trackedRepoFiles = new Set();
+
+  const isGitInternalPath = (filePath, repoRoot) => {
+    const relativePath = path.relative(repoRoot, filePath);
+    if (!relativePath || relativePath.startsWith("..")) return false;
+    return relativePath.split(path.sep).includes(".git");
+  };
+
   for (const repo of availableRepos) {
     const files = await walkFiles(repo.localPath);
-    repoFiles.push(...files.filter((filePath) => !filePath.includes(path.join(repo.localPath, ".git"))));
+    for (const filePath of files) {
+      if (isGitInternalPath(filePath, repo.localPath)) continue;
+      repoFiles.push({
+        filePath,
+        repoId: repo.id,
+        repoName: repo.name,
+      });
+    }
     try {
       const trackedOutput = await runCommand("git ls-files -z", { cwd: repo.localPath });
       for (const relativePath of trackedOutput.split("\0").filter(Boolean)) {
@@ -38,8 +52,17 @@ export async function loadDefinitions() {
   }
 
   const teamFiles = await collectTeamFiles();
-  const repoDefinitions = (await Promise.all(repoFiles.map((filePath) => parseDefinition(filePath))))
-    .filter((definition) => definition.dccUri);
+  const repoDefinitions = (await Promise.all(repoFiles.map(async (repoFile) => {
+    const definition = await parseDefinition(repoFile.filePath);
+    if (!definition.dccUri) {
+      definition.key = `${definition.type}/${repoFile.repoId}:${path.basename(repoFile.filePath)}`;
+    }
+    return {
+      ...definition,
+      repoId: repoFile.repoId,
+      repoName: repoFile.repoName,
+    };
+  })));
   const teamDefinitions = await Promise.all(teamFiles.map((filePath) => parseDefinition(filePath)));
   const repoKeyMap = new Map(repoDefinitions.map((definition) => [definition.key, definition.filePath]));
   const teamKeyMap = new Set(teamDefinitions.map((definition) => definition.key));
@@ -52,8 +75,8 @@ export async function loadDefinitions() {
     const status = inTeam ? "saved" : "repo";
     await new Promise((resolve, reject) => {
       db.run(`INSERT INTO definitions
-          (key, name, description, tags, schema, version, content, type, filePath, source, inTeam, status, updatedAt)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (key, name, description, tags, schema, version, content, type, filePath, source, inTeam, status, updatedAt, repoId, repoName)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(key) DO UPDATE SET
             name = excluded.name,
             description = excluded.description,
@@ -66,8 +89,10 @@ export async function loadDefinitions() {
             source = excluded.source,
             inTeam = excluded.inTeam,
             status = excluded.status,
-            updatedAt = excluded.updatedAt`,
-      [definition.key, definition.name, definition.description, definition.tags, definition.schema, definition.version, definition.content, definition.type, definition.filePath, source, inTeam, status, now],
+            updatedAt = excluded.updatedAt,
+            repoId = excluded.repoId,
+            repoName = excluded.repoName`,
+      [definition.key, definition.name, definition.description, definition.tags, definition.schema, definition.version, definition.content, definition.type, definition.filePath, source, inTeam, status, now, definition.repoId, definition.repoName],
       (err) => err ? reject(err) : resolve());
     });
   }
@@ -77,8 +102,8 @@ export async function loadDefinitions() {
     const type = path.basename(path.dirname(definition.filePath)).toLowerCase();
     await new Promise((resolve, reject) => {
       db.run(`INSERT INTO definitions
-          (key, name, description, tags, schema, version, content, type, filePath, source, inTeam, status, updatedAt)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (key, name, description, tags, schema, version, content, type, filePath, source, inTeam, status, updatedAt, repoId, repoName)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(key) DO UPDATE SET
             name = excluded.name,
             description = excluded.description,
@@ -91,8 +116,10 @@ export async function loadDefinitions() {
             source = excluded.source,
             inTeam = excluded.inTeam,
             status = excluded.status,
-            updatedAt = excluded.updatedAt`,
-      [definition.key, definition.name, definition.description, definition.tags, definition.schema, definition.version, definition.content, type, definition.filePath, "team", 1, "local-only", now],
+            updatedAt = excluded.updatedAt,
+            repoId = excluded.repoId,
+            repoName = excluded.repoName`,
+      [definition.key, definition.name, definition.description, definition.tags, definition.schema, definition.version, definition.content, type, definition.filePath, "team", 1, "local-only", now, null, null],
       (err) => err ? reject(err) : resolve());
     });
   }
