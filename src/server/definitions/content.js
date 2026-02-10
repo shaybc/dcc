@@ -24,6 +24,24 @@ export function updateDefinitionNameInContent(content, fileName, nextName) {
   return content.replace(/^---\r?\n/, `---\nname: ${trimmedName}\n`);
 }
 
+export function updateDefinitionMetadataInContent(content, fileName, { name = "", dccUri = "" } = {}) {
+  const ext = path.extname(fileName).toLowerCase();
+  const trimmedName = String(name || "").trim();
+  const trimmedDccUri = String(dccUri || "").trim();
+
+  if ([".yml", ".yaml"].includes(ext)) {
+    const parsed = YAML.parse(sanitizeYamlHeaderScalars(content || "")) || {};
+    if (trimmedName) parsed.name = trimmedName;
+    if (trimmedDccUri) parsed.dcc_uri = trimmedDccUri;
+    return YAML.stringify(parsed);
+  }
+
+  const parsed = matter(String(content || ""));
+  if (trimmedName) parsed.data.name = trimmedName;
+  if (trimmedDccUri) parsed.data.dcc_uri = trimmedDccUri;
+  return matter.stringify(parsed.content, parsed.data);
+}
+
 export function bumpPatchVersion(version) {
   const match = String(version || "").trim().match(/^(\d+)\.(\d+)\.(\d+)$/);
   if (!match) return "1.0.0";
