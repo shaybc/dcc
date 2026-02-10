@@ -1,86 +1,85 @@
 # Feature List
 
-This document summarizes the currently implemented user-facing and system features in DCC.
+This document reflects the currently implemented capabilities in DCC.
 
-## 1) Workspace + Repository Management
-- Persist repository settings (`repoUrl`, `repoPath`) via `/api/settings`.
-- Sync team repository via `/api/clone-pull` with clone-or-pull behavior.
-- Classify and report git failures (conflict, permission, dirty working tree, missing upstream).
+## 1) Local-first web app
+- Express server serving a static browser client from `src/client`.
+- SQLite persistence initialized automatically on server startup.
+- All data and git operations are local to the developer machine.
 
-## 2) Definition Discovery and Cataloging
-- Load definitions from the configured repo via `/api/load-definitions`.
-- Parse YAML, JSON, and Markdown-frontmatter definitions.
-- Infer type and metadata and upsert into the `definitions` table.
-- Track tags, source type (`repo`, `local-only`, `untracked`), and update timestamps.
+## 2) Repository settings and sync
+- Save/load repository settings (`repoUrl`, `repoPath`) via `/api/settings`.
+- Clone or pull the configured team repository via `/api/clone-pull`.
+- Load and index definitions from the repository via `/api/load-definitions`.
 
-## 3) Supported Definition Types
-DCC recognizes and renders:
-- models
-- prompts
-- rules
-- agents
-- workflows
-- context
-- mcp servers
-- docs
-- configs
-- unknown fallback
+## 3) Definition catalog and metadata
+- Persist definitions in SQLite with key metadata (`type`, `name`, `tags`, `filePath`, `version`, `source`, `status`).
+- Retrieve catalog list via `/api/definitions`.
+- Get normalized tag list via `/api/definition-tags`.
+- Resolve DCC URI references via `/api/definitions/references`.
+- Fetch individual definition details (including best-effort live file content) via `/api/definitions/:id`.
 
-## 4) Hub Catalog UX
-- Full-card browsing with type icons, status pills, and tag pills.
-- Free-text search and tag-aware search.
-- Type filtering menu.
-- Details panel with preview/source/test tabs.
-- Copy raw definition content and edit/create shortcuts.
+## 4) Supported definition types
+Detected and handled definition types include:
+- `model`
+- `prompt`
+- `rule`
+- `agent`
+- `workflow`
+- `context`
+- `mcp server`
+- `doc`
+- `config`
+- `unknown` fallback
 
-## 5) Validation and Test Panel
-- Run validation per definition from the hub detail page.
-- Toggle validation modes: strict schema checks, lint checks, reference checks, auto-run.
-- Filter findings by severity.
-- Persist validation reports into `validation_results` and expose latest/history endpoints.
+## 5) Recommendation engine
+- Project-aware recommendation endpoint: `/api/definitions/suggestions`.
+- Uses current selected dev project + detected project type metadata.
+- Produces deterministic ranked suggestions with transparent `score` and `reasons`.
 
-## 6) Definition Version History
-- Build and cache per-definition git history in `definition_versions`.
-- Browse versions from the detail page.
-- Search and expand version list.
-- Load historical content without overwriting current file.
-- Restore a historical version back to current file content.
+## 6) Dev project discovery
+- Configure scan roots using `/api/dev-project-roots`.
+- Recursively discover nested git projects and detect project type signals.
+- Store project metadata (`projectType`, `detectedSignals`, `lastScannedAt`).
+- List discovered projects via `/api/dev-projects`.
 
-## 7) Editor Workbench
-- Create or edit definitions using type-specific forms.
-- Keep form and raw source synchronized with parse/serialize safeguards.
-- Detect type server-side (`/api/editor/detect-type`).
-- Save from editor (`/api/editor/save`) with metadata persistence.
-- Prompt enhancer integration in the editor flow through OpenAI-compatible completions path.
+## 7) Save/remove definitions to local projects
+- Save a definition to selected dev project: `/api/definitions/:id/save`.
+- Remove an installed definition: `/api/definitions/:id/remove`.
+- Track installed copies in `project_definition_copies`.
+- Context definitions merge provider entries into config files instead of simple copy.
 
-## 8) Save / Remove Definitions in Dev Projects
-- Select current dev project.
-- Save definition to project via `/api/definitions/:id/save`.
-  - Non-context assets are copied into `.continue/.../team/...` paths.
-  - Context assets are merged into `project_config.yaml` provider arrays.
-- Remove definition via `/api/definitions/:id/remove` with path-aware inverse operations.
-- Track per-project saved state in `project_definition_copies`.
+## 8) Definition lifecycle actions
+- Duplicate definitions with new name/file/path/dcc URI: `/api/definitions/:id/duplicate`.
+- Push local/untracked definitions upstream: `/api/definitions/:id/push-upstream`.
+- Publish tracked definitions with version bump support: `/api/definitions/:id/publish`.
+- Delete definition files from repo and refresh catalog: `/api/definitions/:id/delete-repo`.
 
-## 9) Definition Lifecycle Actions
-- Duplicate (`/api/definitions/:id/duplicate`) with path/name conflict safety.
-- Push upstream (`/api/definitions/:id/push-upstream`) for local/untracked artifacts.
-- Publish to repo (`/api/definitions/:id/publish`) with git add/commit/push.
-- Delete from repo (`/api/definitions/:id/delete-repo`) or remove local entry (`/api/definitions/:id/remove`).
+## 9) Validation
+- Run validation checks with configurable options: `/api/definitions/:id/validate`.
+- Read latest validation result: `/api/definitions/:id/validate/latest`.
+- Read validation history with limit control: `/api/definitions/:id/validate/history`.
+- Validation records are persisted in `validation_results`.
 
-## 10) Dev Project Discovery
-- Manage root directories in settings.
-- Recursively discover nested git projects.
-- Materialize discovered projects in `dev_projects`.
-- Use the selected project to drive save/remove actions.
+## 10) Version history
+- Load cached git-backed version history: `/api/definitions/:id/versions`.
+- Fetch specific historical version content: `/api/definitions/:id/versions/:version`.
+- Restore a historical version into current file content: `/api/definitions/:id/versions/:version/restore`.
 
-## 11) OpenAI-Compatible `/v1` Facade (Gemini-backed)
+## 11) Editor workbench API
+- Load a specific definition for editing: `/api/editor/definition?path=...`.
+- Detect type from content/path: `/api/editor/detect-type`.
+- Save create/edit operations with DCC URI uniqueness enforcement: `/api/editor/save`.
+
+## 12) OpenAI-compatible facade (Gemini backend)
 - `GET /v1/models`
-- `POST /v1/completions` (JSON + SSE)
-- `POST /v1/chat/completions` (JSON + SSE + tool-call mapping)
+- `POST /v1/completions` (JSON + SSE streaming)
+- `POST /v1/chat/completions` (JSON + SSE streaming with tool call mapping)
 - `POST /v1/embeddings`
 
-The facade validates payloads with Zod and normalizes Gemini responses into OpenAI-compatible envelopes.
-
-## 12) UI Theming
-- Dark/light mode toggle on Settings page.
-- Theme preference is persisted in local storage and applied globally.
+## 13) UI capabilities
+- Hub for browsing/searching/filtering definitions.
+- Definition detail panel with content/test/version actions.
+- Separate settings view for repo/project/theme controls.
+- Dedicated editor UI with structured forms + raw content sync.
+- Dark/light theme preference persisted in browser storage.

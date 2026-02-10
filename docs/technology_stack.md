@@ -1,43 +1,33 @@
 # Technology Stack
 
-## 1) Runtime + Packaging
-- **Runtime:** Node.js (ES modules)
-- **Package manager:** npm
-- **Start command:** `npm start` → `node src/server/server.js`
+## Runtime & language
+- **Node.js (ESM)** runtime for server and test execution.
+- **JavaScript** across frontend and backend.
 
-## 2) Core Dependencies
-- `express`: HTTP server, REST endpoints, static hosting
-- `sqlite3`: embedded local database
-- `gray-matter`: markdown frontmatter parsing
-- `yaml`: YAML parse/stringify
-- `zod`: request/schema validation
-- `dotenv`: environment variable loading
+## Backend
+- **Express 4** for HTTP routing and static asset serving.
+- **sqlite3** for local persistence.
+- **dotenv** for environment configuration.
+- **zod** for request schema validation (notably `/v1` facade).
+- **yaml** + **gray-matter** for definition parsing/serialization.
 
-## 3) Frontend Stack
-- Vanilla JavaScript, HTML, CSS (no SPA framework)
-- Main pages:
-  - `src/client/index.html` (Hub)
-  - `src/client/settings.html` (Settings)
-  - `src/client/editor/editor.html` (Editor)
-- Editor is modularized by definition type through dedicated form modules.
+## Frontend
+- **Vanilla HTML/CSS/JavaScript** (no heavy SPA framework).
+- Modular page scripts for Hub, Settings, and Editor.
+- Design-token style organization in CSS (`styles/tokens`, `styles/components`, `styles/themes`).
 
-## 4) Backend Stack
-- Express app in `src/server/server.js`
-- OpenAI-compatible router in `src/server/routes/openai.js`
-- Gemini provider adapter in `src/server/services/ai/geminiAIStudioClient.js`
-- Definition services in `src/server/definitions/*`
+## AI integration
+- Gemini API integration through `GeminiAIStudioClient`.
+- OpenAI-compatible API surface at `/v1/models`, `/v1/completions`, `/v1/chat/completions`, `/v1/embeddings`.
 
-## 5) Data + Protocols
-- **SQLite** for local state and cached metadata/history
-- **Filesystem + git CLI** for repository sync and project materialization
-- **JSON over HTTP** for REST APIs
-- **SSE** for streaming `/v1/completions` and `/v1/chat/completions`
+## Storage & state
+- **SQLite database** at `data/dcc.sqlite` (or `DCC_DB_PATH`).
+- **Local filesystem + git** as authoritative source for definition artifacts.
+- **Browser localStorage** for theme preference.
 
-## 6) Current Repo Snapshot Metrics
-- JS files under `src/`: **26**
-- `/api/*` endpoints in server: **29**
-- `/v1/*` endpoints: **4**
-- SQLite tables initialized at boot: **7**
-- Editor form modules: **10**
+## Testing
+- **Node test runner** (`node --test`) with fixture-driven tests.
 
-These values were generated from code scans of the current repository state.
+## Operational model
+- Single-process local app (`npm start` runs `node src/server/server.js`).
+- Server defaults to `PORT=3000` unless overridden.
