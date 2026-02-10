@@ -1,0 +1,10 @@
+/**
+ * Typography tokens
+ */
+:root {
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --text-sm: 12px;
+  --text-base: 14px;
+  --text-lg: 18px;
+}

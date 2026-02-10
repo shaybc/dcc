@@ -1,0 +1,9 @@
+body {
+  background: radial-gradient(circle at top, var(--glow-primary), transparent 45%),
+    radial-gradient(circle at 10% 20%, var(--glow-secondary), transparent 35%),
+    var(--bg);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-attachment: fixed;
+  color: var(--text);
+}

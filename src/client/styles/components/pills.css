@@ -1,0 +1,143 @@
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(17, 18, 23, 0.6);
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.chip.active {
+  border-color: var(--accent);
+  color: #fff;
+  background: rgba(139, 92, 246, 0.2);
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.3);
+}
+
+.chip-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.chip-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--inline-code-bg);
+  color: var(--text);
+}
+
+.chip-clear svg {
+  width: 12px;
+  height: 12px;
+}
+
+.chip:hover {
+  border-color: rgba(139, 92, 246, 0.6);
+  color: #fff;
+}
+
+.tag-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.card-tag-pills {
+  max-height: 28px;
+  overflow: hidden;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--muted);
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.tag-pill:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+  color: var(--text);
+}
+
+.tag-pill-more {
+  cursor: default;
+}
+
+.type-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.type-pill-icon {
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.type-pill-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.type-pill.type-models,
+.type-pill.type-mcp-servers,
+.type-pill.type-rules,
+.type-pill.type-prompts,
+.type-pill.type-agents,
+.type-pill.type-context,
+.type-pill.type-workflows,
+.type-pill.type-docs,
+.type-pill.type-configs,
+.type-pill.type-unknown {
+  background: rgba(92, 118, 132, 0.22);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.status-pill.saved {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.status-pill.local-only {
+  border-color: var(--warning);
+  color: var(--warning);
+}

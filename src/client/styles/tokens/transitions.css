@@ -1,0 +1,7 @@
+/**
+ * Transition tokens
+ */
+:root {
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+}

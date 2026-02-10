@@ -1,0 +1,28 @@
+/**
+ * Dark theme variables
+ */
+:root {
+  color-scheme: dark;
+  --bg: #0b0b0f;
+  --bg-soft: #353848;
+  --card: #14161b;
+  --text: #f4f4f5;
+  --muted: #a1a1aa;
+  --border: #2e333e;
+  --accent: #8b5cf6;
+  --accent-dark: #6d28d9;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --surface-overlay: rgba(20, 22, 27, 0.7);
+  --input-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --glow-primary: rgba(139, 92, 246, 0.12);
+  --glow-secondary: rgba(59, 130, 246, 0.08);
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --card-in-project-bg: #161c2b;
+  --card-in-project-border: #26324a;
+  --surface-muted: rgba(161, 161, 170, 0.12);
+  --hero-icon-bg: rgba(15, 17, 22, 0.8);
+  --inline-code-bg: rgba(255, 255, 255, 0.08);
+  --code-block-bg: #0f1116;
+  --preview-card-bg: rgba(15, 17, 22, 0.7);
+}
