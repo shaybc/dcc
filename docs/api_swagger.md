@@ -120,6 +120,30 @@ paths: {}
 - **Purpose:** List definitions. If a current dev project is selected, status is decorated as `saved`/`repo`.
 - **200:** definition summary array.
 
+#### `GET /api/definitions/suggestions`
+- **Purpose:** Return ranked definition suggestions for the currently selected dev project.
+- **200:**
+  ```json
+  {
+    "projectPath": "/workspace/apps/node-service",
+    "projectType": "node",
+    "suggestions": [
+      {
+        "definitionId": 12,
+        "score": 28,
+        "reasons": [
+          "definition type boost: configs",
+          "tag match: eslint",
+          "keyword match: jest"
+        ]
+      }
+    ]
+  }
+  ```
+- **Behavior notes:**
+  - If no current project is selected, returns `{ "projectPath": "", "projectType": "", "suggestions": [] }`.
+  - If current project metadata is missing or project type is unknown, returns an empty `suggestions` array.
+
 #### `GET /api/definitions/:id`
 - **Purpose:** Get full definition by numeric id (including content, createdAt when available).
 - **200:** definition object.
@@ -257,4 +281,3 @@ Most `/v1` errors use OpenAI-like shape:
 ```json
 { "error": { "message": "...", "type": "invalid_request_error" } }
 ```
-
