@@ -623,11 +623,12 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
 function updateRecommendationsToggleLabel() {
   recommendationsToggleButton.textContent = recommendationsVisible ? "Hide Recommendations" : "Show Recommendations";
   recommendationsToggleButton.setAttribute("aria-label", recommendationsVisible ? "Hide Recommendations" : "Show Recommendations");
+  recommendationsToggleButton.setAttribute("aria-expanded", String(recommendationsVisible));
 }
 
 function renderRecommendationSection() {
   updateRecommendationsToggleLabel();
-  recommendationsContent.hidden = !recommendationsVisible;
+  recommendationsContent.classList.toggle("is-collapsed", !recommendationsVisible);
   const selectedProjectPath = String(devProjectInput.value || "").trim();
   const projectType = String(suggestionsMeta.projectType || "").trim().toLowerCase();
   recommendationsState.textContent = "";
