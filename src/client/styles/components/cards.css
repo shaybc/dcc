@@ -145,12 +145,6 @@
 
 .recommendations-section {
   margin-bottom: 24px;
-}
-
-.recommendations-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   background: color-mix(in srgb, var(--card) 86%, #d9e2ff 14%);
   border-radius: 14px;
   padding: 12px 14px 14px;
@@ -160,11 +154,17 @@
     inset 0 10px 16px rgba(2, 6, 23, 0.06),
     inset 0 -10px 16px rgba(2, 6, 23, 0.08),
     0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.recommendations-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   transform-origin: top center;
   max-height: 900px;
   opacity: 1;
   transform: translateY(0);
-  transition: max-height 280ms ease, opacity 220ms ease, transform 280ms ease, padding 280ms ease, margin 280ms ease;
+  transition: max-height 280ms ease, opacity 220ms ease, transform 280ms ease, margin 280ms ease;
   overflow: hidden;
 }
 
@@ -172,12 +172,8 @@
   max-height: 0;
   opacity: 0;
   transform: translateY(-10px);
-  padding-top: 0;
-  padding-bottom: 0;
   margin-top: 0;
   margin-bottom: 0;
-  border-width: 0;
-  box-shadow: none;
 }
 
 .recommendations-header {
