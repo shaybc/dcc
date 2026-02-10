@@ -204,6 +204,39 @@
             </div>
             <div class="definition-tab-panel active" id="definitionSourcePanel" role="tabpanel" aria-labelledby="definitionTabSource">
               <div class="version-banner" id="versionBanner" hidden></div>
+              <section class="diff-controls" id="diffControls" hidden>
+                <div class="diff-controls-row">
+                  <label class="diff-toggle"><input type="checkbox" id="enableDiffMode"> Compare versions</label>
+                </div>
+                <div id="diffCompareBar" hidden>
+                  <div class="diff-controls-row">
+                    <label class="diff-option"><input type="checkbox" id="diffIgnoreWhitespace"> Ignore whitespace</label>
+                  </div>
+                  <div class="diff-controls-row diff-version-row" id="diffVersionMode" hidden>
+                    <label>From
+                      <select id="versionSelectA"></select>
+                    </label>
+                    <label>To
+                      <select id="versionSelectB"></select>
+                    </label>
+                    <div class="diff-view-mode">
+                      <button class="btn btn-sm diff-mode-btn active" type="button" data-mode="side-by-side">Side-by-side</button>
+                      <button class="btn btn-sm diff-mode-btn" type="button" data-mode="inline">Inline</button>
+                    </div>
+                  </div>
+                  <div class="diff-statistics" id="diffStatistics" hidden>
+                    <span class="diff-stat diff-stat-added">+<strong id="diffAddedLines">0</strong></span>
+                    <span class="diff-stat diff-stat-removed">-<strong id="diffRemovedLines">0</strong></span>
+                    <span class="diff-stat diff-stat-modified">±<strong id="diffModifiedLines">0</strong></span>
+                  </div>
+                  <div class="diff-navigation" id="diffNavigation" hidden>
+                    <button class="btn btn-sm" id="prevChangeBtn" type="button">Previous</button>
+                    <span><span id="currentChangeIndex">0</span>/<span id="totalChanges">0</span></span>
+                    <button class="btn btn-sm" id="nextChangeBtn" type="button">Next</button>
+                  </div>
+                </div>
+              </section>
+              <div id="diffContainer" class="diff-container" hidden></div>
               <pre id="detailContent"></pre>
             </div>
             <div class="definition-tab-panel" id="definitionTestPanel" role="tabpanel" aria-labelledby="definitionTabTest" hidden>
