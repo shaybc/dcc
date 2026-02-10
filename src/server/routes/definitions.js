@@ -1,4 +1,5 @@
 import express from "express";
+import path from "path";
 import db from "../db/index.js";
 import { allDb, getDb } from "../db/helpers.js";
 import { getSetting } from "../utils/settings.js";
@@ -8,6 +9,60 @@ import { normalizeDefinitionType } from "../definitions/parse.js";
 import { recommendDefinitions } from "../definitions/recommend.js";
 
 const router = express.Router();
+
+function normalizeRepoDisplayMetadata(definitionRow, repoRow) {
+  const repoName = String(repoRow?.name || definitionRow?.repoName || "").trim();
+  const repoRemoteUrl = String(repoRow?.remoteUrl || "").trim();
+  const repoLocalPath = String(repoRow?.localPath || "").trim();
+  const filePath = String(definitionRow?.filePath || "").trim();
+
+  let repoRelativePath = "";
+  if (repoLocalPath && filePath) {
+    const relativePath = path.relative(repoLocalPath, filePath);
+    if (relativePath && !relativePath.startsWith("..") && !path.isAbsolute(relativePath)) {
+      repoRelativePath = relativePath;
+    }
+  }
+
+  return {
+    repoDisplayName: repoName,
+    repoRemoteUrl,
+    repoRelativePath,
+  };
+}
+
+async function attachRepoDisplayMetadata(definitionsRows) {
+  if (!Array.isArray(definitionsRows) || definitionsRows.length === 0) {
+    return [];
+  }
+
+  const repoIds = Array.from(new Set(definitionsRows
+    .map((row) => Number(row?.repoId || 0))
+    .filter((repoId) => Number.isInteger(repoId) && repoId > 0)));
+
+  if (repoIds.length === 0) {
+    return definitionsRows.map((row) => ({
+      ...row,
+      ...normalizeRepoDisplayMetadata(row, null),
+    }));
+  }
+
+  const placeholders = repoIds.map(() => "?").join(", ");
+  const repoRows = await allDb(
+    `SELECT id, name, remoteUrl, localPath FROM asset_repos WHERE id IN (${placeholders})`,
+    repoIds
+  );
+  const repoMap = new Map(repoRows.map((repoRow) => [Number(repoRow.id), repoRow]));
+
+  return definitionsRows.map((row) => {
+    const repoId = Number(row?.repoId || 0);
+    const repoRow = repoMap.get(repoId) || null;
+    return {
+      ...row,
+      ...normalizeRepoDisplayMetadata(row, repoRow),
+    };
+  });
+}
 
 router.get("/api/definition-tags", async (_req, res) => {
   try {
@@ -48,9 +103,10 @@ router.get("/api/definitions", async (req, res) => {
     const definitionsRows = await allDb(
       "SELECT id, key, name, description, tags, schema, version, type, filePath, source, repoId, repoName, inTeam, status FROM definitions"
     );
+    const definitionsWithRepoMetadata = await attachRepoDisplayMetadata(definitionsRows);
 
     if (!currentDevProject) {
-      res.json(definitionsRows);
+      res.json(definitionsWithRepoMetadata);
       return;
     }
 
@@ -59,7 +115,7 @@ router.get("/api/definitions", async (req, res) => {
       [currentDevProject]
     );
     const copiedKeys = new Set(copiedRows.map((row) => row.definitionKey));
-    const rows = definitionsRows.map((row) => ({ ...row, status: copiedKeys.has(row.key) ? "saved" : "repo" }));
+    const rows = definitionsWithRepoMetadata.map((row) => ({ ...row, status: copiedKeys.has(row.key) ? "saved" : "repo" }));
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -126,8 +182,8 @@ router.get("/api/definitions/:id", (req, res) => {
           content = row.content;
         }
       }
-
-      res.json({ ...row, content, createdAt });
+      const [rowWithRepoMetadata] = await attachRepoDisplayMetadata([row]);
+      res.json({ ...rowWithRepoMetadata, content, createdAt });
     }
   );
 });

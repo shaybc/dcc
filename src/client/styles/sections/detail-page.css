@@ -105,6 +105,12 @@ body.detail-page-open {
   margin-bottom: 10px;
 }
 
+.detail-repo-origin {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .detail-dcc-uri {
   margin-bottom: 8px;
   color: var(--muted);
