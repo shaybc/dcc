@@ -48,8 +48,8 @@
 }
 
 .chip:hover {
-  border-color: rgba(139, 92, 246, 0.6);
-  color: #fff;
+  border-color: var(--chip-hover-border-color);
+  color: var(--chip-hover-text);
 }
 
 .tag-pills {

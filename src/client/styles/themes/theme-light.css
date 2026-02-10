@@ -27,10 +27,12 @@
   --inline-code-bg: rgba(15, 23, 42, 0.07);
   --code-block-bg: #f8fafc;
   --preview-card-bg: #eef2ff;
-  --chip-active-border: var(--accent);
-  --chip-active-text: #ffffff;
+  --chip-active-border: rgba(139, 92, 246, 0.6);
+  --chip-active-text: #261645;
   --chip-active-bg: rgba(124, 58, 237, 0.14);
   --chip-active-shadow: 0 6px 16px rgba(124, 58, 237, 0.2);
+  --chip-hover-border-color: var(--accent);
+  --chip-hover-text: #261645;
 }
 
 :root[data-theme="light"] header > .title-block > .main-title img {
