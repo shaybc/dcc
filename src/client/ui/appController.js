@@ -74,10 +74,13 @@ const recommendationsTitle = document.createElement("h2");
 const recommendationsMeta = document.createElement("p");
 const recommendationsState = document.createElement("p");
 const recommendationsCards = document.createElement("div");
+const recommendationsToggleButton = document.createElement("button");
+const recommendationsDivider = document.createElement("div");
 
 let definitions = [];
 let suggestionDefinitionIds = [];
 let suggestionsMeta = { projectPath: "", projectType: "", suggestions: [] };
+let recommendationsVisible = true;
 let activeFilter = "all";
 let searchTerm = "";
 let devProjects = [];
@@ -609,12 +612,26 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   return card;
 }
 
+function updateRecommendationsToggleLabel() {
+  recommendationsToggleButton.textContent = recommendationsVisible ? "Hide" : "Show";
+  recommendationsToggleButton.setAttribute("aria-label", recommendationsVisible ? "Hide recommendations" : "Show recommendations");
+}
+
 function renderRecommendationSection() {
+  updateRecommendationsToggleLabel();
   const selectedProjectPath = String(devProjectInput.value || "").trim();
   const projectType = String(suggestionsMeta.projectType || "").trim().toLowerCase();
   recommendationsState.textContent = "";
   recommendationsState.hidden = true;
   recommendationsCards.innerHTML = "";
+  recommendationsCards.hidden = !recommendationsVisible;
+
+  if (!recommendationsVisible) {
+    recommendationsMeta.textContent = selectedProjectPath
+      ? `Project: ${selectedProjectPath}${projectType ? ` · Type: ${projectType}` : ""}`
+      : "";
+    return;
+  }
 
   if (!selectedProjectPath) {
     recommendationsState.hidden = false;
@@ -687,12 +704,22 @@ function setupRecommendationsSection() {
   recommendationsMeta.className = "recommendations-meta";
   recommendationsState.className = "recommendations-state";
   recommendationsCards.className = "grid recommendations-grid";
+  recommendationsToggleButton.className = "recommendations-toggle";
+  recommendationsToggleButton.type = "button";
+  recommendationsDivider.className = "recommendations-divider";
 
   recommendationsTitle.textContent = "Recommended for current project";
-  recommendationsHeader.append(recommendationsTitle, recommendationsMeta);
+  updateRecommendationsToggleLabel();
+  recommendationsToggleButton.addEventListener("click", () => {
+    recommendationsVisible = !recommendationsVisible;
+    renderRecommendationSection();
+  });
+
+  recommendationsHeader.append(recommendationsTitle, recommendationsMeta, recommendationsToggleButton);
   recommendationsSection.append(recommendationsHeader, recommendationsState, recommendationsCards);
 
   cardsContainer.parentNode?.insertBefore(recommendationsSection, cardsContainer);
+  cardsContainer.parentNode?.insertBefore(recommendationsDivider, cardsContainer);
 }
 
 function renderDevProjectsOptions(projects) {
