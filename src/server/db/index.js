@@ -65,7 +65,10 @@ db.serialize(() => {
   db.run(
     `CREATE TABLE IF NOT EXISTS dev_projects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      path TEXT UNIQUE
+      path TEXT UNIQUE,
+      projectType TEXT,
+      detectedSignals TEXT,
+      lastScannedAt TEXT
     )`
   );
   db.run(
@@ -99,6 +102,24 @@ db.serialize(() => {
     const hasTagsColumn = rows.some((row) => row.name === "tags");
     if (!hasTagsColumn) {
       db.run("ALTER TABLE definitions ADD COLUMN tags TEXT", () => {});
+    }
+  });
+
+  db.all("PRAGMA table_info(dev_projects)", (err, rows = []) => {
+    if (err) {
+      return;
+    }
+    const hasProjectTypeColumn = rows.some((row) => row.name === "projectType");
+    if (!hasProjectTypeColumn) {
+      db.run("ALTER TABLE dev_projects ADD COLUMN projectType TEXT", () => {});
+    }
+    const hasDetectedSignalsColumn = rows.some((row) => row.name === "detectedSignals");
+    if (!hasDetectedSignalsColumn) {
+      db.run("ALTER TABLE dev_projects ADD COLUMN detectedSignals TEXT", () => {});
+    }
+    const hasLastScannedAtColumn = rows.some((row) => row.name === "lastScannedAt");
+    if (!hasLastScannedAtColumn) {
+      db.run("ALTER TABLE dev_projects ADD COLUMN lastScannedAt TEXT", () => {});
     }
   });
 });
