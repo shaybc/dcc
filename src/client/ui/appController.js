@@ -628,6 +628,7 @@ function updateRecommendationsToggleLabel() {
 
 function renderRecommendationSection() {
   updateRecommendationsToggleLabel();
+  recommendationsSection.classList.toggle("is-collapsed", !recommendationsVisible);
   recommendationsContent.classList.toggle("is-collapsed", !recommendationsVisible);
   const selectedProjectPath = String(devProjectInput.value || "").trim();
   const projectType = String(suggestionsMeta.projectType || "").trim().toLowerCase();
