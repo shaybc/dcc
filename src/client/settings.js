@@ -85,21 +85,76 @@ function renderDevRoots(roots) {
   roots.forEach((root) => devRootsTable.appendChild(createDevRootRow(root.path || root)));
 }
 
+
+function formatProjectType(projectType) {
+  const value = String(projectType || "unknown").toLowerCase();
+  if (value === "dotnet") return ".NET";
+  if (value === "polyglot") return "Polyglot";
+  if (!value) return "Unknown";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatLastScannedAt(lastScannedAt) {
+  if (!lastScannedAt) return "Not scanned yet";
+  const parsed = new Date(lastScannedAt);
+  if (Number.isNaN(parsed.getTime())) return "Not scanned yet";
+  return parsed.toLocaleString();
+}
+
+function createMetaBadge(text, className = "") {
+  const badge = document.createElement("span");
+  badge.className = `project-meta-badge ${className}`.trim();
+  badge.textContent = text;
+  return badge;
+}
+
 function renderDevProjects(projects) {
   devProjectsTable.innerHTML = "";
   if (projects.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
+    cell.colSpan = 2;
     cell.textContent = "No projects found yet.";
     row.appendChild(cell);
     devProjectsTable.appendChild(row);
     return;
   }
+
   projects.forEach((project) => {
+    const projectData = typeof project === "string" ? { path: project } : project;
     const row = document.createElement("tr");
-    const cell = document.createElement("td");
-    cell.textContent = project.path || project;
-    row.appendChild(cell);
+
+    const pathCell = document.createElement("td");
+    pathCell.textContent = projectData.path || "Unknown path";
+
+    const metadataCell = document.createElement("td");
+    const metadataSummary = document.createElement("div");
+    metadataSummary.className = "project-meta-summary";
+
+    const typeBadge = createMetaBadge(formatProjectType(projectData.projectType), "project-meta-badge--type");
+    metadataSummary.appendChild(typeBadge);
+
+    const signals = Array.isArray(projectData.detectedSignals) ? projectData.detectedSignals : [];
+    if (signals.length > 0) {
+      signals.slice(0, 3).forEach((signal) => {
+        metadataSummary.appendChild(createMetaBadge(signal, "project-meta-badge--signal"));
+      });
+      if (signals.length > 3) {
+        metadataSummary.appendChild(createMetaBadge(`+${signals.length - 3} more`, "project-meta-badge--signal"));
+      }
+    } else {
+      metadataSummary.appendChild(createMetaBadge("No signals", "project-meta-badge--muted"));
+    }
+
+    const scannedAt = document.createElement("p");
+    scannedAt.className = "project-meta-time";
+    scannedAt.textContent = `Scanned: ${formatLastScannedAt(projectData.lastScannedAt)}`;
+
+    metadataCell.appendChild(metadataSummary);
+    metadataCell.appendChild(scannedAt);
+
+    row.appendChild(pathCell);
+    row.appendChild(metadataCell);
     devProjectsTable.appendChild(row);
   });
 }
