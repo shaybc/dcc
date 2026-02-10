@@ -4,7 +4,7 @@ import express from "express";
 import YAML from "yaml";
 import db from "../db/index.js";
 import { getDb, runDb, allDb } from "../db/helpers.js";
-import { runCommand, classifyGitError, extractCommandErrorMessage } from "../utils/git.js";
+import { runCommand, classifyGitError, extractCommandErrorMessage, handleGitTransactionFailure } from "../utils/git.js";
 import { getSetting } from "../utils/settings.js";
 import { ensureAssetRepoMigration, getAssetRepo, getEnabledAssetRepos } from "../utils/assetRepos.js";
 import { getProjectDestinationInfo, deriveConfigOutputFileName } from "../definitions/install.js";
@@ -170,10 +170,28 @@ router.post("/api/definitions/:id/push-upstream", async (req, res) => {
       const commitMessage = String(req.body?.commitMessage || "").trim() || `Add definition ${row.name}`;
       const relativePath = path.relative(absoluteRepoPath, destinationPath);
 
-      await runCommand("git pull", { cwd: absoluteRepoPath });
-      await runCommand(`git add ${JSON.stringify(relativePath)}`, { cwd: absoluteRepoPath });
-      await runCommand(`git commit -m ${JSON.stringify(commitMessage)}`, { cwd: absoluteRepoPath });
-      await runCommand("git push", { cwd: absoluteRepoPath });
+      try {
+        await runCommand("git pull", { cwd: absoluteRepoPath });
+        await runCommand(`git add ${JSON.stringify(relativePath)}`, { cwd: absoluteRepoPath });
+        await runCommand(`git commit -m ${JSON.stringify(commitMessage)}`, { cwd: absoluteRepoPath });
+        await runCommand("git push", { cwd: absoluteRepoPath });
+      } catch (error) {
+        const failure = await handleGitTransactionFailure({
+          error,
+          cwd: absoluteRepoPath,
+          run: runCommand,
+          resetTo: "HEAD~1",
+          pullRebase: true,
+          reloadDefinitions: loadDefinitions,
+          permissionMessage: "Push cancelled because you do not have permission to push to the selected upstream repository.",
+          conflictMessage: "Push cancelled due to merge conflicts while syncing with upstream.",
+          fallbackMessage: "Failed to push definition to upstream.",
+        });
+
+        const statusCode = failure.category === "permission" ? 403 : failure.category === "conflict" ? 409 : 500;
+        res.status(statusCode).json({ error: failure.message });
+        return;
+      }
 
       await loadDefinitions();
       const updatedRow = await getDb(
@@ -305,11 +323,29 @@ router.post("/api/definitions/:id/publish", async (req, res) => {
       const destDir = path.join(repoPath, typeFolder);
       await fsp.mkdir(destDir, { recursive: true });
       const destPath = path.join(destDir, path.basename(row.filePath));
-      await runCommand("git pull", { cwd: repoPath });
-      await fsp.copyFile(row.filePath, destPath);
-      await runCommand(`git add ${destPath}`, { cwd: repoPath });
-      await runCommand(`git commit -m "Add definition ${row.name}"`, { cwd: repoPath });
-      await runCommand("git push", { cwd: repoPath });
+      try {
+        await runCommand("git pull", { cwd: repoPath });
+        await fsp.copyFile(row.filePath, destPath);
+        await runCommand(`git add ${destPath}`, { cwd: repoPath });
+        await runCommand(`git commit -m "Add definition ${row.name}"`, { cwd: repoPath });
+        await runCommand("git push", { cwd: repoPath });
+      } catch (error) {
+        const failure = await handleGitTransactionFailure({
+          error,
+          cwd: repoPath,
+          run: runCommand,
+          resetTo: "HEAD~1",
+          pullRebase: true,
+          reloadDefinitions: loadDefinitions,
+          permissionMessage: "Publish cancelled because you do not have permission to push to the configured repository.",
+          conflictMessage: "Publish cancelled due to merge conflicts while syncing the repository.",
+          fallbackMessage: "Failed to publish definition.",
+        });
+
+        const statusCode = failure.category === "permission" ? 403 : failure.category === "conflict" ? 409 : 500;
+        res.status(statusCode).json({ error: failure.message });
+        return;
+      }
 
       db.run(
         "UPDATE definitions SET filePath = ?, source = 'repo', status = 'saved', inTeam = 1 WHERE id = ?",
