@@ -21,6 +21,7 @@ const detailTypeMetaIcon = document.getElementById("detailTypeMetaIcon");
 const detailTypeText = document.getElementById("detailTypeText");
 const detailCreatedDate = document.getElementById("detailCreatedDate");
 const detailDccUri = document.getElementById("detailDccUri");
+const detailRepoOrigin = document.getElementById("detailRepoOrigin");
 const detailTags = document.getElementById("detailTags");
 const detailVersionMeta = document.getElementById("detailVersionMeta");
 const copyDefinitionButton = document.getElementById("copyDefinition");
@@ -155,6 +156,22 @@ function extractDccUriFromDefinitionContent(content, filePath = "") {
     return "";
   }
   return yamlValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
+}
+
+function renderRepoOrigin(definition) {
+  const repoDisplayName = String(definition?.repoDisplayName || definition?.repoName || "").trim();
+  const repoRelativePath = String(definition?.repoRelativePath || "").trim();
+  const repoRemoteUrl = String(definition?.repoRemoteUrl || "").trim();
+
+  if (!repoDisplayName && !repoRemoteUrl) {
+    return "Origin: Team / local-only";
+  }
+
+  let originText = `Origin: ${repoDisplayName || repoRemoteUrl}`;
+  if (repoRelativePath) {
+    originText += ` (${repoRelativePath})`;
+  }
+  return originText;
 }
 
 function normalizeTagValue(tag) {
@@ -1496,6 +1513,8 @@ async function showDetails(id) {
   detailTypeMetaIcon.innerHTML = typeIcon;
   detailTypeText.textContent = typeLabel;
   detailCreatedDate.textContent = formatCreatedDate(def.createdAt);
+  detailRepoOrigin.textContent = renderRepoOrigin(def);
+  detailRepoOrigin.title = String(def.repoRemoteUrl || "").trim();
 
   const dccUri = extractDccUriFromDefinitionContent(definitionContent, def.filePath);
   currentDetailDefinitionDccUri = String(dccUri || "").trim();
@@ -1558,6 +1577,8 @@ function showHubPage() {
   currentDefinitionVersion = "";
   detailDccUri.hidden = true;
   detailDccUri.textContent = "";
+  detailRepoOrigin.textContent = "";
+  detailRepoOrigin.title = "";
   activeHistoricalVersion = "";
   deleteDefinitionButton.hidden = true;
   pushUpstreamDefinitionButton.hidden = true;
