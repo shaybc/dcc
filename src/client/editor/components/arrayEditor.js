@@ -164,6 +164,7 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
         if (!field.multiline) input.type = "text";
         input.value = state[field.name] || "";
         input.placeholder = field.placeholder || "";
+        input.className = field.class ? field.class : "";
         const hasAutocompleteOptions = Array.isArray(field.autocompleteOptions)
           ? field.autocompleteOptions.length > 0
           : Boolean(field.autocompleteOptions);

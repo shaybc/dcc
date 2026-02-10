@@ -52,6 +52,7 @@ export function createPromptForm({ mount, onChange, availableTags = [] }) {
       {
         name: "prompt",
         label: "prompt text",
+        class: "prompt-body-textarea",
         multiline: true,
         placeholder: "e.g., 'Please create a new Angular component ...'",
         enablePromptEnhance: true,

@@ -52,9 +52,11 @@ input, textarea { background:#161b22; color:#e6edf3; border:1px solid #30363d; b
 
 #rawText { width: 500px; min-height: 600px; max-width: 100%; }
 
-.agent-body-textarea { width: 675px; min-height: 146px; max-width: 100%; }
+.agent-body-textarea { width: 880px; min-height: 222px; max-width: 100%; }
 
-.rule-body-textarea { width: 675px; min-height: 146px; max-width: 100%; }
+.rule-body-textarea { width: 880px; min-height: 222px; max-width: 100%; }
+
+.prompt-body-textarea { min-height: 120px; }
 
 
 .autocomplete-menu {
