@@ -39,9 +39,24 @@
 
         <div class="row">
           <button class="btn btn-primary" type="submit">Save repositories</button>
-          <button class="btn" type="button" id="clonePull">Clone / Pull Repo</button>
+          <button class="btn" type="button" id="clonePull">Pull all / Clone missing</button>
           <button class="btn" type="button" id="loadDefinitions">Load Definitions</button>
         </div>
+        <table class="settings-table" aria-label="Repository sync status">
+          <thead>
+            <tr>
+              <th>Repository</th>
+              <th>Status</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="assetRepoSyncTable">
+            <tr>
+              <td colspan="3">No sync run yet.</td>
+            </tr>
+          </tbody>
+        </table>
+
         <p class="notice" id="settingsNotice"></p>
       </form>
 

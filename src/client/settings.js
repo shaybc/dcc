@@ -11,6 +11,7 @@ const loadDefinitionsButton = document.getElementById("loadDefinitions");
 const notice = document.getElementById("settingsNotice");
 const assetReposTable = document.getElementById("assetReposTable");
 const addAssetRepoButton = document.getElementById("addAssetRepo");
+const assetRepoSyncTable = document.getElementById("assetRepoSyncTable");
 const devRootsTable = document.getElementById("devRootsTable");
 const devProjectsTable = document.getElementById("devProjectsTable");
 const addDevRootButton = document.getElementById("addDevRoot");
@@ -154,6 +155,42 @@ function collectAssetReposFromRows() {
       return { id, name, remoteUrl, localPath, enabled };
     })
     .filter((repo) => repo.name || repo.remoteUrl || repo.localPath);
+}
+
+function renderRepoSyncResults(results = []) {
+  if (!assetRepoSyncTable) return;
+  assetRepoSyncTable.innerHTML = "";
+
+  if (!Array.isArray(results) || results.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 3;
+    cell.textContent = "No sync results.";
+    row.appendChild(cell);
+    assetRepoSyncTable.appendChild(row);
+    return;
+  }
+
+  results.forEach((entry) => {
+    const row = document.createElement("tr");
+
+    const repoCell = document.createElement("td");
+    repoCell.textContent = entry.name || entry.remoteUrl || "Unknown repository";
+
+    const statusCell = document.createElement("td");
+    statusCell.textContent = entry.status || "unknown";
+
+    const detailsCell = document.createElement("td");
+    if (entry.error) {
+      detailsCell.textContent = entry.error;
+      detailsCell.style.color = "#dc2626";
+    } else {
+      detailsCell.textContent = entry.localPath || entry.configuredLocalPath || "";
+    }
+
+    row.append(repoCell, statusCell, detailsCell);
+    assetRepoSyncTable.appendChild(row);
+  });
 }
 
 function updateThemeToggleLabel(isLightMode) {
@@ -426,23 +463,32 @@ saveDevRootsButton.addEventListener("click", async () => {
 });
 
 clonePullButton.addEventListener("click", async () => {
-  setNotice("Syncing repository...");
+  setNotice("Syncing repositories...");
   const response = await runWithLoading(
-    async () => fetch("/api/clone-pull", { method: "POST" }),
+    async () => fetch("/api/asset-repos/sync", { method: "POST" }),
     {
-      title: "Syncing repository...",
-      description: "Cloning or pulling latest changes.",
+      title: "Syncing repositories...",
+      description: "Pulling all repos and cloning missing folders.",
       timeout: 180000,
     }
   );
 
   if (!response) return;
+
+  const data = await response.json().catch(() => ({}));
   if (response.ok) {
-    setNotice("Repository synced.");
+    const results = Array.isArray(data.results) ? data.results : [];
+    renderRepoSyncResults(results);
+    const failedCount = results.filter((entry) => entry.status === "failed").length;
+    if (failedCount > 0) {
+      setNotice(`Sync completed with ${failedCount} failure(s).`, true);
+    } else {
+      setNotice("All repositories synced.");
+    }
     return;
   }
 
-  const data = await response.json();
+  renderRepoSyncResults(Array.isArray(data.results) ? data.results : []);
   setNotice(data.error || "Sync failed.", true);
 });
 
