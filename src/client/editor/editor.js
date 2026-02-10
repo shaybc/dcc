@@ -16,6 +16,9 @@ const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode") || "create";
 const typeParam = params.get("type") || "prompt";
 const pathParam = params.get("path") || "";
+const definitionIdParam = params.get("id") || "";
+const destinationRepoIdParam = params.get("repoId") || "";
+const destinationRepoPathParam = params.get("repoPath") || "";
 
 const formMount = document.getElementById("formMount");
 const rawText = document.getElementById("rawText");
@@ -515,8 +518,11 @@ async function boot() {
   console.debug(`${TAG_DEBUG_PREFIX} boot: initializing form type`, definitionType, "with tags count", availableTags.length);
 
   if (mode === "edit") {
+    const query = new URLSearchParams();
+    if (pathParam) query.set("path", pathParam);
+    if (definitionIdParam) query.set("id", definitionIdParam);
     const response = await runWithLoading(
-      async () => fetch(`/api/editor/definition?path=${encodeURIComponent(pathParam)}`),
+      async () => fetch(`/api/editor/definition?${query.toString()}`),
       {
         title: "Loading definition...",
         description: "Fetching definition content.",
@@ -537,10 +543,21 @@ document.getElementById("cancelButton").addEventListener("click", () => window.l
 document.getElementById("saveButton").addEventListener("click", async () => {
   let filename;
   let targetPath;
+  let destinationRepoId;
+  let destinationRepoPath;
   if (mode === "create") {
     filename = window.prompt("Filename (with extension)");
     if (!filename) return;
     targetPath = window.prompt("Folder path relative to repo", "") || "";
+    const repoIdInput = (destinationRepoIdParam || window.prompt("Destination repo id (optional if path provided)", "") || "").trim();
+    destinationRepoPath = (destinationRepoPathParam || window.prompt("Destination repo path (optional if id provided)", "") || "").trim();
+    destinationRepoId = repoIdInput ? Number(repoIdInput) : null;
+
+    if ((!Number.isInteger(destinationRepoId) || destinationRepoId <= 0) && !destinationRepoPath) {
+      parseError.hidden = false;
+      parseError.textContent = "Destination repository id or path is required.";
+      return;
+    }
   }
 
   const currentState = formController?.getState?.() || {};
@@ -554,7 +571,17 @@ document.getElementById("saveButton").addEventListener("click", async () => {
     async () => fetch("/api/editor/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, path: pathParam, content: rawText.value, format, filename, targetPath })
+      body: JSON.stringify({
+        mode,
+        path: pathParam,
+        definitionId: definitionIdParam ? Number(definitionIdParam) : null,
+        content: rawText.value,
+        format,
+        filename,
+        targetPath,
+        destinationRepoId,
+        destinationRepoPath
+      })
     }),
     {
       title: mode === "create" ? "Creating definition..." : "Saving definition...",

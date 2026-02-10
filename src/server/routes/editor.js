@@ -6,14 +6,65 @@ import { loadDefinition } from "../definitions/loadDefinition.js";
 import { saveDefinition } from "../definitions/saveDefinition.js";
 import { loadDefinitions } from "../definitions/index.js";
 import { extractDccUriFromDefinitionContent } from "../definitions/metadata.js";
-import { allDb } from "../db/helpers.js";
-import { getSetting } from "../utils/settings.js";
+import { allDb, getDb } from "../db/helpers.js";
+import { getAssetRepo, listAssetRepos } from "../utils/assetRepos.js";
 import { runCommand } from "../utils/git.js";
 
 const fsp = fs.promises;
 const router = express.Router();
 
-async function validateDccUriForEditorSave({ mode, definitionPath, content, format, repoPath }) {
+function resolveRepoFromAbsolutePath(absoluteDefinitionPath, repos) {
+  const sortedRepos = [...repos]
+    .map((repo) => ({ ...repo, absoluteLocalPath: path.resolve(repo.localPath) }))
+    .sort((a, b) => b.absoluteLocalPath.length - a.absoluteLocalPath.length);
+
+  return sortedRepos.find((repo) => {
+    if (absoluteDefinitionPath === repo.absoluteLocalPath) return true;
+    return absoluteDefinitionPath.startsWith(`${repo.absoluteLocalPath}${path.sep}`);
+  }) || null;
+}
+
+async function resolveDefinitionRepoContext({ definitionPath, definitionId }) {
+  const normalizedPath = String(definitionPath || "").trim();
+  const normalizedId = Number(definitionId);
+
+  let definition = null;
+  if (Number.isInteger(normalizedId) && normalizedId > 0) {
+    definition = await getDb("SELECT id, filePath, repoId, source FROM definitions WHERE id = ?", [normalizedId]);
+  } else if (normalizedPath) {
+    definition = await getDb("SELECT id, filePath, repoId, source FROM definitions WHERE filePath = ?", [normalizedPath]);
+  }
+
+  if (!definition) {
+    throw new Error("Definition not found for editor context.");
+  }
+
+  if (definition.repoId) {
+    const repo = await getAssetRepo(definition.repoId);
+    if (repo) {
+      return {
+        definition,
+        repo,
+        absoluteFilePath: path.resolve(definition.filePath || normalizedPath)
+      };
+    }
+  }
+
+  const absoluteFilePath = path.resolve(definition.filePath || normalizedPath);
+  const repos = await listAssetRepos();
+  const repo = resolveRepoFromAbsolutePath(absoluteFilePath, repos);
+  if (!repo) {
+    throw new Error("Unable to resolve owning repository for definition.");
+  }
+
+  return {
+    definition,
+    repo,
+    absoluteFilePath
+  };
+}
+
+async function validateDccUriForEditorSave({ mode, definitionPath, content, format }) {
   const dccUri = extractDccUriFromDefinitionContent(content, { filePath: definitionPath, format });
   if (!dccUri) {
     throw new Error("DCC URI is required.");
@@ -21,7 +72,7 @@ async function validateDccUriForEditorSave({ mode, definitionPath, content, form
 
   const normalizedIncoming = dccUri.toLowerCase();
   const activePath = mode === "edit" && definitionPath
-    ? path.resolve(path.resolve(repoPath), String(definitionPath || ""))
+    ? path.resolve(String(definitionPath || ""))
     : "";
 
   const existingDefinitions = await allDb("SELECT id, name, filePath, content FROM definitions");
@@ -46,19 +97,15 @@ async function validateDccUriForEditorSave({ mode, definitionPath, content, form
 
 router.get("/api/editor/definition", async (req, res) => {
   try {
-    const repoPath = await getSetting("repoPath");
-    if (!repoPath) {
-      res.status(400).json({ error: "Repo path not configured." });
-      return;
-    }
-
     const definitionPath = String(req.query.path || "").trim();
-    if (!definitionPath) {
-      res.status(400).json({ error: "Definition path is required." });
+    const definitionId = Number(req.query.id);
+    if (!definitionPath && (!Number.isInteger(definitionId) || definitionId <= 0)) {
+      res.status(400).json({ error: "Definition path or id is required." });
       return;
     }
 
-    const loaded = await loadDefinition(repoPath, definitionPath);
+    const context = await resolveDefinitionRepoContext({ definitionPath, definitionId });
+    const loaded = await loadDefinition(context.repo.localPath, context.absoluteFilePath);
     res.json(loaded);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -76,24 +123,49 @@ router.post("/api/editor/detect-type", (req, res) => {
 
 router.post("/api/editor/save", async (req, res) => {
   try {
-    const repoPath = await getSetting("repoPath");
-    if (!repoPath) {
-      res.status(400).json({ error: "Repo path not configured." });
+    const mode = String(req.body?.mode || "").trim();
+    let repoPath = "";
+    let definitionPath = String(req.body?.path || "").trim();
+
+    if (mode === "edit") {
+      const context = await resolveDefinitionRepoContext({
+        definitionPath,
+        definitionId: req.body?.definitionId
+      });
+      repoPath = context.repo.localPath;
+      definitionPath = context.absoluteFilePath;
+    } else if (mode === "create") {
+      const destinationRepoId = Number(req.body?.destinationRepoId);
+      const destinationRepoPath = String(req.body?.destinationRepoPath || "").trim();
+      if (Number.isInteger(destinationRepoId) && destinationRepoId > 0) {
+        const destinationRepo = await getAssetRepo(destinationRepoId);
+        if (!destinationRepo) {
+          res.status(400).json({ error: "Selected destination repository was not found." });
+          return;
+        }
+        repoPath = destinationRepo.localPath;
+      } else if (destinationRepoPath) {
+        repoPath = destinationRepoPath;
+      } else {
+        res.status(400).json({ error: "Destination repository id or path is required for create mode." });
+        return;
+      }
+    } else {
+      res.status(400).json({ error: "Invalid editor mode." });
       return;
     }
 
     await validateDccUriForEditorSave({
-      mode: req.body?.mode,
-      definitionPath: req.body?.path,
+      mode,
+      definitionPath,
       content: req.body?.content || "",
-      format: req.body?.format || "yaml",
-      repoPath
+      format: req.body?.format || "yaml"
     });
 
     const result = await saveDefinition({
-      mode: req.body?.mode,
+      mode,
       repoPath,
-      definitionPath: req.body?.path,
+      definitionPath,
       content: req.body?.content || "",
       format: req.body?.format || "yaml",
       filename: req.body?.filename,

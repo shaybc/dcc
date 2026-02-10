@@ -18,6 +18,10 @@ export async function saveDefinition({
 }) {
   const absoluteRepoPath = path.resolve(repoPath);
 
+  if (!["create", "edit"].includes(mode)) {
+    throw new Error("Invalid editor save mode.");
+  }
+
   if (mode === "create") {
     const safeFilename = path.basename(String(filename || "").trim());
     if (!safeFilename) {
@@ -27,7 +31,7 @@ export async function saveDefinition({
     const normalizedFolder = String(targetPath || "").trim().replace(/^\/+/, "");
     const outputDir = path.resolve(absoluteRepoPath, normalizedFolder);
     if (!outputDir.startsWith(`${absoluteRepoPath}${path.sep}`) && outputDir !== absoluteRepoPath) {
-      throw new Error("Target path must be inside repository.");
+      throw new Error("Target path must be inside selected repository.");
     }
 
     await fs.mkdir(outputDir, { recursive: true });
@@ -40,6 +44,10 @@ export async function saveDefinition({
       relativePath: path.relative(absoluteRepoPath, outputFile),
       git: "untracked"
     };
+  }
+
+  if (!String(definitionPath || "").trim()) {
+    throw new Error("Definition path is required for edit mode.");
   }
 
   const absoluteDefinitionPath = path.resolve(absoluteRepoPath, definitionPath);
