@@ -725,12 +725,11 @@ function setupRecommendationsSection() {
     renderRecommendationSection();
   });
 
-  recommendationsHeader.append(recommendationsTitle, recommendationsToggleButton);
-  recommendationsContent.append(recommendationsMeta, recommendationsState, recommendationsCards);
+  recommendationsHeader.append(recommendationsToggleButton);
+  recommendationsContent.append(recommendationsTitle, recommendationsMeta, recommendationsState, recommendationsCards, recommendationsDivider);
   recommendationsSection.append(recommendationsHeader, recommendationsContent);
 
   cardsContainer.parentNode?.insertBefore(recommendationsSection, cardsContainer);
-  cardsContainer.parentNode?.insertBefore(recommendationsDivider, cardsContainer);
 }
 
 function renderDevProjectsOptions(projects) {
