@@ -24,7 +24,9 @@ const PROJECT_TYPES = {
   SWIFT: "swift",
   OBJECTIVE_C: "objective-c",
   CPP: "c++",
-  POLYGLOT: "polyglot",
+  JSON: "json",
+  XML: "xml",
+  YAML: "yaml",
   UNKNOWN: "unknown",
 };
 
@@ -91,10 +93,11 @@ function normalizeProjectType(value) {
 
 function detectProjectType(ecosystems) {
   if (ecosystems.size === 0) {
-    return PROJECT_TYPES.UNKNOWN;
+    return null;
   }
 
-  const matchesOnly = (allowedValues) => Array.from(ecosystems).every((value) => allowedValues.includes(value));
+  const values = Array.from(ecosystems);
+  const matchesOnly = (allowedValues) => values.every((value) => allowedValues.includes(value));
 
   if (ecosystems.has(PROJECT_TYPES.ANGULAR) && matchesOnly([
     PROJECT_TYPES.ANGULAR,
@@ -128,7 +131,6 @@ function detectProjectType(ecosystems) {
     return PROJECT_TYPES.SWIFTUI;
   }
 
-
   if (ecosystems.has(PROJECT_TYPES.GROOVY) && matchesOnly([
     PROJECT_TYPES.GROOVY,
     PROJECT_TYPES.JAVA,
@@ -141,10 +143,6 @@ function detectProjectType(ecosystems) {
     PROJECT_TYPES.DOTNET,
   ])) {
     return PROJECT_TYPES.CSHARP;
-  }
-
-  if (ecosystems.size === 1) {
-    return Array.from(ecosystems)[0];
   }
 
   if (ecosystems.has(PROJECT_TYPES.NODE) && matchesOnly([
@@ -162,7 +160,11 @@ function detectProjectType(ecosystems) {
     return PROJECT_TYPES.JAVASCRIPT;
   }
 
-  return PROJECT_TYPES.POLYGLOT;
+  if (ecosystems.size === 1) {
+    return values[0];
+  }
+
+  return null;
 }
 
 async function readRootEntries(repoPath) {
@@ -241,6 +243,59 @@ function matchesGlobSuffix(name, signalPattern) {
   return name.endsWith(suffix);
 }
 
+function chooseFallbackProjectType(ecosystems) {
+  const priority = [
+    PROJECT_TYPES.ANGULAR,
+    PROJECT_TYPES.SPRINGBOOT,
+    PROJECT_TYPES.ANDROID,
+    PROJECT_TYPES.SWIFTUI,
+    PROJECT_TYPES.CSHARP,
+    PROJECT_TYPES.NODE,
+    PROJECT_TYPES.JAVASCRIPT,
+    PROJECT_TYPES.PYTHON,
+    PROJECT_TYPES.JAVA,
+    PROJECT_TYPES.GROOVY,
+    PROJECT_TYPES.GO,
+    PROJECT_TYPES.RUST,
+    PROJECT_TYPES.DOTNET,
+    PROJECT_TYPES.SWIFT,
+    PROJECT_TYPES.OBJECTIVE_C,
+    PROJECT_TYPES.CPP,
+    PROJECT_TYPES.HTML,
+    PROJECT_TYPES.YAML,
+    PROJECT_TYPES.XML,
+    PROJECT_TYPES.JSON,
+  ];
+  for (const value of priority) {
+    if (ecosystems.has(value)) {
+      return value;
+    }
+  }
+  return PROJECT_TYPES.UNKNOWN;
+}
+
+async function detectDataFormatFallback(repoPath, getRepoFiles) {
+  const files = await getRepoFiles();
+  const matches = new Set();
+  for (const file of files) {
+    if (file.name.endsWith('.json')) {
+      matches.add(PROJECT_TYPES.JSON);
+    } else if (file.name.endsWith('.xml')) {
+      matches.add(PROJECT_TYPES.XML);
+    } else if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
+      matches.add(PROJECT_TYPES.YAML);
+    }
+  }
+  const type = chooseFallbackProjectType(matches);
+  if (type === PROJECT_TYPES.UNKNOWN) {
+    return null;
+  }
+  return {
+    projectType: type,
+    detectedSignals: Array.from(matches).map((value) => `format:${value}`),
+  };
+}
+
 function collectPotentialAiSignals(entries) {
   const names = entries
     .filter((entry) => entry.isFile())
@@ -317,7 +372,7 @@ function parseJsonObject(text) {
   }
 }
 
-async function detectUnknownProjectWithAi(repoPath, entries) {
+async function detectUnknownProjectWithAi(repoPath, entries, deterministicSignals = []) {
   if (!aiClient) {
     return null;
   }
@@ -338,7 +393,7 @@ async function detectUnknownProjectWithAi(repoPath, entries) {
   const prompt = [
     "You classify software repositories by ecosystem.",
     `Allowed projectType values: ${Array.from(PROJECT_TYPE_VALUES).join(", ")}.`,
-    "If multiple ecosystems are clearly present, return polyglot.",
+    "Pick the single best-matching ecosystem from the allowed values.",
     "If uncertain, return unknown.",
     "Return strict JSON only, no markdown:",
     '{"projectType":"unknown","confidence":0,"detectedSignals":[],"reason":""}',
@@ -346,6 +401,7 @@ async function detectUnknownProjectWithAi(repoPath, entries) {
     "- confidence must be a number between 0 and 1.",
     `Repository path: ${repoPath}`,
     `Root files: ${JSON.stringify(rootFileNames)}`,
+    `Deterministic signals: ${JSON.stringify(deterministicSignals.slice(0, 24))}`,
     `File snippets: ${JSON.stringify(snippets)}`,
   ].join("\n");
 
@@ -480,8 +536,18 @@ async function detectRepoSignals(repoPath, rootEntries) {
   }
 
   let projectType = detectProjectType(ecosystems);
-  if (projectType === PROJECT_TYPES.UNKNOWN) {
-    const aiResult = await detectUnknownProjectWithAi(repoPath, entries);
+
+  if (!projectType && ecosystems.size === 0) {
+    const dataFallback = await detectDataFormatFallback(repoPath, getRepoFiles);
+    if (dataFallback) {
+      projectType = dataFallback.projectType;
+      ecosystems.add(dataFallback.projectType);
+      detectedSignals.push(...dataFallback.detectedSignals);
+    }
+  }
+
+  if (!projectType || projectType === PROJECT_TYPES.UNKNOWN) {
+    const aiResult = await detectUnknownProjectWithAi(repoPath, entries, detectedSignals);
     if (aiResult) {
       projectType = aiResult.projectType;
       detectedSignals.push(`ai:${aiResult.projectType}`);
@@ -492,8 +558,12 @@ async function detectRepoSignals(repoPath, rootEntries) {
     }
   }
 
+  if (!projectType) {
+    projectType = chooseFallbackProjectType(ecosystems);
+  }
+
   return {
-    projectType,
+    projectType: projectType || PROJECT_TYPES.UNKNOWN,
     detectedSignals: Array.from(new Set(detectedSignals)).sort((a, b) => a.localeCompare(b)),
   };
 }

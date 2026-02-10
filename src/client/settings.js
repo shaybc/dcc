@@ -90,7 +90,6 @@ function formatProjectType(projectType) {
   const value = String(projectType || "unknown").toLowerCase();
   const labels = {
     dotnet: ".NET",
-    polyglot: "Polyglot",
     springboot: "Spring Boot",
     android: "Android",
     swiftui: "SwiftUI",
