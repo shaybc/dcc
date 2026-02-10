@@ -554,6 +554,10 @@ function handleDefinitionCardClick(definition, event) {
 function createDefinitionCard(definition, { recommendationRank = null, recommendationScore = null, recommendationReasons = [] } = {}) {
   const card = document.createElement("div");
   card.className = "card";
+  const isRecommended = Number.isFinite(Number(recommendationRank)) && Number(recommendationRank) > 0;
+  if (isRecommended) {
+    card.classList.add("card-recommended");
+  }
   if (String(definition.source || "").toLowerCase() === "untracked") {
     card.classList.add("card-local-definition");
   }
@@ -562,12 +566,15 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   }
 
   const showPushAction = String(definition.source || "").toLowerCase() === "untracked";
-  const recommendationMeta = recommendationRank !== null
+  const recommendationMeta = recommendationRank !== null && !isRecommended
     ? `<div class="recommendation-meta">#${recommendationRank} · Score ${recommendationScore || 0}</div>`
     : "";
-  const recommendationReasonText = recommendationReasons.length > 0
+  const recommendationReasonText = recommendationReasons.length > 0 && !isRecommended
     ? `<p class="recommendation-reasons">${escapeHtml(recommendationReasons.slice(0, 2).join(" • "))}</p>`
     : "";
+  const cardMetaText = isRecommended
+    ? `Recommended · Rank #${recommendationRank}`
+    : statusLabel(definition.status, definition.source);
 
   card.innerHTML = `
     <div class="card-actions">
@@ -587,7 +594,7 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
     ${recommendationReasonText}
     ${definition.tags.length > 0 ? `<div class="tag-pills card-tag-pills">${renderTagPills(definition.tags, { truncate: true })}</div>` : ""}
     <div class="meta-row">
-      <div class="meta-status">${statusLabel(definition.status, definition.source)}</div>
+      <div class="meta-status">${cardMetaText}</div>
       <div class="type-pill ${typeClassName(definition.type)}">
         <span class="type-pill-icon">${filterIconSvg(definition.type)}</span>
         <span>${formatTypePillLabel(definition.type)}</span>

@@ -24,6 +24,10 @@
   background: var(--card-local-definition-bg);
 }
 
+.card-recommended {
+  background: #c6ffc6;
+}
+
 .card:hover {
   transform: translateY(-2px);
   border-color: rgba(139, 92, 246, 0.6);
