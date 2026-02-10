@@ -88,10 +88,23 @@ function renderDevRoots(roots) {
 
 function formatProjectType(projectType) {
   const value = String(projectType || "unknown").toLowerCase();
-  if (value === "dotnet") return ".NET";
-  if (value === "polyglot") return "Polyglot";
+  const labels = {
+    dotnet: ".NET",
+    polyglot: "Polyglot",
+    springboot: "Spring Boot",
+    android: "Android",
+    swiftui: "SwiftUI",
+    swift: "Swift",
+    "objective-c": "Objective-C",
+    "c++": "C++",
+    csharp: "C#",
+    groovy: "Groovy",
+    javascript: "JavaScript",
+    html: "HTML",
+    angular: "Angular",
+  };
   if (!value) return "Unknown";
-  return value.charAt(0).toUpperCase() + value.slice(1);
+  return labels[value] || (value.charAt(0).toUpperCase() + value.slice(1));
 }
 
 function formatLastScannedAt(lastScannedAt) {

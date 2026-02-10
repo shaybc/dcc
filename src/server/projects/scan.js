@@ -8,11 +8,22 @@ const fsp = fs.promises;
 
 const PROJECT_TYPES = {
   NODE: "node",
+  JAVASCRIPT: "javascript",
+  HTML: "html",
+  ANGULAR: "angular",
   PYTHON: "python",
   JAVA: "java",
+  SPRINGBOOT: "springboot",
   GO: "go",
   RUST: "rust",
   DOTNET: "dotnet",
+  CSHARP: "csharp",
+  GROOVY: "groovy",
+  ANDROID: "android",
+  SWIFTUI: "swiftui",
+  SWIFT: "swift",
+  OBJECTIVE_C: "objective-c",
+  CPP: "c++",
   POLYGLOT: "polyglot",
   UNKNOWN: "unknown",
 };
@@ -25,16 +36,50 @@ const aiClient = AI_ENABLED
 
 const SIGNAL_DETECTORS = [
   { signal: "package.json", ecosystem: PROJECT_TYPES.NODE, type: "file" },
+  { signal: "jsconfig.json", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "file" },
+  { signal: "*.js", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "glob" },
+  { signal: "*.mjs", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "glob" },
+  { signal: "*.cjs", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "glob" },
+  { signal: "*.html", ecosystem: PROJECT_TYPES.HTML, type: "glob" },
+  { signal: "angular.json", ecosystem: PROJECT_TYPES.ANGULAR, type: "file" },
+  { signal: "@angular/core", ecosystem: PROJECT_TYPES.ANGULAR, type: "package-dependency" },
   { signal: "pyproject.toml", ecosystem: PROJECT_TYPES.PYTHON, type: "file" },
   { signal: "requirements.txt", ecosystem: PROJECT_TYPES.PYTHON, type: "file" },
   { signal: "Pipfile", ecosystem: PROJECT_TYPES.PYTHON, type: "file" },
   { signal: "pom.xml", ecosystem: PROJECT_TYPES.JAVA, type: "file" },
   { signal: "build.gradle", ecosystem: PROJECT_TYPES.JAVA, type: "file" },
+  { signal: "build.gradle.kts", ecosystem: PROJECT_TYPES.JAVA, type: "file" },
+  { signal: "pom.xml::<artifactId>spring-boot", ecosystem: PROJECT_TYPES.SPRINGBOOT, type: "file-contains" },
+  { signal: "build.gradle::org.springframework.boot", ecosystem: PROJECT_TYPES.SPRINGBOOT, type: "file-contains" },
+  { signal: "build.gradle.kts::org.springframework.boot", ecosystem: PROJECT_TYPES.SPRINGBOOT, type: "file-contains" },
+  { signal: "src/main/resources/application.properties", ecosystem: PROJECT_TYPES.SPRINGBOOT, type: "path" },
+  { signal: "src/main/resources/application.yml", ecosystem: PROJECT_TYPES.SPRINGBOOT, type: "path" },
   { signal: "go.mod", ecosystem: PROJECT_TYPES.GO, type: "file" },
   { signal: "Cargo.toml", ecosystem: PROJECT_TYPES.RUST, type: "file" },
   { signal: "*.csproj", ecosystem: PROJECT_TYPES.DOTNET, type: "glob" },
   { signal: "*.sln", ecosystem: PROJECT_TYPES.DOTNET, type: "glob" },
+  { signal: "*.cs", ecosystem: PROJECT_TYPES.CSHARP, type: "tree-extension" },
+  { signal: "*.groovy", ecosystem: PROJECT_TYPES.GROOVY, type: "tree-extension" },
+  { signal: "app/src/main/AndroidManifest.xml", ecosystem: PROJECT_TYPES.ANDROID, type: "path" },
+  { signal: "AndroidManifest.xml", ecosystem: PROJECT_TYPES.ANDROID, type: "path" },
+  { signal: "build.gradle::com.android.application", ecosystem: PROJECT_TYPES.ANDROID, type: "file-contains" },
+  { signal: "build.gradle.kts::com.android.application", ecosystem: PROJECT_TYPES.ANDROID, type: "file-contains" },
+  { signal: "Package.swift", ecosystem: PROJECT_TYPES.SWIFT, type: "file" },
+  { signal: "*.swift", ecosystem: PROJECT_TYPES.SWIFT, type: "tree-extension" },
+  { signal: "*.swift::import SwiftUI", ecosystem: PROJECT_TYPES.SWIFTUI, type: "tree-extension-contains" },
+  { signal: "*.m", ecosystem: PROJECT_TYPES.OBJECTIVE_C, type: "tree-extension" },
+  { signal: "*.mm", ecosystem: PROJECT_TYPES.OBJECTIVE_C, type: "tree-extension" },
+  { signal: "CMakeLists.txt", ecosystem: PROJECT_TYPES.CPP, type: "file" },
+  { signal: "*.cpp", ecosystem: PROJECT_TYPES.CPP, type: "tree-extension" },
+  { signal: "*.cxx", ecosystem: PROJECT_TYPES.CPP, type: "tree-extension" },
+  { signal: "*.cc", ecosystem: PROJECT_TYPES.CPP, type: "tree-extension" },
+  { signal: "*.hpp", ecosystem: PROJECT_TYPES.CPP, type: "tree-extension" },
+  { signal: "*.hxx", ecosystem: PROJECT_TYPES.CPP, type: "tree-extension" },
 ];
+
+const TREE_SCAN_MAX_DEPTH = 5;
+const TREE_SCAN_MAX_FILES = 1500;
+const TREE_CONTENT_READ_MAX_BYTES = 1600;
 
 function normalizeProjectType(value) {
   const normalized = String(value || "").trim().toLowerCase();
@@ -48,10 +93,76 @@ function detectProjectType(ecosystems) {
   if (ecosystems.size === 0) {
     return PROJECT_TYPES.UNKNOWN;
   }
-  if (ecosystems.size > 1) {
-    return PROJECT_TYPES.POLYGLOT;
+
+  const matchesOnly = (allowedValues) => Array.from(ecosystems).every((value) => allowedValues.includes(value));
+
+  if (ecosystems.has(PROJECT_TYPES.ANGULAR) && matchesOnly([
+    PROJECT_TYPES.ANGULAR,
+    PROJECT_TYPES.NODE,
+    PROJECT_TYPES.JAVASCRIPT,
+    PROJECT_TYPES.HTML,
+  ])) {
+    return PROJECT_TYPES.ANGULAR;
   }
-  return Array.from(ecosystems)[0];
+
+  if (ecosystems.has(PROJECT_TYPES.SPRINGBOOT) && matchesOnly([
+    PROJECT_TYPES.SPRINGBOOT,
+    PROJECT_TYPES.JAVA,
+    PROJECT_TYPES.GROOVY,
+  ])) {
+    return PROJECT_TYPES.SPRINGBOOT;
+  }
+
+  if (ecosystems.has(PROJECT_TYPES.ANDROID) && matchesOnly([
+    PROJECT_TYPES.ANDROID,
+    PROJECT_TYPES.JAVA,
+    PROJECT_TYPES.GROOVY,
+  ])) {
+    return PROJECT_TYPES.ANDROID;
+  }
+
+  if (ecosystems.has(PROJECT_TYPES.SWIFTUI) && matchesOnly([
+    PROJECT_TYPES.SWIFTUI,
+    PROJECT_TYPES.SWIFT,
+  ])) {
+    return PROJECT_TYPES.SWIFTUI;
+  }
+
+
+  if (ecosystems.has(PROJECT_TYPES.GROOVY) && matchesOnly([
+    PROJECT_TYPES.GROOVY,
+    PROJECT_TYPES.JAVA,
+  ])) {
+    return PROJECT_TYPES.GROOVY;
+  }
+
+  if (ecosystems.has(PROJECT_TYPES.CSHARP) && matchesOnly([
+    PROJECT_TYPES.CSHARP,
+    PROJECT_TYPES.DOTNET,
+  ])) {
+    return PROJECT_TYPES.CSHARP;
+  }
+
+  if (ecosystems.size === 1) {
+    return Array.from(ecosystems)[0];
+  }
+
+  if (ecosystems.has(PROJECT_TYPES.NODE) && matchesOnly([
+    PROJECT_TYPES.NODE,
+    PROJECT_TYPES.JAVASCRIPT,
+    PROJECT_TYPES.HTML,
+  ])) {
+    return PROJECT_TYPES.NODE;
+  }
+
+  if (ecosystems.has(PROJECT_TYPES.JAVASCRIPT) && matchesOnly([
+    PROJECT_TYPES.JAVASCRIPT,
+    PROJECT_TYPES.HTML,
+  ])) {
+    return PROJECT_TYPES.JAVASCRIPT;
+  }
+
+  return PROJECT_TYPES.POLYGLOT;
 }
 
 async function readRootEntries(repoPath) {
@@ -68,6 +179,66 @@ function buildEntryMap(entries) {
     map.set(entry.name, entry);
   }
   return map;
+}
+
+async function readFileWithLimit(filePath, maxBytes = TREE_CONTENT_READ_MAX_BYTES) {
+  try {
+    const handle = await fsp.open(filePath, "r");
+    const buffer = Buffer.alloc(maxBytes);
+    const { bytesRead } = await handle.read(buffer, 0, maxBytes, 0);
+    await handle.close();
+    return buffer.slice(0, bytesRead).toString("utf8");
+  } catch (_error) {
+    return "";
+  }
+}
+
+async function listRepoFiles(repoPath, maxDepth = TREE_SCAN_MAX_DEPTH, maxFiles = TREE_SCAN_MAX_FILES) {
+  const files = [];
+
+  async function walk(dir, depth) {
+    if (files.length >= maxFiles) {
+      return;
+    }
+    let entries = [];
+    try {
+      entries = await fsp.readdir(dir, { withFileTypes: true });
+    } catch (_error) {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (files.length >= maxFiles) {
+        return;
+      }
+      const absolutePath = path.join(dir, entry.name);
+      const relativePath = path.relative(repoPath, absolutePath);
+      if (!relativePath || relativePath.startsWith(".git")) {
+        continue;
+      }
+      if (entry.isDirectory()) {
+        if (depth < maxDepth) {
+          await walk(absolutePath, depth + 1);
+        }
+        continue;
+      }
+      if (entry.isFile()) {
+        files.push({
+          name: entry.name,
+          absolutePath,
+          relativePath,
+        });
+      }
+    }
+  }
+
+  await walk(repoPath, 0);
+  return files;
+}
+
+function matchesGlobSuffix(name, signalPattern) {
+  const suffix = signalPattern.slice(1);
+  return name.endsWith(suffix);
 }
 
 function collectPotentialAiSignals(entries) {
@@ -110,13 +281,13 @@ async function readSignalSnippets(repoPath, fileNames) {
   const snippets = [];
   for (const fileName of fileNames.slice(0, 8)) {
     const absolute = path.join(repoPath, fileName);
-    try {
-      const content = await fsp.readFile(absolute, "utf8");
+    const content = await readFileWithLimit(absolute, 700);
+    if (content) {
       snippets.push({
         fileName,
-        snippet: content.slice(0, 700),
+        snippet: content,
       });
-    } catch (_error) {}
+    }
   }
   return snippets;
 }
@@ -221,24 +392,90 @@ async function detectRepoSignals(repoPath, rootEntries) {
   const detectedSignals = [];
   const entries = rootEntries || [];
   const entryMap = buildEntryMap(entries);
+  const fileContentCache = new Map();
+  let packageJsonCache = null;
+  let repoFiles = null;
+
+  async function getRepoFiles() {
+    if (!repoFiles) {
+      repoFiles = await listRepoFiles(repoPath);
+    }
+    return repoFiles;
+  }
+
+  async function readCachedFile(relativeFilePath) {
+    if (!fileContentCache.has(relativeFilePath)) {
+      const content = await readFileWithLimit(path.join(repoPath, relativeFilePath));
+      fileContentCache.set(relativeFilePath, content);
+    }
+    return fileContentCache.get(relativeFilePath) || "";
+  }
+
+  async function readPackageJson() {
+    if (packageJsonCache !== null) {
+      return packageJsonCache;
+    }
+    const content = await readCachedFile("package.json");
+    if (!content) {
+      packageJsonCache = null;
+      return packageJsonCache;
+    }
+    try {
+      packageJsonCache = JSON.parse(content);
+    } catch (_error) {
+      packageJsonCache = null;
+    }
+    return packageJsonCache;
+  }
 
   for (const detector of SIGNAL_DETECTORS) {
+    let isMatch = false;
+
     if (detector.type === "file") {
       const entry = entryMap.get(detector.signal);
-      if (entry && entry.isFile()) {
-        ecosystems.add(detector.ecosystem);
-        detectedSignals.push(detector.signal);
+      isMatch = Boolean(entry && entry.isFile());
+    } else if (detector.type === "glob") {
+      isMatch = entries.some((entry) => entry.isFile() && matchesGlobSuffix(entry.name, detector.signal));
+    } else if (detector.type === "path") {
+      try {
+        const stat = await fsp.stat(path.join(repoPath, detector.signal));
+        isMatch = stat.isFile();
+      } catch (_error) {
+        isMatch = false;
       }
-      continue;
+    } else if (detector.type === "package-dependency") {
+      const packageJson = await readPackageJson();
+      const deps = {
+        ...(packageJson?.dependencies || {}),
+        ...(packageJson?.devDependencies || {}),
+        ...(packageJson?.peerDependencies || {}),
+      };
+      isMatch = Boolean(deps[detector.signal]);
+    } else if (detector.type === "file-contains") {
+      const [relativePath, containsText] = detector.signal.split("::");
+      const content = await readCachedFile(relativePath);
+      isMatch = Boolean(content && containsText && content.includes(containsText));
+    } else if (detector.type === "tree-extension") {
+      const files = await getRepoFiles();
+      isMatch = files.some((file) => matchesGlobSuffix(file.name, detector.signal));
+    } else if (detector.type === "tree-extension-contains") {
+      const files = await getRepoFiles();
+      const [signalGlob, containsText] = detector.signal.split("::");
+      for (const file of files) {
+        if (!matchesGlobSuffix(file.name, signalGlob)) {
+          continue;
+        }
+        const content = await readFileWithLimit(file.absolutePath, TREE_CONTENT_READ_MAX_BYTES);
+        if (content.includes(containsText)) {
+          isMatch = true;
+          break;
+        }
+      }
     }
 
-    if (detector.type === "glob") {
-      const suffix = detector.signal.slice(1);
-      const hasMatch = entries.some((entry) => entry.isFile() && entry.name.endsWith(suffix));
-      if (hasMatch) {
-        ecosystems.add(detector.ecosystem);
-        detectedSignals.push(detector.signal);
-      }
+    if (isMatch) {
+      ecosystems.add(detector.ecosystem);
+      detectedSignals.push(detector.signal);
     }
   }
 
