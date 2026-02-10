@@ -84,3 +84,18 @@ header .actions .btn {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
 }
+
+.recommendations-header-toggle {
+  padding: 10px;
+  min-width: 44px;
+  justify-content: center;
+}
+
+.recommendations-header-toggle .recommendations-star {
+  width: 18px;
+  height: 18px;
+}
+
+.recommendations-header-toggle .recommendations-star-outline {
+  fill: none;
+}

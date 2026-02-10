@@ -27,6 +27,7 @@ const copyDefinitionButton = document.getElementById("copyDefinition");
 const editDefinitionButton = document.getElementById("editDefinition");
 const newDefinitionButton = document.getElementById("newDefinitionButton");
 const newDefinitionMenu = document.getElementById("newDefinitionMenu");
+const recommendationsToggleButton = document.getElementById("recommendationsToggleButton");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const versionHistoryButton = document.getElementById("versionHistoryButton");
@@ -69,12 +70,10 @@ const validationLastRun = document.getElementById("validationLastRun");
 const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
 const recommendationsSection = document.createElement("section");
-const recommendationsHeader = document.createElement("div");
 const recommendationsTitle = document.createElement("h2");
 const recommendationsMeta = document.createElement("p");
 const recommendationsState = document.createElement("p");
 const recommendationsCards = document.createElement("div");
-const recommendationsToggleButton = document.createElement("button");
 const recommendationsDivider = document.createElement("div");
 const recommendationsContent = document.createElement("div");
 
@@ -621,7 +620,9 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
 }
 
 function updateRecommendationsToggleLabel() {
-  recommendationsToggleButton.textContent = recommendationsVisible ? "Hide Recommendations" : "Show Recommendations";
+  recommendationsToggleButton.innerHTML = recommendationsVisible
+    ? '<svg class="recommendations-star recommendations-star-filled" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.43 2.6a.62.62 0 0 1 1.14 0l2.48 5.25a.62.62 0 0 0 .47.34l5.74.88a.62.62 0 0 1 .35 1.05l-4.15 4.26a.62.62 0 0 0-.17.54l.98 6a.62.62 0 0 1-.9.65L12.27 18.76a.62.62 0 0 0-.58 0l-5.1 2.81a.62.62 0 0 1-.9-.65l.98-6a.62.62 0 0 0-.17-.54L2.34 10.12a.62.62 0 0 1 .35-1.05l5.74-.88a.62.62 0 0 0 .47-.34L11.43 2.6z"></path></svg>'
+    : '<svg class="recommendations-star recommendations-star-outline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2.6 2.81 5.95 6.49.99-4.69 4.81 1.11 6.79L12 17.99l-5.72 3.15 1.1-6.79-4.68-4.81 6.49-.99L12 2.6z"></path></svg>';
   recommendationsToggleButton.setAttribute("aria-label", recommendationsVisible ? "Hide Recommendations" : "Show Recommendations");
   recommendationsToggleButton.setAttribute("aria-expanded", String(recommendationsVisible));
 }
@@ -706,13 +707,10 @@ function renderCards() {
 
 function setupRecommendationsSection() {
   recommendationsSection.className = "recommendations-section";
-  recommendationsHeader.className = "recommendations-header";
   recommendationsTitle.className = "recommendations-title";
   recommendationsMeta.className = "recommendations-meta";
   recommendationsState.className = "recommendations-state";
   recommendationsCards.className = "grid recommendations-grid";
-  recommendationsToggleButton.className = "recommendations-toggle";
-  recommendationsToggleButton.type = "button";
   recommendationsContent.id = "recommendations-content";
   recommendationsToggleButton.setAttribute("aria-controls", recommendationsContent.id);
   recommendationsDivider.className = "recommendations-divider";
@@ -725,9 +723,8 @@ function setupRecommendationsSection() {
     renderRecommendationSection();
   });
 
-  recommendationsHeader.append(recommendationsToggleButton);
   recommendationsContent.append(recommendationsTitle, recommendationsMeta, recommendationsState, recommendationsCards, recommendationsDivider);
-  recommendationsSection.append(recommendationsHeader, recommendationsContent);
+  recommendationsSection.append(recommendationsContent);
 
   cardsContainer.parentNode?.insertBefore(recommendationsSection, cardsContainer);
 }
