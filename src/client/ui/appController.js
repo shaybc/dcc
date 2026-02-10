@@ -1,4 +1,5 @@
 import { runWithLoading } from "../services/loadingService.js";
+import { createDiffService } from "../services/diffService.js";
 
 const cardsContainer = document.getElementById("cards");
 const filtersContainer = document.getElementById("filters");
@@ -38,6 +39,23 @@ const definitionPreviewPanel = document.getElementById("definitionPreviewPanel")
 const definitionSourcePanel = document.getElementById("definitionSourcePanel");
 const definitionTestPanel = document.getElementById("definitionTestPanel");
 const definitionPreviewContent = document.getElementById("definitionPreviewContent");
+const diffControls = document.getElementById("diffControls");
+const enableDiffMode = document.getElementById("enableDiffMode");
+const diffIgnoreWhitespace = document.getElementById("diffIgnoreWhitespace");
+const diffVersionMode = document.getElementById("diffVersionMode");
+const versionSelectA = document.getElementById("versionSelectA");
+const versionSelectB = document.getElementById("versionSelectB");
+const diffContainer = document.getElementById("diffContainer");
+const diffStatistics = document.getElementById("diffStatistics");
+const diffNavigation = document.getElementById("diffNavigation");
+const diffAddedLines = document.getElementById("diffAddedLines");
+const diffRemovedLines = document.getElementById("diffRemovedLines");
+const diffModifiedLines = document.getElementById("diffModifiedLines");
+const prevChangeBtn = document.getElementById("prevChangeBtn");
+const nextChangeBtn = document.getElementById("nextChangeBtn");
+const currentChangeIndex = document.getElementById("currentChangeIndex");
+const totalChanges = document.getElementById("totalChanges");
+const diffModeButtons = document.querySelectorAll(".diff-mode-btn");
 const runValidationButton = document.getElementById("runValidationButton");
 const copyValidationReportButton = document.getElementById("copyValidationReportButton");
 const validationStrictToggle = document.getElementById("validationStrictToggle");
@@ -65,6 +83,8 @@ let activeHistoricalVersion = "";
 let activeVersionDropdown = null;
 let lastValidationResult = null;
 let validationAutoRunTimeout = null;
+let diffService = null;
+let currentDefinitionVersions = [];
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
@@ -1019,6 +1039,53 @@ function renderVersionMeta(currentVersion, historicalVersion = "") {
   detailVersionMeta.innerHTML = `<span class="version-badge">v${escapeHtml(version)}</span>${historicalSuffix}`;
 }
 
+async function fetchVersionContentForDiff(version) {
+  if (!currentDetailDefinitionId) {
+    return "";
+  }
+  if (!version || version === "current") {
+    return currentDetailDefinitionContent || "";
+  }
+  const payload = await fetchWithErrorHandling(
+    `/api/definitions/${currentDetailDefinitionId}/versions/${encodeURIComponent(version)}`,
+    {},
+    "Unable to load definition version for comparison."
+  );
+  return String(payload.content || "");
+}
+
+function ensureDiffService() {
+  if (diffService || !diffControls) {
+    return;
+  }
+  diffService = createDiffService({
+    elements: {
+      diffControls,
+      enableDiffMode,
+      diffIgnoreWhitespace,
+      diffVersionMode,
+      versionSelectA,
+      versionSelectB,
+      diffContainer,
+      detailContent,
+      diffStatistics,
+      diffNavigation,
+      diffAddedLines,
+      diffRemovedLines,
+      diffModifiedLines,
+      prevChangeBtn,
+      nextChangeBtn,
+      currentChangeIndex,
+      totalChanges,
+      diffModeButtons
+    },
+    fetchVersionContent: fetchVersionContentForDiff,
+    getCurrentVersion: () => currentDefinitionVersion,
+    formatDate: formatVersionCommitDate
+  });
+  diffService.init();
+}
+
 function closeVersionDropdown() {
   if (!activeVersionDropdown) {
     return;
@@ -1051,6 +1118,14 @@ function renderVersionBanner(historicalVersion) {
       return;
     }
     try {
+      ensureDiffService();
+      if (diffService) {
+        await diffService.previewRestore(activeHistoricalVersion);
+      }
+      const confirmed = window.confirm("Review the diff and confirm restoring this version.");
+      if (!confirmed) {
+        return;
+      }
       const payload = await fetchWithErrorHandling(
         `/api/definitions/${currentDetailDefinitionId}/versions/${encodeURIComponent(activeHistoricalVersion)}/restore`,
         {
@@ -1185,6 +1260,9 @@ async function openVersionHistoryDropdown() {
     }
   );
   const versions = Array.isArray(payload.versions) ? payload.versions : [];
+  currentDefinitionVersions = versions;
+  ensureDiffService();
+  diffService?.setVersions(currentDefinitionVersions);
   if (versions.length === 0) {
     window.alert("No history available for this definition.");
     return;
@@ -1195,6 +1273,24 @@ async function openVersionHistoryDropdown() {
   const rect = versionHistoryButton.getBoundingClientRect();
   activeVersionDropdown.style.top = `${rect.bottom + window.scrollY + 8}px`;
   activeVersionDropdown.style.left = `${Math.max(rect.left + window.scrollX - 220, 8)}px`;
+}
+
+async function refreshDiffVersions() {
+  if (!currentDetailDefinitionId) {
+    return;
+  }
+  try {
+    const payload = await fetchWithErrorHandling(
+      `/api/definitions/${currentDetailDefinitionId}/versions`,
+      {},
+      "Unable to load version history."
+    );
+    currentDefinitionVersions = Array.isArray(payload.versions) ? payload.versions : [];
+  } catch (_error) {
+    currentDefinitionVersions = [];
+  }
+  ensureDiffService();
+  diffService?.setVersions(currentDefinitionVersions);
 }
 
 async function showDetails(id) {
@@ -1208,6 +1304,7 @@ async function showDetails(id) {
   currentDetailDefinitionPath = String(def.filePath || "");
   currentDetailDefinitionContent = String(def.content || "");
   currentDefinitionVersion = String(def.version || "");
+  currentDefinitionVersions = [];
   activeHistoricalVersion = "";
   detailTitle.textContent = def.name;
   renderVersionMeta(currentDefinitionVersion, "");
@@ -1251,6 +1348,7 @@ async function showDetails(id) {
   definitionTabSource.textContent = tabLabel;
 
   definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent, def);
+  await refreshDiffVersions();
   const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
   const canDeleteDefinition = currentDetailDefinitionSource === "repo" || isUntrackedDefinition;
   deleteDefinitionButton.hidden = !canDeleteDefinition;
