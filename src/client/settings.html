@@ -19,14 +19,26 @@
     </header>
     <main class="settings-grid">
       <form class="settings-form settings-card settings-card--wide" id="settingsForm">
-        <label for="repoUrl">AI Assets Git Repo URL</label>
-        <input id="repoUrl" name="repoUrl" type="text" placeholder="https://github.com/your-org/ai_assets" />
-
-        <label for="repoPath">Clone Path on Disk</label>
-        <input id="repoPath" name="repoPath" type="text" placeholder="/Users/you/ai_assets" />
+        <h2>AI Asset Repositories</h2>
+        <p class="helper-text">Manage one or more repositories under your local <code>ai_assets</code> root.</p>
+        <div class="table-actions">
+          <button class="btn" type="button" id="addAssetRepo">Add repository</button>
+        </div>
+        <table class="settings-table" aria-label="AI asset repositories">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Remote URL</th>
+              <th>Local folder (under ai_assets)</th>
+              <th>Enabled</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="assetReposTable"></tbody>
+        </table>
 
         <div class="row">
-          <button class="btn btn-primary" type="submit">Save settings</button>
+          <button class="btn btn-primary" type="submit">Save repositories</button>
           <button class="btn" type="button" id="clonePull">Clone / Pull Repo</button>
           <button class="btn" type="button" id="loadDefinitions">Load Definitions</button>
         </div>

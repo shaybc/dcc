@@ -5,12 +5,12 @@ import {
   setDefaultTimeout,
 } from "./services/loadingService.js";
 
-const repoUrlInput = document.getElementById("repoUrl");
-const repoPathInput = document.getElementById("repoPath");
 const settingsForm = document.getElementById("settingsForm");
 const clonePullButton = document.getElementById("clonePull");
 const loadDefinitionsButton = document.getElementById("loadDefinitions");
 const notice = document.getElementById("settingsNotice");
+const assetReposTable = document.getElementById("assetReposTable");
+const addAssetRepoButton = document.getElementById("addAssetRepo");
 const devRootsTable = document.getElementById("devRootsTable");
 const devProjectsTable = document.getElementById("devProjectsTable");
 const addDevRootButton = document.getElementById("addDevRoot");
@@ -20,6 +20,25 @@ const themeToggle = document.getElementById("themeToggle");
 const themeToggleLabel = document.getElementById("themeToggleLabel");
 const loadingTimeoutInput = document.getElementById("loadingTimeoutInput");
 const saveLoadingTimeoutButton = document.getElementById("saveLoadingTimeoutBtn");
+const defaultAssetRoot = "ai_assets";
+
+function normalizeAssetFolder(localPath = "") {
+  const value = String(localPath || "").trim().replace(/\\/g, "/");
+  if (!value) return "";
+  const marker = `${defaultAssetRoot}/`;
+  if (value.startsWith(marker)) return value.slice(marker.length);
+  const markerIndex = value.lastIndexOf(`/${marker}`);
+  if (markerIndex >= 0) return value.slice(markerIndex + marker.length + 1);
+  return value.split("/").filter(Boolean).pop() || value;
+}
+
+function toAssetLocalPath(folder = "") {
+  const normalizedFolder = String(folder || "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "");
+  return normalizedFolder ? `${defaultAssetRoot}/${normalizedFolder}` : "";
+}
 
 initLoadingService();
 
@@ -31,6 +50,110 @@ function setNotice(message, isError = false) {
 function setDevRootsNotice(message, isError = false) {
   devRootsNotice.textContent = message;
   devRootsNotice.style.color = isError ? "#dc2626" : "#6b7280";
+}
+
+function inferRepoName(remoteUrl = "", localPath = "") {
+  const fromPath = String(localPath || "")
+    .split(/[\\/]/)
+    .filter(Boolean)
+    .pop();
+  if (fromPath) return fromPath;
+
+  const fromRemote = String(remoteUrl || "")
+    .replace(/\.git$/i, "")
+    .split("/")
+    .filter(Boolean)
+    .pop();
+  return fromRemote || "repo";
+}
+
+function createAssetRepoRow(repo = {}) {
+  const row = document.createElement("tr");
+  if (repo.id) row.dataset.repoId = String(repo.id);
+
+  const nameCell = document.createElement("td");
+  const urlCell = document.createElement("td");
+  const pathCell = document.createElement("td");
+  const enabledCell = document.createElement("td");
+  const actionsCell = document.createElement("td");
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "asset-repo-name";
+  nameInput.placeholder = "team-assets";
+  nameInput.value = repo.name || "";
+
+  const urlInput = document.createElement("input");
+  urlInput.type = "text";
+  urlInput.className = "asset-repo-remote";
+  urlInput.placeholder = "https://github.com/your-org/ai_assets";
+  urlInput.value = repo.remoteUrl || "";
+
+  const pathInput = document.createElement("input");
+  pathInput.type = "text";
+  pathInput.className = "asset-repo-folder";
+  pathInput.placeholder = "team-assets";
+  pathInput.value = normalizeAssetFolder(repo.localPath || "");
+
+  const enabledInput = document.createElement("input");
+  enabledInput.type = "checkbox";
+  enabledInput.className = "asset-repo-enabled";
+  enabledInput.checked = repo.enabled !== false;
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "btn";
+  removeButton.textContent = "Remove";
+  removeButton.addEventListener("click", () => {
+    row.dataset.markedForDelete = "true";
+    row.remove();
+  });
+
+  nameCell.appendChild(nameInput);
+  urlCell.appendChild(urlInput);
+  pathCell.appendChild(pathInput);
+  enabledCell.appendChild(enabledInput);
+  actionsCell.appendChild(removeButton);
+  row.append(nameCell, urlCell, pathCell, enabledCell, actionsCell);
+  return row;
+}
+
+function renderAssetRepos(repos) {
+  assetReposTable.innerHTML = "";
+  if (!repos.length) {
+    assetReposTable.appendChild(createAssetRepoRow({ localPath: `${defaultAssetRoot}/` }));
+    return;
+  }
+  repos.forEach((repo) => assetReposTable.appendChild(createAssetRepoRow(repo)));
+}
+
+async function loadAssetRepos() {
+  const response = await fetch("/api/asset-repos");
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Failed to load repositories.");
+  }
+  const data = await response.json();
+  renderAssetRepos(Array.isArray(data) ? data : []);
+}
+
+function collectAssetReposFromRows() {
+  const rows = Array.from(assetReposTable.querySelectorAll("tr"));
+  return rows
+    .map((row) => {
+      const id = row.dataset.repoId ? Number(row.dataset.repoId) : null;
+      const name = row.querySelector(".asset-repo-name")?.value.trim() || "";
+      const remoteUrl = row.querySelector(".asset-repo-remote")?.value.trim() || "";
+      const localFolder = row.querySelector(".asset-repo-folder")?.value.trim() || "";
+      const localPath = toAssetLocalPath(localFolder);
+      const enabled = Boolean(row.querySelector(".asset-repo-enabled")?.checked);
+
+      if (!name && (remoteUrl || localPath)) {
+        return { id, name: inferRepoName(remoteUrl, localPath), remoteUrl, localPath, enabled };
+      }
+      return { id, name, remoteUrl, localPath, enabled };
+    })
+    .filter((repo) => repo.name || repo.remoteUrl || repo.localPath);
 }
 
 function updateThemeToggleLabel(isLightMode) {
@@ -171,13 +294,6 @@ function renderDevProjects(projects) {
   });
 }
 
-async function loadSettings() {
-  const response = await fetch("/api/settings");
-  const data = await response.json();
-  repoUrlInput.value = data.repoUrl || "";
-  repoPathInput.value = data.repoPath || "";
-}
-
 async function loadDevProjects() {
   const [rootsResponse, projectsResponse] = await Promise.all([
     fetch("/api/dev-project-roots"),
@@ -191,33 +307,90 @@ async function loadDevProjects() {
 
 settingsForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const repoUrl = repoUrlInput.value.trim();
-  const repoPath = repoPathInput.value.trim();
+  const repos = collectAssetReposFromRows();
+
+  const invalidRepo = repos.find((repo) => !repo.name || !repo.remoteUrl || !repo.localPath);
+  if (invalidRepo) {
+    setNotice("Each repository row must include name, remote URL, and local folder.", true);
+    return;
+  }
 
   const response = await runWithLoading(
-    async () => fetch("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ repoUrl, repoPath })
-    }),
+    async () => {
+      const existingResponse = await fetch("/api/asset-repos");
+      if (!existingResponse.ok) {
+        const payload = await existingResponse.json().catch(() => ({}));
+        throw new Error(payload.error || "Failed to load existing repositories.");
+      }
+      const existingRepos = await existingResponse.json();
+      const existingById = new Map(existingRepos.map((repo) => [repo.id, repo]));
+      const submittedIds = new Set(repos.filter((repo) => repo.id).map((repo) => repo.id));
+
+      for (const repo of repos) {
+        const payload = {
+          name: repo.name,
+          remoteUrl: repo.remoteUrl,
+          localPath: repo.localPath,
+          enabled: repo.enabled,
+        };
+        if (repo.id && existingById.has(repo.id)) {
+          const updateResponse = await fetch(`/api/asset-repos/${repo.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!updateResponse.ok) {
+            const body = await updateResponse.json().catch(() => ({}));
+            throw new Error(body.error || "Failed to update repository.");
+          }
+        } else {
+          const createResponse = await fetch("/api/asset-repos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!createResponse.ok) {
+            const body = await createResponse.json().catch(() => ({}));
+            throw new Error(body.error || "Failed to create repository.");
+          }
+        }
+      }
+
+      for (const repo of existingRepos) {
+        if (!submittedIds.has(repo.id)) {
+          const deleteResponse = await fetch(`/api/asset-repos/${repo.id}`, { method: "DELETE" });
+          if (!deleteResponse.ok) {
+            const body = await deleteResponse.json().catch(() => ({}));
+            throw new Error(body.error || "Failed to delete repository.");
+          }
+        }
+      }
+
+      return { ok: true };
+    },
     {
-      title: "Saving settings...",
-      description: "Updating repository configuration.",
+      title: "Saving repositories...",
+      description: "Updating AI asset repository configuration.",
     }
   );
 
   if (!response) return;
   if (response.ok) {
-    setNotice("Settings saved.");
+    setNotice("Repositories saved.");
+    await loadAssetRepos();
     return;
   }
 
-  const data = await response.json();
-  setNotice(data.error || "Failed to save settings.", true);
+  const data = await response.json().catch(() => ({}));
+  setNotice(data.error || "Failed to save repositories.", true);
 });
 
 addDevRootButton.addEventListener("click", () => {
   devRootsTable.appendChild(createDevRootRow(""));
+});
+
+addAssetRepoButton?.addEventListener("click", () => {
+  assetReposTable.appendChild(createAssetRepoRow({ localPath: `${defaultAssetRoot}/` }));
 });
 
 saveDevRootsButton.addEventListener("click", async () => {
@@ -308,6 +481,6 @@ saveLoadingTimeoutButton?.addEventListener("click", () => {
   setNotice("Loading timeout updated.");
 });
 
-Promise.all([loadSettings(), loadDevProjects()]).catch(() => {
+Promise.all([loadAssetRepos(), loadDevProjects()]).catch(() => {
   setNotice("Failed to load settings.", true);
 });
