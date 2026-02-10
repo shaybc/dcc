@@ -27,4 +27,8 @@
   --inline-code-bg: rgba(255, 255, 255, 0.08);
   --code-block-bg: #0f1116;
   --preview-card-bg: rgba(15, 17, 22, 0.7);
+  --chip-active-border: var(--accent);
+  --chip-active-text: #fff;
+  --chip-active-bg: rgba(139, 92, 246, 0.2);
+  --chip-active-shadow: 0 6px 16px rgba(139, 92, 246, 0.3);
 }

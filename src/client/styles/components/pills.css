@@ -20,10 +20,10 @@
 }
 
 .chip.active {
-  border-color: var(--accent);
-  color: #fff;
-  background: rgba(139, 92, 246, 0.2);
-  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.3);
+  border-color: var(--chip-active-border);
+  color: var(--chip-active-text);
+  background: var(--chip-active-bg);
+  box-shadow: var(--chip-active-shadow);
 }
 
 .chip-icon svg {
