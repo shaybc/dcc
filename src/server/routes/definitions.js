@@ -1,10 +1,11 @@
 import express from "express";
 import db from "../db/index.js";
-import { allDb } from "../db/helpers.js";
+import { allDb, getDb } from "../db/helpers.js";
 import { getSetting } from "../utils/settings.js";
 import { getFileCreatedAt } from "../utils/files.js";
 import { extractDccUriFromDefinitionContent } from "../definitions/metadata.js";
 import { normalizeDefinitionType } from "../definitions/parse.js";
+import { recommendDefinitions } from "../definitions/recommend.js";
 
 const router = express.Router();
 
@@ -60,6 +61,42 @@ router.get("/api/definitions", async (req, res) => {
     const copiedKeys = new Set(copiedRows.map((row) => row.definitionKey));
     const rows = definitionsRows.map((row) => ({ ...row, status: copiedKeys.has(row.key) ? "saved" : "repo" }));
     res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/api/definitions/suggestions", async (_req, res) => {
+  try {
+    const currentDevProject = String(await getSetting("currentDevProject") || "").trim();
+    if (!currentDevProject) {
+      res.json({ projectPath: "", projectType: "", suggestions: [] });
+      return;
+    }
+
+    const projectRow = await getDb("SELECT projectType FROM dev_projects WHERE path = ?", [currentDevProject]);
+    const projectType = String(projectRow?.projectType || "").trim().toLowerCase();
+    if (!projectType || projectType === "unknown") {
+      res.json({ projectPath: currentDevProject, projectType, suggestions: [] });
+      return;
+    }
+
+    const definitionsRows = await allDb(
+      "SELECT id, key, name, description, tags, type FROM definitions"
+    );
+
+    const rankedSuggestions = recommendDefinitions(currentDevProject, projectType, definitionsRows)
+      .map((definition) => ({
+        definitionId: definition.id,
+        score: definition.score,
+        reasons: Array.isArray(definition.reasons) ? definition.reasons : []
+      }));
+
+    res.json({
+      projectPath: currentDevProject,
+      projectType,
+      suggestions: rankedSuggestions
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
