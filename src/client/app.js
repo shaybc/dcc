@@ -56,6 +56,7 @@ let currentDetailDefinitionId = null;
 let currentDetailDefinitionSource = "";
 let currentDetailDefinitionName = "";
 let currentDetailDefinitionPath = "";
+let currentDetailDefinitionContent = "";
 let currentDefinitionVersion = "";
 let activeHistoricalVersion = "";
 let activeVersionDropdown = null;
@@ -1175,6 +1176,7 @@ async function showDetails(id) {
   currentDetailDefinitionSource = String(def.source || "").toLowerCase();
   currentDetailDefinitionName = String(def.name || "");
   currentDetailDefinitionPath = String(def.filePath || "");
+  currentDetailDefinitionContent = String(def.content || "");
   currentDefinitionVersion = String(def.version || "");
   activeHistoricalVersion = "";
   detailTitle.textContent = def.name;
@@ -1247,6 +1249,7 @@ function showHubPage() {
   currentDetailDefinitionSource = "";
   currentDetailDefinitionName = "";
   currentDetailDefinitionPath = "";
+  currentDetailDefinitionContent = "";
   currentDefinitionVersion = "";
   detailDccUri.hidden = true;
   detailDccUri.textContent = "";
@@ -1340,13 +1343,95 @@ async function pushDefinitionToUpstream(id, commitMessage) {
   }, "Unable to push definition.");
 }
 
-function createDuplicateDefaults(definitionName, definitionPath) {
+
+function closeDuplicateDefinitionModal() {
+  const existing = document.querySelector(".duplicate-definition-overlay");
+  if (existing) {
+    existing.remove();
+  }
+}
+
+function openDuplicateDefinitionModal({ defaultName, defaultDccUri, defaultContent }) {
+  closeDuplicateDefinitionModal();
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "duplicate-definition-overlay";
+    overlay.innerHTML = `
+      <div class="duplicate-definition-modal" role="dialog" aria-modal="true" aria-labelledby="duplicateDefinitionTitle">
+        <h3 id="duplicateDefinitionTitle">Duplicate definition</h3>
+        <p class="duplicate-definition-subtitle">Review and update fields before creating the duplicate.</p>
+        <label class="duplicate-definition-field">Definition name
+          <input type="text" data-role="duplicate-name" value="${escapeHtml(defaultName)}" />
+        </label>
+        <label class="duplicate-definition-field">DCC URI
+          <input type="text" data-role="duplicate-dcc-uri" value="${escapeHtml(defaultDccUri)}" />
+        </label>
+        <label class="duplicate-definition-field">Definition source
+          <textarea data-role="duplicate-content" rows="14">${escapeHtml(defaultContent)}</textarea>
+        </label>
+        <div class="duplicate-definition-actions">
+          <button class="btn" type="button" data-role="duplicate-cancel">Cancel</button>
+          <button class="btn primary" type="button" data-role="duplicate-save">Create duplicate</button>
+        </div>
+      </div>
+    `;
+
+    const nameInput = overlay.querySelector('[data-role="duplicate-name"]');
+    const dccUriInput = overlay.querySelector('[data-role="duplicate-dcc-uri"]');
+    const contentInput = overlay.querySelector('[data-role="duplicate-content"]');
+    const cancelButton = overlay.querySelector('[data-role="duplicate-cancel"]');
+    const saveButton = overlay.querySelector('[data-role="duplicate-save"]');
+
+    function handleCancel() {
+      closeDuplicateDefinitionModal();
+      resolve(null);
+    }
+
+    cancelButton?.addEventListener("click", handleCancel);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        handleCancel();
+      }
+    });
+
+    saveButton?.addEventListener("click", () => {
+      const nextName = String(nameInput?.value || "").trim();
+      const nextDccUri = String(dccUriInput?.value || "").trim();
+      const nextContent = String(contentInput?.value || "").trim();
+      if (!nextName) {
+        window.alert("Definition name cannot be empty.");
+        nameInput?.focus();
+        return;
+      }
+      if (!nextDccUri) {
+        window.alert("Definition dcc_uri cannot be empty.");
+        dccUriInput?.focus();
+        return;
+      }
+      if (!nextContent) {
+        window.alert("Definition content cannot be empty.");
+        contentInput?.focus();
+        return;
+      }
+      closeDuplicateDefinitionModal();
+      resolve({ name: nextName, dccUri: nextDccUri, content: nextContent });
+    });
+
+    document.body.append(overlay);
+    nameInput?.focus();
+    nameInput?.select();
+  });
+}
+
+function createDuplicateDefaults(definitionName, definitionPath, definitionContent = "") {
   const defaultName = `${String(definitionName || "definition").trim() || "definition"}_copy`;
+  const currentDccUri = String(extractDccUriFromDefinitionContent(definitionContent, definitionPath) || "").trim();
+  const defaultDccUri = currentDccUri ? `${currentDccUri}_copy` : defaultName;
   const originalFileName = pathBasename(definitionPath) || "definition.md";
   const extension = pathExtname(originalFileName);
   const baseName = extension ? originalFileName.slice(0, -extension.length) : originalFileName;
   const defaultFileName = `${baseName}_copy${extension}`;
-  return { defaultName, defaultFileName };
+  return { defaultName, defaultDccUri, defaultFileName };
 }
 
 function pathBasename(filePath) {
@@ -1364,11 +1449,11 @@ function pathExtname(fileName) {
   return value.slice(dotIndex);
 }
 
-async function duplicateDefinition(id, name, fileName) {
+async function duplicateDefinition(id, { name, fileName, dccUri, content }) {
   return fetchWithErrorHandling(`/api/definitions/${id}/duplicate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, fileName })
+    body: JSON.stringify({ name, fileName, dccUri, content })
   }, "Unable to duplicate definition.");
 }
 
@@ -1500,15 +1585,13 @@ duplicateDefinitionButton.addEventListener("click", async () => {
     return;
   }
 
-  const { defaultName, defaultFileName } = createDuplicateDefaults(currentDetailDefinitionName, currentDetailDefinitionPath);
-  const duplicateName = window.prompt("New definition name", defaultName);
-  if (duplicateName === null) {
-    return;
-  }
-
-  const normalizedName = duplicateName.trim();
-  if (!normalizedName) {
-    window.alert("Definition name cannot be empty.");
+  const { defaultName, defaultDccUri, defaultFileName } = createDuplicateDefaults(currentDetailDefinitionName, currentDetailDefinitionPath, currentDetailDefinitionContent);
+  const duplicateDetails = await openDuplicateDefinitionModal({
+    defaultName,
+    defaultDccUri,
+    defaultContent: currentDetailDefinitionContent
+  });
+  if (!duplicateDetails) {
     return;
   }
 
@@ -1524,7 +1607,12 @@ duplicateDefinitionButton.addEventListener("click", async () => {
   }
 
   try {
-    const result = await duplicateDefinition(currentDetailDefinitionId, normalizedName, normalizedFileName);
+    const result = await duplicateDefinition(currentDetailDefinitionId, {
+      name: duplicateDetails.name,
+      fileName: normalizedFileName,
+      dccUri: duplicateDetails.dccUri,
+      content: duplicateDetails.content
+    });
     await fetchDefinitions();
     if (Number.isFinite(Number(result?.id)) && result.id > 0) {
       updateRouteForDetails(result.id);
