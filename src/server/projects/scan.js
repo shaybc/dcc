@@ -83,6 +83,40 @@ const TREE_SCAN_MAX_DEPTH = 5;
 const TREE_SCAN_MAX_FILES = 1500;
 const TREE_CONTENT_READ_MAX_BYTES = 1600;
 
+const IGNORED_SCAN_DIR_NAMES = new Set([
+  ".git",
+  "log",
+  "logs",
+  "dist",
+  "bin",
+  "dist-packages",
+  "lib",
+  "site-packages",
+  "node_modules",
+  "vendor",
+  "target",
+  "build",
+  "out",
+  "coverage",
+  ".next",
+  ".nuxt",
+  ".cache",
+  "__pycache__",
+  ".venv",
+  "venv",
+]);
+
+function shouldSkipDirectoryName(name) {
+  const normalized = String(name || "").trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (IGNORED_SCAN_DIR_NAMES.has(normalized)) {
+    return true;
+  }
+  return normalized.endsWith("-packages") || normalized.endsWith("_modules");
+}
+
 function normalizeProjectType(value) {
   const normalized = String(value || "").trim().toLowerCase();
   if (PROJECT_TYPE_VALUES.has(normalized)) {
@@ -219,6 +253,9 @@ async function listRepoFiles(repoPath, maxDepth = TREE_SCAN_MAX_DEPTH, maxFiles 
         continue;
       }
       if (entry.isDirectory()) {
+        if (shouldSkipDirectoryName(entry.name)) {
+          continue;
+        }
         if (depth < maxDepth) {
           await walk(absolutePath, depth + 1);
         }
@@ -604,6 +641,9 @@ export async function scanDevProjects(roots) {
     }
     for (const entry of entries) {
       if (entry.isDirectory()) {
+        if (shouldSkipDirectoryName(entry.name)) {
+          continue;
+        }
         await scanDir(path.join(dir, entry.name));
       }
     }
