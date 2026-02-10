@@ -20,6 +20,10 @@
   border-color: var(--card-in-project-border);
 }
 
+.card-local-definition {
+  background: #373737;
+}
+
 .card:hover {
   transform: translateY(-2px);
   border-color: rgba(139, 92, 246, 0.6);

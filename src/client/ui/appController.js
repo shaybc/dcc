@@ -491,6 +491,9 @@ function renderCards() {
   filtered.forEach((def) => {
     const card = document.createElement("div");
     card.className = "card";
+    if (String(def.source || "").toLowerCase() === "untracked") {
+      card.classList.add("card-local-definition");
+    }
     if (def.status === "saved" && devProjectInput.value.trim()) {
       card.classList.add("card-in-project");
     }
