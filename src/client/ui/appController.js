@@ -76,6 +76,7 @@ const recommendationsState = document.createElement("p");
 const recommendationsCards = document.createElement("div");
 const recommendationsToggleButton = document.createElement("button");
 const recommendationsDivider = document.createElement("div");
+const recommendationsContent = document.createElement("div");
 
 let definitions = [];
 let suggestionDefinitionIds = [];
@@ -576,7 +577,7 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
     ? `<p class="recommendation-reasons">${escapeHtml(recommendationReasons.slice(0, 2).join(" • "))}</p>`
     : "";
   const cardMetaText = isRecommended
-    ? `Score: ${Number(recommendationScore) || 0}`
+    ? `#${recommendationRank} (Score: ${Number(recommendationScore) || 0})`
     : statusLabel(definition.status, definition.source);
   const cardActions = isRecommended
     ? ""
@@ -620,23 +621,20 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
 }
 
 function updateRecommendationsToggleLabel() {
-  recommendationsToggleButton.textContent = recommendationsVisible ? "Hide" : "Show";
-  recommendationsToggleButton.setAttribute("aria-label", recommendationsVisible ? "Hide recommendations" : "Show recommendations");
+  recommendationsToggleButton.textContent = recommendationsVisible ? "Hide Recommendations" : "Show Recommendations";
+  recommendationsToggleButton.setAttribute("aria-label", recommendationsVisible ? "Hide Recommendations" : "Show Recommendations");
 }
 
 function renderRecommendationSection() {
   updateRecommendationsToggleLabel();
+  recommendationsContent.hidden = !recommendationsVisible;
   const selectedProjectPath = String(devProjectInput.value || "").trim();
   const projectType = String(suggestionsMeta.projectType || "").trim().toLowerCase();
   recommendationsState.textContent = "";
   recommendationsState.hidden = true;
   recommendationsCards.innerHTML = "";
-  recommendationsCards.hidden = !recommendationsVisible;
 
   if (!recommendationsVisible) {
-    recommendationsMeta.textContent = selectedProjectPath
-      ? `Project: ${selectedProjectPath}${projectType ? ` · Type: ${projectType}` : ""}`
-      : "";
     return;
   }
 
@@ -714,6 +712,7 @@ function setupRecommendationsSection() {
   recommendationsToggleButton.className = "recommendations-toggle";
   recommendationsToggleButton.type = "button";
   recommendationsDivider.className = "recommendations-divider";
+  recommendationsContent.className = "recommendations-content";
 
   recommendationsTitle.textContent = "Recommended for current project";
   updateRecommendationsToggleLabel();
@@ -722,8 +721,9 @@ function setupRecommendationsSection() {
     renderRecommendationSection();
   });
 
-  recommendationsHeader.append(recommendationsTitle, recommendationsMeta, recommendationsToggleButton);
-  recommendationsSection.append(recommendationsHeader, recommendationsState, recommendationsCards);
+  recommendationsHeader.append(recommendationsToggleButton);
+  recommendationsContent.append(recommendationsHeader, recommendationsTitle, recommendationsMeta, recommendationsState, recommendationsCards);
+  recommendationsSection.append(recommendationsContent);
 
   cardsContainer.parentNode?.insertBefore(recommendationsSection, cardsContainer);
   cardsContainer.parentNode?.insertBefore(recommendationsDivider, cardsContainer);

@@ -147,6 +147,11 @@
   margin-bottom: 24px;
 }
 
+.recommendations-content {
+  display: flex;
+  flex-direction: column;
+}
+
 .recommendations-header {
   display: flex;
   flex-wrap: wrap;
@@ -173,6 +178,9 @@
 
 .recommendations-grid {
   margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, 240px);
+  gap: 10px;
+  justify-content: center;
 }
 
 .recommendation-meta {
