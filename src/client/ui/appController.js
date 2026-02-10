@@ -80,7 +80,8 @@ const recommendationsContent = document.createElement("div");
 let definitions = [];
 let suggestionDefinitionIds = [];
 let suggestionsMeta = { projectPath: "", projectType: "", suggestions: [] };
-let recommendationsVisible = false;
+const RECOMMENDATIONS_VISIBILITY_STORAGE_KEY = "dcc.recommendations.visible";
+let recommendationsVisible = getStoredRecommendationsVisibility();
 let activeFilter = "all";
 let searchTerm = "";
 let devProjects = [];
@@ -101,6 +102,22 @@ let currentDefinitionVersions = [];
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const MAX_CARD_TAG_PILLS = 3;
+
+function getStoredRecommendationsVisibility() {
+  try {
+    return localStorage.getItem(RECOMMENDATIONS_VISIBILITY_STORAGE_KEY) === "true";
+  } catch (_error) {
+    return false;
+  }
+}
+
+function persistRecommendationsVisibility(value) {
+  try {
+    localStorage.setItem(RECOMMENDATIONS_VISIBILITY_STORAGE_KEY, String(Boolean(value)));
+  } catch (_error) {
+    // Ignore local storage access errors and keep the in-memory state.
+  }
+}
 
 function normalizeFilterType(type) {
   const normalized = String(type || "").trim().toLowerCase();
@@ -720,6 +737,7 @@ function setupRecommendationsSection() {
   updateRecommendationsToggleLabel();
   recommendationsToggleButton.addEventListener("click", () => {
     recommendationsVisible = !recommendationsVisible;
+    persistRecommendationsVisibility(recommendationsVisible);
     renderRecommendationSection();
   });
 
