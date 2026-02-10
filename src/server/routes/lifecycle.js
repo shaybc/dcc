@@ -9,7 +9,7 @@ import { getSetting } from "../utils/settings.js";
 import { getProjectDestinationInfo, deriveConfigOutputFileName } from "../definitions/install.js";
 import { upsertContextProviders, removeContextProviders, buildMergedConfigContent } from "../definitions/context.js";
 import { stripDccProjectMetadata, extractDccUriFromDefinitionContent } from "../definitions/metadata.js";
-import { updateDefinitionNameInContent, sanitizeDuplicateFileName, sanitizeYamlHeaderScalars, bumpPatchVersion, applyVersionToContent } from "../definitions/content.js";
+import { updateDefinitionNameInContent, updateDefinitionMetadataInContent, sanitizeDuplicateFileName, sanitizeYamlHeaderScalars, bumpPatchVersion, applyVersionToContent } from "../definitions/content.js";
 import { loadDefinitions } from "../definitions/index.js";
 import { normalizeDefinitionType, buildKey, deriveType } from "../definitions/parse.js";
 import { refreshDefinitionVersionCache } from "../versions/cache.js";
@@ -40,6 +40,12 @@ router.post("/api/definitions/:id/duplicate", async (req, res) => {
       return;
     }
 
+    const nextDccUri = String(req.body?.dccUri || "").trim();
+    if (!nextDccUri) {
+      res.status(400).json({ error: "Definition dcc_uri is required." });
+      return;
+    }
+
     const sourceFilePath = path.resolve(row.filePath || "");
     if (!fs.existsSync(sourceFilePath)) {
       await loadDefinitions();
@@ -56,14 +62,32 @@ router.post("/api/definitions/:id/duplicate", async (req, res) => {
 
     try {
       const originalContent = await fsp.readFile(sourceFilePath, "utf8");
-      const duplicatedContent = updateDefinitionNameInContent(originalContent, nextFileName, nextName);
+      const requestedContent = String(req.body?.content || "");
+      const baseContent = requestedContent.trim() ? requestedContent : updateDefinitionNameInContent(originalContent, nextFileName, nextName);
+      const duplicatedContent = updateDefinitionMetadataInContent(baseContent, nextFileName, {
+        name: nextName,
+        dccUri: nextDccUri
+      });
       await fsp.writeFile(targetPath, duplicatedContent, "utf8");
 
       await loadDefinitions();
 
-      const duplicatedKey = buildKey(deriveType(targetPath, { type: row.type }), targetPath);
+      const duplicatedType = deriveType(targetPath, { type: row.type });
+      const duplicatedKey = buildKey(duplicatedType, targetPath, { dccUri: nextDccUri });
       const duplicatedRow = await getDb("SELECT id FROM definitions WHERE key = ?", [duplicatedKey]);
       if (!duplicatedRow) {
+        const fallbackRow = await getDb("SELECT id FROM definitions WHERE filePath = ?", [targetPath]);
+        if (fallbackRow?.id) {
+          res.json({ ok: true, id: fallbackRow.id, message: "Definition duplicated." });
+          return;
+        }
+        console.error("[definition-duplicate] duplicated file indexed with unexpected key", {
+          sourceId: row.id,
+          expectedKey: duplicatedKey,
+          filePath: targetPath,
+          type: duplicatedType,
+          dccUri: nextDccUri
+        });
         res.status(500).json({ error: "Definition duplicated but could not be indexed." });
         return;
       }
