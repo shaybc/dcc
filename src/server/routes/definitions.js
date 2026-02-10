@@ -46,7 +46,7 @@ router.get("/api/definitions", async (req, res) => {
   try {
     const currentDevProject = await getSetting("currentDevProject");
     const definitionsRows = await allDb(
-      "SELECT id, key, name, description, tags, schema, version, type, filePath, source, inTeam, status FROM definitions"
+      "SELECT id, key, name, description, tags, schema, version, type, filePath, source, repoId, repoName, inTeam, status FROM definitions"
     );
 
     if (!currentDevProject) {
