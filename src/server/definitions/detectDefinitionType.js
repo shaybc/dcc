@@ -32,18 +32,6 @@ export function detectDefinitionType(content = "", filePath = "") {
 
   const data = YAML.parse(content || "") || {};
 
-  if (hasArrayWithValues(data.prompts)) {
-    return "prompt";
-  }
-
-  if (hasArrayWithValues(data.mcpServers)) {
-    return "mcpServer";
-  }
-
-  if (hasArrayWithValues(data.docs)) {
-    return "doc";
-  }
-
   const hasModels = hasArrayWithValues(data.models);
   const hasContext = hasArrayWithValues(data.context);
   const hasRules = hasArrayWithValues(data.rules);
@@ -54,6 +42,18 @@ export function detectDefinitionType(content = "", filePath = "") {
   const configType = String(data?.dcc_config_type || data?.dcc?.config_type || "").toLowerCase();
   if (hasConfigRefs || ["agents", "ide"].includes(configType) || String(data?.dcc_uri || "").toLowerCase().startsWith("configs/")) {
     return "config";
+  }
+
+  if (hasArrayWithValues(data.prompts)) {
+    return "prompt";
+  }
+
+  if (hasArrayWithValues(data.mcpServers)) {
+    return "mcpServer";
+  }
+
+  if (hasArrayWithValues(data.docs)) {
+    return "doc";
   }
 
   if (hasModels && hasContext && hasRules) {
