@@ -31,7 +31,7 @@ let unknown = {};
 let availableTags = [];
 let definitionReferences = [];
 const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
-const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description"];
+const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags"];
 
 initLoadingService();
 
