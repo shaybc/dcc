@@ -47,11 +47,26 @@ export async function saveDefinition({
     throw new Error("Definition path must be inside repository.");
   }
 
+  const relativePath = path.relative(absoluteRepoPath, absoluteDefinitionPath);
+  const trackedInGit = await runCommand(`git ls-files --error-unmatch ${quoteShellValue(relativePath)}`, { cwd: absoluteRepoPath })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!trackedInGit) {
+    await fs.writeFile(absoluteDefinitionPath, content, "utf8");
+    return {
+      message: "Definition saved locally as untracked file.",
+      content,
+      path: absoluteDefinitionPath,
+      relativePath,
+      git: "untracked"
+    };
+  }
+
   const bumpedContent = bumpVersionInContent(content, format);
   await runCommand("git pull", { cwd: absoluteRepoPath });
   await fs.writeFile(absoluteDefinitionPath, bumpedContent, "utf8");
 
-  const relativePath = path.relative(absoluteRepoPath, absoluteDefinitionPath);
   await runCommand(`git add ${quoteShellValue(relativePath)}`, { cwd: absoluteRepoPath });
   await runCommand(`git commit -m ${quoteShellValue(`Update ${relativePath}`)}`, { cwd: absoluteRepoPath });
   await runCommand("git push", { cwd: absoluteRepoPath });
