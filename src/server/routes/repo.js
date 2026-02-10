@@ -1,27 +1,29 @@
 import fs from "fs";
 import express from "express";
 import { runCommand } from "../utils/git.js";
-import { getSetting } from "../utils/settings.js";
+import { ensureAssetRepoMigration, getEnabledAssetRepos } from "../utils/assetRepos.js";
 import { loadDefinitions } from "../definitions/index.js";
 
 const router = express.Router();
 
 router.post("/api/clone-pull", async (req, res) => {
   try {
-    const repoUrl = await getSetting("repoUrl");
-    const repoPath = await getSetting("repoPath");
-    if (!repoUrl || !repoPath) {
-      res.status(400).json({ error: "Missing repoUrl or repoPath in settings." });
+    await ensureAssetRepoMigration();
+    const repos = await getEnabledAssetRepos();
+    if (repos.length === 0) {
+      res.status(400).json({ error: "No enabled asset repositories found in settings." });
       return;
     }
 
-    if (!fs.existsSync(repoPath)) {
-      await runCommand(`git clone ${repoUrl} ${repoPath}`);
-    } else {
-      await runCommand("git pull", { cwd: repoPath });
+    for (const repo of repos) {
+      if (!fs.existsSync(repo.localPath)) {
+        await runCommand(`git clone ${repo.remoteUrl} ${repo.localPath}`);
+      } else {
+        await runCommand("git pull", { cwd: repo.localPath });
+      }
     }
 
-    res.json({ ok: true });
+    res.json({ ok: true, synced: repos.length });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

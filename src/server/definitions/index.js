@@ -4,7 +4,7 @@ import db from "../db/index.js";
 import { runDb } from "../db/helpers.js";
 import { runCommand } from "../utils/git.js";
 import { walkFiles } from "../utils/files.js";
-import { getSetting } from "../utils/settings.js";
+import { ensureAssetRepoMigration, getEnabledAssetRepos } from "../utils/assetRepos.js";
 import { getTeamRoot } from "./install.js";
 import { parseDefinition } from "./parse.js";
 
@@ -15,19 +15,30 @@ export async function collectTeamFiles() {
 }
 
 export async function loadDefinitions() {
-  const repoPath = await getSetting("repoPath");
-  if (!repoPath || !fs.existsSync(repoPath)) throw new Error("Repo path not found. Configure settings and clone the repo first.");
-  const repoFiles = await walkFiles(repoPath);
-  const teamFiles = await collectTeamFiles();
-  const normalizedRepoFiles = repoFiles.filter((filePath) => !filePath.includes(path.join(repoPath, ".git")));
-  const trackedRepoFiles = new Set();
-  try {
-    const trackedOutput = await runCommand("git ls-files -z", { cwd: repoPath });
-    for (const relativePath of trackedOutput.split("\0").filter(Boolean)) trackedRepoFiles.add(path.resolve(repoPath, relativePath));
-  } catch (_error) {
-    for (const filePath of normalizedRepoFiles) trackedRepoFiles.add(path.resolve(filePath));
+  await ensureAssetRepoMigration();
+  const enabledRepos = await getEnabledAssetRepos();
+  const availableRepos = enabledRepos.filter((repo) => fs.existsSync(repo.localPath));
+  if (availableRepos.length === 0) {
+    throw new Error("No cloned enabled asset repositories found. Configure settings and clone repositories first.");
   }
-  const repoDefinitions = (await Promise.all(normalizedRepoFiles.map((filePath) => parseDefinition(filePath))))
+
+  const repoFiles = [];
+  const trackedRepoFiles = new Set();
+  for (const repo of availableRepos) {
+    const files = await walkFiles(repo.localPath);
+    repoFiles.push(...files.filter((filePath) => !filePath.includes(path.join(repo.localPath, ".git"))));
+    try {
+      const trackedOutput = await runCommand("git ls-files -z", { cwd: repo.localPath });
+      for (const relativePath of trackedOutput.split("\0").filter(Boolean)) {
+        trackedRepoFiles.add(path.resolve(repo.localPath, relativePath));
+      }
+    } catch (_error) {
+      for (const filePath of files) trackedRepoFiles.add(path.resolve(filePath));
+    }
+  }
+
+  const teamFiles = await collectTeamFiles();
+  const repoDefinitions = (await Promise.all(repoFiles.map((filePath) => parseDefinition(filePath))))
     .filter((definition) => definition.dccUri);
   const teamDefinitions = await Promise.all(teamFiles.map((filePath) => parseDefinition(filePath)));
   const repoKeyMap = new Map(repoDefinitions.map((definition) => [definition.key, definition.filePath]));
@@ -96,5 +107,5 @@ export async function loadDefinitions() {
 
   await runDb("DELETE FROM project_definition_copies WHERE definitionKey NOT IN (SELECT key FROM definitions)");
 
-  return { repoCount: normalizedRepoFiles.length, teamCount: teamFiles.length };
+  return { repoCount: repoFiles.length, teamCount: teamFiles.length, repoRoots: availableRepos.map((repo) => repo.localPath) };
 }

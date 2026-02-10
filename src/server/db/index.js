@@ -21,6 +21,17 @@ db.serialize(() => {
     )`
   );
   db.run(
+    `CREATE TABLE IF NOT EXISTS asset_repos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      remoteUrl TEXT NOT NULL,
+      localPath TEXT NOT NULL UNIQUE,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    )`
+  );
+  db.run(
     `CREATE TABLE IF NOT EXISTS definitions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key TEXT UNIQUE,
