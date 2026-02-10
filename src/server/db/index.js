@@ -1,0 +1,106 @@
+import path from "path";
+import fs from "fs";
+import sqliteUV from "sqlite3";
+
+const __dirname = import.meta.dirname;
+const sqlite3 = sqliteUV.verbose();
+const DB_PATH = process.env.DCC_DB_PATH || path.join(__dirname, "../../../data", "dcc.sqlite");
+const DATA_DIR = path.dirname(DB_PATH);
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const db = new sqlite3.Database(DB_PATH);
+
+db.serialize(() => {
+  db.run(
+    `CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    )`
+  );
+  db.run(
+    `CREATE TABLE IF NOT EXISTS definitions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT UNIQUE,
+      name TEXT,
+      description TEXT,
+      tags TEXT,
+      schema TEXT,
+      version TEXT,
+      content TEXT,
+      type TEXT,
+      filePath TEXT,
+      source TEXT,
+      inTeam INTEGER DEFAULT 0,
+      status TEXT,
+      updatedAt TEXT
+    )`
+  );
+  db.run(
+    `CREATE TABLE IF NOT EXISTS definition_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      definition_key TEXT NOT NULL,
+      version TEXT NOT NULL,
+      commit_hash TEXT,
+      commit_message TEXT,
+      commit_author TEXT,
+      commit_date TEXT,
+      content TEXT NOT NULL,
+      metadata TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (definition_key) REFERENCES definitions(key),
+      UNIQUE(definition_key, version)
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_def_versions_key ON definition_versions(definition_key)");
+  db.run("CREATE INDEX IF NOT EXISTS idx_def_versions_commit ON definition_versions(commit_hash)");
+  db.run(
+    `CREATE TABLE IF NOT EXISTS dev_project_roots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT UNIQUE
+    )`
+  );
+  db.run(
+    `CREATE TABLE IF NOT EXISTS dev_projects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT UNIQUE
+    )`
+  );
+  db.run(
+    `CREATE TABLE IF NOT EXISTS project_definition_copies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projectPath TEXT NOT NULL,
+      definitionKey TEXT NOT NULL,
+      copiedAt TEXT,
+      UNIQUE(projectPath, definitionKey)
+    )`
+  );
+  db.run(
+    `CREATE TABLE IF NOT EXISTS validation_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      definition_key TEXT NOT NULL,
+      definition_version TEXT,
+      status TEXT NOT NULL,
+      duration_ms INTEGER,
+      report_json TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (definition_key) REFERENCES definitions(key)
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_validation_results_def_key ON validation_results(definition_key)");
+  db.run("CREATE INDEX IF NOT EXISTS idx_validation_results_created ON validation_results(created_at)");
+
+  db.all("PRAGMA table_info(definitions)", (err, rows = []) => {
+    if (err) {
+      return;
+    }
+    const hasTagsColumn = rows.some((row) => row.name === "tags");
+    if (!hasTagsColumn) {
+      db.run("ALTER TABLE definitions ADD COLUMN tags TEXT", () => {});
+    }
+  });
+});
+
+export default db;
