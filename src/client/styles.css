@@ -120,6 +120,15 @@ header p {
 header .actions {
   grid-column: 3;
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+header .actions .btn {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }
 
 .dev-project-picker {
