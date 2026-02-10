@@ -140,9 +140,38 @@
 }
 
 .new-menu-wrap { position: relative; display: inline-block; }
-.new-menu { position: absolute; right: 0; top: 40px; min-width: 170px; background: var(--panel-bg, #161b22); border: 1px solid #30363d; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; z-index: 20; }
-.new-menu button { background: transparent; border: 0; color: inherit; text-align: left; padding: 8px; border-radius: 6px; cursor: pointer; }
-.new-menu button:hover { background: rgba(255,255,255,.08); }
+.new-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  min-width: 196px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 20;
+}
+
+.new-menu button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: inherit;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.new-menu button:hover {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.4);
+}
 .new-menu[hidden] { display: none !important; }
 
 .new-definition-btn {
