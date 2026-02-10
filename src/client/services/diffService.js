@@ -57,6 +57,48 @@ function buildLineDiff(fromText, toText, ignoreWhitespace = false) {
   return { rows, stats: { added, removed, modified } };
 }
 
+function highlightModifiedPair(oldContent, newContent) {
+  const oldValue = String(oldContent || "");
+  const newValue = String(newContent || "");
+
+  let prefix = 0;
+  while (
+    prefix < oldValue.length
+    && prefix < newValue.length
+    && oldValue[prefix] === newValue[prefix]
+  ) {
+    prefix += 1;
+  }
+
+  let suffix = 0;
+  while (
+    suffix < (oldValue.length - prefix)
+    && suffix < (newValue.length - prefix)
+    && oldValue[oldValue.length - 1 - suffix] === newValue[newValue.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+
+  const oldPrefix = oldValue.slice(0, prefix);
+  const newPrefix = newValue.slice(0, prefix);
+  const oldChanged = oldValue.slice(prefix, oldValue.length - suffix);
+  const newChanged = newValue.slice(prefix, newValue.length - suffix);
+  const oldSuffix = oldValue.slice(oldValue.length - suffix);
+  const newSuffix = newValue.slice(newValue.length - suffix);
+
+  const oldMiddle = oldChanged
+    ? `<span class="diff-word-removed">${escapeHtml(oldChanged)}</span>`
+    : "";
+  const newMiddle = newChanged
+    ? `<span class="diff-word-added">${escapeHtml(newChanged)}</span>`
+    : "";
+
+  return {
+    oldHtml: `${escapeHtml(oldPrefix)}${oldMiddle}${escapeHtml(oldSuffix)}`,
+    newHtml: `${escapeHtml(newPrefix)}${newMiddle}${escapeHtml(newSuffix)}`
+  };
+}
+
 export function createDiffService(config) {
   const state = {
     enabled: false,
@@ -105,7 +147,9 @@ export function createDiffService(config) {
   }
 
   function collectChangeNodes() {
-    state.renderedChangeNodes = [...els.diffContainer.querySelectorAll(".diff-line-added, .diff-line-removed, .diff-line-modified")];
+    state.renderedChangeNodes = [...els.diffContainer.querySelectorAll(
+      ".diff-line-added, .diff-line-removed, .diff-line-modified, .diff-line-modified-old, .diff-line-modified-new"
+    )];
     state.changeIndex = 0;
     updateChangeCounter();
   }
@@ -122,10 +166,21 @@ export function createDiffService(config) {
 
   function renderSideBySide(rows) {
     const left = rows.map((row) => {
+      if (row.type === "modified") {
+        const highlighted = highlightModifiedPair(row.oldContent, row.newContent);
+        return `<div class="diff-line diff-line-modified-old"><div class="diff-line-number">${row.oldLineNum || ""}</div><div class="diff-line-content">${highlighted.oldHtml}</div></div>`;
+      }
+
       const type = row.type === "added" ? "empty" : row.type;
       return `<div class="diff-line diff-line-${type}"><div class="diff-line-number">${row.oldLineNum || ""}</div><div class="diff-line-content">${escapeHtml(row.oldContent)}</div></div>`;
     }).join("");
+
     const right = rows.map((row) => {
+      if (row.type === "modified") {
+        const highlighted = highlightModifiedPair(row.oldContent, row.newContent);
+        return `<div class="diff-line diff-line-modified-new"><div class="diff-line-number">${row.newLineNum || ""}</div><div class="diff-line-content">${highlighted.newHtml}</div></div>`;
+      }
+
       const type = row.type === "removed" ? "empty" : row.type;
       return `<div class="diff-line diff-line-${type}"><div class="diff-line-number">${row.newLineNum || ""}</div><div class="diff-line-content">${escapeHtml(row.newContent)}</div></div>`;
     }).join("");
@@ -158,11 +213,30 @@ export function createDiffService(config) {
   }
 
   function renderInline(rows) {
-    const html = rows.map((row) => `<div class="diff-line diff-line-${row.type}">
-      <div class="diff-line-number old">${row.oldLineNum || ""}</div>
-      <div class="diff-line-number">${row.newLineNum || ""}</div>
-      <div class="diff-line-content">${escapeHtml(row.type === "added" ? row.newContent : row.oldContent)}</div>
-    </div>`).join("");
+    const html = rows.map((row) => {
+      if (row.type === "modified") {
+        const highlighted = highlightModifiedPair(row.oldContent, row.newContent);
+        return `
+          <div class="diff-line diff-line-removed">
+            <div class="diff-line-number old">${row.oldLineNum || ""}</div>
+            <div class="diff-line-number"></div>
+            <div class="diff-line-content">${highlighted.oldHtml}</div>
+          </div>
+          <div class="diff-line diff-line-added">
+            <div class="diff-line-number old"></div>
+            <div class="diff-line-number">${row.newLineNum || ""}</div>
+            <div class="diff-line-content">${highlighted.newHtml}</div>
+          </div>
+        `;
+      }
+
+      const content = row.type === "added" ? row.newContent : row.oldContent;
+      return `<div class="diff-line diff-line-${row.type}">
+        <div class="diff-line-number old">${row.oldLineNum || ""}</div>
+        <div class="diff-line-number">${row.newLineNum || ""}</div>
+        <div class="diff-line-content">${escapeHtml(content)}</div>
+      </div>`;
+    }).join("");
     els.diffContainer.innerHTML = `<div class="diff-inline">${html}</div>`;
   }
 
