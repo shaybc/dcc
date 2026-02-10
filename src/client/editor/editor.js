@@ -10,6 +10,7 @@ import { createWorkflowForm } from "./forms/workflowForm.js";
 import { createContextForm } from "./forms/contextForm.js";
 import { createDocForm } from "./forms/docForm.js";
 import { createConfigForm } from "./forms/configForm.js";
+import { initLoadingService, runWithLoading } from "../services/loadingService.js";
 
 const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode") || "create";
@@ -30,6 +31,8 @@ let unknown = {};
 let availableTags = [];
 let definitionReferences = [];
 const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
+
+initLoadingService();
 
 function typeDisplayLabel(type) {
   if (type === "mcpServer") return "MCP Server";
@@ -469,7 +472,16 @@ async function boot() {
   console.debug(`${TAG_DEBUG_PREFIX} boot: initializing form type`, definitionType, "with tags count", availableTags.length);
 
   if (mode === "edit") {
-    const response = await fetch(`/api/editor/definition?path=${encodeURIComponent(pathParam)}`);
+    const response = await runWithLoading(
+      async () => fetch(`/api/editor/definition?path=${encodeURIComponent(pathParam)}`),
+      {
+        title: "Loading definition...",
+        description: "Fetching definition content.",
+      }
+    );
+    if (!response) {
+      return;
+    }
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "Unable to load definition.");
     definitionType = payload.type;
@@ -495,11 +507,21 @@ document.getElementById("saveButton").addEventListener("click", async () => {
     return;
   }
 
-  const response = await fetch("/api/editor/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode, path: pathParam, content: rawText.value, format, filename, targetPath })
-  });
+  const response = await runWithLoading(
+    async () => fetch("/api/editor/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode, path: pathParam, content: rawText.value, format, filename, targetPath })
+    }),
+    {
+      title: mode === "create" ? "Creating definition..." : "Saving definition...",
+      description: "Writing definition changes to repository.",
+      timeout: 120000,
+    }
+  );
+  if (!response) {
+    return;
+  }
   const payload = await response.json();
   if (!response.ok) {
     parseError.hidden = false;

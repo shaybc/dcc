@@ -1,3 +1,10 @@
+import {
+  getDefaultTimeout,
+  initLoadingService,
+  runWithLoading,
+  setDefaultTimeout,
+} from "./services/loadingService.js";
+
 const repoUrlInput = document.getElementById("repoUrl");
 const repoPathInput = document.getElementById("repoPath");
 const settingsForm = document.getElementById("settingsForm");
@@ -11,6 +18,10 @@ const saveDevRootsButton = document.getElementById("saveDevRoots");
 const devRootsNotice = document.getElementById("devRootsNotice");
 const themeToggle = document.getElementById("themeToggle");
 const themeToggleLabel = document.getElementById("themeToggleLabel");
+const loadingTimeoutInput = document.getElementById("loadingTimeoutInput");
+const saveLoadingTimeoutButton = document.getElementById("saveLoadingTimeoutBtn");
+
+initLoadingService();
 
 function setNotice(message, isError = false) {
   notice.textContent = message;
@@ -115,17 +126,27 @@ settingsForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const repoUrl = repoUrlInput.value.trim();
   const repoPath = repoPathInput.value.trim();
-  const response = await fetch("/api/settings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoUrl, repoPath })
-  });
+
+  const response = await runWithLoading(
+    async () => fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repoUrl, repoPath })
+    }),
+    {
+      title: "Saving settings...",
+      description: "Updating repository configuration.",
+    }
+  );
+
+  if (!response) return;
   if (response.ok) {
     setNotice("Settings saved.");
-  } else {
-    const data = await response.json();
-    setNotice(data.error || "Failed to save settings.", true);
+    return;
   }
+
+  const data = await response.json();
+  setNotice(data.error || "Failed to save settings.", true);
 });
 
 addDevRootButton.addEventListener("click", () => {
@@ -137,43 +158,89 @@ saveDevRootsButton.addEventListener("click", async () => {
   const roots = rows
     .map((row) => row.querySelector("input")?.value.trim())
     .filter((value) => value);
+
   setDevRootsNotice("Saving roots and scanning projects...");
-  const response = await fetch("/api/dev-project-roots", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ roots })
-  });
+  const response = await runWithLoading(
+    async () => fetch("/api/dev-project-roots", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roots })
+    }),
+    {
+      title: "Saving project roots...",
+      description: "Scanning for development projects.",
+      timeout: 120000,
+    }
+  );
+
+  if (!response) return;
   if (response.ok) {
     const data = await response.json();
     setDevRootsNotice("Roots saved. Project scan complete.");
     renderDevProjects(data.projects || []);
-  } else {
-    const data = await response.json();
-    setDevRootsNotice(data.error || "Failed to save roots.", true);
+    return;
   }
+
+  const data = await response.json();
+  setDevRootsNotice(data.error || "Failed to save roots.", true);
 });
 
 clonePullButton.addEventListener("click", async () => {
   setNotice("Syncing repository...");
-  const response = await fetch("/api/clone-pull", { method: "POST" });
+  const response = await runWithLoading(
+    async () => fetch("/api/clone-pull", { method: "POST" }),
+    {
+      title: "Syncing repository...",
+      description: "Cloning or pulling latest changes.",
+      timeout: 180000,
+    }
+  );
+
+  if (!response) return;
   if (response.ok) {
     setNotice("Repository synced.");
-  } else {
-    const data = await response.json();
-    setNotice(data.error || "Sync failed.", true);
+    return;
   }
+
+  const data = await response.json();
+  setNotice(data.error || "Sync failed.", true);
 });
 
 loadDefinitionsButton.addEventListener("click", async () => {
   setNotice("Loading definitions...");
-  const response = await fetch("/api/load-definitions", { method: "POST" });
+  const response = await runWithLoading(
+    async () => fetch("/api/load-definitions", { method: "POST" }),
+    {
+      title: "Loading definitions...",
+      description: "Importing repository definitions into DCC.",
+      timeout: 120000,
+    }
+  );
+
+  if (!response) return;
   if (response.ok) {
     setNotice("Definitions loaded.");
-  } else {
-    const data = await response.json();
-    setNotice(data.error || "Load failed.", true);
+    return;
   }
+
+  const data = await response.json();
+  setNotice(data.error || "Load failed.", true);
 });
 
-loadSettings();
-loadDevProjects();
+if (loadingTimeoutInput) {
+  loadingTimeoutInput.value = String(Math.round(getDefaultTimeout() / 1000));
+}
+
+saveLoadingTimeoutButton?.addEventListener("click", () => {
+  const timeoutSeconds = Number(loadingTimeoutInput?.value || 0);
+  if (!Number.isFinite(timeoutSeconds) || timeoutSeconds < 15 || timeoutSeconds > 300) {
+    setNotice("Timeout must be between 15 and 300 seconds.", true);
+    return;
+  }
+  setDefaultTimeout(timeoutSeconds * 1000);
+  setNotice("Loading timeout updated.");
+});
+
+Promise.all([loadSettings(), loadDevProjects()]).catch(() => {
+  setNotice("Failed to load settings.", true);
+});

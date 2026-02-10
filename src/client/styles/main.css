@@ -31,6 +31,7 @@
 @import "./components/toggles.css";
 @import "./components/validation.css";
 @import "./components/modals.css";
+@import "./components/loading-overlay.css";
 
 /* Sections */
 @import "./sections/detail-page.css";

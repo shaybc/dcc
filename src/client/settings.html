@@ -45,6 +45,17 @@
         <p class="notice" id="settingsNotice"></p>
       </form>
 
+
+      <section class="settings-section">
+        <h2>Loading Timeout</h2>
+        <p class="helper-text">Configure how long async operations can run before timing out.</p>
+        <div class="table-actions">
+          <label for="loadingTimeoutInput">Timeout (seconds)</label>
+          <input id="loadingTimeoutInput" type="number" min="15" max="300" step="15" value="60" />
+          <button class="btn btn-primary" type="button" id="saveLoadingTimeoutBtn">Save timeout</button>
+        </div>
+      </section>
+
       <section class="settings-section">
         <h2>Development Project Roots</h2>
         <p class="helper-text">Add folders that contain development projects. Changes trigger a rescan.</p>
@@ -78,6 +89,42 @@
       </section>
     </main>
 
-    <script src="/settings.js"></script>
+    <script type="module" src="/settings.js"></script>
+  
+    <div id="loadingOverlay" class="loading-overlay hidden" aria-live="polite" aria-busy="false" aria-hidden="true">
+      <div class="loading-content" role="status">
+        <div class="loading-spinner" aria-hidden="true">
+          <svg class="spinner-icon" viewBox="0 0 50 50">
+            <circle class="spinner-path" cx="25" cy="25" r="20" fill="none" stroke-width="4"></circle>
+          </svg>
+        </div>
+        <div class="loading-message">
+          <h3 id="loadingTitle">Processing...</h3>
+          <p id="loadingDescription" class="loading-description"></p>
+        </div>
+        <div id="loadingProgress" class="loading-progress hidden">
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+          <span class="progress-text">0%</span>
+        </div>
+        <div id="loadingTimeoutWarning" class="loading-timeout-warning hidden">
+          <p>This is taking longer than expected...</p>
+          <button class="btn btn-sm" id="extendTimeoutBtn" type="button">Wait Longer</button>
+          <button class="btn btn-sm" id="cancelOperationBtn" type="button">Cancel</button>
+        </div>
+        <div id="loadingError" class="loading-error hidden" aria-live="assertive">
+          <svg class="error-icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" stroke-width="2"></circle>
+            <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" stroke-width="2"></path>
+          </svg>
+          <h3>Operation Failed</h3>
+          <p id="loadingErrorMessage"></p>
+          <div class="error-actions">
+            <button class="btn btn-primary" id="retryOperationBtn" type="button">Retry</button>
+            <button class="btn" id="dismissErrorBtn" type="button">Dismiss</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </body>
 </html>
