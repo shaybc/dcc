@@ -72,9 +72,22 @@ router.post("/api/definitions/:id/duplicate", async (req, res) => {
 
       await loadDefinitions();
 
-      const duplicatedKey = buildKey(deriveType(targetPath, { type: row.type }), targetPath);
+      const duplicatedType = deriveType(targetPath, { type: row.type });
+      const duplicatedKey = buildKey(duplicatedType, targetPath, { dccUri: nextDccUri });
       const duplicatedRow = await getDb("SELECT id FROM definitions WHERE key = ?", [duplicatedKey]);
       if (!duplicatedRow) {
+        const fallbackRow = await getDb("SELECT id FROM definitions WHERE filePath = ?", [targetPath]);
+        if (fallbackRow?.id) {
+          res.json({ ok: true, id: fallbackRow.id, message: "Definition duplicated." });
+          return;
+        }
+        console.error("[definition-duplicate] duplicated file indexed with unexpected key", {
+          sourceId: row.id,
+          expectedKey: duplicatedKey,
+          filePath: targetPath,
+          type: duplicatedType,
+          dccUri: nextDccUri
+        });
         res.status(500).json({ error: "Definition duplicated but could not be indexed." });
         return;
       }
