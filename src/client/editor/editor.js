@@ -31,6 +31,7 @@ let unknown = {};
 let availableTags = [];
 let definitionReferences = [];
 const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
+const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags"];
 
 initLoadingService();
 
@@ -190,6 +191,33 @@ function serializeContextEntries(entries) {
   });
 }
 
+function orderYamlDefinitionFields(data) {
+  const source = data && typeof data === "object" ? data : {};
+  const header = {};
+
+  for (const key of YAML_HEADER_KEYS) {
+    header[key] = source[key] == null ? "" : source[key];
+  }
+
+  const body = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (YAML_HEADER_KEYS.includes(key)) continue;
+    body[key] = value;
+  }
+
+  return { ...header, ...body };
+}
+
+function stringifyYamlDefinition(data) {
+  const document = new YAML.Document(orderYamlDefinitionFields(data));
+
+  if (document.contents && "items" in document.contents && document.contents.items.length > YAML_HEADER_KEYS.length) {
+    document.contents.items[YAML_HEADER_KEYS.length].spaceBefore = true;
+  }
+
+  return document.toString();
+}
+
 
 const handlers = {
   prompt: {
@@ -197,7 +225,7 @@ const handlers = {
     parse: (txt) => YAML.parse(txt || "") || {},
     serialize: (state) => {
       const { tags, ...rest } = state;
-      return YAML.stringify({
+      return stringifyYamlDefinition({
         ...unknown,
         ...rest,
         dcc_tags: normalizeStringArray(tags),
@@ -210,7 +238,7 @@ const handlers = {
     parse: (txt) => YAML.parse(txt || "") || {},
     serialize: (state) => {
       const { tags, ...rest } = state;
-      return YAML.stringify({
+      return stringifyYamlDefinition({
         ...unknown,
         ...rest,
         dcc_tags: normalizeStringArray(tags),
@@ -238,7 +266,7 @@ const handlers = {
       });
 
       const { tags, ...rest } = state;
-      return YAML.stringify({
+      return stringifyYamlDefinition({
         ...unknown,
         ...rest,
         dcc_tags: normalizeStringArray(tags),
@@ -251,7 +279,7 @@ const handlers = {
     parse: (txt) => YAML.parse(txt || "") || {},
     serialize: (state) => {
       const { tags, ...rest } = state;
-      return YAML.stringify({
+      return stringifyYamlDefinition({
         ...unknown,
         ...rest,
         dcc_tags: normalizeStringArray(tags),
@@ -267,7 +295,7 @@ const handlers = {
     parse: (txt) => YAML.parse(txt || "") || {},
     serialize: (state) => {
       const { tags, ...rest } = state;
-      return YAML.stringify({
+      return stringifyYamlDefinition({
         ...unknown,
         ...rest,
         dcc_tags: normalizeStringArray(tags),
@@ -280,7 +308,7 @@ const handlers = {
     parse: (txt) => YAML.parse(txt || "") || {},
     serialize: (state) => {
       const { tags, ...rest } = state;
-      return YAML.stringify({
+      return stringifyYamlDefinition({
         ...unknown,
         ...rest,
         dcc_tags: normalizeStringArray(tags),
@@ -293,7 +321,7 @@ const handlers = {
     parse: (txt) => YAML.parse(txt || "") || {},
     serialize: (state) => {
       const { tags, ...rest } = state;
-      return YAML.stringify({
+      return stringifyYamlDefinition({
         ...unknown,
         ...rest,
         dcc_tags: normalizeStringArray(tags),
