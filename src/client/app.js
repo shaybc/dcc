@@ -1423,13 +1423,15 @@ function openDuplicateDefinitionModal({ defaultName, defaultDccUri, defaultConte
   });
 }
 
-function createDuplicateDefaults(definitionName, definitionPath) {
+function createDuplicateDefaults(definitionName, definitionPath, definitionContent = "") {
   const defaultName = `${String(definitionName || "definition").trim() || "definition"}_copy`;
+  const currentDccUri = String(extractDccUriFromDefinitionContent(definitionContent, definitionPath) || "").trim();
+  const defaultDccUri = currentDccUri ? `${currentDccUri}_copy` : defaultName;
   const originalFileName = pathBasename(definitionPath) || "definition.md";
   const extension = pathExtname(originalFileName);
   const baseName = extension ? originalFileName.slice(0, -extension.length) : originalFileName;
   const defaultFileName = `${baseName}_copy${extension}`;
-  return { defaultName, defaultFileName };
+  return { defaultName, defaultDccUri, defaultFileName };
 }
 
 function pathBasename(filePath) {
@@ -1583,10 +1585,10 @@ duplicateDefinitionButton.addEventListener("click", async () => {
     return;
   }
 
-  const { defaultName, defaultFileName } = createDuplicateDefaults(currentDetailDefinitionName, currentDetailDefinitionPath);
+  const { defaultName, defaultDccUri, defaultFileName } = createDuplicateDefaults(currentDetailDefinitionName, currentDetailDefinitionPath, currentDetailDefinitionContent);
   const duplicateDetails = await openDuplicateDefinitionModal({
     defaultName,
-    defaultDccUri: defaultName,
+    defaultDccUri,
     defaultContent: currentDetailDefinitionContent
   });
   if (!duplicateDetails) {
