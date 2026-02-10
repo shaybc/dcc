@@ -628,6 +628,7 @@ function updateRecommendationsToggleLabel() {
 
 function renderRecommendationSection() {
   updateRecommendationsToggleLabel();
+  recommendationsSection.classList.toggle("is-collapsed", !recommendationsVisible);
   recommendationsContent.classList.toggle("is-collapsed", !recommendationsVisible);
   const selectedProjectPath = String(devProjectInput.value || "").trim();
   const projectType = String(suggestionsMeta.projectType || "").trim().toLowerCase();
@@ -712,6 +713,8 @@ function setupRecommendationsSection() {
   recommendationsCards.className = "grid recommendations-grid";
   recommendationsToggleButton.className = "recommendations-toggle";
   recommendationsToggleButton.type = "button";
+  recommendationsContent.id = "recommendations-content";
+  recommendationsToggleButton.setAttribute("aria-controls", recommendationsContent.id);
   recommendationsDivider.className = "recommendations-divider";
   recommendationsContent.className = "recommendations-content";
 
@@ -722,9 +725,9 @@ function setupRecommendationsSection() {
     renderRecommendationSection();
   });
 
-  recommendationsHeader.append(recommendationsToggleButton);
-  recommendationsContent.append(recommendationsHeader, recommendationsTitle, recommendationsMeta, recommendationsState, recommendationsCards);
-  recommendationsSection.append(recommendationsContent);
+  recommendationsHeader.append(recommendationsTitle, recommendationsToggleButton);
+  recommendationsContent.append(recommendationsMeta, recommendationsState, recommendationsCards);
+  recommendationsSection.append(recommendationsHeader, recommendationsContent);
 
   cardsContainer.parentNode?.insertBefore(recommendationsSection, cardsContainer);
   cardsContainer.parentNode?.insertBefore(recommendationsDivider, cardsContainer);
