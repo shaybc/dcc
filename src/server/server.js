@@ -23,14 +23,14 @@ app.use(express.static(path.join(__dirname, "../client"), {
 }));
 
 app.use("/v1", openaiRouter);
-app.use("/api", editorRouter);
-app.use("/api", settingsRouter);
-app.use("/api", projectsRouter);
-app.use("/api", repoRouter);
-app.use("/api", definitionsRouter);
-app.use("/api", lifecycleRouter);
-app.use("/api", validationRouter);
-app.use("/api", versionsRouter);
+app.use(editorRouter);
+app.use(settingsRouter);
+app.use(projectsRouter);
+app.use(repoRouter);
+app.use(definitionsRouter);
+app.use(lifecycleRouter);
+app.use(validationRouter);
+app.use(versionsRouter);
 
 app.get("/settings", (req, res) => {
   res.redirect("/?tab=settings");
