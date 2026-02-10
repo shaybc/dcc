@@ -1,3 +1,5 @@
+import { runWithLoading } from "../../services/loadingService.js";
+
 const PROMPT_ENHANCE_DEBUG_PREFIX = "[prompt-enhance]";
 
 function createClientRequestId() {
@@ -20,19 +22,29 @@ async function requestEnhancedPrompt({ userText, fieldLabel }) {
     `${PROMPT_ENHANCE_DEBUG_PREFIX} request:start id=${clientRequestId} field=${fieldLabel} input_len=${userText.length} prompt_len=${composedPrompt.length}`
   );
 
-  const response = await fetch("/v1/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-DCC-Feature": "prompt-enhance",
-      "X-DCC-Client-Request-Id": clientRequestId
-    },
-    body: JSON.stringify({
-      prompt: composedPrompt,
-      max_tokens: 2048,
-      temperature: 0.4
-    })
-  });
+  const response = await runWithLoading(
+    async () => fetch("/v1/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-DCC-Feature": "prompt-enhance",
+        "X-DCC-Client-Request-Id": clientRequestId
+      },
+      body: JSON.stringify({
+        prompt: composedPrompt,
+        max_tokens: 2048,
+        temperature: 0.4
+      })
+    }),
+    {
+      title: "Enhancing prompt...",
+      description: "AI is generating an improved version.",
+      timeout: 120000,
+    }
+  );
+  if (!response) {
+    throw new Error("Enhancement was cancelled.");
+  }
 
   console.info(
     `${PROMPT_ENHANCE_DEBUG_PREFIX} request:response id=${clientRequestId} status=${response.status} ok=${response.ok}`

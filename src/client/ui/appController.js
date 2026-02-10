@@ -1,3 +1,5 @@
+import { runWithLoading } from "../services/loadingService.js";
+
 const cardsContainer = document.getElementById("cards");
 const filtersContainer = document.getElementById("filters");
 const searchInput = document.getElementById("search");
@@ -123,20 +125,28 @@ function parseErrorMessage(payload, fallbackMessage) {
   return fallbackMessage;
 }
 
-async function fetchWithErrorHandling(url, options = {}, fallbackMessage = "Request failed.") {
-  const response = await fetch(url, options);
-  let payload = null;
-  try {
-    payload = await response.json();
-  } catch (_error) {
-    payload = null;
+async function fetchWithErrorHandling(url, options = {}, fallbackMessage = "Request failed.", loadingOptions = null) {
+  const executeRequest = async () => {
+    const response = await fetch(url, options);
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (_error) {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      throw new Error(parseErrorMessage(payload, fallbackMessage));
+    }
+
+    return payload;
+  };
+
+  if (loadingOptions) {
+    return runWithLoading(executeRequest, loadingOptions);
   }
 
-  if (!response.ok) {
-    throw new Error(parseErrorMessage(payload, fallbackMessage));
-  }
-
-  return payload;
+  return executeRequest();
 }
 
 function parseDefinitionTags(rawTags) {
@@ -939,7 +949,11 @@ async function runValidationForCurrentDefinition() {
           },
         }),
       },
-      "Unable to validate definition."
+      "Unable to validate definition.",
+      {
+        title: "Running validation...",
+        description: "Checking schema, lint, and references.",
+      }
     );
     lastValidationResult = payload;
     renderValidationResult(payload);
@@ -1041,7 +1055,11 @@ function renderVersionBanner(historicalVersion) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ createNewVersion: true })
         },
-        "Unable to restore version."
+        "Unable to restore version.",
+        {
+          title: "Restoring version...",
+          description: "Applying selected historical version.",
+        }
       );
       window.alert(payload.message || "Version restored successfully.");
       await fetchDefinitions();
@@ -1066,7 +1084,11 @@ async function loadDefinitionVersion(version) {
   const payload = await fetchWithErrorHandling(
     `/api/definitions/${currentDetailDefinitionId}/versions/${encodeURIComponent(version)}`,
     {},
-    "Unable to load definition version."
+    "Unable to load definition version.",
+    {
+      title: "Loading version...",
+      description: "Fetching definition version from repository.",
+    }
   );
 
   activeHistoricalVersion = payload.version;
@@ -1153,7 +1175,11 @@ async function openVersionHistoryDropdown() {
   const payload = await fetchWithErrorHandling(
     `/api/definitions/${currentDetailDefinitionId}/versions`,
     {},
-    "Unable to load version history."
+    "Unable to load version history.",
+    {
+      title: "Loading version history...",
+      description: "Fetching commit history for this definition.",
+    }
   );
   const versions = Array.isArray(payload.versions) ? payload.versions : [];
   if (versions.length === 0) {
@@ -1322,19 +1348,31 @@ async function saveDefinition(id) {
     window.alert("Please select a project first.");
     return;
   }
-  await fetchWithErrorHandling(`/api/definitions/${id}/save`, { method: "POST" }, "Unable to save definition.");
+  await fetchWithErrorHandling(`/api/definitions/${id}/save`, { method: "POST" }, "Unable to save definition.", {
+    title: "Saving definition...",
+    description: "Installing definition in selected project.",
+  });
 }
 
 async function publishDefinition(id) {
-  await fetchWithErrorHandling(`/api/definitions/${id}/publish`, { method: "POST" }, "Unable to publish definition.");
+  await fetchWithErrorHandling(`/api/definitions/${id}/publish`, { method: "POST" }, "Unable to publish definition.", {
+    title: "Publishing definition...",
+    description: "Uploading definition to team repository.",
+  });
 }
 
 async function removeDefinition(id) {
-  await fetchWithErrorHandling(`/api/definitions/${id}/remove`, { method: "POST" }, "Unable to remove definition.");
+  await fetchWithErrorHandling(`/api/definitions/${id}/remove`, { method: "POST" }, "Unable to remove definition.", {
+    title: "Removing definition...",
+    description: "Removing definition from current project.",
+  });
 }
 
 async function deleteDefinitionFromRepo(id) {
-  await fetchWithErrorHandling(`/api/definitions/${id}/delete-repo`, { method: "POST" }, "Unable to delete definition.");
+  await fetchWithErrorHandling(`/api/definitions/${id}/delete-repo`, { method: "POST" }, "Unable to delete definition.", {
+    title: "Deleting definition...",
+    description: "Deleting definition from repository.",
+  });
 }
 
 
@@ -1343,7 +1381,10 @@ async function pushDefinitionToUpstream(id, commitMessage) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ commitMessage })
-  }, "Unable to push definition.");
+  }, "Unable to push definition.", {
+    title: "Pushing definition...",
+    description: "Pushing definition to upstream repository.",
+  });
 }
 
 
@@ -1457,7 +1498,10 @@ async function duplicateDefinition(id, { name, fileName, dccUri, content }) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, fileName, dccUri, content })
-  }, "Unable to duplicate definition.");
+  }, "Unable to duplicate definition.", {
+    title: "Duplicating definition...",
+    description: "Creating a copy of this definition.",
+  });
 }
 
 searchInput.addEventListener("input", (event) => {

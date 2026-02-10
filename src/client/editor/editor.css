@@ -1,3 +1,4 @@
+@import "/styles/components/loading-overlay.css";
 body { font-family: Arial, sans-serif; margin: 0; background: #0d1117; color: #e6edf3; }
 .editor-top { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-bottom:1px solid #30363d; }
 #editorTitle { display: inline-flex; align-items: center; gap: 10px; margin: 0; }
