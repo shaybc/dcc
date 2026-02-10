@@ -23,6 +23,9 @@ const EnvSchema = z.object({
   AI_LOG_REPLY_PREVIEW_CHARS: z.coerce.number().min(0).max(5000).default(100),
   OPENAI_RESPONSE_LOG_ENABLED: z.coerce.boolean().default(false),
 
+  // Project scanning
+  PROJECT_SCAN_AI_ENABLED: z.coerce.boolean().default(true),
+
   // Optional legacy vars (kept for compatibility with earlier drafts)
   OPENAI_SHIM_BASE_URL: z.string().optional().default(""),
   OPENAI_SHIM_API_KEY: z.string().optional().default("")
