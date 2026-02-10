@@ -68,8 +68,20 @@ const validationResults = document.getElementById("validationResults");
 const validationLastRun = document.getElementById("validationLastRun");
 const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
+const recommendationsSection = document.createElement("section");
+const recommendationsHeader = document.createElement("div");
+const recommendationsTitle = document.createElement("h2");
+const recommendationsMeta = document.createElement("p");
+const recommendationsState = document.createElement("p");
+const recommendationsCards = document.createElement("div");
+const recommendationsToggleButton = document.createElement("button");
+const recommendationsDivider = document.createElement("div");
+const recommendationsContent = document.createElement("div");
 
 let definitions = [];
+let suggestionDefinitionIds = [];
+let suggestionsMeta = { projectPath: "", projectType: "", suggestions: [] };
+let recommendationsVisible = true;
 let activeFilter = "all";
 let searchTerm = "";
 let devProjects = [];
@@ -495,6 +507,182 @@ function renderFilters() {
   });
 }
 
+function handleDefinitionCardClick(definition, event) {
+  const clickedTag = event.target.closest("[data-tag]");
+  if (clickedTag) {
+    event.stopPropagation();
+    setSearchValue(clickedTag.getAttribute("data-tag") || "");
+    renderCards();
+    return;
+  }
+
+  const pushAction = event.target.closest("[data-action-push]");
+  if (pushAction) {
+    event.stopPropagation();
+    const commitMessage = window.prompt("Commit message", `Add definition ${definition.name || ""}`);
+    if (commitMessage === null) {
+      return;
+    }
+    pushDefinitionToUpstream(definition.id, commitMessage)
+      .then(fetchDefinitions)
+      .catch((error) => {
+        window.alert(error.message || "Unable to push definition.");
+      });
+    return;
+  }
+
+  const saveAction = event.target.closest("[data-action-save]");
+  if (saveAction) {
+    event.stopPropagation();
+    const actionPromise = definition.status === "saved"
+      ? removeDefinition(definition.id)
+      : definition.status === "local-only"
+        ? publishDefinition(definition.id)
+        : saveDefinition(definition.id);
+
+    actionPromise
+      .then(fetchDefinitions)
+      .catch((error) => {
+        window.alert(error.message || "Action failed.");
+      });
+    return;
+  }
+
+  showDetails(definition.id)
+    .then(() => updateRouteForDetails(definition.id))
+    .catch((error) => {
+      window.alert(error.message || "Unable to open definition details.");
+    });
+}
+
+function createDefinitionCard(definition, { recommendationRank = null, recommendationScore = null, recommendationReasons = [] } = {}) {
+  const card = document.createElement("div");
+  card.className = "card";
+  const isRecommended = Number.isFinite(Number(recommendationRank)) && Number(recommendationRank) > 0;
+  if (isRecommended) {
+    card.classList.add("card-recommended");
+  }
+  if (String(definition.source || "").toLowerCase() === "untracked") {
+    card.classList.add("card-local-definition");
+  }
+  if (definition.status === "saved" && devProjectInput.value.trim()) {
+    card.classList.add("card-in-project");
+  }
+
+  const showPushAction = !isRecommended && String(definition.source || "").toLowerCase() === "untracked";
+  const recommendationMeta = recommendationRank !== null && !isRecommended
+    ? `<div class="recommendation-meta">#${recommendationRank} · Score ${recommendationScore || 0}</div>`
+    : "";
+  const recommendationReasonText = recommendationReasons.length > 0 && !isRecommended
+    ? `<p class="recommendation-reasons">${escapeHtml(recommendationReasons.slice(0, 2).join(" • "))}</p>`
+    : "";
+  const cardMetaText = isRecommended
+    ? `#${recommendationRank} (Score: ${Number(recommendationScore) || 0})`
+    : statusLabel(definition.status, definition.source);
+  const cardActions = isRecommended
+    ? ""
+    : `<div class="card-actions">
+      ${showPushAction ? `<div class="icon-btn" data-action-push title="Push to upstream" aria-label="Push to upstream">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 16V4" />
+          <path d="M5 9l5-5 5 5" />
+        </svg>
+      </div>` : ""}
+      <div class="icon-btn" data-action-save>
+        ${iconSvg(definition.status)}
+      </div>
+    </div>`;
+  const descriptionText = isRecommended ? "" : `<p>${getCardDescription(definition.description)}</p>`;
+  const tagsMarkup = (!isRecommended && definition.tags.length > 0)
+    ? `<div class="tag-pills card-tag-pills">${renderTagPills(definition.tags, { truncate: true })}</div>`
+    : "";
+
+  card.innerHTML = `
+    ${cardActions}
+    ${recommendationMeta}
+    <h3>${definition.name}</h3>
+    ${descriptionText}
+    ${recommendationReasonText}
+    ${tagsMarkup}
+    <div class="meta-row">
+      <div class="meta-status">${cardMetaText}</div>
+      <div class="type-pill ${typeClassName(definition.type)}">
+        <span class="type-pill-icon">${filterIconSvg(definition.type)}</span>
+        <span>${formatTypePillLabel(definition.type)}</span>
+      </div>
+    </div>
+  `;
+
+  card.addEventListener("click", (event) => {
+    handleDefinitionCardClick(definition, event);
+  });
+
+  return card;
+}
+
+function updateRecommendationsToggleLabel() {
+  recommendationsToggleButton.textContent = recommendationsVisible ? "Hide Recommendations" : "Show Recommendations";
+  recommendationsToggleButton.setAttribute("aria-label", recommendationsVisible ? "Hide Recommendations" : "Show Recommendations");
+  recommendationsToggleButton.setAttribute("aria-expanded", String(recommendationsVisible));
+}
+
+function renderRecommendationSection() {
+  updateRecommendationsToggleLabel();
+  recommendationsContent.classList.toggle("is-collapsed", !recommendationsVisible);
+  const selectedProjectPath = String(devProjectInput.value || "").trim();
+  const projectType = String(suggestionsMeta.projectType || "").trim().toLowerCase();
+  recommendationsState.textContent = "";
+  recommendationsState.hidden = true;
+  recommendationsCards.innerHTML = "";
+
+  if (!recommendationsVisible) {
+    return;
+  }
+
+  if (!selectedProjectPath) {
+    recommendationsState.hidden = false;
+    recommendationsState.textContent = "Select a dev project to see recommended definitions.";
+    recommendationsMeta.textContent = "";
+    return;
+  }
+
+  if (!projectType || projectType === "unknown") {
+    recommendationsState.hidden = false;
+    recommendationsState.textContent = "Project type is unknown, so recommendations are unavailable.";
+    recommendationsMeta.textContent = `Project: ${selectedProjectPath}`;
+    return;
+  }
+
+  const suggestionIdSet = new Set(suggestionDefinitionIds);
+  const suggestions = (Array.isArray(suggestionsMeta.suggestions) ? suggestionsMeta.suggestions : [])
+    .filter((entry) => suggestionIdSet.has(Number(entry.definitionId)));
+  if (suggestions.length === 0) {
+    recommendationsState.hidden = false;
+    recommendationsState.textContent = "No matching suggestions for this project type yet.";
+    recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}`;
+    return;
+  }
+
+  recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}`;
+
+  suggestions.forEach((suggestion, index) => {
+    const definition = definitions.find((item) => Number(item.id) === Number(suggestion.definitionId));
+    if (!definition) {
+      return;
+    }
+    recommendationsCards.appendChild(createDefinitionCard(definition, {
+      recommendationRank: index + 1,
+      recommendationScore: suggestion.score,
+      recommendationReasons: Array.isArray(suggestion.reasons) ? suggestion.reasons : []
+    }));
+  });
+
+  if (!recommendationsCards.childElementCount) {
+    recommendationsState.hidden = false;
+    recommendationsState.textContent = "No matching suggestions for available definitions.";
+  }
+}
+
 function renderCards() {
   const queryTags = parseTagSearchQuery(searchTerm);
   const tagOnlyMode = isTagOnlyQuery(queryTags);
@@ -508,87 +696,38 @@ function renderCards() {
   });
 
   cardsContainer.innerHTML = "";
-
   filtered.forEach((def) => {
-    const card = document.createElement("div");
-    card.className = "card";
-    if (String(def.source || "").toLowerCase() === "untracked") {
-      card.classList.add("card-local-definition");
-    }
-    if (def.status === "saved" && devProjectInput.value.trim()) {
-      card.classList.add("card-in-project");
-    }
-    const showPushAction = String(def.source || "").toLowerCase() === "untracked";
-    card.innerHTML = `
-      <div class="card-actions">
-        ${showPushAction ? `<div class="icon-btn" data-action-push title="Push to upstream" aria-label="Push to upstream">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10 16V4" />
-            <path d="M5 9l5-5 5 5" />
-          </svg>
-        </div>` : ""}
-        <div class="icon-btn" data-action-save>
-          ${iconSvg(def.status)}
-        </div>
-      </div>
-      <h3>${def.name}</h3>
-      <p>${getCardDescription(def.description)}</p>
-      ${def.tags.length > 0 ? `<div class="tag-pills card-tag-pills">${renderTagPills(def.tags, { truncate: true })}</div>` : ""}
-      <div class="meta-row">
-        <div class="meta-status">${statusLabel(def.status, def.source)}</div>
-        <div class="type-pill ${typeClassName(def.type)}">
-          <span class="type-pill-icon">${filterIconSvg(def.type)}</span>
-          <span>${formatTypePillLabel(def.type)}</span>
-        </div>
-      </div>
-    `;
-
-    card.addEventListener("click", async (event) => {
-      const clickedTag = event.target.closest("[data-tag]");
-      if (clickedTag) {
-        event.stopPropagation();
-        setSearchValue(clickedTag.getAttribute("data-tag") || "");
-        renderCards();
-        return;
-      }
-      const pushAction = event.target.closest("[data-action-push]");
-      if (pushAction) {
-        event.stopPropagation();
-        const commitMessage = window.prompt("Commit message", `Add definition ${def.name || ""}`);
-        if (commitMessage === null) {
-          return;
-        }
-        try {
-          await pushDefinitionToUpstream(def.id, commitMessage);
-          await fetchDefinitions();
-        } catch (error) {
-          window.alert(error.message || "Unable to push definition.");
-        }
-        return;
-      }
-
-      const saveAction = event.target.closest("[data-action-save]");
-      if (saveAction) {
-        event.stopPropagation();
-        try {
-          if (def.status === "saved") {
-            await removeDefinition(def.id);
-          } else if (def.status === "local-only") {
-            await publishDefinition(def.id);
-          } else if (def.status !== "saved") {
-            await saveDefinition(def.id);
-          }
-          await fetchDefinitions();
-        } catch (error) {
-          window.alert(error.message || "Action failed.");
-        }
-        return;
-      }
-      await showDetails(def.id);
-      updateRouteForDetails(def.id);
-    });
-    cardsContainer.appendChild(card);
+    cardsContainer.appendChild(createDefinitionCard(def));
   });
+
+  renderRecommendationSection();
+}
+
+function setupRecommendationsSection() {
+  recommendationsSection.className = "recommendations-section";
+  recommendationsHeader.className = "recommendations-header";
+  recommendationsTitle.className = "recommendations-title";
+  recommendationsMeta.className = "recommendations-meta";
+  recommendationsState.className = "recommendations-state";
+  recommendationsCards.className = "grid recommendations-grid";
+  recommendationsToggleButton.className = "recommendations-toggle";
+  recommendationsToggleButton.type = "button";
+  recommendationsDivider.className = "recommendations-divider";
+  recommendationsContent.className = "recommendations-content";
+
+  recommendationsTitle.textContent = "Recommended for current project";
+  updateRecommendationsToggleLabel();
+  recommendationsToggleButton.addEventListener("click", () => {
+    recommendationsVisible = !recommendationsVisible;
+    renderRecommendationSection();
+  });
+
+  recommendationsHeader.append(recommendationsToggleButton);
+  recommendationsContent.append(recommendationsHeader, recommendationsTitle, recommendationsMeta, recommendationsState, recommendationsCards);
+  recommendationsSection.append(recommendationsContent);
+
+  cardsContainer.parentNode?.insertBefore(recommendationsSection, cardsContainer);
+  cardsContainer.parentNode?.insertBefore(recommendationsDivider, cardsContainer);
 }
 
 function renderDevProjectsOptions(projects) {
@@ -608,6 +747,22 @@ async function loadDevProjects() {
   const data = await response.json();
   devProjects = data.map((project) => project.path || project).filter(Boolean);
   renderDevProjectsOptions(devProjects);
+}
+
+async function fetchDefinitionSuggestions() {
+  try {
+    const data = await fetchWithErrorHandling("/api/definitions/suggestions", {}, "Unable to load definition suggestions.");
+    const nextSuggestions = Array.isArray(data?.suggestions) ? data.suggestions : [];
+    suggestionDefinitionIds = nextSuggestions.map((entry) => Number(entry.definitionId)).filter((id) => Number.isFinite(id));
+    suggestionsMeta = {
+      projectPath: String(data?.projectPath || "").trim(),
+      projectType: String(data?.projectType || "").trim(),
+      suggestions: nextSuggestions
+    };
+  } catch (_error) {
+    suggestionDefinitionIds = [];
+    suggestionsMeta = { projectPath: "", projectType: "", suggestions: [] };
+  }
 }
 
 async function loadCurrentDevProject() {
@@ -1616,6 +1771,7 @@ devProjectInput.addEventListener("change", async (event) => {
   const selected = event.target.value.trim();
   if (!selected) {
     await setCurrentDevProject("");
+    await fetchDefinitionSuggestions();
     await fetchDefinitions();
     return;
   }
@@ -1623,6 +1779,7 @@ devProjectInput.addEventListener("change", async (event) => {
     return;
   }
   await setCurrentDevProject(selected);
+  await fetchDefinitionSuggestions();
   await fetchDefinitions();
 });
 
@@ -1866,7 +2023,11 @@ filterButton.addEventListener("click", () => {
 }
 
 export function initializeApp() {
+  setupRecommendationsSection();
   setupEventListeners();
   loadDevProjects();
-  loadCurrentDevProject().then(fetchDefinitions).then(handleRoute);
+  loadCurrentDevProject()
+    .then(fetchDefinitionSuggestions)
+    .then(fetchDefinitions)
+    .then(handleRoute);
 }
