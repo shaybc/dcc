@@ -208,14 +208,29 @@ function orderYamlDefinitionFields(data) {
   return { ...header, ...body };
 }
 
-function stringifyYamlDefinition(data) {
-  const document = new YAML.Document(orderYamlDefinitionFields(data));
+function injectBlankLineAfterHeader(yamlText) {
+  const lines = String(yamlText || "").split("\n");
+  let bodyStartIndex = -1;
 
-  if (document.contents && "items" in document.contents && document.contents.items.length > YAML_HEADER_KEYS.length) {
-    document.contents.items[YAML_HEADER_KEYS.length].spaceBefore = true;
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = /^([A-Za-z0-9_]+):(?:\s|$)/.exec(lines[index]);
+    if (!match) continue;
+    const key = match[1];
+    if (YAML_HEADER_KEYS.includes(key)) continue;
+    bodyStartIndex = index;
+    break;
   }
 
-  return document.toString();
+  if (bodyStartIndex <= 0) return yamlText;
+  if (lines[bodyStartIndex - 1].trim() === "") return yamlText;
+
+  lines.splice(bodyStartIndex, 0, "");
+  return lines.join("\n");
+}
+
+function stringifyYamlDefinition(data) {
+  const document = new YAML.Document(orderYamlDefinitionFields(data));
+  return injectBlankLineAfterHeader(document.toString());
 }
 
 
