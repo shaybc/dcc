@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { bumpVersionInContent } from "./versionBump.js";
+import { handleGitTransactionFailure } from "../utils/git.js";
 
 function quoteShellValue(value) {
   return JSON.stringify(String(value));
@@ -14,7 +15,8 @@ export async function saveDefinition({
   format,
   filename,
   targetPath,
-  runCommand
+  runCommand,
+  reloadDefinitions,
 }) {
   const absoluteRepoPath = path.resolve(repoPath);
 
@@ -72,12 +74,27 @@ export async function saveDefinition({
   }
 
   const bumpedContent = bumpVersionInContent(content, format);
-  await runCommand("git pull", { cwd: absoluteRepoPath });
-  await fs.writeFile(absoluteDefinitionPath, bumpedContent, "utf8");
+  try {
+    await runCommand("git pull", { cwd: absoluteRepoPath });
+    await fs.writeFile(absoluteDefinitionPath, bumpedContent, "utf8");
 
-  await runCommand(`git add ${quoteShellValue(relativePath)}`, { cwd: absoluteRepoPath });
-  await runCommand(`git commit -m ${quoteShellValue(`Update ${relativePath}`)}`, { cwd: absoluteRepoPath });
-  await runCommand("git push", { cwd: absoluteRepoPath });
+    await runCommand(`git add ${quoteShellValue(relativePath)}`, { cwd: absoluteRepoPath });
+    await runCommand(`git commit -m ${quoteShellValue(`Update ${relativePath}`)}`, { cwd: absoluteRepoPath });
+    await runCommand("git push", { cwd: absoluteRepoPath });
+  } catch (error) {
+    const failure = await handleGitTransactionFailure({
+      error,
+      cwd: absoluteRepoPath,
+      run: runCommand,
+      resetTo: "HEAD~1",
+      pullRebase: true,
+      reloadDefinitions,
+      permissionMessage: "Save cancelled because you do not have permission to push this definition.",
+      conflictMessage: "Save cancelled due to merge conflicts while pushing. Please sync and retry.",
+      fallbackMessage: "Failed to save and push definition.",
+    });
+    throw new Error(failure.message);
+  }
 
   return {
     message: "Definition saved, version bumped, and pushed.",

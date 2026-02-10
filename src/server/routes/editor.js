@@ -170,7 +170,8 @@ router.post("/api/editor/save", async (req, res) => {
       format: req.body?.format || "yaml",
       filename: req.body?.filename,
       targetPath: req.body?.targetPath,
-      runCommand
+      runCommand,
+      reloadDefinitions: loadDefinitions,
     });
 
     await loadDefinitions();
