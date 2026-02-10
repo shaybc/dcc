@@ -64,8 +64,12 @@
   vertical-align: top;
 }
 
-.settings-table td:last-child {
+.settings-table[aria-label="Development project roots"] td:last-child {
   width: 140px;
+}
+
+.settings-table[aria-label="Detected dev projects"] td:last-child {
+  width: 45%;
 }
 
 .settings-table input {
@@ -120,4 +124,38 @@
   .settings-card--full {
     grid-column: span 1;
   }
+}
+
+
+.project-meta-summary {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.project-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--card) 80%, var(--border));
+}
+
+.project-meta-badge--type {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--accent, #2563eb) 14%, var(--card));
+}
+
+.project-meta-badge--muted {
+  color: var(--muted);
+}
+
+.project-meta-time {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
 }
