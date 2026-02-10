@@ -69,9 +69,6 @@ db.serialize(() => {
   );
   db.run("CREATE INDEX IF NOT EXISTS idx_def_versions_key ON definition_versions(definition_key)");
   db.run("CREATE INDEX IF NOT EXISTS idx_def_versions_commit ON definition_versions(commit_hash)");
-  db.run("CREATE INDEX IF NOT EXISTS idx_definitions_repo_id ON definitions(repoId)");
-  db.run("CREATE INDEX IF NOT EXISTS idx_definitions_repo_name ON definitions(repoName)");
-  db.run("CREATE INDEX IF NOT EXISTS idx_definitions_source_repo ON definitions(source, repoId)");
   db.run(
     `CREATE TABLE IF NOT EXISTS dev_project_roots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -127,6 +124,10 @@ db.serialize(() => {
     if (!hasRepoNameColumn) {
       db.run("ALTER TABLE definitions ADD COLUMN repoName TEXT", () => {});
     }
+
+    db.run("CREATE INDEX IF NOT EXISTS idx_definitions_repo_id ON definitions(repoId)", () => {});
+    db.run("CREATE INDEX IF NOT EXISTS idx_definitions_repo_name ON definitions(repoName)", () => {});
+    db.run("CREATE INDEX IF NOT EXISTS idx_definitions_source_repo ON definitions(source, repoId)", () => {});
   });
 
   db.all("PRAGMA table_info(dev_projects)", (err, rows = []) => {
