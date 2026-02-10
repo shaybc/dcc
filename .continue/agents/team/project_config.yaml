@@ -4,7 +4,6 @@ schema: v1
 context:
   - provider: clipboard
   - provider: code
-  - provider: currentFile
   - provider: debugger
     params:
       stackDepth: 3

@@ -20,6 +20,7 @@
   --shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
   --card-in-project-bg: #161c2b;
   --card-in-project-border: #26324a;
+  --card-local-definition-bg: #373737;
   --surface-muted: rgba(161, 161, 170, 0.12);
   --hero-icon-bg: rgba(15, 17, 22, 0.8);
   --inline-code-bg: rgba(255, 255, 255, 0.08);

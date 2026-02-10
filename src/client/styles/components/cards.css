@@ -21,7 +21,7 @@
 }
 
 .card-local-definition {
-  background: #373737;
+  background: var(--card-local-definition-bg);
 }
 
 .card:hover {
