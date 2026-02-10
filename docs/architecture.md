@@ -1,171 +1,95 @@
 # System Architecture
 
-## 1) High-Level Architecture
-DCC is a local-first server/client system with three main zones:
-1. **Client UI** (Hub, Settings, Editor) in the browser.
-2. **Application Server** (Express) coordinating API requests.
-3. **Persistence + External Integration**:
-   - Local SQLite database,
-   - local filesystem (repo and `.continue` project folders),
-   - optional Google Gemini upstream through an OpenAI-compatible facade.
+## 1) High-Level Topology
+DCC is a local-first web app with three layers:
+1. Browser client (Hub, Settings, Editor).
+2. Express server (REST API + OpenAI-compatible facade).
+3. Local persistence/integration (SQLite + filesystem + git + optional Gemini API).
 
 ```mermaid
-flowchart TB
-  subgraph Client
-    Hub[Hub page\nindex.html + app.js]
-    Settings[Settings page\nsettings.html + settings.js]
-    Editor[Editor page\neditor.html + editor.js]
+flowchart LR
+  subgraph Browser
+    Hub[index.html + app.js]
+    Settings[settings.html + settings.js]
+    Editor[editor/editor.html + editor.js]
   end
 
-  subgraph Server
-    API[/Express API/]
-    OpenAI[/OpenAI-compatible facade\n/v1/*/]
-    DefSvc[Definition services\nload/save/detect/version bump]
+  subgraph Backend
+    API[/api/*/]
+    V1[/v1/*/]
+    DefMods[definitions/*]
   end
 
   subgraph Data
     DB[(SQLite)]
-    Repo[(Local Team Repo)]
-    Dev[(Developer Project\n.continue folders)]
+    TeamRepo[(Team git repo)]
+    DevProjects[(Local dev projects)]
     Gemini[(Google Gemini API)]
   end
 
   Hub --> API
   Settings --> API
   Editor --> API
-  API --> DefSvc
+  API --> DefMods
   API --> DB
-  API --> Repo
-  API --> Dev
-  OpenAI --> Gemini
+  API --> TeamRepo
+  API --> DevProjects
+  V1 --> Gemini
 ```
 
----
+## 2) Persistence Model
+`src/server/server.js` initializes 7 core tables:
+- `settings`
+- `definitions`
+- `definition_versions`
+- `dev_project_roots`
+- `dev_projects`
+- `project_definition_copies`
+- `validation_results`
 
-## 2) Core Entities and Connectivity
-
-## 2.1 Persistent entities (SQLite)
-
-### `settings`
-Key-value configuration store (examples: `repoUrl`, `repoPath`, `currentDevProject`).
-
-### `definitions`
-Indexed catalog of discovered definition files with metadata:
-- `key`, `name`, `description`, `tags`, `schema`, `version`,
-- `content`, `type`, `filePath`, `source`, `status`, `updatedAt`, `inTeam`.
-
-### `dev_project_roots`
-Configured root directories used for recursive scanning of local git projects.
-
-### `dev_projects`
-Materialized list of discovered dev projects (directory contains `.git`).
-
-### `project_definition_copies`
-Join-like registry: which definition key has been copied into which dev project.
-
----
-
-## 2.2 Domain entities
-
-### Definition
-A unit document representing one reusable AI/config artifact. Common types:
-- model,
-- prompt,
-- rule,
-- agent,
-- workflow,
-- context,
-- mcpServer.
-
-### Repository workspace
-Team source repository where definitions can be cloned, pulled, published, duplicated, updated, and pushed upstream.
-
-### Developer project workspace
-A selected local project where definitions are copied into `.continue/.../team/...` directories.
-
-### AI session facade
-OpenAI-compatible requests are translated to Gemini API calls by the server.
-
----
+### Key relationships
+- `definitions.key` is the central definition identifier.
+- `definition_versions.definition_key` references current catalog entries.
+- `project_definition_copies` tracks where definitions are installed.
+- `validation_results` stores per-definition validation runs and reports.
 
 ## 3) Main Runtime Flows
 
-## 3.1 Definition ingestion flow
-```mermaid
-sequenceDiagram
-  participant U as User (Settings UI)
-  participant S as Server
-  participant R as Team Repo
-  participant D as SQLite
+### 3.1 Repository sync and indexing
+1. Settings page saves repo URL/path.
+2. `POST /api/clone-pull` runs clone-or-pull.
+3. `POST /api/load-definitions` scans, parses, and upserts definitions.
 
-  U->>S: POST /api/clone-pull
-  S->>R: git clone or git pull
-  U->>S: POST /api/load-definitions
-  S->>R: scan files + parse YAML/Markdown
-  S->>D: upsert metadata into definitions
-  U->>S: GET /api/definitions
-  S->>U: indexed definitions list
-```
+### 3.2 Definition install/remove into current project
+1. User selects active dev project.
+2. `POST /api/definitions/:id/save` copies or merges into `.continue` structure.
+3. `POST /api/definitions/:id/remove` reverses file copy/merge.
+4. DB mapping table reflects saved state.
 
-## 3.2 Save-to-dev-project flow
-```mermaid
-sequenceDiagram
-  participant U as User (Hub)
-  participant S as Server
-  participant P as Current Dev Project
-  participant D as SQLite
+### 3.3 Validation flow
+1. Hub requests `POST /api/definitions/:id/validate`.
+2. Server runs schema/lint/reference checks.
+3. Result is stored in `validation_results`.
+4. UI can load latest or history via dedicated endpoints.
 
-  U->>S: POST /api/definitions/:id/save
-  alt Context definition
-    S->>P: merge providers into project_config.yaml
-  else Other types
-    S->>P: copy file into .continue/.../team/... folder
-  end
-  S->>D: mark definition as saved for project
-  S->>U: { ok: true }
-```
+### 3.4 Version history flow
+1. User requests versions for a definition.
+2. Server compares cached `definition_versions` to git latest hash.
+3. If stale/missing, git history is re-hydrated and cached.
+4. User can fetch historical content or restore a selected version.
 
-## 3.3 OpenAI-compatible inference flow
-```mermaid
-sequenceDiagram
-  participant C as Continue/Client
-  participant O as /v1 router
-  participant G as GeminiAIStudioClient
-  participant X as Gemini API
+### 3.5 OpenAI-compatible inference flow
+1. Client sends request to `/v1/*`.
+2. Router validates payload with Zod.
+3. Gemini adapter executes request.
+4. Response is normalized to OpenAI-compatible JSON/SSE.
 
-  C->>O: POST /v1/chat/completions
-  O->>G: normalize request + tools
-  G->>X: generateContent / streamGenerateContent
-  X-->>G: model response chunks
-  G-->>O: text + tool calls
-  O-->>C: OpenAI-shaped JSON or SSE stream
-```
+## 4) API Surface Areas
+- Main product API in `server.js` under `/api/*` (settings, projects, definitions, validation, versions, editor helpers).
+- LLM compatibility API in `routes/openai.js` under `/v1/*`.
 
----
-
-## 4) Interface Surfaces
-
-## 4.1 Hub UI
-- Browse/search/filter definition catalog.
-- View details, source content, metadata, and status.
-- Actions: save to project, remove from project, duplicate, edit, push upstream, delete.
-
-## 4.2 Settings UI
-- Configure repository URL/path.
-- Trigger clone/pull and load-definitions.
-- Manage dev-project roots and auto-discovered project list.
-- Toggle theme.
-
-## 4.3 Editor UI
-- Create/edit definitions by type with structured forms.
-- Keep synchronized with raw YAML/Markdown source.
-- Server-side type detection and persistence endpoints.
-
----
-
-## 5) Architectural Strengths
-- **Local-first**: data is stored locally (SQLite + filesystem).
-- **Composable docs model**: YAML and Markdown definitions are easy to version-control.
-- **Provider abstraction**: OpenAI-compatible facade enables tool interoperability while using Gemini.
-- **Multi-project workflow**: one definition hub can supply many local developer projects.
-
+## 5) Architectural Characteristics
+- **Local-first**: state and files remain on the local machine.
+- **Git-native**: sync, history extraction, publish, and push workflows all rely on git commands.
+- **Type-aware definition platform**: parsing, validation, and editor forms are definition-type specific.
+- **Project-aware deployment**: catalog items can be materialized into many local projects with tracked state.

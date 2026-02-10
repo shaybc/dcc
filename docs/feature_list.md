@@ -1,226 +1,86 @@
 # Feature List
 
-This document enumerates the main features implemented in DCC and explains how each one works.
-
-## 1) Repository Configuration and Sync
-
-### What it does
-Lets users configure a remote repository URL and local clone path, then synchronize that repository.
-
-### Why it matters
-Centralizes team definitions in a version-controlled source of truth.
-
-### How it works
-- Save `repoUrl` + `repoPath` in `settings` table.
-- `POST /api/clone-pull` runs:
-  - `git clone <url> <path>` if path does not exist,
-  - otherwise `git pull` in existing path.
-
----
-
-## 2) Definition Discovery and Indexing
-
-### What it does
-Scans definition files and indexes metadata into SQLite.
-
-### Why it matters
-Provides a searchable local catalog rather than requiring manual file navigation.
-
-### How it works
-- `POST /api/load-definitions` triggers repository scanning.
-- Each file is parsed (YAML or Markdown frontmatter).
-- Type and metadata are normalized and inserted into `definitions`.
-
----
-
-## 3) Multi-Type Definition Support
-
-### Supported definition families
-1. Prompt
-2. Model
-3. MCP Server
-4. Rule
-5. Agent
-6. Workflow
-7. Context
-8. Unknown (fallback categorization for UI)
-
-### Why it matters
-Supports heterogeneous AI workflows from one control center.
-
----
-
-## 4) Definition Browser (Hub)
-
-### What it does
-Displays definition cards with metadata and actions.
-
-### Included capabilities
-- free-text search,
-- type-based filtering,
-- tag pills and tag click-to-filter behavior,
-- detail view with metadata and source/preview tabs,
-- status rendering (`saved`, `repo`, `local-only`, with untracked hints).
-
----
-
-## 5) Definition Editor
-
-### What it does
-Provides a typed form editor plus raw source editor for create/edit operations.
-
-### Included capabilities
-- Create mode and edit mode.
-- Auto type detection endpoint (`/api/editor/detect-type`).
-- Form-to-text and text-to-form synchronization.
-- YAML and Markdown/frontmatter serialization.
-
-### Why it matters
-Lowers editing friction while preserving direct access to source text.
-
----
-
-## 6) Save Definitions into Active Dev Project
-
-### What it does
-Copies selected definitions into the currently selected local dev project.
-
-### How it works
-- `POST /api/definitions/:id/save`:
-  - For non-context types, copy files into `.continue/<mapped>/team/<type>/`.
-  - For context type, merge provider entries into `agents/team/project_config.yaml`.
-- Save state is tracked in `project_definition_copies` for project-specific status.
-
----
-
-## 7) Remove Definitions from Active Dev Project
-
-### What it does
-Reverts save-to-project operations.
-
-### How it works
-- `POST /api/definitions/:id/remove` deletes copied file (or removes context provider entries) and clears mapping row.
-
----
-
-## 8) Duplicate Definition Files
-
-### What it does
-Creates a new definition file derived from an existing one.
-
-### Included behavior
-- new name and new file name validation,
-- duplicate path conflict checking,
-- content rewrite to update top-level `name` field/frontmatter name,
-- index refresh and new row lookup.
-
----
-
-## 9) Push Local/Untracked Definitions Upstream
-
-### What it does
-Commits and pushes existing local definition files to configured team repository.
-
-### How it works
-- `POST /api/definitions/:id/push-upstream` runs git pull/add/commit/push sequence.
-- Commit message can be provided by caller.
-
----
-
-## 10) Publish Definition to Repository
-
-### What it does
-Copies selected definition into repo type folder and pushes it.
-
-### How it works
-- `POST /api/definitions/:id/publish`:
-  - ensure destination folder,
-  - pull latest,
-  - copy file,
-  - git add/commit/push,
-  - update local DB row (`source='repo'`, `status='saved'`).
-
----
-
-## 11) Delete Definition from Repository or Local Untracked Files
-
-### What it does
-Removes definitions from storage source with safety handling.
-
-### Included behavior
-- untracked/local file deletion flow,
-- repository deletion flow with pull-before-delete,
-- push conflict and permission error classification,
-- rollback attempts (`reset`, `clean`, `pull --rebase`) on failure paths.
-
----
-
-## 12) Dev Project Root Management and Discovery
-
-### What it does
-Manages root directories and scans for git projects.
-
-### How it works
-- Roots are stored in `dev_project_roots`.
-- Recursive scan finds directories containing `.git`.
-- Results materialized in `dev_projects` and shown in UI.
-
----
-
-## 13) OpenAI-Compatible API Facade (`/v1`)
-
-### What it does
-Exposes OpenAI-like endpoints while using Gemini provider APIs.
-
-### Endpoints
-1. `GET /v1/models`
-2. `POST /v1/completions`
-3. `POST /v1/chat/completions`
-4. `POST /v1/embeddings`
-
-### Included behavior
-- Zod validation for request payloads,
-- optional streaming responses via SSE,
-- stop-sequence handling,
-- tool-call mapping for chat responses,
-- model-name normalization.
-
----
-
-## 14) Theme Support
-
-### What it does
-Provides light/dark theme preference toggling from settings page.
-
----
-
-## 15) Definition Version History
-
-### What it does
-Adds per-definition version browsing in the details page backed by git history and cached in SQLite.
-
-### Included capabilities
-- Version History action button in the details action row.
-- Searchable version dropdown with current-version checkmark and “View all versions”.
-- Historical mode banner with “Restore this version” and “Back to current”.
-- Version badge next to definition metadata (`vX.Y.Z`, plus Historical indicator when applicable).
-
-### Backend/API details
-- New cache table: `definition_versions` (`definition_key`, `version`, commit metadata, raw content, metadata JSON).
-- New routes:
-  - `GET /api/definitions/:id/versions`
-  - `GET /api/definitions/:id/versions/:version`
-  - `POST /api/definitions/:id/versions/:version/restore`
-- Git discovery uses `git log --follow` and `git show` for the concrete file path.
-
----
-
-## 16) Feature Footprint Summary
-
-| Category | Approximate footprint |
-|---|---|
-| REST endpoints in core server | 24 `/api/*` routes |
-| OpenAI-compatible routes | 4 `/v1/*` routes |
-| Definition editing forms | 7 type-specific form modules |
-| Persistent tables | 6 SQLite tables |
-
+This document summarizes the currently implemented user-facing and system features in DCC.
+
+## 1) Workspace + Repository Management
+- Persist repository settings (`repoUrl`, `repoPath`) via `/api/settings`.
+- Sync team repository via `/api/clone-pull` with clone-or-pull behavior.
+- Classify and report git failures (conflict, permission, dirty working tree, missing upstream).
+
+## 2) Definition Discovery and Cataloging
+- Load definitions from the configured repo via `/api/load-definitions`.
+- Parse YAML, JSON, and Markdown-frontmatter definitions.
+- Infer type and metadata and upsert into the `definitions` table.
+- Track tags, source type (`repo`, `local-only`, `untracked`), and update timestamps.
+
+## 3) Supported Definition Types
+DCC recognizes and renders:
+- models
+- prompts
+- rules
+- agents
+- workflows
+- context
+- mcp servers
+- docs
+- configs
+- unknown fallback
+
+## 4) Hub Catalog UX
+- Full-card browsing with type icons, status pills, and tag pills.
+- Free-text search and tag-aware search.
+- Type filtering menu.
+- Details panel with preview/source/test tabs.
+- Copy raw definition content and edit/create shortcuts.
+
+## 5) Validation and Test Panel
+- Run validation per definition from the hub detail page.
+- Toggle validation modes: strict schema checks, lint checks, reference checks, auto-run.
+- Filter findings by severity.
+- Persist validation reports into `validation_results` and expose latest/history endpoints.
+
+## 6) Definition Version History
+- Build and cache per-definition git history in `definition_versions`.
+- Browse versions from the detail page.
+- Search and expand version list.
+- Load historical content without overwriting current file.
+- Restore a historical version back to current file content.
+
+## 7) Editor Workbench
+- Create or edit definitions using type-specific forms.
+- Keep form and raw source synchronized with parse/serialize safeguards.
+- Detect type server-side (`/api/editor/detect-type`).
+- Save from editor (`/api/editor/save`) with metadata persistence.
+- Prompt enhancer integration in the editor flow through OpenAI-compatible completions path.
+
+## 8) Save / Remove Definitions in Dev Projects
+- Select current dev project.
+- Save definition to project via `/api/definitions/:id/save`.
+  - Non-context assets are copied into `.continue/.../team/...` paths.
+  - Context assets are merged into `project_config.yaml` provider arrays.
+- Remove definition via `/api/definitions/:id/remove` with path-aware inverse operations.
+- Track per-project saved state in `project_definition_copies`.
+
+## 9) Definition Lifecycle Actions
+- Duplicate (`/api/definitions/:id/duplicate`) with path/name conflict safety.
+- Push upstream (`/api/definitions/:id/push-upstream`) for local/untracked artifacts.
+- Publish to repo (`/api/definitions/:id/publish`) with git add/commit/push.
+- Delete from repo (`/api/definitions/:id/delete-repo`) or remove local entry (`/api/definitions/:id/remove`).
+
+## 10) Dev Project Discovery
+- Manage root directories in settings.
+- Recursively discover nested git projects.
+- Materialize discovered projects in `dev_projects`.
+- Use the selected project to drive save/remove actions.
+
+## 11) OpenAI-Compatible `/v1` Facade (Gemini-backed)
+- `GET /v1/models`
+- `POST /v1/completions` (JSON + SSE)
+- `POST /v1/chat/completions` (JSON + SSE + tool-call mapping)
+- `POST /v1/embeddings`
+
+The facade validates payloads with Zod and normalizes Gemini responses into OpenAI-compatible envelopes.
+
+## 12) UI Theming
+- Dark/light mode toggle on Settings page.
+- Theme preference is persisted in local storage and applied globally.
