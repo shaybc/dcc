@@ -22,6 +22,10 @@
   display: none;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .loading-content {
   background: var(--card, #101722);
   border: 1px solid var(--border, #2f3542);
