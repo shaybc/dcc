@@ -42,6 +42,7 @@ const definitionPreviewContent = document.getElementById("definitionPreviewConte
 const diffControls = document.getElementById("diffControls");
 const enableDiffMode = document.getElementById("enableDiffMode");
 const diffIgnoreWhitespace = document.getElementById("diffIgnoreWhitespace");
+const diffCompareBar = document.getElementById("diffCompareBar");
 const diffVersionMode = document.getElementById("diffVersionMode");
 const versionSelectA = document.getElementById("versionSelectA");
 const versionSelectB = document.getElementById("versionSelectB");
@@ -1063,6 +1064,7 @@ function ensureDiffService() {
       diffControls,
       enableDiffMode,
       diffIgnoreWhitespace,
+      diffCompareBar,
       diffVersionMode,
       versionSelectA,
       versionSelectB,

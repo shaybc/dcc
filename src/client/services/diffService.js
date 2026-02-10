@@ -70,6 +70,7 @@ export function createDiffService(config) {
   const els = config.elements;
 
   function setVisibility(active) {
+    els.diffCompareBar.hidden = !active;
     els.diffVersionMode.hidden = !active;
     els.diffContainer.hidden = !active;
     els.detailContent.hidden = active;
