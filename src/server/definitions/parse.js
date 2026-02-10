@@ -145,5 +145,17 @@ export function parseDefinitionContent(raw, filePath) {
   const description = parsed.data.description || "";
   const schema = parsed.data.schema || "";
   const version = parsed.data.version || "";
-  return { name, description, tags, schema, version, content: raw, type, filePath, key: buildKey(type, filePath, { dccUri: parsed.data?.dcc_uri }) };
+  const dccUri = String(parsed.data?.dcc_uri || "").trim();
+  return {
+    name,
+    description,
+    tags,
+    schema,
+    version,
+    dccUri,
+    content: raw,
+    type,
+    filePath,
+    key: buildKey(type, filePath, { dccUri })
+  };
 }

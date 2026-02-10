@@ -27,7 +27,8 @@ export async function loadDefinitions() {
   } catch (_error) {
     for (const filePath of normalizedRepoFiles) trackedRepoFiles.add(path.resolve(filePath));
   }
-  const repoDefinitions = await Promise.all(normalizedRepoFiles.map((filePath) => parseDefinition(filePath)));
+  const repoDefinitions = (await Promise.all(normalizedRepoFiles.map((filePath) => parseDefinition(filePath))))
+    .filter((definition) => definition.dccUri);
   const teamDefinitions = await Promise.all(teamFiles.map((filePath) => parseDefinition(filePath)));
   const repoKeyMap = new Map(repoDefinitions.map((definition) => [definition.key, definition.filePath]));
   const teamKeyMap = new Set(teamDefinitions.map((definition) => definition.key));
