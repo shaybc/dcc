@@ -535,12 +535,13 @@ function handleDefinitionCardClick(definition, event) {
   const pushAction = event.target.closest("[data-action-push]");
   if (pushAction) {
     event.stopPropagation();
-    const commitMessage = window.prompt("Commit message", `Add definition ${definition.name || ""}`);
-    if (commitMessage === null) {
-      return;
-    }
-    pushDefinitionToUpstream(definition.id, commitMessage)
-      .then(fetchDefinitions)
+    openPushUpstreamModal({ definitionName: definition.name || "" })
+      .then((submission) => {
+        if (!submission) {
+          return null;
+        }
+        return pushDefinitionToUpstream(definition.id, submission).then(fetchDefinitions);
+      })
       .catch((error) => {
         window.alert(error.message || "Unable to push definition.");
       });
@@ -1651,17 +1652,83 @@ async function deleteDefinitionFromRepo(id) {
 }
 
 
-async function pushDefinitionToUpstream(id, commitMessage) {
+async function pushDefinitionToUpstream(id, { commitMessage, targetRepoId }) {
   return fetchWithErrorHandling(`/api/definitions/${id}/push-upstream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ commitMessage })
+    body: JSON.stringify({ commitMessage, targetRepoId })
   }, "Unable to push definition.", {
     title: "Pushing definition...",
     description: "Pushing definition to upstream repository.",
   });
 }
 
+async function openPushUpstreamModal({ definitionName = "" } = {}) {
+  const repos = await fetchWithErrorHandling("/api/asset-repos", { method: "GET" }, "Unable to load asset repositories.");
+  const availableRepos = (Array.isArray(repos) ? repos : []).filter((repo) => repo?.enabled);
+  if (availableRepos.length === 0) {
+    window.alert("No enabled asset repositories found. Configure repositories in Settings first.");
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "duplicate-definition-overlay";
+    const defaultMessage = `Add definition ${definitionName || ""}`.trim();
+    const repoOptions = availableRepos
+      .map((repo) => `<option value="${escapeHtml(String(repo.id))}">${escapeHtml(repo.name || repo.localPath || `Repo ${repo.id}`)}</option>`)
+      .join("");
+
+    overlay.innerHTML = `
+      <div class="duplicate-definition-modal" role="dialog" aria-modal="true" aria-labelledby="pushUpstreamTitle">
+        <h3 id="pushUpstreamTitle">Push to upstream</h3>
+        <p class="duplicate-definition-subtitle">Choose a repository and commit message.</p>
+        <label class="duplicate-definition-field">Repository
+          <select data-role="push-repo">${repoOptions}</select>
+        </label>
+        <label class="duplicate-definition-field">Commit message
+          <input type="text" data-role="push-commit-message" value="${escapeHtml(defaultMessage)}" />
+        </label>
+        <div class="duplicate-definition-actions">
+          <button class="btn" type="button" data-role="push-cancel">Cancel</button>
+          <button class="btn primary" type="button" data-role="push-submit">Push</button>
+        </div>
+      </div>
+    `;
+
+    const repoSelect = overlay.querySelector('[data-role="push-repo"]');
+    const messageInput = overlay.querySelector('[data-role="push-commit-message"]');
+    const cancelButton = overlay.querySelector('[data-role="push-cancel"]');
+    const submitButton = overlay.querySelector('[data-role="push-submit"]');
+
+    function closeModal(result = null) {
+      overlay.remove();
+      resolve(result);
+    }
+
+    cancelButton?.addEventListener("click", () => closeModal(null));
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        closeModal(null);
+      }
+    });
+
+    submitButton?.addEventListener("click", () => {
+      const targetRepoId = Number(repoSelect?.value || 0);
+      const commitMessage = String(messageInput?.value || "").trim() || defaultMessage;
+      if (!Number.isFinite(targetRepoId) || targetRepoId <= 0) {
+        window.alert("Please select a valid asset repository.");
+        repoSelect?.focus();
+        return;
+      }
+      closeModal({ targetRepoId, commitMessage });
+    });
+
+    document.body.appendChild(overlay);
+    messageInput?.focus();
+    messageInput?.setSelectionRange(0, messageInput.value.length);
+  });
+}
 
 function closeDuplicateDefinitionModal() {
   const existing = document.querySelector(".duplicate-definition-overlay");
@@ -1873,16 +1940,17 @@ filterButton.addEventListener("click", () => {
     if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
       return;
     }
-  
-    const commitMessage = window.prompt("Commit message", `Add definition ${currentDetailDefinitionName || ""}`);
-    if (commitMessage === null) {
+
+    const submission = await openPushUpstreamModal({ definitionName: currentDetailDefinitionName || "" });
+    if (!submission) {
       return;
     }
-  
+
     try {
-      const result = await pushDefinitionToUpstream(currentDetailDefinitionId, commitMessage);
+      const result = await pushDefinitionToUpstream(currentDetailDefinitionId, submission);
       await fetchDefinitions();
-      await showDetails(currentDetailDefinitionId);
+      const updatedDefinitionId = Number(result?.definition?.id || currentDetailDefinitionId);
+      await showDetails(updatedDefinitionId);
       window.alert(result?.message || "Definition pushed to upstream repository.");
     } catch (error) {
       window.alert(error.message || "Unable to push definition.");

@@ -6,6 +6,7 @@ import db from "../db/index.js";
 import { getDb, runDb, allDb } from "../db/helpers.js";
 import { runCommand, classifyGitError, extractCommandErrorMessage } from "../utils/git.js";
 import { getSetting } from "../utils/settings.js";
+import { ensureAssetRepoMigration, getAssetRepo, getEnabledAssetRepos } from "../utils/assetRepos.js";
 import { getProjectDestinationInfo, deriveConfigOutputFileName } from "../definitions/install.js";
 import { upsertContextProviders, removeContextProviders, buildMergedConfigContent } from "../definitions/context.js";
 import { stripDccProjectMetadata, extractDccUriFromDefinitionContent } from "../definitions/metadata.js";
@@ -110,41 +111,89 @@ router.post("/api/definitions/:id/push-upstream", async (req, res) => {
       return;
     }
 
-    const repoPath = await getSetting("repoPath");
-    if (!repoPath) {
-      res.status(400).json({ error: "Repo path not configured." });
-      return;
-    }
-
-    const source = String(row.source || "").toLowerCase();
-    if (source === "repo") {
-      res.status(400).json({ error: "Definition is already tracked in the repository." });
-      return;
-    }
-
-    const absoluteRepoPath = path.resolve(repoPath);
-    const absoluteDefinitionPath = path.resolve(row.filePath || "");
-    if (!absoluteDefinitionPath.startsWith(`${absoluteRepoPath}${path.sep}`)) {
-      res.status(400).json({ error: "Definition file is not in the configured repository." });
-      return;
-    }
-
-    if (!fs.existsSync(absoluteDefinitionPath)) {
-      await loadDefinitions();
-      res.status(404).json({ error: "Definition file was not found in the repository." });
-      return;
-    }
-
-    const commitMessage = String(req.body?.commitMessage || "").trim() || `Add definition ${row.name}`;
-    const relativePath = path.relative(absoluteRepoPath, absoluteDefinitionPath);
-
     try {
+      await ensureAssetRepoMigration();
+      const targetRepoId = Number(req.body?.targetRepoId);
+      if (!Number.isInteger(targetRepoId) || targetRepoId <= 0) {
+        res.status(400).json({ error: "targetRepoId is required." });
+        return;
+      }
+
+      const targetRepo = await getAssetRepo(targetRepoId);
+      if (!targetRepo || !targetRepo.enabled) {
+        res.status(400).json({ error: "Selected asset repository is not available." });
+        return;
+      }
+
+      const absoluteRepoPath = path.resolve(targetRepo.localPath || "");
+      if (!absoluteRepoPath || !fs.existsSync(absoluteRepoPath)) {
+        res.status(400).json({ error: "Selected repository path does not exist locally." });
+        return;
+      }
+
+      const absoluteDefinitionPath = path.resolve(row.filePath || "");
+      if (!fs.existsSync(absoluteDefinitionPath)) {
+        await loadDefinitions();
+        res.status(404).json({ error: "Definition file was not found." });
+        return;
+      }
+
+      const enabledRepos = await getEnabledAssetRepos();
+      const sourceRepo = enabledRepos
+        .map((repo) => ({ ...repo, absolutePath: path.resolve(repo.localPath || "") }))
+        .find((repo) => absoluteDefinitionPath.startsWith(`${repo.absolutePath}${path.sep}`));
+
+      const insideTargetRepo = absoluteDefinitionPath.startsWith(`${absoluteRepoPath}${path.sep}`);
+      const typeFolder = String(row.type || "misc").trim().toLowerCase() || "misc";
+      let destinationPath = absoluteDefinitionPath;
+
+      if (!insideTargetRepo) {
+        const fileName = path.basename(absoluteDefinitionPath);
+        const destinationDir = path.join(absoluteRepoPath, typeFolder);
+        destinationPath = path.join(destinationDir, fileName);
+        await fsp.mkdir(destinationDir, { recursive: true });
+
+        if (fs.existsSync(destinationPath)) {
+          const [existingContent, incomingContent] = await Promise.all([
+            fsp.readFile(destinationPath, "utf8"),
+            fsp.readFile(absoluteDefinitionPath, "utf8")
+          ]);
+          if (existingContent !== incomingContent) {
+            res.status(409).json({ error: `Target definition file already exists: ${path.relative(absoluteRepoPath, destinationPath)}` });
+            return;
+          }
+        } else {
+          await fsp.copyFile(absoluteDefinitionPath, destinationPath);
+        }
+      }
+
+      const commitMessage = String(req.body?.commitMessage || "").trim() || `Add definition ${row.name}`;
+      const relativePath = path.relative(absoluteRepoPath, destinationPath);
+
       await runCommand("git pull", { cwd: absoluteRepoPath });
       await runCommand(`git add ${JSON.stringify(relativePath)}`, { cwd: absoluteRepoPath });
       await runCommand(`git commit -m ${JSON.stringify(commitMessage)}`, { cwd: absoluteRepoPath });
       await runCommand("git push", { cwd: absoluteRepoPath });
+
       await loadDefinitions();
-      res.json({ ok: true, message: "Definition pushed to upstream repository." });
+      const updatedRow = await getDb(
+        "SELECT id, key, filePath, source, repoId, repoName, status FROM definitions WHERE filePath = ? LIMIT 1",
+        [destinationPath]
+      );
+
+      res.json({
+        ok: true,
+        message: "Definition pushed to upstream repository.",
+        definition: updatedRow || null,
+        origin: updatedRow ? {
+          source: updatedRow.source,
+          repoId: updatedRow.repoId,
+          repoName: updatedRow.repoName,
+          filePath: updatedRow.filePath
+        } : null,
+        movedFromRepoId: sourceRepo?.id || null,
+        targetRepoId,
+      });
     } catch (error) {
       res.status(500).json({ error: extractCommandErrorMessage(error, "Failed to push definition to upstream.") });
     }
