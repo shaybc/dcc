@@ -17,25 +17,13 @@
         <a class="btn" href="/">← Back to Hub</a>
       </div>
     </header>
-    <main>
-      <form class="settings-form" id="settingsForm">
+    <main class="settings-grid">
+      <form class="settings-form settings-card settings-card--wide" id="settingsForm">
         <label for="repoUrl">AI Assets Git Repo URL</label>
         <input id="repoUrl" name="repoUrl" type="text" placeholder="https://github.com/your-org/ai_assets" />
 
         <label for="repoPath">Clone Path on Disk</label>
         <input id="repoPath" name="repoPath" type="text" placeholder="/Users/you/ai_assets" />
-
-        <div class="theme-toggle-row">
-          <div>
-            <label for="themeToggle">Theme</label>
-            <p class="helper-text">Use dark mode or switch to light mode.</p>
-          </div>
-          <label class="switch" for="themeToggle" aria-label="Toggle dark mode">
-            <input id="themeToggle" name="themeToggle" type="checkbox" />
-            <span class="slider">.........</span>
-            <span class="switch-label" id="themeToggleLabel">Dark mode</span>
-          </label>
-        </div>
 
         <div class="row">
           <button class="btn btn-primary" type="submit">Save settings</button>
@@ -45,8 +33,22 @@
         <p class="notice" id="settingsNotice"></p>
       </form>
 
+      <section class="settings-section settings-card">
+        <div class="theme-toggle-row">
+          <div>
+            <h2>Theme</h2>
+            <p class="helper-text">Use dark mode or switch to light mode.</p>
+          </div>
+          <label class="switch" for="themeToggle" aria-label="Toggle dark mode">
+            <input id="themeToggle" name="themeToggle" type="checkbox" />
+            <span class="slider">.........</span>
+            <span class="switch-label" id="themeToggleLabel">Dark mode</span>
+          </label>
+        </div>
+      </section>
 
-      <section class="settings-section">
+
+      <section class="settings-section settings-card">
         <h2>Loading Timeout</h2>
         <p class="helper-text">Configure how long async operations can run before timing out.</p>
         <div class="table-actions">
@@ -56,7 +58,7 @@
         </div>
       </section>
 
-      <section class="settings-section">
+      <section class="settings-section settings-card settings-card--wide">
         <h2>Development Project Roots</h2>
         <p class="helper-text">Add folders that contain development projects. Changes trigger a rescan.</p>
         <div class="table-actions">
@@ -75,7 +77,7 @@
         <p class="notice" id="devRootsNotice"></p>
       </section>
 
-      <section class="settings-section">
+      <section class="settings-section settings-card settings-card--wide">
         <h2>Detected Dev Projects</h2>
         <p class="helper-text">Read-only list of git projects found under your roots.</p>
         <table class="settings-table" aria-label="Detected dev projects">
