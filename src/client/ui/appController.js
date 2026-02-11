@@ -33,6 +33,7 @@ const duplicateDefinitionButton = document.getElementById("duplicateDefinition")
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const versionHistoryButton = document.getElementById("versionHistoryButton");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
+const installDefinitionButton = document.getElementById("installDefinition");
 const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
@@ -92,6 +93,7 @@ let currentDetailDefinitionName = "";
 let currentDetailDefinitionPath = "";
 let currentDetailDefinitionContent = "";
 let currentDetailDefinitionDccUri = "";
+let currentDetailDefinitionStatus = "";
 let currentDefinitionVersion = "";
 let activeHistoricalVersion = "";
 let activeVersionDropdown = null;
@@ -1495,6 +1497,7 @@ async function showDetails(id) {
   currentDetailDefinitionName = String(def.name || "");
   currentDetailDefinitionPath = String(def.filePath || "");
   currentDetailDefinitionContent = String(def.content || "");
+  currentDetailDefinitionStatus = String(def.status || "").toLowerCase();
   currentDefinitionVersion = String(def.version || "");
   currentDefinitionVersions = [];
   activeHistoricalVersion = "";
@@ -1548,6 +1551,7 @@ async function showDetails(id) {
   deleteDefinitionButton.hidden = !canDeleteDefinition;
   pushUpstreamDefinitionButton.hidden = !isUntrackedDefinition;
   pushUpstreamDefinitionButton.disabled = !isUntrackedDefinition;
+  updateInstallDefinitionButtonState();
   definitionTabPreview.disabled = false;
   lastValidationResult = null;
   validationResults.innerHTML = `<div class="validation-empty">Run validation to see schema, lint, and reference checks.</div>`;
@@ -1555,6 +1559,42 @@ async function showDetails(id) {
   setDefinitionTab("preview");
   renderVersionBanner("");
   showDetailPage();
+}
+
+function updateInstallDefinitionButtonState() {
+  if (!installDefinitionButton) {
+    return;
+  }
+
+  const hasSelectedProject = Boolean(devProjectInput.value.trim());
+  const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
+  const isLocalOnlyDefinition = currentDetailDefinitionStatus === "local-only";
+  const isSavedInCurrentProject = currentDetailDefinitionStatus === "saved";
+  const hasDefinition = Number.isFinite(Number(currentDetailDefinitionId)) && currentDetailDefinitionId > 0;
+  const canInstall = !isUntrackedDefinition && !isLocalOnlyDefinition;
+
+  installDefinitionButton.hidden = !canInstall;
+  if (!canInstall) {
+    installDefinitionButton.disabled = true;
+    return;
+  }
+
+  installDefinitionButton.disabled = !hasDefinition || !hasSelectedProject || isSavedInCurrentProject;
+
+  if (isSavedInCurrentProject) {
+    installDefinitionButton.title = "Definition already installed in current project";
+    installDefinitionButton.setAttribute("aria-label", "Definition already installed in current project");
+    return;
+  }
+
+  if (!hasSelectedProject) {
+    installDefinitionButton.title = "Select a project first";
+    installDefinitionButton.setAttribute("aria-label", "Select a project first");
+    return;
+  }
+
+  installDefinitionButton.title = "Install definition in current project";
+  installDefinitionButton.setAttribute("aria-label", "Install definition in current project");
 }
 
 function showDetailPage() {
@@ -1574,6 +1614,7 @@ function showHubPage() {
   currentDetailDefinitionPath = "";
   currentDetailDefinitionContent = "";
   currentDetailDefinitionDccUri = "";
+  currentDetailDefinitionStatus = "";
   currentDefinitionVersion = "";
   detailDccUri.hidden = true;
   detailDccUri.textContent = "";
@@ -1583,6 +1624,10 @@ function showHubPage() {
   deleteDefinitionButton.hidden = true;
   pushUpstreamDefinitionButton.hidden = true;
   pushUpstreamDefinitionButton.disabled = true;
+  if (installDefinitionButton) {
+    installDefinitionButton.hidden = true;
+    installDefinitionButton.disabled = true;
+  }
   hubHeader.hidden = false;
   hubMain.hidden = false;
   document.body.classList.remove("detail-page-open");
@@ -1878,6 +1923,7 @@ devProjectInput.addEventListener("change", async (event) => {
     await setCurrentDevProject("");
     await fetchDefinitionSuggestions();
     await fetchDefinitions();
+    updateInstallDefinitionButtonState();
     return;
   }
   if (devProjects.length > 0 && !devProjects.includes(selected)) {
@@ -1886,6 +1932,7 @@ devProjectInput.addEventListener("change", async (event) => {
   await setCurrentDevProject(selected);
   await fetchDefinitionSuggestions();
   await fetchDefinitions();
+  updateInstallDefinitionButtonState();
 });
 
 
@@ -1975,6 +2022,25 @@ filterButton.addEventListener("click", () => {
       window.alert(result?.message || "Definition pushed to upstream repository.");
     } catch (error) {
       window.alert(error.message || "Unable to push definition.");
+    }
+  });
+
+  installDefinitionButton?.addEventListener("click", async () => {
+    if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
+      return;
+    }
+    if (!devProjectInput.value.trim()) {
+      window.alert("Please select a project first.");
+      return;
+    }
+
+    try {
+      const result = await saveDefinition(currentDetailDefinitionId);
+      await fetchDefinitions();
+      await showDetails(currentDetailDefinitionId);
+      window.alert(result?.message || "Definition installed in current project.");
+    } catch (error) {
+      window.alert(error.message || "Unable to install definition in current project.");
     }
   });
   
