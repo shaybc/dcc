@@ -1,6 +1,7 @@
 @import "/styles/themes/theme-dark.css";
 @import "/styles/themes/theme-light.css";
 @import "/styles/components/loading-overlay.css";
+@import "/styles/components/notifications.css";
 
 body {
   font-family: Arial, sans-serif;

@@ -4,6 +4,7 @@ import {
   runWithLoading,
   setDefaultTimeout,
 } from "./services/loadingService.js";
+import { initNotificationService } from "./services/notificationService.js";
 
 const settingsForm = document.getElementById("settingsForm");
 const clonePullButton = document.getElementById("clonePull");
@@ -26,6 +27,7 @@ function normalizeLocalPath(localPath = "") {
 }
 
 initLoadingService();
+initNotificationService();
 
 function setNotice(message, isError = false) {
   notice.textContent = message;

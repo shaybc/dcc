@@ -1,0 +1,72 @@
+.app-notifications {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2400;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.app-notification {
+  width: min(360px, calc(100vw - 36px));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--card) 90%, var(--accent) 10%), var(--card));
+  box-shadow: var(--shadow);
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transform: translateY(8px);
+  opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  pointer-events: auto;
+}
+
+.app-notification.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.app-notification.is-dismissing {
+  transform: translateY(10px);
+  opacity: 0;
+}
+
+.app-notification-message {
+  margin: 0;
+  line-height: 1.45;
+  flex: 1;
+}
+
+.app-notification-close {
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--accent) 80%, #0ea5e9 20%);
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-notification-close:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(139, 92, 246, 0.35);
+}
+
+.app-notification-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4);
+}
+
+.app-notification-success {
+  border-color: color-mix(in srgb, var(--success) 65%, var(--border) 35%);
+}
+
+.app-notification-error {
+  border-color: color-mix(in srgb, #ef4444 70%, var(--border) 30%);
+}
