@@ -44,3 +44,47 @@ test("recommendDefinitions is deterministic for ties", () => {
   assert.deepEqual(firstRun, secondRun);
   assert.deepEqual(firstRun.map((item) => item.name), ["Alpha", "Beta"]);
 });
+
+test("recommendDefinitions boosts project type context beyond hardcoded keyword lists", () => {
+  const definitions = [
+    {
+      key: "configs::node-app",
+      name: "Node app baseline",
+      description: "Reusable app configuration",
+      type: "configs",
+      tags: "node, express"
+    },
+    {
+      key: "configs::generic",
+      name: "Generic baseline",
+      description: "Reusable app configuration",
+      type: "configs",
+      tags: "express"
+    }
+  ];
+
+  const suggestions = recommendDefinitions("/work/apps/acme-api", "node", definitions);
+
+  assert.equal(suggestions.length, 2);
+  assert.equal(suggestions[0].key, "configs::node-app");
+  assert.ok(suggestions[0].score > suggestions[1].score);
+  assert.ok(suggestions[0].reasons.includes("projectType tag match: node"));
+  assert.ok(suggestions[0].reasons.includes("projectType keyword match: node"));
+});
+
+test("recommendDefinitions includes project path tag matches", () => {
+  const definitions = [
+    {
+      key: "configs::acme",
+      name: "Shared config",
+      description: "Common defaults",
+      type: "configs",
+      tags: "acme, team"
+    }
+  ];
+
+  const suggestions = recommendDefinitions("/work/apps/acme-portal", "node", definitions);
+
+  assert.equal(suggestions.length, 1);
+  assert.ok(suggestions[0].reasons.includes("project path tag: acme"));
+});
