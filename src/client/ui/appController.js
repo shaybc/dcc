@@ -348,12 +348,7 @@ function getCardDescription(description) {
     return fallback;
   }
 
-  const maxLength = 100;
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+  return normalized;
 }
 
 function getCardTitle(name) {
