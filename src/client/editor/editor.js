@@ -33,6 +33,7 @@ let format = "yaml";
 let unknown = {};
 let availableTags = [];
 let definitionReferences = [];
+let promptContentFormat = "yaml";
 const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
 const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags"];
 
@@ -236,13 +237,57 @@ function stringifyYamlDefinition(data) {
   return injectBlankLineAfterHeader(document.toString());
 }
 
+function isMarkdownPath(filePath = "") {
+  const normalized = String(filePath || "").toLowerCase();
+  return normalized.endsWith(".md") || normalized.endsWith(".markdown") || normalized.endsWith(".mdx");
+}
+
+function inferPromptFormat(text = "") {
+  if (isMarkdownPath(pathParam)) {
+    return "markdown";
+  }
+
+  const source = String(text || "").trimStart();
+  return source.startsWith("---") ? "markdown" : "yaml";
+}
+
 
 const handlers = {
   prompt: {
     createForm: createPromptForm,
-    parse: (txt) => YAML.parse(txt || "") || {},
+    parse: (txt) => {
+      promptContentFormat = inferPromptFormat(txt);
+      format = promptContentFormat;
+      if (promptContentFormat === "markdown") {
+        const parsed = matter(txt || "");
+        return {
+          ...parsed.data,
+          prompt: parsed.data?.prompt || parsed.content.trim(),
+          __contentFormat: "markdown"
+        };
+      }
+
+      return {
+        ...(YAML.parse(txt || "") || {}),
+        __contentFormat: "yaml"
+      };
+    },
     serialize: (state) => {
       const { tags, ...rest } = state;
+      if (promptContentFormat === "markdown") {
+        const prompts = Array.isArray(state.prompts) ? state.prompts : [];
+        const primaryPrompt = prompts[0] || {};
+        const { prompts: _unusedPrompts, ...frontmatterFields } = rest;
+
+        return matter.stringify("", {
+          ...unknown,
+          ...frontmatterFields,
+          dcc_tags: normalizeStringArray(tags),
+          invokable: true,
+          prompt: primaryPrompt.prompt || ""
+        });
+      }
+
       return stringifyYamlDefinition({
         ...unknown,
         ...rest,
@@ -380,7 +425,7 @@ function normalizeState(type, parsed) {
     schema: data.schema || "",
     description: data.description || "",
     tags: normalizeStringArray(data.dcc_tags || data.tags),
-    prompts: Array.isArray(data.prompts) ? data.prompts : []
+    prompts: Array.isArray(data.prompts) ? data.prompts : (data.prompt ? [{ name: data.name || "", description: data.description || "", prompt: data.prompt }] : [])
   };
   if (type === "mcpServer") return {
     name: data.name || "",
@@ -451,7 +496,7 @@ function normalizeState(type, parsed) {
 
 function captureUnknownFields(type, parsed) {
   const knownByType = {
-    prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts"],
+    prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts", "prompt", "invokable", "__contentFormat"],
     mcpServer: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "mcpServers"],
     agent: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
     rule: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
@@ -484,9 +529,9 @@ function setupForType(type, initialRaw) {
   rawText.value = initialRaw || "";
   sync.updateFormFromText();
   sync.updateTextFromForm();
-  rawLabel.textContent = type === "agent" || type === "rule" ? "Raw Markdown" : "Raw YAML";
+  format = type === "agent" || type === "rule" ? "markdown" : (type === "prompt" ? inferPromptFormat(initialRaw) : "yaml");
+  rawLabel.textContent = format === "markdown" ? "Raw Markdown" : "Raw YAML";
   renderEditorTitle(type);
-  format = type === "agent" || type === "rule" ? "markdown" : "yaml";
 }
 
 async function boot() {
