@@ -1,5 +1,6 @@
 const NOTIFICATION_ROOT_ID = "appNotifications";
 const DEFAULT_DURATION_MS = 5000;
+const FLASH_NOTIFICATION_KEY = "dcc:flash-notification";
 
 let initialized = false;
 
@@ -14,6 +15,37 @@ function ensureNotificationRoot() {
   root.setAttribute("aria-atomic", "false");
   document.body.appendChild(root);
   return root;
+}
+
+
+function readFlashNotification() {
+  try {
+    const raw = window.sessionStorage?.getItem(FLASH_NOTIFICATION_KEY);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(FLASH_NOTIFICATION_KEY);
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      message: String(parsed.message || "").trim(),
+      options: parsed.options && typeof parsed.options === "object" ? parsed.options : {}
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function queueNotification(message, options = {}) {
+  const text = String(message || "").trim();
+  if (!text) return;
+  try {
+    window.sessionStorage?.setItem(
+      FLASH_NOTIFICATION_KEY,
+      JSON.stringify({ message: text, options })
+    );
+  } catch {
+    // Ignore storage failures and fall back to in-page notify.
+    notify(text, options);
+  }
 }
 
 function normalizeType(type = "info", message = "") {
@@ -76,6 +108,11 @@ export function initNotificationService() {
   window.alert = (message) => {
     notify(message);
   };
+
+  const flash = readFlashNotification();
+  if (flash?.message) {
+    notify(flash.message, flash.options);
+  }
 
   window.dispatchEvent(new CustomEvent("notifications:ready", { detail: { originalAlert } }));
   initialized = true;
