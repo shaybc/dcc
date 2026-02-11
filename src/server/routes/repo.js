@@ -2,39 +2,18 @@ import fs from "fs";
 import path from "path";
 import express from "express";
 import { runCommand } from "../utils/git.js";
-import { DEFAULT_ASSETS_ROOT, ensureAssetRepoMigration, getEnabledAssetRepos } from "../utils/assetRepos.js";
+import { ensureAssetRepoMigration, getEnabledAssetRepos } from "../utils/assetRepos.js";
 import { loadDefinitions } from "../definitions/index.js";
 
 const router = express.Router();
 
-function normalizeAssetFolder(localPath = "") {
-  const value = String(localPath || "").trim().replace(/\\/g, "/");
-  if (!value) return "";
-
-  const rootFolderName = path.basename(DEFAULT_ASSETS_ROOT);
-  if (value === rootFolderName) return "";
-
-  const marker = `${rootFolderName}/`;
-  if (value.startsWith(marker)) return value.slice(marker.length);
-
-  const markerIndex = value.lastIndexOf(`/${marker}`);
-  if (markerIndex >= 0) return value.slice(markerIndex + marker.length + 1);
-
-  return value.replace(/^\/+|\/+$/g, "");
-}
-
 function resolveLocalRepoPath(localPath) {
-  const folder = normalizeAssetFolder(localPath);
-  if (!folder || folder.includes("..")) {
-    throw new Error("Invalid local path. Provide a folder under ai_assets.");
+  const configuredPath = String(localPath || "").trim();
+  if (!configuredPath) {
+    throw new Error("Invalid local path. Provide a local folder path.");
   }
 
-  const rootPath = path.resolve(DEFAULT_ASSETS_ROOT);
-  const resolvedPath = path.resolve(rootPath, folder);
-  if (resolvedPath !== rootPath && !resolvedPath.startsWith(`${rootPath}${path.sep}`)) {
-    throw new Error("Resolved path is outside ai_assets root.");
-  }
-  return resolvedPath;
+  return path.resolve(configuredPath);
 }
 
 function shellEscape(value) {
@@ -58,9 +37,6 @@ router.post("/api/asset-repos/sync", async (req, res) => {
       return;
     }
 
-    const rootPath = path.resolve(DEFAULT_ASSETS_ROOT);
-    fs.mkdirSync(rootPath, { recursive: true });
-
     const results = [];
 
     for (const repo of repos) {
@@ -81,15 +57,29 @@ router.post("/api/asset-repos/sync", async (req, res) => {
         } else {
           const gitDir = path.join(localPath, ".git");
           if (!fs.existsSync(gitDir)) {
-            throw new Error("Local path exists but is not a git repository.");
+            const entries = fs.readdirSync(localPath, { withFileTypes: true });
+            if (entries.length === 0) {
+              await runCommand(`git clone ${shellEscape(repo.remoteUrl)} ${shellEscape(localPath)}`);
+              result.status = "cloned";
+            } else {
+              throw new Error(`Local path exists but is not a git repository: ${localPath}`);
+            }
+          } else {
+            await pullRepo(localPath);
+            result.status = "pulled";
           }
-
-          await pullRepo(localPath);
-          result.status = "pulled";
         }
       } catch (error) {
         result.status = "failed";
         result.error = error?.message || "Unknown sync error.";
+
+        console.error("[asset-repos/sync] Repository sync failed", {
+          repoId: repo.id,
+          repoName: repo.name,
+          configuredLocalPath: repo.localPath,
+          localPath: result.localPath || null,
+          error: result.error,
+        });
       }
 
       results.push(result);
@@ -97,10 +87,10 @@ router.post("/api/asset-repos/sync", async (req, res) => {
 
     res.json({
       ok: results.every((entry) => entry.status !== "failed"),
-      rootPath,
       results,
     });
   } catch (error) {
+    console.error("[asset-repos/sync] Sync request failed", { error: error?.message || error });
     res.status(500).json({ error: error.message });
   }
 });
@@ -113,6 +103,5 @@ router.post("/api/load-definitions", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 export default router;

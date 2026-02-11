@@ -21,24 +21,8 @@ const themeToggle = document.getElementById("themeToggle");
 const themeToggleLabel = document.getElementById("themeToggleLabel");
 const loadingTimeoutInput = document.getElementById("loadingTimeoutInput");
 const saveLoadingTimeoutButton = document.getElementById("saveLoadingTimeoutBtn");
-const defaultAssetRoot = "ai_assets";
-
-function normalizeAssetFolder(localPath = "") {
-  const value = String(localPath || "").trim().replace(/\\/g, "/");
-  if (!value) return "";
-  const marker = `${defaultAssetRoot}/`;
-  if (value.startsWith(marker)) return value.slice(marker.length);
-  const markerIndex = value.lastIndexOf(`/${marker}`);
-  if (markerIndex >= 0) return value.slice(markerIndex + marker.length + 1);
-  return value.split("/").filter(Boolean).pop() || value;
-}
-
-function toAssetLocalPath(folder = "") {
-  const normalizedFolder = String(folder || "")
-    .trim()
-    .replace(/\\/g, "/")
-    .replace(/^\/+|\/+$/g, "");
-  return normalizedFolder ? `${defaultAssetRoot}/${normalizedFolder}` : "";
+function normalizeLocalPath(localPath = "") {
+  return String(localPath || "").trim();
 }
 
 initLoadingService();
@@ -93,8 +77,8 @@ function createAssetRepoRow(repo = {}) {
   const pathInput = document.createElement("input");
   pathInput.type = "text";
   pathInput.className = "asset-repo-folder";
-  pathInput.placeholder = "team-assets";
-  pathInput.value = normalizeAssetFolder(repo.localPath || "");
+  pathInput.placeholder = "C:/GitHub/shaybc/ai_assets";
+  pathInput.value = normalizeLocalPath(repo.localPath || "");
 
   const enabledInput = document.createElement("input");
   enabledInput.type = "checkbox";
@@ -122,7 +106,7 @@ function createAssetRepoRow(repo = {}) {
 function renderAssetRepos(repos) {
   assetReposTable.innerHTML = "";
   if (!repos.length) {
-    assetReposTable.appendChild(createAssetRepoRow({ localPath: `${defaultAssetRoot}/` }));
+    assetReposTable.appendChild(createAssetRepoRow({ localPath: "" }));
     return;
   }
   repos.forEach((repo) => assetReposTable.appendChild(createAssetRepoRow(repo)));
@@ -146,7 +130,7 @@ function collectAssetReposFromRows() {
       const name = row.querySelector(".asset-repo-name")?.value.trim() || "";
       const remoteUrl = row.querySelector(".asset-repo-remote")?.value.trim() || "";
       const localFolder = row.querySelector(".asset-repo-folder")?.value.trim() || "";
-      const localPath = toAssetLocalPath(localFolder);
+      const localPath = normalizeLocalPath(localFolder);
       const enabled = Boolean(row.querySelector(".asset-repo-enabled")?.checked);
 
       if (!name && (remoteUrl || localPath)) {
@@ -427,7 +411,7 @@ addDevRootButton.addEventListener("click", () => {
 });
 
 addAssetRepoButton?.addEventListener("click", () => {
-  assetReposTable.appendChild(createAssetRepoRow({ localPath: `${defaultAssetRoot}/` }));
+  assetReposTable.appendChild(createAssetRepoRow({ localPath: "" }));
 });
 
 saveDevRootsButton.addEventListener("click", async () => {
