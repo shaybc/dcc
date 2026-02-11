@@ -348,7 +348,17 @@ function getCardDescription(description) {
     return fallback;
   }
 
-  const maxLength = 170;
+  return normalized;
+}
+
+function getCardTitle(name) {
+  const fallback = "Untitled definition";
+  const normalized = String(name || "").replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return fallback;
+  }
+
+  const maxLength = 25;
   if (normalized.length <= maxLength) {
     return normalized;
   }
@@ -636,7 +646,7 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   card.innerHTML = `
     ${cardActions}
     ${recommendationMeta}
-    <h3>${definition.name}</h3>
+    <h3>${escapeHtml(getCardTitle(definition.name))}</h3>
     ${descriptionText}
     ${recommendationReasonText}
     ${tagsMarkup}
