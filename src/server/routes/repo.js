@@ -2,64 +2,18 @@ import fs from "fs";
 import path from "path";
 import express from "express";
 import { runCommand } from "../utils/git.js";
-import { DEFAULT_ASSETS_ROOT, ensureAssetRepoMigration, getEnabledAssetRepos } from "../utils/assetRepos.js";
+import { ensureAssetRepoMigration, getEnabledAssetRepos } from "../utils/assetRepos.js";
 import { loadDefinitions } from "../definitions/index.js";
 
 const router = express.Router();
 
-function isPathInside(parentPath, targetPath) {
-  const parent = path.resolve(parentPath);
-  const target = path.resolve(targetPath);
-
-  const normalizeForCompare = (value) => {
-    if (process.platform === "win32") return value.toLowerCase();
-    return value;
-  };
-
-  const relative = path.relative(normalizeForCompare(parent), normalizeForCompare(target));
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
-}
-
-function normalizeAssetFolder(localPath = "") {
-  const value = String(localPath || "").trim().replace(/\\/g, "/");
-  if (!value) return "";
-
-  const rootPath = path.resolve(DEFAULT_ASSETS_ROOT);
-  const candidatePath = path.resolve(value);
-  if (isPathInside(rootPath, candidatePath)) {
-    return path.relative(rootPath, candidatePath).replace(/\\/g, "/");
-  }
-
-  const rootFolderName = path.basename(rootPath);
-  if (value === rootFolderName) return "";
-
-  const marker = `${rootFolderName}/`;
-  if (value.startsWith(marker)) return value.slice(marker.length);
-
-  const markerIndex = value.lastIndexOf(`/${marker}`);
-  if (markerIndex >= 0) return value.slice(markerIndex + marker.length + 1);
-
-  return value.replace(/^\/+|\/+$/g, "");
-}
-
 function resolveLocalRepoPath(localPath) {
-  const folder = normalizeAssetFolder(localPath);
-  if (folder.includes("..")) {
-    throw new Error("Invalid local path. Provide a folder under ai_assets.");
+  const configuredPath = String(localPath || "").trim();
+  if (!configuredPath) {
+    throw new Error("Invalid local path. Provide a local folder path.");
   }
 
-  const rootPath = path.resolve(DEFAULT_ASSETS_ROOT);
-  if (!folder) {
-    throw new Error("Invalid local path. Provide a folder under ai_assets.");
-  }
-
-  const resolvedPath = path.resolve(rootPath, folder);
-
-  if (!isPathInside(rootPath, resolvedPath)) {
-    throw new Error(`Resolved path is outside ai_assets root. path=${resolvedPath} root=${rootPath}`);
-  }
-
-  return resolvedPath;
+  return path.resolve(configuredPath);
 }
 
 function shellEscape(value) {
@@ -82,9 +36,6 @@ router.post("/api/asset-repos/sync", async (req, res) => {
       res.status(400).json({ error: "No enabled asset repositories found in settings." });
       return;
     }
-
-    const rootPath = path.resolve(DEFAULT_ASSETS_ROOT);
-    fs.mkdirSync(rootPath, { recursive: true });
 
     const results = [];
 
@@ -126,6 +77,7 @@ router.post("/api/asset-repos/sync", async (req, res) => {
           repoId: repo.id,
           repoName: repo.name,
           configuredLocalPath: repo.localPath,
+          localPath: result.localPath || null,
           error: result.error,
         });
       }
@@ -135,7 +87,6 @@ router.post("/api/asset-repos/sync", async (req, res) => {
 
     res.json({
       ok: results.every((entry) => entry.status !== "failed"),
-      rootPath,
       results,
     });
   } catch (error) {
@@ -152,6 +103,5 @@ router.post("/api/load-definitions", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 export default router;
