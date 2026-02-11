@@ -26,18 +26,28 @@ const defaultAssetRoot = "ai_assets";
 function normalizeAssetFolder(localPath = "") {
   const value = String(localPath || "").trim().replace(/\\/g, "/");
   if (!value) return "";
+
   const marker = `${defaultAssetRoot}/`;
+  if (value === defaultAssetRoot) return "";
   if (value.startsWith(marker)) return value.slice(marker.length);
+
   const markerIndex = value.lastIndexOf(`/${marker}`);
-  if (markerIndex >= 0) return value.slice(markerIndex + marker.length + 1);
-  return value.split("/").filter(Boolean).pop() || value;
+  if (markerIndex >= 0) {
+    return value.slice(markerIndex + marker.length + 1);
+  }
+
+  if (/^[a-zA-Z]:\//.test(value) || value.startsWith("/")) {
+    const valueTrimmed = value.replace(/\/+$/g, "");
+    if (valueTrimmed.toLowerCase().endsWith(`/${defaultAssetRoot}`)) {
+      return "";
+    }
+  }
+
+  return value.replace(/^\/+|\/+$/g, "");
 }
 
 function toAssetLocalPath(folder = "") {
-  const normalizedFolder = String(folder || "")
-    .trim()
-    .replace(/\\/g, "/")
-    .replace(/^\/+|\/+$/g, "");
+  const normalizedFolder = normalizeAssetFolder(folder);
   return normalizedFolder ? `${defaultAssetRoot}/${normalizedFolder}` : "";
 }
 
