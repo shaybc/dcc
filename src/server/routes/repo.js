@@ -7,11 +7,30 @@ import { loadDefinitions } from "../definitions/index.js";
 
 const router = express.Router();
 
+function isPathInside(parentPath, targetPath) {
+  const parent = path.resolve(parentPath);
+  const target = path.resolve(targetPath);
+
+  const normalizeForCompare = (value) => {
+    if (process.platform === "win32") return value.toLowerCase();
+    return value;
+  };
+
+  const relative = path.relative(normalizeForCompare(parent), normalizeForCompare(target));
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
 function normalizeAssetFolder(localPath = "") {
   const value = String(localPath || "").trim().replace(/\\/g, "/");
   if (!value) return "";
 
-  const rootFolderName = path.basename(DEFAULT_ASSETS_ROOT);
+  const rootPath = path.resolve(DEFAULT_ASSETS_ROOT);
+  const candidatePath = path.resolve(value);
+  if (isPathInside(rootPath, candidatePath)) {
+    return path.relative(rootPath, candidatePath).replace(/\\/g, "/");
+  }
+
+  const rootFolderName = path.basename(rootPath);
   if (value === rootFolderName) return "";
 
   const marker = `${rootFolderName}/`;
@@ -25,15 +44,17 @@ function normalizeAssetFolder(localPath = "") {
 
 function resolveLocalRepoPath(localPath) {
   const folder = normalizeAssetFolder(localPath);
-  if (!folder || folder.includes("..")) {
+  if (folder.includes("..")) {
     throw new Error("Invalid local path. Provide a folder under ai_assets.");
   }
 
   const rootPath = path.resolve(DEFAULT_ASSETS_ROOT);
-  const resolvedPath = path.resolve(rootPath, folder);
-  if (resolvedPath !== rootPath && !resolvedPath.startsWith(`${rootPath}${path.sep}`)) {
-    throw new Error("Resolved path is outside ai_assets root.");
+  const resolvedPath = folder ? path.resolve(rootPath, folder) : rootPath;
+
+  if (!isPathInside(rootPath, resolvedPath)) {
+    throw new Error(`Resolved path is outside ai_assets root. path=${resolvedPath} root=${rootPath}`);
   }
+
   return resolvedPath;
 }
 
@@ -90,6 +111,13 @@ router.post("/api/asset-repos/sync", async (req, res) => {
       } catch (error) {
         result.status = "failed";
         result.error = error?.message || "Unknown sync error.";
+
+        console.error("[asset-repos/sync] Repository sync failed", {
+          repoId: repo.id,
+          repoName: repo.name,
+          configuredLocalPath: repo.localPath,
+          error: result.error,
+        });
       }
 
       results.push(result);
@@ -101,6 +129,7 @@ router.post("/api/asset-repos/sync", async (req, res) => {
       results,
     });
   } catch (error) {
+    console.error("[asset-repos/sync] Sync request failed", { error: error?.message || error });
     res.status(500).json({ error: error.message });
   }
 });
