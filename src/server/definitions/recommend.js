@@ -1,10 +1,12 @@
 const DEFAULT_MATCH_WEIGHTS = Object.freeze({
   projectType: 6,
+  projectTypeContext: 5,
   definitionType: 4,
   tag: 3,
   keyword: 2,
   dccMetadata: 2,
-  projectPathKeyword: 1
+  projectPathKeyword: 1,
+  projectPathTag: 2
 });
 
 export const PROJECT_TYPE_RECOMMENDATION_MAP = Object.freeze({
@@ -26,7 +28,7 @@ function normalizeToken(value) {
 
 function tokenize(value) {
   return normalizeToken(value)
-    .split(/[^a-z0-9_+-]+/)
+    .split(/[^a-z0-9_+]+/)
     .map((token) => token.trim())
     .filter(Boolean);
 }
@@ -78,6 +80,23 @@ function scoreDefinition(definition, context) {
     reasons.push(`projectType match: ${context.projectType}`);
   }
 
+  if (context.projectType) {
+    if (tags.includes(context.projectType)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTypeContext;
+      reasons.push(`projectType tag match: ${context.projectType}`);
+    }
+
+    if (textBlob.includes(context.projectType)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTypeContext;
+      reasons.push(`projectType keyword match: ${context.projectType}`);
+    }
+
+    if (dccMetadataTokens.includes(context.projectType)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTypeContext;
+      reasons.push(`projectType metadata match: ${context.projectType}`);
+    }
+  }
+
   if (profile?.definitionTypes?.[type]) {
     score += profile.definitionTypes[type] * DEFAULT_MATCH_WEIGHTS.definitionType;
     reasons.push(`definition type boost: ${type}`);
@@ -108,6 +127,13 @@ function scoreDefinition(definition, context) {
     if (!textBlob.includes(token)) continue;
     score += DEFAULT_MATCH_WEIGHTS.projectPathKeyword;
     reasons.push(`project path keyword: ${token}`);
+  }
+
+  for (const token of context.projectPathTokens) {
+    if (!token || token.length < 3) continue;
+    if (!tags.includes(token)) continue;
+    score += DEFAULT_MATCH_WEIGHTS.projectPathTag;
+    reasons.push(`project path tag: ${token}`);
   }
 
   return { score, reasons };
