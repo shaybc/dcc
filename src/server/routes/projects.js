@@ -34,12 +34,13 @@ router.post("/api/dev-project-roots", async (req, res) => {
 router.get("/api/dev-projects", async (req, res) => {
   try {
     const rows = await allDb(
-      "SELECT id, path, projectType, detectedSignals, lastScannedAt FROM dev_projects ORDER BY path ASC"
+      "SELECT id, path, projectType, detectedSignals, projectTechnologies, lastScannedAt FROM dev_projects ORDER BY path ASC"
     );
     res.json(
       rows.map((row) => ({
         ...row,
         detectedSignals: row.detectedSignals ? JSON.parse(row.detectedSignals) : [],
+        projectTechnologies: row.projectTechnologies ? JSON.parse(row.projectTechnologies) : [],
       }))
     );
   } catch (error) {

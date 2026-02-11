@@ -40,7 +40,7 @@ Detected and handled definition types include:
 ## 6) Dev project discovery
 - Configure scan roots using `/api/dev-project-roots`.
 - Recursively discover nested git projects and detect project type signals.
-- Store project metadata (`projectType`, `detectedSignals`, `lastScannedAt`).
+- Store project metadata (`projectType`, `detectedSignals`, `projectTechnologies`, `lastScannedAt`).
 - List discovered projects via `/api/dev-projects`.
 
 ## 7) Save/remove definitions to local projects

@@ -7,6 +7,7 @@ This document describes how `/api/definitions/suggestions` ranks definitions.
 The scorer receives:
 - current project path (from `currentDevProject` setting),
 - current project type (from `dev_projects.projectType`),
+- project technologies (from `dev_projects.projectTechnologies` and detected signals),
 - candidate definitions (`id`, `key`, `name`, `description`, `tags`, `type`).
 
 ## Project profiles
@@ -34,20 +35,26 @@ Base multipliers:
 - `projectType`: **6**
 - `definitionType`: **4**
 - `tag`: **3**
+- `projectTechnologyTag`: **3**
 - `keyword`: **2**
 - `dccMetadata`: **2**
+- `projectTechnologyKeyword`: **2**
+- `projectTechnologyMetadata`: **2**
+- `projectPathTag`: **2**
 - `projectPathKeyword`: **1**
 
 ## How scoring works
 
 For each candidate definition:
-1. Normalize tokens to lowercase.
+1. Normalize tokens to lowercase (including splitting hyphenated values like `acme-portal` into `acme` and `portal`).
 2. Add score for exact projectType/type match.
 3. Add profile definition-type boosts.
 4. Add boosts for matching tags.
 5. Add boosts for matching keywords in `name + description`.
 6. Add boosts for matching `dcc_*` metadata tokens if present.
-7. Add small boosts when project path tokens appear in `name + description`.
+7. Add boosts when project technologies (languages/frameworks detected during project scan) match tags, text, or metadata.
+8. Add small boosts when project path tokens appear in `name + description`.
+9. Add boosts when project path tokens appear in definition tags.
 
 Each positive match appends a human-readable entry into `reasons`.
 
