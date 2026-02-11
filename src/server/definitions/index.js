@@ -52,18 +52,17 @@ export async function loadDefinitions() {
   }
 
   const teamFiles = await collectTeamFiles();
-  const repoDefinitions = (await Promise.all(repoFiles.map(async (repoFile) => {
+  const parsedRepoDefinitions = (await Promise.all(repoFiles.map(async (repoFile) => {
     const definition = await parseDefinition(repoFile.filePath);
-    if (!definition.dccUri) {
-      definition.key = `${definition.type}/${repoFile.repoId}:${path.basename(repoFile.filePath)}`;
-    }
     return {
       ...definition,
       repoId: repoFile.repoId,
       repoName: repoFile.repoName,
     };
   })));
-  const teamDefinitions = await Promise.all(teamFiles.map((filePath) => parseDefinition(filePath)));
+  const repoDefinitions = parsedRepoDefinitions.filter((definition) => definition.dccUri);
+  const parsedTeamDefinitions = await Promise.all(teamFiles.map((filePath) => parseDefinition(filePath)));
+  const teamDefinitions = parsedTeamDefinitions.filter((definition) => definition.dccUri);
   const repoKeyMap = new Map(repoDefinitions.map((definition) => [definition.key, definition.filePath]));
   const teamKeyMap = new Set(teamDefinitions.map((definition) => definition.key));
   const now = new Date().toISOString();
