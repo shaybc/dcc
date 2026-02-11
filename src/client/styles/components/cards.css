@@ -25,7 +25,9 @@
 }
 
 .card-recommended {
-  background: var(--recommended-card-bg);
+  color: hsl(var(--recommended-card-text));
+  border-color: hsl(var(--recommended-card-border));
+  background-color: hsl(var(--recommended-card-bg));
   height: 110px;
   width: 240px;
   max-width: 240px;

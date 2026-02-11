@@ -21,7 +21,9 @@
   --card-in-project-bg: #eef2ff;
   --card-in-project-border: #c7d2fe;
   --card-local-definition-bg: #eee;
-  --recommended-card-bg: #f7fff5;
+  --recommended-card-text: 80.4, 21.7%, 57.5%;
+  --recommended-card-border: 75.7, 24.7%, 66.7%;
+  --recommended-card-bg: 77.1, 46.7%, 97.1%;
   --surface-muted: rgba(15, 23, 42, 0.06);
   --hero-icon-bg: rgba(15, 23, 42, 0.12);
   --inline-code-bg: rgba(15, 23, 42, 0.07);
