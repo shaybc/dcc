@@ -5,6 +5,9 @@ const DEFAULT_MATCH_WEIGHTS = Object.freeze({
   tag: 3,
   keyword: 2,
   dccMetadata: 2,
+  projectTechnologyTag: 3,
+  projectTechnologyKeyword: 2,
+  projectTechnologyMetadata: 2,
   projectPathKeyword: 1,
   projectPathTag: 2
 });
@@ -12,8 +15,8 @@ const DEFAULT_MATCH_WEIGHTS = Object.freeze({
 export const PROJECT_TYPE_RECOMMENDATION_MAP = Object.freeze({
   node: Object.freeze({
     definitionTypes: Object.freeze({ configs: 3, workflows: 2, prompts: 1 }),
-    tags: Object.freeze({ typescript: 3, npm: 3, eslint: 3, jest: 3 }),
-    keywords: Object.freeze({ typescript: 2, npm: 2, eslint: 2, jest: 2 })
+    tags: Object.freeze({ typescript: 3, npm: 3, eslint: 3, jest: 3, javascript: 2, frontend: 2, html: 2 }),
+    keywords: Object.freeze({ typescript: 2, npm: 2, eslint: 2, jest: 2, javascript: 2, frontend: 2, html: 2 })
   }),
   python: Object.freeze({
     definitionTypes: Object.freeze({ configs: 3, workflows: 2, prompts: 1 }),
@@ -21,6 +24,25 @@ export const PROJECT_TYPE_RECOMMENDATION_MAP = Object.freeze({
     keywords: Object.freeze({ pytest: 2, ruff: 2, poetry: 2, fastapi: 2 })
   })
 });
+
+const PROJECT_TECH_STOP_WORDS = new Set([
+  "ai",
+  "application",
+  "artifactid",
+  "build",
+  "core",
+  "file",
+  "format",
+  "git",
+  "json",
+  "lock",
+  "main",
+  "package",
+  "path",
+  "reason",
+  "resources",
+  "src"
+]);
 
 function normalizeToken(value) {
   return String(value || "").trim().toLowerCase();
@@ -61,6 +83,20 @@ function collectDccMetadataTokens(definition) {
     metadataValues.push(...Object.values(definition.dcc));
   }
   return uniqueTokens(metadataValues.map((value) => String(value || "")));
+}
+
+function normalizeProjectTechnologyTokens(values) {
+  return uniqueTokens(values)
+    .filter((token) => token.length >= 3)
+    .filter((token) => !PROJECT_TECH_STOP_WORDS.has(token));
+}
+
+export function buildProjectTechnologyTokens(projectType, projectTechnologies = [], detectedSignals = []) {
+  return normalizeProjectTechnologyTokens([
+    projectType,
+    ...(Array.isArray(projectTechnologies) ? projectTechnologies : []),
+    ...(Array.isArray(detectedSignals) ? detectedSignals : [])
+  ]);
 }
 
 function scoreDefinition(definition, context) {
@@ -122,6 +158,23 @@ function scoreDefinition(definition, context) {
     reasons.push(`dcc metadata match: ${keyword}`);
   }
 
+  for (const technology of context.projectTechnologyTokens) {
+    if (tags.includes(technology)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTechnologyTag;
+      reasons.push(`project technology tag: ${technology}`);
+    }
+
+    if (textBlob.includes(technology)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTechnologyKeyword;
+      reasons.push(`project technology keyword: ${technology}`);
+    }
+
+    if (dccMetadataTokens.includes(technology)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTechnologyMetadata;
+      reasons.push(`project technology metadata: ${technology}`);
+    }
+  }
+
   for (const token of context.projectPathTokens) {
     if (!token || token.length < 3) continue;
     if (!textBlob.includes(token)) continue;
@@ -147,6 +200,11 @@ export function recommendDefinitions(currentProjectPath, currentProjectType, def
   const context = {
     projectType: normalizeToken(currentProjectType),
     projectPathTokens: uniqueTokens([String(currentProjectPath || "")]),
+    projectTechnologyTokens: buildProjectTechnologyTokens(
+      currentProjectType,
+      options.projectTechnologies,
+      options.detectedSignals
+    ),
     map: options.recommendationMap || PROJECT_TYPE_RECOMMENDATION_MAP
   };
 

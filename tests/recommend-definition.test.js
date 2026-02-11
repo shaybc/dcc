@@ -68,8 +68,8 @@ test("recommendDefinitions boosts project type context beyond hardcoded keyword 
   assert.equal(suggestions.length, 2);
   assert.equal(suggestions[0].key, "configs::node-app");
   assert.ok(suggestions[0].score > suggestions[1].score);
-  assert.ok(suggestions[0].reasons.includes("projectType tag match: node"));
-  assert.ok(suggestions[0].reasons.includes("projectType keyword match: node"));
+  assert.ok(suggestions[0].reasons.includes("project technology tag: node"));
+  assert.ok(suggestions[0].reasons.includes("project technology keyword: node"));
 });
 
 test("recommendDefinitions includes project path tag matches", () => {

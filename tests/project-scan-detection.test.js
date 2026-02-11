@@ -32,5 +32,6 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
     assert.ok(project, `expected fixture ${fixtureName} to be discovered`);
     assert.equal(project.projectType, expectedType, `expected ${fixtureName} to detect as ${expectedType}`);
     assert.ok(Array.isArray(project.detectedSignals));
+    assert.ok(Array.isArray(project.projectTechnologies));
   }
 });
