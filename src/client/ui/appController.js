@@ -348,7 +348,7 @@ function getCardDescription(description) {
     return fallback;
   }
 
-  const maxLength = 170;
+  const maxLength = 110;
   if (normalized.length <= maxLength) {
     return normalized;
   }
