@@ -11,6 +11,7 @@ import { createContextForm } from "./forms/contextForm.js";
 import { createDocForm } from "./forms/docForm.js";
 import { createConfigForm } from "./forms/configForm.js";
 import { initLoadingService, runWithLoading } from "../services/loadingService.js";
+import { initNotificationService } from "../services/notificationService.js";
 
 const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode") || "create";
@@ -38,6 +39,7 @@ const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
 const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags"];
 
 initLoadingService();
+initNotificationService();
 
 function typeDisplayLabel(type) {
   if (type === "mcpServer") return "MCP Server";

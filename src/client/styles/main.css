@@ -32,6 +32,7 @@
 @import "./components/validation.css";
 @import "./components/modals.css";
 @import "./components/loading-overlay.css";
+@import "./components/notifications.css";
 @import "./components/diff-view.css";
 
 /* Sections */
