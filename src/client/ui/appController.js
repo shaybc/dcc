@@ -356,6 +356,21 @@ function getCardDescription(description) {
   return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
+function getCardTitle(name) {
+  const fallback = "Untitled definition";
+  const normalized = String(name || "").replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return fallback;
+  }
+
+  const maxLength = 25;
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -636,7 +651,7 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   card.innerHTML = `
     ${cardActions}
     ${recommendationMeta}
-    <h3>${definition.name}</h3>
+    <h3>${escapeHtml(getCardTitle(definition.name))}</h3>
     ${descriptionText}
     ${recommendationReasonText}
     ${tagsMarkup}
