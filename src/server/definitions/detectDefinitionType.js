@@ -9,6 +9,14 @@ function hasMarkdownList(body = "") {
   return /^\s*[-*]\s+.+/m.test(String(body || ""));
 }
 
+function isInvokablePrompt(frontmatter = {}) {
+  if (!frontmatter || typeof frontmatter !== "object") return false;
+  const value = frontmatter.invokable;
+  if (value === true) return true;
+  if (typeof value === "string") return value.trim().toLowerCase() === "true";
+  return false;
+}
+
 export function detectDefinitionType(content = "", filePath = "") {
   const extension = String(filePath || "").toLowerCase();
   const isMarkdown = extension.endsWith(".md") || extension.endsWith(".markdown") || /^---\s*\n/.test(content);
@@ -19,6 +27,10 @@ export function detectDefinitionType(content = "", filePath = "") {
 
     if (hasArrayWithValues(frontmatter.tools)) {
       return "agent";
+    }
+
+    if (isInvokablePrompt(frontmatter)) {
+      return "prompt";
     }
 
     if (Object.keys(frontmatter).length > 0 && hasMarkdownList(parsed.content)) {
