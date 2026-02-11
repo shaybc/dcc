@@ -48,7 +48,7 @@ function normalizeAssetFolder(localPath = "") {
 
 function toAssetLocalPath(folder = "") {
   const normalizedFolder = normalizeAssetFolder(folder);
-  return normalizedFolder ? `${defaultAssetRoot}/${normalizedFolder}` : defaultAssetRoot;
+  return normalizedFolder ? `${defaultAssetRoot}/${normalizedFolder}` : "";
 }
 
 initLoadingService();
