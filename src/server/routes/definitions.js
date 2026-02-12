@@ -6,7 +6,7 @@ import { getSetting } from "../utils/settings.js";
 import { getFileCreatedAt } from "../utils/files.js";
 import { extractDccUriFromDefinitionContent } from "../definitions/metadata.js";
 import { normalizeDefinitionType } from "../definitions/parse.js";
-import { recommendDefinitions } from "../definitions/recommend.js";
+import { buildProjectTechnologyTokens, recommendDefinitions } from "../definitions/recommend.js";
 
 const router = express.Router();
 
@@ -64,6 +64,18 @@ async function attachRepoDisplayMetadata(definitionsRows) {
   });
 }
 
+
+function parseJsonArray(value) {
+  if (!value) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_error) {
+    return [];
+  }
+}
 router.get("/api/definition-tags", async (_req, res) => {
   try {
     const rows = await allDb("SELECT tags FROM definitions");
@@ -126,14 +138,18 @@ router.get("/api/definitions/suggestions", async (_req, res) => {
   try {
     const currentDevProject = String(await getSetting("currentDevProject") || "").trim();
     if (!currentDevProject) {
-      res.json({ projectPath: "", projectType: "", suggestions: [] });
+      res.json({ projectPath: "", projectType: "", projectTechnologies: [], suggestions: [] });
       return;
     }
 
-    const projectRow = await getDb("SELECT projectType FROM dev_projects WHERE path = ?", [currentDevProject]);
+    const projectRow = await getDb("SELECT projectType, detectedSignals, projectTechnologies FROM dev_projects WHERE path = ?", [currentDevProject]);
     const projectType = String(projectRow?.projectType || "").trim().toLowerCase();
-    if (!projectType || projectType === "unknown") {
-      res.json({ projectPath: currentDevProject, projectType, suggestions: [] });
+    const detectedSignals = parseJsonArray(projectRow?.detectedSignals);
+    const savedProjectTechnologies = parseJsonArray(projectRow?.projectTechnologies);
+    const projectTechnologies = buildProjectTechnologyTokens(projectType, savedProjectTechnologies, detectedSignals);
+
+    if (!projectType && projectTechnologies.length === 0) {
+      res.json({ projectPath: currentDevProject, projectType, projectTechnologies, suggestions: [] });
       return;
     }
 
@@ -141,7 +157,10 @@ router.get("/api/definitions/suggestions", async (_req, res) => {
       "SELECT id, key, name, description, tags, type FROM definitions"
     );
 
-    const rankedSuggestions = recommendDefinitions(currentDevProject, projectType, definitionsRows)
+    const rankedSuggestions = recommendDefinitions(currentDevProject, projectType, definitionsRows, {
+      projectTechnologies,
+      detectedSignals
+    })
       .map((definition) => ({
         definitionId: definition.id,
         score: definition.score,
@@ -151,6 +170,7 @@ router.get("/api/definitions/suggestions", async (_req, res) => {
     res.json({
       projectPath: currentDevProject,
       projectType,
+      projectTechnologies,
       suggestions: rankedSuggestions
     });
   } catch (error) {

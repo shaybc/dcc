@@ -81,6 +81,7 @@ db.serialize(() => {
       path TEXT UNIQUE,
       projectType TEXT,
       detectedSignals TEXT,
+      projectTechnologies TEXT,
       lastScannedAt TEXT
     )`
   );
@@ -141,6 +142,10 @@ db.serialize(() => {
     const hasDetectedSignalsColumn = rows.some((row) => row.name === "detectedSignals");
     if (!hasDetectedSignalsColumn) {
       db.run("ALTER TABLE dev_projects ADD COLUMN detectedSignals TEXT", () => {});
+    }
+    const hasProjectTechnologiesColumn = rows.some((row) => row.name === "projectTechnologies");
+    if (!hasProjectTechnologiesColumn) {
+      db.run("ALTER TABLE dev_projects ADD COLUMN projectTechnologies TEXT", () => {});
     }
     const hasLastScannedAtColumn = rows.some((row) => row.name === "lastScannedAt");
     if (!hasLastScannedAtColumn) {
