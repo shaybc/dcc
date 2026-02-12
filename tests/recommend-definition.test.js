@@ -152,3 +152,59 @@ test("recommendDefinitions excludes explicit conflicting core-platform definitio
 
   assert.deepEqual(suggestions.map((item) => item.key), ["rules::backend"]);
 });
+
+test("recommendDefinitions does not treat frontend/html as node profile boosts", () => {
+  const definitions = [
+    {
+      key: "docs::frontend",
+      name: "Angular Docs",
+      description: "Frontend standards",
+      type: "docs",
+      tags: "frontend,html"
+    },
+    {
+      key: "docs::backend",
+      name: "Node.js Docs",
+      description: "Backend and javascript standards",
+      type: "docs",
+      tags: "backend,node,javascript"
+    }
+  ];
+
+  const suggestions = recommendDefinitions("/work/apps/node-service", "node", definitions, {
+    projectTechnologies: ["node", "javascript"]
+  });
+
+  assert.equal(suggestions[0].key, "docs::backend");
+  assert.ok(!suggestions[0].reasons.includes("tag match: frontend"));
+  assert.ok(!suggestions[0].reasons.includes("keyword match: frontend"));
+});
+
+test("recommendDefinitions allows backend projects to receive html/javascript technology matches", () => {
+  const definitions = [
+    {
+      key: "docs::frontend-tech",
+      name: "HTML & JavaScript Docs",
+      description: "standards for html javascript",
+      type: "docs",
+      tags: "html,javascript"
+    },
+    {
+      key: "docs::frontend-generic",
+      name: "Frontend Guidelines",
+      description: "generic frontend playbook",
+      type: "docs",
+      tags: "frontend"
+    }
+  ];
+
+  const suggestions = recommendDefinitions("/work/apps/node-service", "node", definitions, {
+    corePlatform: "backend",
+    projectTechnologies: ["node", "javascript", "html"]
+  });
+
+  assert.deepEqual(suggestions.map((item) => item.key), ["docs::frontend-tech"]);
+  assert.ok(suggestions[0].reasons.includes("project technology tag: html"));
+  assert.ok(suggestions[0].reasons.includes("project technology tag: javascript"));
+});
+

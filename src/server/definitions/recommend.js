@@ -15,8 +15,8 @@ const DEFAULT_MATCH_WEIGHTS = Object.freeze({
 export const PROJECT_TYPE_RECOMMENDATION_MAP = Object.freeze({
   node: Object.freeze({
     definitionTypes: Object.freeze({ configs: 3, workflows: 2, prompts: 1 }),
-    tags: Object.freeze({ typescript: 3, npm: 3, eslint: 3, jest: 3, javascript: 2, frontend: 2, html: 2 }),
-    keywords: Object.freeze({ typescript: 2, npm: 2, eslint: 2, jest: 2, javascript: 2, frontend: 2, html: 2 })
+    tags: Object.freeze({ typescript: 3, npm: 3, eslint: 3, jest: 3, javascript: 2 }),
+    keywords: Object.freeze({ typescript: 2, npm: 2, eslint: 2, jest: 2, javascript: 2 })
   }),
   python: Object.freeze({
     definitionTypes: Object.freeze({ configs: 3, workflows: 2, prompts: 1 }),
@@ -71,6 +71,11 @@ const CORE_PLATFORM_TOKENS = Object.freeze({
   [CORE_PLATFORM.WEB]: new Set(["web", "frontend", "browser", "html", "css", "javascript", "typescript", "react", "angular", "vue"]),
   [CORE_PLATFORM.MOBILE]: new Set(["mobile", "android", "ios", "swift", "swiftui", "kotlin", "compose", "objective", "react", "native", "flutter"]),
   [CORE_PLATFORM.BACKEND]: new Set(["backend", "server", "service", "api", "node", "python", "java", "springboot", "go", "rust", "dotnet", "csharp", "groovy", "database"])
+});
+const EXPLICIT_PLATFORM_TOKENS = Object.freeze({
+  [CORE_PLATFORM.WEB]: new Set(["web", "frontend", "browser"]),
+  [CORE_PLATFORM.MOBILE]: new Set(["mobile", "android", "ios", "swift", "swiftui", "kotlin", "compose", "objective", "native", "flutter"]),
+  [CORE_PLATFORM.BACKEND]: new Set(["backend", "server", "service", "api"])
 });
 
 function normalizeToken(value) {
@@ -168,8 +173,8 @@ function definitionMatchesCorePlatform(definitionTokens, corePlatform) {
 function detectDefinitionCorePlatforms(definitionTokens) {
   const matches = [];
   for (const platform of Object.values(CORE_PLATFORM)) {
-    const tokens = CORE_PLATFORM_TOKENS[platform] || new Set();
-    if ([...definitionTokens.combinedTokens].some((token) => tokens.has(token))) {
+    const explicitTokens = EXPLICIT_PLATFORM_TOKENS[platform] || new Set();
+    if ([...definitionTokens.combinedTokens].some((token) => explicitTokens.has(token))) {
       matches.push(platform);
     }
   }
