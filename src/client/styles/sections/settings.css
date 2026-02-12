@@ -150,6 +150,10 @@
   background: color-mix(in srgb, var(--accent, #2563eb) 14%, var(--card));
 }
 
+.project-meta-badge--technology {
+  background: color-mix(in srgb, var(--card) 65%, var(--border));
+}
+
 .project-meta-badge--muted {
   color: var(--muted);
 }

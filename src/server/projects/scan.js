@@ -94,6 +94,10 @@ const EXTENSION_TECHNOLOGY_MAP = Object.freeze({
   ".css": ["css", "frontend", "web", "ui"],
   ".scss": ["scss", "css", "frontend", "web", "ui"],
   ".vue": ["vue", "javascript", "frontend", "web", "ui"],
+  ".yaml": ["yaml"],
+  ".yml": ["yaml"],
+  ".json": ["json"],
+  ".xml": ["xml"],
   ".py": ["python"],
   ".java": ["java"],
   ".go": ["go"],
@@ -109,7 +113,7 @@ const EXTENSION_TECHNOLOGY_MAP = Object.freeze({
   ".hxx": ["c++"]
 });
 
-const PROJECT_TECH_STOP_WORDS = new Set(["ai", "build", "file", "format", "git", "json", "path", "reason", "src", "main"]);
+const PROJECT_TECH_STOP_WORDS = new Set(["ai", "build", "file", "format", "git", "path", "reason", "src", "main"]);
 
 const IGNORED_SCAN_DIR_NAMES = new Set([
   ".git",
@@ -745,12 +749,12 @@ export async function scanDevProjects(roots) {
       }
     }
 
-    if (projects.size > projectCountBeforeChildren) {
+    const hasFiles = entries.some((entry) => entry.isFile());
+    if (projects.size > projectCountBeforeChildren && !hasFiles) {
       return;
     }
 
     const metadata = await detectRepoSignals(dir, entries);
-    const hasFiles = entries.some((entry) => entry.isFile());
     if (metadata.projectType !== PROJECT_TYPES.UNKNOWN || metadata.detectedSignals.length > 0 || hasFiles) {
       projects.set(dir, {
         path: dir,

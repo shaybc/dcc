@@ -34,7 +34,6 @@ const PROJECT_TECH_STOP_WORDS = new Set([
   "file",
   "format",
   "git",
-  "json",
   "lock",
   "main",
   "package",
