@@ -36,6 +36,11 @@
   overflow: visible;
 }
 
+.card-recommended:hover,
+.card-recommended:focus-within {
+  z-index: 20;
+}
+
 .card-recommended h3 {
   font-size: 16px;
   line-height: 1.25;
