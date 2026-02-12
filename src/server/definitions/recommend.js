@@ -1,5 +1,6 @@
 const DEFAULT_MATCH_WEIGHTS = Object.freeze({
   projectType: 6,
+  projectTypeContext: 5,
   definitionType: 4,
   tag: 3,
   keyword: 2,
@@ -112,6 +113,23 @@ function scoreDefinition(definition, context) {
   if (context.projectType && type === context.projectType) {
     score += DEFAULT_MATCH_WEIGHTS.projectType;
     reasons.push(`projectType match: ${context.projectType}`);
+  }
+
+  if (context.projectType) {
+    if (tags.includes(context.projectType)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTypeContext;
+      reasons.push(`projectType tag match: ${context.projectType}`);
+    }
+
+    if (textBlob.includes(context.projectType)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTypeContext;
+      reasons.push(`projectType keyword match: ${context.projectType}`);
+    }
+
+    if (dccMetadataTokens.includes(context.projectType)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTypeContext;
+      reasons.push(`projectType metadata match: ${context.projectType}`);
+    }
   }
 
   if (profile?.definitionTypes?.[type]) {
