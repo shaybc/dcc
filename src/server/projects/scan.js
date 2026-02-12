@@ -98,6 +98,7 @@ const EXTENSION_TECHNOLOGY_MAP = Object.freeze({
   ".yml": ["yaml"],
   ".json": ["json"],
   ".xml": ["xml"],
+  ".md": ["markdown"],
   ".py": ["python"],
   ".java": ["java"],
   ".go": ["go"],
@@ -114,6 +115,7 @@ const EXTENSION_TECHNOLOGY_MAP = Object.freeze({
 });
 
 const PROJECT_TECH_STOP_WORDS = new Set(["ai", "build", "file", "format", "git", "path", "reason", "src", "main"]);
+const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["js", "ts", "go", "ui", "md"]);
 
 const IGNORED_SCAN_DIR_NAMES = new Set([
   ".git",
@@ -524,13 +526,35 @@ function tokenizeTechnologyValue(value) {
 
 function normalizeTechnologyTokens(values) {
   return Array.from(new Set(values.flatMap((value) => tokenizeTechnologyValue(value))))
-    .filter((token) => token.length >= 3)
+    .filter((token) => token.length >= 3 || SHORT_TECH_TOKEN_ALLOWLIST.has(token))
     .filter((token) => !PROJECT_TECH_STOP_WORDS.has(token))
     .sort((a, b) => a.localeCompare(b));
 }
 
 function collectProjectTechnologies({ projectType, ecosystems, detectedSignals, repoFiles }) {
   const values = [projectType, ...Array.from(ecosystems || [])];
+  const extensionCounts = new Map();
+
+  for (const file of repoFiles || []) {
+    const extension = path.extname(file.name || "").toLowerCase();
+    if (!extension) {
+      continue;
+    }
+    extensionCounts.set(extension, (extensionCounts.get(extension) || 0) + 1);
+    const extensionTechnologies = EXTENSION_TECHNOLOGY_MAP[extension] || [];
+    values.push(...extensionTechnologies);
+    values.push(extension.slice(1));
+  }
+
+  // Promote dominant file types so data-focused repos (e.g. YAML-heavy) always surface clearly.
+  const dominantExtensions = Array.from(extensionCounts.entries())
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 3)
+    .map(([extension]) => extension);
+  for (const extension of dominantExtensions) {
+    const mapped = EXTENSION_TECHNOLOGY_MAP[extension] || [];
+    values.push(...mapped, extension.slice(1));
+  }
 
   for (const signal of detectedSignals || []) {
     const normalizedSignal = String(signal || "")
@@ -540,18 +564,8 @@ function collectProjectTechnologies({ projectType, ecosystems, detectedSignals, 
     if (!normalizedSignal) {
       continue;
     }
-    values.push(normalizedSignal);
-    const [signalPath, signalHint] = normalizedSignal.split("::");
-    values.push(signalPath, signalHint);
-  }
-
-  for (const file of repoFiles || []) {
-    const extension = path.extname(file.name || "").toLowerCase();
-    const extensionTechnologies = EXTENSION_TECHNOLOGY_MAP[extension] || [];
-    values.push(...extensionTechnologies);
-    if (extension) {
-      values.push(extension.slice(1));
-    }
+    const [signalPath] = normalizedSignal.split("::");
+    values.push(signalPath);
   }
 
   return normalizeTechnologyTokens(values).slice(0, 64);

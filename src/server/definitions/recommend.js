@@ -42,6 +42,7 @@ const PROJECT_TECH_STOP_WORDS = new Set([
   "resources",
   "src"
 ]);
+const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["js", "ts", "go", "ui", "md"]);
 
 function normalizeToken(value) {
   return String(value || "").trim().toLowerCase();
@@ -86,7 +87,7 @@ function collectDccMetadataTokens(definition) {
 
 function normalizeProjectTechnologyTokens(values) {
   return uniqueTokens(values)
-    .filter((token) => token.length >= 3)
+    .filter((token) => token.length >= 3 || SHORT_TECH_TOKEN_ALLOWLIST.has(token))
     .filter((token) => !PROJECT_TECH_STOP_WORDS.has(token));
 }
 

@@ -14,6 +14,7 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
 
   const expectedTypes = {
     node: "node",
+    "node-web": "node",
     angular: "angular",
     python: "python",
     springboot: "springboot",
@@ -25,6 +26,7 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
     cpp: "c++",
     "json-only": "json",
     "yaml-majority": "yaml",
+    "markdown-only": "unknown",
     unknown: "unknown"
   };
 
@@ -38,4 +40,12 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
 
   const yamlProject = byName.get("yaml-majority");
   assert.ok(yamlProject?.projectTechnologies.includes("yaml"));
+
+  const nodeWebProject = byName.get("node-web");
+  assert.ok(nodeWebProject?.projectTechnologies.includes("node"));
+  assert.ok(nodeWebProject?.projectTechnologies.includes("html"));
+  assert.ok(nodeWebProject?.projectTechnologies.includes("js"));
+
+  const markdownProject = byName.get("markdown-only");
+  assert.ok(markdownProject?.projectTechnologies.includes("markdown"));
 });
