@@ -44,6 +44,34 @@ const PROJECT_TECH_STOP_WORDS = new Set([
 ]);
 const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["go", "ui"]);
 const PROJECT_TECH_CANONICAL_MAP = Object.freeze({ js: "javascript", ts: "typescript", md: "markdown" });
+const CORE_PLATFORM = Object.freeze({ WEB: "web", MOBILE: "mobile", BACKEND: "backend" });
+const CORE_PLATFORM_BY_PROJECT_TYPE = Object.freeze({
+  angular: CORE_PLATFORM.WEB,
+  javascript: CORE_PLATFORM.WEB,
+  html: CORE_PLATFORM.WEB,
+  android: CORE_PLATFORM.MOBILE,
+  swiftui: CORE_PLATFORM.MOBILE,
+  swift: CORE_PLATFORM.MOBILE,
+  "objective-c": CORE_PLATFORM.MOBILE,
+  node: CORE_PLATFORM.BACKEND,
+  python: CORE_PLATFORM.BACKEND,
+  java: CORE_PLATFORM.BACKEND,
+  springboot: CORE_PLATFORM.BACKEND,
+  go: CORE_PLATFORM.BACKEND,
+  rust: CORE_PLATFORM.BACKEND,
+  dotnet: CORE_PLATFORM.BACKEND,
+  csharp: CORE_PLATFORM.BACKEND,
+  groovy: CORE_PLATFORM.BACKEND,
+  "c++": CORE_PLATFORM.BACKEND,
+  yaml: CORE_PLATFORM.BACKEND,
+  xml: CORE_PLATFORM.BACKEND,
+  json: CORE_PLATFORM.BACKEND
+});
+const CORE_PLATFORM_TOKENS = Object.freeze({
+  [CORE_PLATFORM.WEB]: new Set(["web", "frontend", "browser", "html", "css", "javascript", "typescript", "react", "angular", "vue"]),
+  [CORE_PLATFORM.MOBILE]: new Set(["mobile", "android", "ios", "swift", "swiftui", "kotlin", "compose", "objective", "react", "native", "flutter"]),
+  [CORE_PLATFORM.BACKEND]: new Set(["backend", "server", "service", "api", "node", "python", "java", "springboot", "go", "rust", "dotnet", "csharp", "groovy", "database"])
+});
 
 function normalizeToken(value) {
   return String(value || "").trim().toLowerCase();
@@ -93,6 +121,61 @@ function normalizeProjectTechnologyTokens(values) {
     .filter((token) => !PROJECT_TECH_STOP_WORDS.has(token));
 }
 
+function inferCorePlatform(projectType, projectTechnologyTokens = []) {
+  const normalizedProjectType = normalizeToken(projectType);
+  if (CORE_PLATFORM_BY_PROJECT_TYPE[normalizedProjectType]) {
+    return CORE_PLATFORM_BY_PROJECT_TYPE[normalizedProjectType];
+  }
+
+  for (const platform of [CORE_PLATFORM.MOBILE, CORE_PLATFORM.WEB, CORE_PLATFORM.BACKEND]) {
+    const tokens = CORE_PLATFORM_TOKENS[platform];
+    if (projectTechnologyTokens.some((technology) => tokens.has(technology))) {
+      return platform;
+    }
+  }
+
+  return "";
+}
+
+function getDefinitionTokens(definition) {
+  const name = String(definition?.name || "");
+  const description = String(definition?.description || "");
+  const type = String(definition?.type || "");
+  const tags = collectTagTokens(definition);
+  const dccMetadataTokens = collectDccMetadataTokens(definition);
+  const textTokens = uniqueTokens([`${name} ${description} ${type}`]);
+  return {
+    tags,
+    dccMetadataTokens,
+    textBlob: normalizeToken(`${name} ${description}`),
+    combinedTokens: new Set([...tags, ...dccMetadataTokens, ...textTokens])
+  };
+}
+
+function definitionMatchesCorePlatform(definitionTokens, corePlatform) {
+  if (!corePlatform) {
+    return false;
+  }
+  const platformTokens = CORE_PLATFORM_TOKENS[corePlatform] || new Set();
+  for (const token of definitionTokens.combinedTokens) {
+    if (platformTokens.has(token)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function detectDefinitionCorePlatforms(definitionTokens) {
+  const matches = [];
+  for (const platform of Object.values(CORE_PLATFORM)) {
+    const tokens = CORE_PLATFORM_TOKENS[platform] || new Set();
+    if ([...definitionTokens.combinedTokens].some((token) => tokens.has(token))) {
+      matches.push(platform);
+    }
+  }
+  return matches;
+}
+
 export function buildProjectTechnologyTokens(projectType, projectTechnologies = [], detectedSignals = []) {
   return normalizeProjectTechnologyTokens([
     projectType,
@@ -104,11 +187,8 @@ export function buildProjectTechnologyTokens(projectType, projectTechnologies = 
 function scoreDefinition(definition, context) {
   const reasons = [];
   const type = normalizeToken(definition?.type);
-  const name = String(definition?.name || "");
-  const description = String(definition?.description || "");
-  const textBlob = normalizeToken(`${name} ${description}`);
-  const tags = collectTagTokens(definition);
-  const dccMetadataTokens = collectDccMetadataTokens(definition);
+  const definitionTokens = getDefinitionTokens(definition);
+  const { tags, dccMetadataTokens, textBlob } = definitionTokens;
   const profile = context.projectType ? context.map[context.projectType] : null;
 
   let score = 0;
@@ -191,7 +271,12 @@ function scoreDefinition(definition, context) {
     reasons.push(`project path tag: ${token}`);
   }
 
-  return { score, reasons };
+  return {
+    score,
+    reasons,
+    matchesCorePlatform: definitionMatchesCorePlatform(definitionTokens, context.corePlatform),
+    definitionPlatforms: detectDefinitionCorePlatforms(definitionTokens)
+  };
 }
 
 /**
@@ -199,35 +284,54 @@ function scoreDefinition(definition, context) {
  */
 export function recommendDefinitions(currentProjectPath, currentProjectType, definitions, options = {}) {
   const candidateDefinitions = Array.isArray(definitions) ? definitions : [];
+  const projectTechnologyTokens = buildProjectTechnologyTokens(
+    currentProjectType,
+    options.projectTechnologies,
+    options.detectedSignals
+  );
   const context = {
     projectType: normalizeToken(currentProjectType),
     projectPathTokens: uniqueTokens([String(currentProjectPath || "")]),
-    projectTechnologyTokens: buildProjectTechnologyTokens(
-      currentProjectType,
-      options.projectTechnologies,
-      options.detectedSignals
-    ),
+    projectTechnologyTokens,
+    corePlatform: normalizeToken(options.corePlatform) || inferCorePlatform(currentProjectType, projectTechnologyTokens),
     map: options.recommendationMap || PROJECT_TYPE_RECOMMENDATION_MAP
   };
 
-  return candidateDefinitions
+  const fallbackLimit = Math.max(0, Number(options.fallbackSuggestionLimit ?? 3));
+
+  const scoredDefinitions = candidateDefinitions
     .map((definition, index) => {
-      const { score, reasons } = scoreDefinition(definition, context);
+      const { score, reasons, matchesCorePlatform, definitionPlatforms } = scoreDefinition(definition, context);
+      const matchesTechnology = reasons.some((reason) => reason.startsWith("project technology "));
+      const hasConflictingPlatform = context.corePlatform
+        && definitionPlatforms.length > 0
+        && !definitionPlatforms.includes(context.corePlatform);
       return {
         ...definition,
         score,
         reasons,
+        matchesCorePlatform,
+        matchesTechnology,
+        hasConflictingPlatform,
         _index: index
       };
     })
-    .filter((definition) => definition.score > 0)
+    .filter((definition) => definition.score > 0 && !definition.hasConflictingPlatform)
     .sort((left, right) => (
       (right.score - left.score)
       || String(left.name || "").localeCompare(String(right.name || ""))
       || String(left.key || "").localeCompare(String(right.key || ""))
       || (left._index - right._index)
-    ))
-    .map(({ _index, ...definition }) => definition);
+    ));
+
+  const corePlatformMatches = scoredDefinitions.filter((definition) => definition.matchesCorePlatform);
+  const technologyMatches = scoredDefinitions.filter((definition) => !definition.matchesCorePlatform && definition.matchesTechnology);
+  const fallbackMatches = scoredDefinitions
+    .filter((definition) => !definition.matchesCorePlatform && !definition.matchesTechnology)
+    .slice(0, fallbackLimit);
+
+  return [...corePlatformMatches, ...technologyMatches, ...fallbackMatches]
+    .map(({ _index, matchesCorePlatform, matchesTechnology, hasConflictingPlatform, ...definition }) => definition);
 }
 
 export default recommendDefinitions;

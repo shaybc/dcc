@@ -35,9 +35,10 @@ async function resetTables() {
 test("GET /api/definitions/suggestions returns response shape with reasons", async () => {
   await resetTables();
   await runDb("INSERT INTO settings (key, value) VALUES (?, ?)", ["currentDevProject", "/workspace/apps/node-service"]);
-  await runDb("INSERT INTO dev_projects (path, projectType, detectedSignals, projectTechnologies, lastScannedAt) VALUES (?, ?, ?, ?, ?)", [
+  await runDb("INSERT INTO dev_projects (path, projectType, corePlatform, detectedSignals, projectTechnologies, lastScannedAt) VALUES (?, ?, ?, ?, ?, ?)", [
     "/workspace/apps/node-service",
     "node",
+    "backend",
     "[]",
     JSON.stringify(["node", "javascript", "frontend", "html"]),
     new Date().toISOString()
@@ -57,6 +58,7 @@ test("GET /api/definitions/suggestions returns response shape with reasons", asy
 
     assert.equal(payload.projectPath, "/workspace/apps/node-service");
     assert.equal(payload.projectType, "node");
+    assert.equal(payload.corePlatform, "backend");
     assert.ok(Array.isArray(payload.suggestions));
     assert.ok(payload.suggestions.length > 0);
     assert.equal(typeof payload.suggestions[0].definitionId, "number");
@@ -78,6 +80,7 @@ test("GET /api/definitions/suggestions handles no current project", async () => 
     assert.deepEqual(payload, {
       projectPath: "",
       projectType: "",
+      corePlatform: "",
       projectTechnologies: [],
       suggestions: []
     });
@@ -96,6 +99,7 @@ test("GET /api/definitions/suggestions handles missing project metadata", async 
     assert.deepEqual(payload, {
       projectPath: "/workspace/apps/missing",
       projectType: "",
+      corePlatform: "",
       projectTechnologies: [],
       suggestions: []
     });

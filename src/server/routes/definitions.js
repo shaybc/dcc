@@ -138,18 +138,19 @@ router.get("/api/definitions/suggestions", async (_req, res) => {
   try {
     const currentDevProject = String(await getSetting("currentDevProject") || "").trim();
     if (!currentDevProject) {
-      res.json({ projectPath: "", projectType: "", projectTechnologies: [], suggestions: [] });
+      res.json({ projectPath: "", projectType: "", corePlatform: "", projectTechnologies: [], suggestions: [] });
       return;
     }
 
-    const projectRow = await getDb("SELECT projectType, detectedSignals, projectTechnologies FROM dev_projects WHERE path = ?", [currentDevProject]);
+    const projectRow = await getDb("SELECT projectType, corePlatform, detectedSignals, projectTechnologies FROM dev_projects WHERE path = ?", [currentDevProject]);
     const projectType = String(projectRow?.projectType || "").trim().toLowerCase();
+    const corePlatform = String(projectRow?.corePlatform || "").trim().toLowerCase();
     const detectedSignals = parseJsonArray(projectRow?.detectedSignals);
     const savedProjectTechnologies = parseJsonArray(projectRow?.projectTechnologies);
     const projectTechnologies = buildProjectTechnologyTokens(projectType, savedProjectTechnologies, detectedSignals);
 
     if (!projectType && projectTechnologies.length === 0) {
-      res.json({ projectPath: currentDevProject, projectType, projectTechnologies, suggestions: [] });
+      res.json({ projectPath: currentDevProject, projectType, corePlatform, projectTechnologies, suggestions: [] });
       return;
     }
 
@@ -158,6 +159,7 @@ router.get("/api/definitions/suggestions", async (_req, res) => {
     );
 
     const rankedSuggestions = recommendDefinitions(currentDevProject, projectType, definitionsRows, {
+      corePlatform,
       projectTechnologies,
       detectedSignals
     })
@@ -170,6 +172,7 @@ router.get("/api/definitions/suggestions", async (_req, res) => {
     res.json({
       projectPath: currentDevProject,
       projectType,
+      corePlatform,
       projectTechnologies,
       suggestions: rankedSuggestions
     });
