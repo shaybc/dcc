@@ -619,7 +619,7 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   const recommendationMeta = recommendationRank !== null && !isRecommended
     ? `<div class="recommendation-meta">#${recommendationRank} · Score ${recommendationScore || 0}</div>`
     : "";
-  const recommendationReasonText = recommendationReasons.length > 0 && !isRecommended
+  const recommendationReasonText = recommendationReasons.length > 0
     ? `<p class="recommendation-reasons">${escapeHtml(recommendationReasons.slice(0, 2).join(" • "))}</p>`
     : "";
   const cardMetaText = isRecommended
