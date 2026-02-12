@@ -269,7 +269,10 @@ function collectDisplayTechnologies(projectData) {
     normalized.unshift(projectType);
   }
 
-  return [...new Set(normalized)];
+  const deduped = [...new Set(normalized)];
+  const withoutUnknown = deduped.filter((value) => value !== "unknown");
+  const finalValues = withoutUnknown.length > 0 ? withoutUnknown : deduped;
+  return finalValues.slice(0, 4);
 }
 
 function formatLastScannedAt(lastScannedAt) {
@@ -312,13 +315,10 @@ function renderDevProjects(projects) {
     const displayTechnologies = collectDisplayTechnologies(projectData);
 
     if (displayTechnologies.length > 0) {
-      displayTechnologies.slice(0, 8).forEach((technology, index) => {
+      displayTechnologies.forEach((technology, index) => {
         const badgeClass = index === 0 ? "project-meta-badge--type" : "project-meta-badge--technology";
         metadataSummary.appendChild(createMetaBadge(formatTechnologyLabel(technology), badgeClass));
       });
-      if (displayTechnologies.length > 8) {
-        metadataSummary.appendChild(createMetaBadge(`+${displayTechnologies.length - 8} more`, "project-meta-badge--muted"));
-      }
     } else {
       metadataSummary.appendChild(createMetaBadge("No technologies", "project-meta-badge--muted"));
     }

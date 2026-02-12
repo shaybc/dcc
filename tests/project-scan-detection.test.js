@@ -36,6 +36,9 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
     assert.equal(project.projectType, expectedType, `expected ${fixtureName} to detect as ${expectedType}`);
     assert.ok(Array.isArray(project.detectedSignals));
     assert.ok(Array.isArray(project.projectTechnologies));
+
+    assert.ok(project.projectTechnologies.length >= 1);
+    assert.ok(project.projectTechnologies.length <= 4);
   }
 
   const yamlProject = byName.get("yaml-majority");
@@ -45,7 +48,10 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
   assert.ok(nodeWebProject?.projectTechnologies.includes("node"));
   assert.ok(nodeWebProject?.projectTechnologies.includes("html"));
   assert.ok(nodeWebProject?.projectTechnologies.includes("js"));
+  assert.ok(!nodeWebProject?.projectTechnologies.includes("package"));
+  assert.ok(!nodeWebProject?.projectTechnologies.includes("example"));
 
   const markdownProject = byName.get("markdown-only");
   assert.ok(markdownProject?.projectTechnologies.includes("markdown"));
+  assert.ok(!markdownProject?.projectTechnologies.includes("unknown"));
 });

@@ -84,16 +84,16 @@ const TREE_SCAN_MAX_FILES = 1500;
 const TREE_CONTENT_READ_MAX_BYTES = 1600;
 
 const EXTENSION_TECHNOLOGY_MAP = Object.freeze({
-  ".js": ["javascript", "js", "frontend", "web", "ui"],
-  ".mjs": ["javascript", "js", "frontend", "web", "ui"],
-  ".cjs": ["javascript", "js", "frontend", "web", "ui"],
-  ".ts": ["typescript", "javascript", "frontend", "web", "ui"],
-  ".tsx": ["typescript", "react", "javascript", "frontend", "web", "ui"],
-  ".jsx": ["react", "javascript", "frontend", "web", "ui"],
-  ".html": ["html", "frontend", "web", "ui"],
-  ".css": ["css", "frontend", "web", "ui"],
-  ".scss": ["scss", "css", "frontend", "web", "ui"],
-  ".vue": ["vue", "javascript", "frontend", "web", "ui"],
+  ".js": ["js"],
+  ".mjs": ["js"],
+  ".cjs": ["js"],
+  ".ts": ["ts", "typescript"],
+  ".tsx": ["ts", "typescript", "react"],
+  ".jsx": ["react", "js"],
+  ".html": ["html"],
+  ".css": ["css"],
+  ".scss": ["scss", "css"],
+  ".vue": ["vue", "js"],
   ".yaml": ["yaml"],
   ".yml": ["yaml"],
   ".json": ["json"],
@@ -116,6 +116,22 @@ const EXTENSION_TECHNOLOGY_MAP = Object.freeze({
 
 const PROJECT_TECH_STOP_WORDS = new Set(["ai", "build", "file", "format", "git", "path", "reason", "src", "main"]);
 const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["js", "ts", "go", "ui", "md"]);
+const MAX_PROJECT_TECHNOLOGIES = 4;
+const TECHNOLOGY_ALLOWLIST = new Set([
+  ...Object.values(PROJECT_TYPES),
+  "js",
+  "ts",
+  "typescript",
+  "html",
+  "css",
+  "scss",
+  "react",
+  "vue",
+  "yaml",
+  "json",
+  "xml",
+  "markdown"
+]);
 
 const IGNORED_SCAN_DIR_NAMES = new Set([
   ".git",
@@ -528,12 +544,28 @@ function normalizeTechnologyTokens(values) {
   return Array.from(new Set(values.flatMap((value) => tokenizeTechnologyValue(value))))
     .filter((token) => token.length >= 3 || SHORT_TECH_TOKEN_ALLOWLIST.has(token))
     .filter((token) => !PROJECT_TECH_STOP_WORDS.has(token))
-    .sort((a, b) => a.localeCompare(b));
+    .filter((token) => TECHNOLOGY_ALLOWLIST.has(token));
 }
 
-function collectProjectTechnologies({ projectType, ecosystems, detectedSignals, repoFiles }) {
-  const values = [projectType, ...Array.from(ecosystems || [])];
+function collectProjectTechnologies({ projectType, ecosystems, repoFiles }) {
+  const scoreByTechnology = new Map();
   const extensionCounts = new Map();
+
+  const addScore = (token, weight) => {
+    const normalized = normalizeTechnologyTokens([token])[0];
+    if (!normalized) {
+      return;
+    }
+    scoreByTechnology.set(normalized, (scoreByTechnology.get(normalized) || 0) + weight);
+  };
+
+  if (projectType && projectType !== PROJECT_TYPES.UNKNOWN) {
+    addScore(projectType, 8);
+  }
+
+  for (const ecosystem of Array.from(ecosystems || [])) {
+    addScore(ecosystem, 6);
+  }
 
   for (const file of repoFiles || []) {
     const extension = path.extname(file.name || "").toLowerCase();
@@ -542,33 +574,26 @@ function collectProjectTechnologies({ projectType, ecosystems, detectedSignals, 
     }
     extensionCounts.set(extension, (extensionCounts.get(extension) || 0) + 1);
     const extensionTechnologies = EXTENSION_TECHNOLOGY_MAP[extension] || [];
-    values.push(...extensionTechnologies);
-    values.push(extension.slice(1));
+    for (const technology of extensionTechnologies) {
+      addScore(technology, 1);
+    }
   }
 
-  // Promote dominant file types so data-focused repos (e.g. YAML-heavy) always surface clearly.
   const dominantExtensions = Array.from(extensionCounts.entries())
     .sort((left, right) => right[1] - left[1])
-    .slice(0, 3)
+    .slice(0, 4)
     .map(([extension]) => extension);
   for (const extension of dominantExtensions) {
     const mapped = EXTENSION_TECHNOLOGY_MAP[extension] || [];
-    values.push(...mapped, extension.slice(1));
-  }
-
-  for (const signal of detectedSignals || []) {
-    const normalizedSignal = String(signal || "")
-      .replace(/^ai:/, "")
-      .replace(/^format:/, "")
-      .trim();
-    if (!normalizedSignal) {
-      continue;
+    for (const technology of mapped) {
+      addScore(technology, 4);
     }
-    const [signalPath] = normalizedSignal.split("::");
-    values.push(signalPath);
   }
 
-  return normalizeTechnologyTokens(values).slice(0, 64);
+  return Array.from(scoreByTechnology.entries())
+    .sort((left, right) => (right[1] - left[1]) || left[0].localeCompare(right[0]))
+    .map(([technology]) => technology)
+    .slice(0, MAX_PROJECT_TECHNOLOGIES);
 }
 
 async function detectRepoSignals(repoPath, rootEntries, options = {}) {
@@ -679,29 +704,41 @@ async function detectRepoSignals(repoPath, rootEntries, options = {}) {
     }
   }
 
-  if (includeTreeSignals && (!projectType || projectType === PROJECT_TYPES.UNKNOWN)) {
+  if (!projectType) {
+    projectType = chooseFallbackProjectType(ecosystems);
+  }
+
+  const repoFilesForTechnologies = await getRepoFiles();
+  let projectTechnologies = collectProjectTechnologies({
+    projectType: projectType || PROJECT_TYPES.UNKNOWN,
+    ecosystems,
+    repoFiles: repoFilesForTechnologies,
+  });
+
+  if (includeTreeSignals && projectTechnologies.length === 0) {
     const aiResult = await detectUnknownProjectWithAi(repoPath, entries, detectedSignals);
     if (aiResult) {
       projectType = aiResult.projectType;
+      ecosystems.add(aiResult.projectType);
       detectedSignals.push(`ai:${aiResult.projectType}`);
       detectedSignals.push(...aiResult.detectedSignals.map((signal) => `ai:${signal}`));
       if (aiResult.reason) {
         detectedSignals.push(`ai:reason:${aiResult.reason.slice(0, 120)}`);
       }
+      projectTechnologies = collectProjectTechnologies({
+        projectType,
+        ecosystems,
+        repoFiles: repoFilesForTechnologies,
+      });
     }
   }
 
-  if (!projectType) {
-    projectType = chooseFallbackProjectType(ecosystems);
+  if (projectTechnologies.length === 0) {
+    projectTechnologies = [PROJECT_TYPES.UNKNOWN];
+    projectType = PROJECT_TYPES.UNKNOWN;
   }
 
   const normalizedDetectedSignals = Array.from(new Set(detectedSignals)).sort((a, b) => a.localeCompare(b));
-  const projectTechnologies = collectProjectTechnologies({
-    projectType: projectType || PROJECT_TYPES.UNKNOWN,
-    ecosystems,
-    detectedSignals: normalizedDetectedSignals,
-    repoFiles: await getRepoFiles(),
-  });
 
   return {
     projectType: projectType || PROJECT_TYPES.UNKNOWN,
