@@ -39,10 +39,10 @@ const aiClient = AI_ENABLED
 const SIGNAL_DETECTORS = [
   { signal: "package.json", ecosystem: PROJECT_TYPES.NODE, type: "file" },
   { signal: "jsconfig.json", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "file" },
-  { signal: "*.js", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "glob" },
-  { signal: "*.mjs", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "glob" },
-  { signal: "*.cjs", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "glob" },
-  { signal: "*.html", ecosystem: PROJECT_TYPES.HTML, type: "glob" },
+  { signal: "*.js", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "tree-extension" },
+  { signal: "*.mjs", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "tree-extension" },
+  { signal: "*.cjs", ecosystem: PROJECT_TYPES.JAVASCRIPT, type: "tree-extension" },
+  { signal: "*.html", ecosystem: PROJECT_TYPES.HTML, type: "tree-extension" },
   { signal: "angular.json", ecosystem: PROJECT_TYPES.ANGULAR, type: "file" },
   { signal: "@angular/core", ecosystem: PROJECT_TYPES.ANGULAR, type: "package-dependency" },
   { signal: "pyproject.toml", ecosystem: PROJECT_TYPES.PYTHON, type: "file" },
@@ -83,6 +83,59 @@ const TREE_SCAN_MAX_DEPTH = 5;
 const TREE_SCAN_MAX_FILES = 1500;
 const TREE_CONTENT_READ_MAX_BYTES = 1600;
 
+const EXTENSION_TECHNOLOGY_MAP = Object.freeze({
+  ".js": ["js"],
+  ".mjs": ["js"],
+  ".cjs": ["js"],
+  ".ts": ["ts", "typescript"],
+  ".tsx": ["ts", "typescript", "react"],
+  ".jsx": ["react", "js"],
+  ".html": ["html"],
+  ".css": ["css"],
+  ".scss": ["scss", "css"],
+  ".vue": ["vue", "js"],
+  ".yaml": ["yaml"],
+  ".yml": ["yaml"],
+  ".json": ["json"],
+  ".xml": ["xml"],
+  ".md": ["markdown"],
+  ".py": ["python"],
+  ".java": ["java"],
+  ".go": ["go"],
+  ".rs": ["rust"],
+  ".cs": ["csharp", "dotnet"],
+  ".swift": ["swift"],
+  ".m": ["objective-c"],
+  ".mm": ["objective-c"],
+  ".cpp": ["c++"],
+  ".cxx": ["c++"],
+  ".cc": ["c++"],
+  ".hpp": ["c++"],
+  ".hxx": ["c++"]
+});
+
+const PROJECT_TECH_STOP_WORDS = new Set(["ai", "build", "file", "format", "git", "path", "reason", "src", "main"]);
+const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["go", "ui"]);
+const MAX_PROJECT_TECHNOLOGIES = 4;
+const TECHNOLOGY_CANONICAL_MAP = Object.freeze({
+  js: "javascript",
+  ts: "typescript",
+  md: "markdown",
+});
+const TECHNOLOGY_ALLOWLIST = new Set([
+  ...Object.values(PROJECT_TYPES),
+  "typescript",
+  "html",
+  "css",
+  "scss",
+  "react",
+  "vue",
+  "yaml",
+  "json",
+  "xml",
+  "markdown"
+]);
+
 const IGNORED_SCAN_DIR_NAMES = new Set([
   ".git",
   "log",
@@ -91,6 +144,10 @@ const IGNORED_SCAN_DIR_NAMES = new Set([
   "bin",
   "dist-packages",
   "lib",
+  "libs",
+  "library",
+  "libraries",
+  "packages",
   "site-packages",
   "node_modules",
   "vendor",
@@ -480,7 +537,79 @@ async function detectUnknownProjectWithAi(repoPath, entries, deterministicSignal
   }
 }
 
-async function detectRepoSignals(repoPath, rootEntries) {
+function tokenizeTechnologyValue(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .split(/[^a-z0-9_+]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function canonicalizeTechnologyToken(token) {
+  return TECHNOLOGY_CANONICAL_MAP[token] || token;
+}
+
+function normalizeTechnologyTokens(values) {
+  return Array.from(new Set(values
+    .flatMap((value) => tokenizeTechnologyValue(value))
+    .map((token) => canonicalizeTechnologyToken(token))))
+    .filter((token) => token.length >= 3 || SHORT_TECH_TOKEN_ALLOWLIST.has(token))
+    .filter((token) => !PROJECT_TECH_STOP_WORDS.has(token))
+    .filter((token) => TECHNOLOGY_ALLOWLIST.has(token));
+}
+
+function collectProjectTechnologies({ projectType, ecosystems, repoFiles }) {
+  const scoreByTechnology = new Map();
+  const extensionCounts = new Map();
+
+  const addScore = (token, weight) => {
+    const normalized = normalizeTechnologyTokens([token])[0];
+    if (!normalized) {
+      return;
+    }
+    scoreByTechnology.set(normalized, (scoreByTechnology.get(normalized) || 0) + weight);
+  };
+
+  if (projectType && projectType !== PROJECT_TYPES.UNKNOWN) {
+    addScore(projectType, 8);
+  }
+
+  for (const ecosystem of Array.from(ecosystems || [])) {
+    addScore(ecosystem, 6);
+  }
+
+  for (const file of repoFiles || []) {
+    const extension = path.extname(file.name || "").toLowerCase();
+    if (!extension) {
+      continue;
+    }
+    extensionCounts.set(extension, (extensionCounts.get(extension) || 0) + 1);
+    const extensionTechnologies = EXTENSION_TECHNOLOGY_MAP[extension] || [];
+    for (const technology of extensionTechnologies) {
+      addScore(technology, 1);
+    }
+  }
+
+  const dominantExtensions = Array.from(extensionCounts.entries())
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 4)
+    .map(([extension]) => extension);
+  for (const extension of dominantExtensions) {
+    const mapped = EXTENSION_TECHNOLOGY_MAP[extension] || [];
+    for (const technology of mapped) {
+      addScore(technology, 4);
+    }
+  }
+
+  return Array.from(scoreByTechnology.entries())
+    .sort((left, right) => (right[1] - left[1]) || left[0].localeCompare(right[0]))
+    .map(([technology]) => technology)
+    .slice(0, MAX_PROJECT_TECHNOLOGIES);
+}
+
+async function detectRepoSignals(repoPath, rootEntries, options = {}) {
+  const includeTreeSignals = options.includeTreeSignals !== false;
   const ecosystems = new Set();
   const detectedSignals = [];
   const entries = rootEntries || [];
@@ -549,19 +678,23 @@ async function detectRepoSignals(repoPath, rootEntries) {
       const content = await readCachedFile(relativePath);
       isMatch = Boolean(content && containsText && content.includes(containsText));
     } else if (detector.type === "tree-extension") {
-      const files = await getRepoFiles();
-      isMatch = files.some((file) => matchesGlobSuffix(file.name, detector.signal));
+      if (includeTreeSignals) {
+        const files = await getRepoFiles();
+        isMatch = files.some((file) => matchesGlobSuffix(file.name, detector.signal));
+      }
     } else if (detector.type === "tree-extension-contains") {
-      const files = await getRepoFiles();
-      const [signalGlob, containsText] = detector.signal.split("::");
-      for (const file of files) {
-        if (!matchesGlobSuffix(file.name, signalGlob)) {
-          continue;
-        }
-        const content = await readFileWithLimit(file.absolutePath, TREE_CONTENT_READ_MAX_BYTES);
-        if (content.includes(containsText)) {
-          isMatch = true;
-          break;
+      if (includeTreeSignals) {
+        const files = await getRepoFiles();
+        const [signalGlob, containsText] = detector.signal.split("::");
+        for (const file of files) {
+          if (!matchesGlobSuffix(file.name, signalGlob)) {
+            continue;
+          }
+          const content = await readFileWithLimit(file.absolutePath, TREE_CONTENT_READ_MAX_BYTES);
+          if (content.includes(containsText)) {
+            isMatch = true;
+            break;
+          }
         }
       }
     }
@@ -574,7 +707,7 @@ async function detectRepoSignals(repoPath, rootEntries) {
 
   let projectType = detectProjectType(ecosystems);
 
-  if (!projectType && ecosystems.size === 0) {
+  if (includeTreeSignals && !projectType && ecosystems.size === 0) {
     const dataFallback = await detectDataFormatFallback(repoPath, getRepoFiles);
     if (dataFallback) {
       projectType = dataFallback.projectType;
@@ -583,30 +716,52 @@ async function detectRepoSignals(repoPath, rootEntries) {
     }
   }
 
-  if (!projectType || projectType === PROJECT_TYPES.UNKNOWN) {
+  if (!projectType) {
+    projectType = chooseFallbackProjectType(ecosystems);
+  }
+
+  const repoFilesForTechnologies = await getRepoFiles();
+  let projectTechnologies = collectProjectTechnologies({
+    projectType: projectType || PROJECT_TYPES.UNKNOWN,
+    ecosystems,
+    repoFiles: repoFilesForTechnologies,
+  });
+
+  if (includeTreeSignals && projectTechnologies.length === 0) {
     const aiResult = await detectUnknownProjectWithAi(repoPath, entries, detectedSignals);
     if (aiResult) {
       projectType = aiResult.projectType;
+      ecosystems.add(aiResult.projectType);
       detectedSignals.push(`ai:${aiResult.projectType}`);
       detectedSignals.push(...aiResult.detectedSignals.map((signal) => `ai:${signal}`));
       if (aiResult.reason) {
         detectedSignals.push(`ai:reason:${aiResult.reason.slice(0, 120)}`);
       }
+      projectTechnologies = collectProjectTechnologies({
+        projectType,
+        ecosystems,
+        repoFiles: repoFilesForTechnologies,
+      });
     }
   }
 
-  if (!projectType) {
-    projectType = chooseFallbackProjectType(ecosystems);
+  if (projectTechnologies.length === 0) {
+    projectTechnologies = [PROJECT_TYPES.UNKNOWN];
+    projectType = PROJECT_TYPES.UNKNOWN;
   }
+
+  const normalizedDetectedSignals = Array.from(new Set(detectedSignals)).sort((a, b) => a.localeCompare(b));
 
   return {
     projectType: projectType || PROJECT_TYPES.UNKNOWN,
-    detectedSignals: Array.from(new Set(detectedSignals)).sort((a, b) => a.localeCompare(b)),
+    detectedSignals: normalizedDetectedSignals,
+    projectTechnologies,
   };
 }
 
-export async function scanDevProjects(roots) {
+export async function scanDevProjects(roots, options = {}) {
   const projects = new Map();
+  const detectNonGitProjects = options.detectNonGitProjects === true;
 
   async function scanDir(dir) {
     let stat;
@@ -639,6 +794,7 @@ export async function scanDevProjects(roots) {
     } catch (_error) {
       return;
     }
+
     for (const entry of entries) {
       if (entry.isDirectory()) {
         if (shouldSkipDirectoryName(entry.name)) {
@@ -646,6 +802,28 @@ export async function scanDevProjects(roots) {
         }
         await scanDir(path.join(dir, entry.name));
       }
+    }
+
+    if (!detectNonGitProjects) {
+      return;
+    }
+
+    const rootMetadata = await detectRepoSignals(dir, entries, { includeTreeSignals: false });
+    if (rootMetadata.projectType !== PROJECT_TYPES.UNKNOWN || rootMetadata.detectedSignals.length > 0) {
+      projects.set(dir, {
+        path: dir,
+        ...rootMetadata,
+      });
+      return;
+    }
+
+    const metadata = await detectRepoSignals(dir, entries);
+    const hasFiles = entries.some((entry) => entry.isFile());
+    if (metadata.projectType !== PROJECT_TYPES.UNKNOWN || metadata.detectedSignals.length > 0 || hasFiles) {
+      projects.set(dir, {
+        path: dir,
+        ...metadata,
+      });
     }
   }
 
@@ -665,8 +843,8 @@ export async function refreshDevProjects(roots) {
   await runDb("DELETE FROM dev_projects");
   for (const project of projects) {
     await runDb(
-      "INSERT OR IGNORE INTO dev_projects (path, projectType, detectedSignals, lastScannedAt) VALUES (?, ?, ?, ?)",
-      [project.path, project.projectType, JSON.stringify(project.detectedSignals), lastScannedAt]
+      "INSERT OR IGNORE INTO dev_projects (path, projectType, detectedSignals, projectTechnologies, lastScannedAt) VALUES (?, ?, ?, ?, ?)",
+      [project.path, project.projectType, JSON.stringify(project.detectedSignals), JSON.stringify(project.projectTechnologies || []), lastScannedAt]
     );
   }
 
