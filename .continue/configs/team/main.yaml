@@ -1,0 +1,138 @@
+name: Main Config
+version: "1.1"
+schema: v1
+description: this is my test configuration to show that multiple definitions can
+  be bundled into one config file
+models: []
+context:
+  - provider: file
+  - provider: code
+  - provider: currentFile
+rules:
+  - "Rule 1: LaunchDarkly Evaluation Must Be Centralized\r
+
+    \r
+
+    - All variation and variationDetail calls must go through a shared
+    evaluation function.\r
+
+    \r
+
+    This wrapper must:\r
+
+    \r
+
+    - Use the singleton instance\r
+
+    \r
+
+    - Support mock/local overrides for development/testing\r
+
+    \r
+
+    - Enable optional instrumentation (e.g., metrics, logging)\r
+
+    \r
+
+    - Evaluation must occur as close as possible to where the flag value is used
+    to support accurate flag status tracking.\r
+
+    \r
+
+    Rule 2: LaunchDarkly Context Object Standards\r
+
+    \r
+
+    - Applications must document how context objects are constructed, including
+    attribute sources.\r
+
+    \r
+
+    - Context objects:\r
+
+    \r
+
+    - Must have high cardinality (e.g., user ID, session ID)\r
+
+    \r
+
+    - Must not contain or be derived from PII (e.g., don’t hash emails)\r
+
+    \r
+
+    - Shared utilities should exist for creating context objects from
+    application-specific data (e.g., createLDContextFor(userObject)).\r
+
+    \r
+
+    Rule 3: LaunchDarkly Context Custom Attributes\r
+
+    \r
+
+    - Must include attributes that support release strategies:\r
+
+    \r
+
+    - Build version or commit SHA\r
+
+    \r
+
+    - Session ID or device ID\r
+
+    \r
+
+    - Developer identifier or PR ID in ephemeral environments\r
+
+    \r
+
+    Client-side SDKs must:\r
+
+    \r
+
+    - Avoid frequent identify() or re-initialization calls\r
+
+    \r
+
+    - Use state transitions (e.g., anonymous → authenticated) to manage
+    identity\r
+
+    \r
+
+    - Cache timestamps may be included\r
+
+    \r
+
+    Rule 4: LaunchDarkly Flag Evaluation Predictable Fallback Behavior\r
+
+    \r
+
+    - Applications must handle fallback values deterministically.\r
+
+    \r
+
+    - Avoid using allFlags() in production due to inconsistent behavior across
+    SDKs.\r
+
+    \r
+
+    - Fallbacks should always be passed to variation()/variationDetail() and
+    tested in implementation."
+prompts:
+  - "Write a complete unit test suite for the selected code.\r
+
+    \r
+
+    Rules:\r
+
+    - Use JUnit 5 for Java, pytest for Python, Jest for JS/TS.\r
+
+    - Cover edge cases and failure paths.\r
+
+    - Include all imports and setup.\r
+
+    - Output complete, ready-to-run test files (no placeholders)."
+docs:
+  - name: Continue
+    startUrl: https://docs.continue.dev/intro
+    favicon: https://docs.continue.dev/favicon.ico
+mcpServers: []
