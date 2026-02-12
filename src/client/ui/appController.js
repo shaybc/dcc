@@ -667,6 +667,18 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   if (recommendationTooltip) {
     let revealTooltipTimer = null;
 
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const setTooltipAnchorFromPointer = (event) => {
+      const cardRect = card.getBoundingClientRect();
+      const tooltipWidth = recommendationTooltip.offsetWidth || 320;
+      const halfTooltip = tooltipWidth / 2;
+      const clientX = clamp(event.clientX, halfTooltip + 16, window.innerWidth - halfTooltip - 16);
+      const localX = clientX - cardRect.left;
+      const localY = event.clientY - cardRect.top - 14;
+      recommendationTooltip.style.setProperty("--tooltip-x", `${localX}px`);
+      recommendationTooltip.style.setProperty("--tooltip-y", `${localY}px`);
+    };
+
     const cancelTooltipReveal = () => {
       if (revealTooltipTimer) {
         window.clearTimeout(revealTooltipTimer);
@@ -676,12 +688,17 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
       recommendationTooltip.setAttribute("aria-hidden", "true");
     };
 
-    card.addEventListener("mouseenter", () => {
+    card.addEventListener("mouseenter", (event) => {
       cancelTooltipReveal();
+      setTooltipAnchorFromPointer(event);
       revealTooltipTimer = window.setTimeout(() => {
         recommendationTooltip.classList.add("is-visible");
         recommendationTooltip.setAttribute("aria-hidden", "false");
       }, 1800);
+    });
+
+    card.addEventListener("mousemove", (event) => {
+      setTooltipAnchorFromPointer(event);
     });
 
     card.addEventListener("mouseleave", cancelTooltipReveal);
