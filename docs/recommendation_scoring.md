@@ -33,6 +33,7 @@ Each profile contains weighted boosts for:
 
 Base multipliers:
 - `projectType`: **6**
+- `projectTypeContext`: **5**
 - `definitionType`: **4**
 - `tag`: **3**
 - `projectTechnologyTag`: **3**
