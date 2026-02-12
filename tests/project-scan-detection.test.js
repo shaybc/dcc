@@ -24,6 +24,7 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
     android: "android",
     cpp: "c++",
     "json-only": "json",
+    "yaml-majority": "yaml",
     unknown: "unknown"
   };
 
@@ -32,5 +33,9 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
     assert.ok(project, `expected fixture ${fixtureName} to be discovered`);
     assert.equal(project.projectType, expectedType, `expected ${fixtureName} to detect as ${expectedType}`);
     assert.ok(Array.isArray(project.detectedSignals));
+    assert.ok(Array.isArray(project.projectTechnologies));
   }
+
+  const yamlProject = byName.get("yaml-majority");
+  assert.ok(yamlProject?.projectTechnologies.includes("yaml"));
 });
