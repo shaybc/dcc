@@ -204,9 +204,28 @@
   font-weight: 600;
 }
 
-.recommendation-reasons {
+.recommendation-tooltip {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 42px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card), black 6%);
+  color: var(--text);
   font-size: 12px;
-  color: var(--muted);
+  line-height: 1.35;
+  padding: 8px 10px;
+  pointer-events: none;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  transition: opacity 200ms ease, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.recommendation-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 
