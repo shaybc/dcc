@@ -234,6 +234,58 @@ function renderDevRoots(roots) {
 
 const TECHNOLOGY_CANONICAL_LABEL_MAP = Object.freeze({ js: "javascript", ts: "typescript", md: "markdown" });
 
+
+const PRIMARY_LANGUAGE_TECHNOLOGIES = new Set([
+  "node",
+  "python",
+  "java",
+  "csharp",
+  "dotnet",
+  "go",
+  "rust",
+  "swift",
+  "swiftui",
+  "objective-c",
+  "c++",
+  "groovy",
+  "android",
+  "angular",
+  "springboot"
+]);
+
+const MINOR_TECHNOLOGIES = new Set([
+  "javascript",
+  "typescript",
+  "react",
+  "vue",
+  "html",
+  "css",
+  "scss"
+]);
+
+const DATA_CONFIG_TECHNOLOGIES = new Set([
+  "json",
+  "yaml",
+  "xml",
+  "markdown"
+]);
+
+function technologyPriority(token, projectType) {
+  if (token === projectType && projectType && projectType !== "unknown") {
+    return -1;
+  }
+  if (PRIMARY_LANGUAGE_TECHNOLOGIES.has(token)) {
+    return 0;
+  }
+  if (MINOR_TECHNOLOGIES.has(token)) {
+    return 1;
+  }
+  if (DATA_CONFIG_TECHNOLOGIES.has(token)) {
+    return 2;
+  }
+  return 3;
+}
+
 function formatTechnologyLabel(value) {
   const token = String(value || "").trim().toLowerCase();
   if (!token) return "";
@@ -274,7 +326,13 @@ function collectDisplayTechnologies(projectData) {
   const deduped = [...new Set(normalized)];
   const withoutUnknown = deduped.filter((value) => value !== "unknown");
   const finalValues = withoutUnknown.length > 0 ? withoutUnknown : deduped;
-  return finalValues.slice(0, 4);
+
+  return finalValues
+    .sort((left, right) => (
+      technologyPriority(left, projectType) - technologyPriority(right, projectType)
+      || left.localeCompare(right)
+    ))
+    .slice(0, 4);
 }
 
 function formatLastScannedAt(lastScannedAt) {
