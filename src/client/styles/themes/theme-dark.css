@@ -24,6 +24,9 @@
   --recommended-card-text: 210 70% 70%;
   --recommended-card-border: 210 40% 30%;
   --recommended-card-bg: 210 50% 18%;
+  --recommended-tooltip-bg: rgb(26, 81, 46);
+  --recommended-tooltip-text: rgb(134, 239, 172);
+  --recommended-tooltip-border: 1px solid rgb(39, 100, 63);
   --surface-muted: rgba(161, 161, 170, 0.12);
   --hero-icon-bg: rgba(15, 17, 22, 0.8);
   --inline-code-bg: rgba(255, 255, 255, 0.08);

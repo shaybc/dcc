@@ -211,14 +211,13 @@
   top: var(--tooltip-y, 0px);
   width: min(320px, calc(100vw - 40px));
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, hsl(var(--recommended-card-border)), white 22%);
-  background: linear-gradient(135deg, color-mix(in srgb, hsl(var(--recommended-card-bg)), #6d28d9 28%) 0%, color-mix(in srgb, hsl(var(--recommended-card-bg)), #0ea5e9 22%) 100%);
-  color: color-mix(in srgb, hsl(var(--recommended-card-text)), white 55%);
+  border: var(--recommended-tooltip-border);
+  background: var(--recommended-tooltip-bg);
+  color: var(--recommended-tooltip-text);
   font-size: 12px;
   line-height: 1.35;
   padding: 9px 11px;
   pointer-events: none;
-  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.2), 0 8px 18px rgba(109, 40, 217, 0.22);
   z-index: 1200;
   opacity: 0;
   transform: translate(-50%, calc(-100% + 10px)) scale(0.98);
@@ -229,14 +228,6 @@
   opacity: 1;
   transform: translate(-50%, -100%) scale(1);
 }
-
-:root[data-theme="light"] .recommendation-tooltip {
-  border: 1px solid rgba(79, 70, 229, 0.52);
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.96) 0%, rgba(37, 99, 235, 0.95) 52%, rgba(6, 182, 212, 0.94) 100%);
-  color: #f8fbff;
-  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.33), 0 8px 18px rgba(79, 70, 229, 0.28);
-}
-
 
 .recommendations-divider {
   height: 1px;
