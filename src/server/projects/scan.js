@@ -30,6 +30,41 @@ const PROJECT_TYPES = {
   UNKNOWN: "unknown",
 };
 
+const CORE_PLATFORMS = Object.freeze({
+  WEB: "web",
+  MOBILE: "mobile",
+  BACKEND: "backend"
+});
+
+const CORE_PLATFORM_BY_PROJECT_TYPE = Object.freeze({
+  angular: CORE_PLATFORMS.WEB,
+  javascript: CORE_PLATFORMS.WEB,
+  html: CORE_PLATFORMS.WEB,
+  android: CORE_PLATFORMS.MOBILE,
+  swiftui: CORE_PLATFORMS.MOBILE,
+  swift: CORE_PLATFORMS.MOBILE,
+  "objective-c": CORE_PLATFORMS.MOBILE,
+  node: CORE_PLATFORMS.BACKEND,
+  python: CORE_PLATFORMS.BACKEND,
+  java: CORE_PLATFORMS.BACKEND,
+  springboot: CORE_PLATFORMS.BACKEND,
+  go: CORE_PLATFORMS.BACKEND,
+  rust: CORE_PLATFORMS.BACKEND,
+  dotnet: CORE_PLATFORMS.BACKEND,
+  csharp: CORE_PLATFORMS.BACKEND,
+  groovy: CORE_PLATFORMS.BACKEND,
+  "c++": CORE_PLATFORMS.BACKEND,
+  yaml: CORE_PLATFORMS.BACKEND,
+  xml: CORE_PLATFORMS.BACKEND,
+  json: CORE_PLATFORMS.BACKEND
+});
+
+const CORE_PLATFORM_TECHNOLOGY_HINTS = Object.freeze({
+  [CORE_PLATFORMS.WEB]: new Set(["html", "css", "scss", "javascript", "typescript", "react", "vue", "angular"]),
+  [CORE_PLATFORMS.MOBILE]: new Set(["android", "swift", "swiftui", "objective-c", "kotlin", "compose", "flutter"]),
+  [CORE_PLATFORMS.BACKEND]: new Set(["node", "python", "java", "springboot", "go", "rust", "dotnet", "csharp", "groovy", "json", "yaml", "xml"])
+});
+
 const PROJECT_TYPE_VALUES = new Set(Object.values(PROJECT_TYPES));
 const AI_ENABLED = env.PROJECT_SCAN_AI_ENABLED;
 const aiClient = AI_ENABLED
@@ -613,6 +648,22 @@ function collectProjectTechnologies({ projectType, ecosystems, repoFiles }) {
     .slice(0, MAX_PROJECT_TECHNOLOGIES);
 }
 
+function detectCorePlatform(projectType, projectTechnologies = []) {
+  const normalizedProjectType = normalizeProjectType(projectType);
+  if (CORE_PLATFORM_BY_PROJECT_TYPE[normalizedProjectType]) {
+    return CORE_PLATFORM_BY_PROJECT_TYPE[normalizedProjectType];
+  }
+
+  for (const platform of [CORE_PLATFORMS.MOBILE, CORE_PLATFORMS.WEB, CORE_PLATFORMS.BACKEND]) {
+    const hints = CORE_PLATFORM_TECHNOLOGY_HINTS[platform];
+    if (projectTechnologies.some((token) => hints.has(token))) {
+      return platform;
+    }
+  }
+
+  return CORE_PLATFORMS.BACKEND;
+}
+
 async function detectRepoSignals(repoPath, rootEntries, options = {}) {
   const includeTreeSignals = options.includeTreeSignals !== false;
   const ecosystems = new Set();
@@ -756,9 +807,11 @@ async function detectRepoSignals(repoPath, rootEntries, options = {}) {
   }
 
   const normalizedDetectedSignals = Array.from(new Set(detectedSignals)).sort((a, b) => a.localeCompare(b));
+  const corePlatform = detectCorePlatform(projectType || PROJECT_TYPES.UNKNOWN, projectTechnologies);
 
   return {
     projectType: projectType || PROJECT_TYPES.UNKNOWN,
+    corePlatform,
     detectedSignals: normalizedDetectedSignals,
     projectTechnologies,
   };
@@ -848,8 +901,8 @@ export async function refreshDevProjects(roots) {
   await runDb("DELETE FROM dev_projects");
   for (const project of projects) {
     await runDb(
-      "INSERT OR IGNORE INTO dev_projects (path, projectType, detectedSignals, projectTechnologies, lastScannedAt) VALUES (?, ?, ?, ?, ?)",
-      [project.path, project.projectType, JSON.stringify(project.detectedSignals), JSON.stringify(project.projectTechnologies || []), lastScannedAt]
+      "INSERT OR IGNORE INTO dev_projects (path, projectType, corePlatform, detectedSignals, projectTechnologies, lastScannedAt) VALUES (?, ?, ?, ?, ?, ?)",
+      [project.path, project.projectType, project.corePlatform || CORE_PLATFORMS.BACKEND, JSON.stringify(project.detectedSignals), JSON.stringify(project.projectTechnologies || []), lastScannedAt]
     );
   }
 

@@ -30,10 +30,29 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
     unknown: "unknown"
   };
 
+  const expectedCorePlatforms = {
+    node: "backend",
+    "node-web": "backend",
+    angular: "web",
+    python: "backend",
+    springboot: "backend",
+    go: "backend",
+    rust: "backend",
+    dotnet: "backend",
+    swiftui: "mobile",
+    android: "mobile",
+    cpp: "backend",
+    "json-only": "backend",
+    "yaml-majority": "backend",
+    "markdown-only": "backend",
+    unknown: "backend"
+  };
+
   for (const [fixtureName, expectedType] of Object.entries(expectedTypes)) {
     const project = byName.get(fixtureName);
     assert.ok(project, `expected fixture ${fixtureName} to be discovered`);
     assert.equal(project.projectType, expectedType, `expected ${fixtureName} to detect as ${expectedType}`);
+    assert.equal(project.corePlatform, expectedCorePlatforms[fixtureName], `expected ${fixtureName} core platform`);
     assert.ok(Array.isArray(project.detectedSignals));
     assert.ok(Array.isArray(project.projectTechnologies));
 

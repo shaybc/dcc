@@ -88,3 +88,67 @@ test("recommendDefinitions includes project path tag matches", () => {
   assert.equal(suggestions.length, 1);
   assert.ok(suggestions[0].reasons.includes("project path tag: acme"));
 });
+
+test("recommendDefinitions prioritizes core platform matches before technology and fallback", () => {
+  const definitions = [
+    {
+      key: "rules::mobile-review",
+      name: "iOS Swift & SwiftUI Rules",
+      description: "Mobile review checklist",
+      type: "rules",
+      tags: "ios,swift,mobile"
+    },
+    {
+      key: "rules::html",
+      name: "@HTML",
+      description: "Frontend html standards",
+      type: "rules",
+      tags: "html,frontend,web"
+    },
+    {
+      key: "prompts::unit-test",
+      name: "Unit test",
+      description: "General testing guidance",
+      type: "prompts",
+      tags: "testing"
+    }
+  ];
+
+  const suggestions = recommendDefinitions("/work/apps/node-web", "node", definitions, {
+    projectTechnologies: ["node", "javascript", "html"]
+  });
+
+  assert.deepEqual(suggestions.map((item) => item.key), [
+    "prompts::unit-test"
+  ]);
+});
+
+test("recommendDefinitions limits fallback suggestions to 3 by default", () => {
+  const definitions = [
+    { key: "prompts::generic-a", name: "Generic A", description: "assistant helper", type: "prompts", tags: "misc" },
+    { key: "prompts::generic-b", name: "Generic B", description: "assistant helper", type: "prompts", tags: "misc" },
+    { key: "prompts::generic-c", name: "Generic C", description: "assistant helper", type: "prompts", tags: "misc" },
+    { key: "prompts::generic-d", name: "Generic D", description: "assistant helper", type: "prompts", tags: "misc" },
+    { key: "prompts::generic-e", name: "Generic E", description: "assistant helper", type: "prompts", tags: "misc" }
+  ];
+
+  const suggestions = recommendDefinitions("/work/apps/node-service", "node", definitions, {
+    projectTechnologies: ["node"]
+  });
+
+  assert.equal(suggestions.length, 3);
+});
+
+test("recommendDefinitions excludes explicit conflicting core-platform definitions", () => {
+  const definitions = [
+    { key: "rules::backend", name: "Node API rules", description: "server api", type: "rules", tags: "backend,node" },
+    { key: "rules::mobile", name: "iOS review", description: "swift mobile", type: "rules", tags: "ios,swift,mobile" }
+  ];
+
+  const suggestions = recommendDefinitions("/work/apps/node-service", "node", definitions, {
+    corePlatform: "backend",
+    projectTechnologies: ["node", "javascript"]
+  });
+
+  assert.deepEqual(suggestions.map((item) => item.key), ["rules::backend"]);
+});

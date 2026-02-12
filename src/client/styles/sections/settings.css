@@ -150,6 +150,12 @@
   background: color-mix(in srgb, var(--accent, #2563eb) 14%, var(--card));
 }
 
+.project-meta-badge--core-platform {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--success, #16a34a) 15%, var(--card));
+  border-color: color-mix(in srgb, var(--success, #16a34a) 45%, var(--border));
+}
+
 .project-meta-badge--technology {
   background: color-mix(in srgb, var(--card) 65%, var(--border));
 }

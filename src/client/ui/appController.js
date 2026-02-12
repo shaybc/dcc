@@ -81,7 +81,7 @@ const recommendationsContent = document.createElement("div");
 
 let definitions = [];
 let suggestionDefinitionIds = [];
-let suggestionsMeta = { projectPath: "", projectType: "", suggestions: [] };
+let suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
 const RECOMMENDATIONS_VISIBILITY_STORAGE_KEY = "dcc.recommendations.visible";
 let recommendationsVisible = getStoredRecommendationsVisibility();
 let activeFilter = "all";
@@ -619,7 +619,7 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   const recommendationMeta = recommendationRank !== null && !isRecommended
     ? `<div class="recommendation-meta">#${recommendationRank} · Score ${recommendationScore || 0}</div>`
     : "";
-  const recommendationReasonText = recommendationReasons.length > 0 && !isRecommended
+  const recommendationReasonText = recommendationReasons.length > 0
     ? `<p class="recommendation-reasons">${escapeHtml(recommendationReasons.slice(0, 2).join(" • "))}</p>`
     : "";
   const cardMetaText = isRecommended
@@ -680,6 +680,8 @@ function renderRecommendationSection() {
   recommendationsContent.classList.toggle("is-collapsed", !recommendationsVisible);
   const selectedProjectPath = String(devProjectInput.value || "").trim();
   const projectType = String(suggestionsMeta.projectType || "").trim().toLowerCase();
+  const corePlatform = String(suggestionsMeta.corePlatform || "").trim().toLowerCase();
+  const platformMeta = corePlatform ? ` · Platform: ${corePlatform}` : "";
   recommendationsState.textContent = "";
   recommendationsState.hidden = true;
   recommendationsCards.innerHTML = "";
@@ -698,7 +700,7 @@ function renderRecommendationSection() {
   if (!projectType || projectType === "unknown") {
     recommendationsState.hidden = false;
     recommendationsState.textContent = "Project type is unknown, so recommendations are unavailable.";
-    recommendationsMeta.textContent = `Project: ${selectedProjectPath}`;
+    recommendationsMeta.textContent = `Project: ${selectedProjectPath}${platformMeta}`;
     return;
   }
 
@@ -708,11 +710,11 @@ function renderRecommendationSection() {
   if (suggestions.length === 0) {
     recommendationsState.hidden = false;
     recommendationsState.textContent = "No matching suggestions for this project type yet.";
-    recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}`;
+    recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}${platformMeta}`;
     return;
   }
 
-  recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}`;
+  recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}${platformMeta}`;
 
   suggestions.forEach((suggestion, index) => {
     const definition = definitions.find((item) => Number(item.id) === Number(suggestion.definitionId));
@@ -804,11 +806,12 @@ async function fetchDefinitionSuggestions() {
     suggestionsMeta = {
       projectPath: String(data?.projectPath || "").trim(),
       projectType: String(data?.projectType || "").trim(),
+      corePlatform: String(data?.corePlatform || "").trim(),
       suggestions: nextSuggestions
     };
   } catch (_error) {
     suggestionDefinitionIds = [];
-    suggestionsMeta = { projectPath: "", projectType: "", suggestions: [] };
+    suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
   }
 }
 

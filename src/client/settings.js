@@ -312,6 +312,15 @@ function formatTechnologyLabel(value) {
   return labels[token] || (token.charAt(0).toUpperCase() + token.slice(1));
 }
 
+function formatCorePlatformLabel(value) {
+  const token = String(value || "").trim().toLowerCase();
+  if (!token) return "";
+  if (token === "web") return "Web";
+  if (token === "mobile") return "Mobile";
+  if (token === "backend") return "Backend";
+  return token.charAt(0).toUpperCase() + token.slice(1);
+}
+
 function collectDisplayTechnologies(projectData) {
   const technologies = Array.isArray(projectData.projectTechnologies) ? projectData.projectTechnologies : [];
   const normalized = technologies
@@ -373,6 +382,11 @@ function renderDevProjects(projects) {
     metadataSummary.className = "project-meta-summary";
 
     const displayTechnologies = collectDisplayTechnologies(projectData);
+    const projectCorePlatform = String(projectData.corePlatform || "").trim().toLowerCase();
+
+    if (projectCorePlatform) {
+      metadataSummary.appendChild(createMetaBadge(formatCorePlatformLabel(projectCorePlatform), "project-meta-badge--core-platform"));
+    }
 
     if (displayTechnologies.length > 0) {
       displayTechnologies.forEach((technology, index) => {
