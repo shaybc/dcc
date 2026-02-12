@@ -33,6 +33,7 @@
   max-width: 240px;
   padding: 14px;
   gap: 8px;
+  overflow: visible;
 }
 
 .card-recommended h3 {
@@ -204,9 +205,29 @@
   font-weight: 600;
 }
 
-.recommendation-reasons {
+.recommendation-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  width: min(320px, calc(100vw - 40px));
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, hsl(var(--recommended-card-border)), white 22%);
+  background: linear-gradient(135deg, color-mix(in srgb, hsl(var(--recommended-card-bg)), #6d28d9 28%) 0%, color-mix(in srgb, hsl(var(--recommended-card-bg)), #0ea5e9 22%) 100%);
+  color: color-mix(in srgb, hsl(var(--recommended-card-text)), white 55%);
   font-size: 12px;
-  color: var(--muted);
+  line-height: 1.35;
+  padding: 9px 11px;
+  pointer-events: none;
+  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.2), 0 8px 18px rgba(109, 40, 217, 0.22);
+  z-index: 12;
+  opacity: 0;
+  transform: translate(-50%, 10px) scale(0.98);
+  transition: opacity 200ms ease, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.recommendation-tooltip.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
 }
 
 
