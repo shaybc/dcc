@@ -42,7 +42,8 @@ const PROJECT_TECH_STOP_WORDS = new Set([
   "resources",
   "src"
 ]);
-const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["js", "ts", "go", "ui", "md"]);
+const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["go", "ui"]);
+const PROJECT_TECH_CANONICAL_MAP = Object.freeze({ js: "javascript", ts: "typescript", md: "markdown" });
 
 function normalizeToken(value) {
   return String(value || "").trim().toLowerCase();
@@ -86,7 +87,8 @@ function collectDccMetadataTokens(definition) {
 }
 
 function normalizeProjectTechnologyTokens(values) {
-  return uniqueTokens(values)
+  const canonicalTokens = uniqueTokens(values).map((token) => PROJECT_TECH_CANONICAL_MAP[token] || token);
+  return [...new Set(canonicalTokens)]
     .filter((token) => token.length >= 3 || SHORT_TECH_TOKEN_ALLOWLIST.has(token))
     .filter((token) => !PROJECT_TECH_STOP_WORDS.has(token));
 }

@@ -232,6 +232,8 @@ function renderDevRoots(roots) {
 }
 
 
+const TECHNOLOGY_CANONICAL_LABEL_MAP = Object.freeze({ js: "javascript", ts: "typescript", md: "markdown" });
+
 function formatTechnologyLabel(value) {
   const token = String(value || "").trim().toLowerCase();
   if (!token) return "";
@@ -261,7 +263,7 @@ function formatTechnologyLabel(value) {
 function collectDisplayTechnologies(projectData) {
   const technologies = Array.isArray(projectData.projectTechnologies) ? projectData.projectTechnologies : [];
   const normalized = technologies
-    .map((value) => String(value || "").trim().toLowerCase())
+    .map((value) => TECHNOLOGY_CANONICAL_LABEL_MAP[String(value || "").trim().toLowerCase()] || String(value || "").trim().toLowerCase())
     .filter(Boolean);
 
   const projectType = String(projectData.projectType || "").trim().toLowerCase();

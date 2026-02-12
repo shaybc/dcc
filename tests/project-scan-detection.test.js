@@ -47,7 +47,8 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
   const nodeWebProject = byName.get("node-web");
   assert.ok(nodeWebProject?.projectTechnologies.includes("node"));
   assert.ok(nodeWebProject?.projectTechnologies.includes("html"));
-  assert.ok(nodeWebProject?.projectTechnologies.includes("js"));
+  assert.ok(nodeWebProject?.projectTechnologies.includes("javascript"));
+  assert.ok(!nodeWebProject?.projectTechnologies.includes("js"));
   assert.ok(!nodeWebProject?.projectTechnologies.includes("package"));
   assert.ok(!nodeWebProject?.projectTechnologies.includes("example"));
 

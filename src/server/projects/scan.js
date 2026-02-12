@@ -115,12 +115,15 @@ const EXTENSION_TECHNOLOGY_MAP = Object.freeze({
 });
 
 const PROJECT_TECH_STOP_WORDS = new Set(["ai", "build", "file", "format", "git", "path", "reason", "src", "main"]);
-const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["js", "ts", "go", "ui", "md"]);
+const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["go", "ui"]);
 const MAX_PROJECT_TECHNOLOGIES = 4;
+const TECHNOLOGY_CANONICAL_MAP = Object.freeze({
+  js: "javascript",
+  ts: "typescript",
+  md: "markdown",
+});
 const TECHNOLOGY_ALLOWLIST = new Set([
   ...Object.values(PROJECT_TYPES),
-  "js",
-  "ts",
   "typescript",
   "html",
   "css",
@@ -141,6 +144,10 @@ const IGNORED_SCAN_DIR_NAMES = new Set([
   "bin",
   "dist-packages",
   "lib",
+  "libs",
+  "library",
+  "libraries",
+  "packages",
   "site-packages",
   "node_modules",
   "vendor",
@@ -540,8 +547,14 @@ function tokenizeTechnologyValue(value) {
     .filter(Boolean);
 }
 
+function canonicalizeTechnologyToken(token) {
+  return TECHNOLOGY_CANONICAL_MAP[token] || token;
+}
+
 function normalizeTechnologyTokens(values) {
-  return Array.from(new Set(values.flatMap((value) => tokenizeTechnologyValue(value))))
+  return Array.from(new Set(values
+    .flatMap((value) => tokenizeTechnologyValue(value))
+    .map((token) => canonicalizeTechnologyToken(token))))
     .filter((token) => token.length >= 3 || SHORT_TECH_TOKEN_ALLOWLIST.has(token))
     .filter((token) => !PROJECT_TECH_STOP_WORDS.has(token))
     .filter((token) => TECHNOLOGY_ALLOWLIST.has(token));
