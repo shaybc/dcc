@@ -77,3 +77,28 @@ test("scanDevProjects skips non-git parent directories by default", async () => 
   assert.ok(byName.has("child-repo"));
   assert.ok(!byName.has("parent"));
 });
+
+
+test("scanDevProjects ignores test fixture folders when inferring project ecosystems", async () => {
+  const os = await import("os");
+  const fs = await import("fs/promises");
+
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dcc-scan-mixed-"));
+  const repo = path.join(root, "repo");
+
+  await fs.mkdir(path.join(repo, ".git"), { recursive: true });
+  await fs.mkdir(path.join(repo, "tests", "fixtures", "swift"), { recursive: true });
+
+  await fs.writeFile(path.join(repo, "package.json"), '{"name":"repo"}\n', "utf8");
+  await fs.writeFile(path.join(repo, "src.js"), "console.log('ok')\n", "utf8");
+  await fs.writeFile(path.join(repo, "tests", "fixtures", "swift", "Example.swift"), "import SwiftUI\n", "utf8");
+
+  const { scanDevProjects } = await import("../src/server/projects/scan.js");
+  const projects = await scanDevProjects([root]);
+
+  const detected = projects.find((project) => project.path === repo);
+  assert.ok(detected, "expected repo to be discovered");
+  assert.equal(detected.projectType, "node");
+  assert.ok(!detected.detectedSignals.includes("*.swift"));
+  assert.ok(!detected.projectTechnologies.includes("swiftui"));
+});
