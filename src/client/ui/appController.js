@@ -619,8 +619,8 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   const recommendationMeta = recommendationRank !== null && !isRecommended
     ? `<div class="recommendation-meta">#${recommendationRank} · Score ${recommendationScore || 0}</div>`
     : "";
-  const recommendationReasonText = recommendationReasons.length > 0
-    ? `<p class="recommendation-reasons">${escapeHtml(recommendationReasons.slice(0, 2).join(" • "))}</p>`
+  const recommendationTooltipText = isRecommended && recommendationReasons.length > 0
+    ? `<div class="recommendation-tooltip" role="tooltip" aria-hidden="true">${escapeHtml(recommendationReasons.join(" • "))}</div>`
     : "";
   const cardMetaText = isRecommended
     ? `#${recommendationRank} (Score: ${Number(recommendationScore) || 0})`
@@ -648,7 +648,7 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
     ${recommendationMeta}
     <h3>${escapeHtml(getCardTitle(definition.name))}</h3>
     ${descriptionText}
-    ${recommendationReasonText}
+    ${recommendationTooltipText}
     ${tagsMarkup}
     <div class="meta-row">
       <div class="meta-status">${cardMetaText}</div>
@@ -662,6 +662,48 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   card.addEventListener("click", (event) => {
     handleDefinitionCardClick(definition, event);
   });
+
+  const recommendationTooltip = card.querySelector(".recommendation-tooltip");
+  if (recommendationTooltip) {
+    let revealTooltipTimer = null;
+
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const setTooltipAnchorFromPointer = (event) => {
+      const cardRect = card.getBoundingClientRect();
+      const tooltipWidth = recommendationTooltip.offsetWidth || 320;
+      const halfTooltip = tooltipWidth / 2;
+      const clientX = clamp(event.clientX, halfTooltip + 16, window.innerWidth - halfTooltip - 16);
+      const localX = clientX - cardRect.left;
+      const localY = event.clientY - cardRect.top - 14;
+      recommendationTooltip.style.setProperty("--tooltip-x", `${localX}px`);
+      recommendationTooltip.style.setProperty("--tooltip-y", `${localY}px`);
+    };
+
+    const cancelTooltipReveal = () => {
+      if (revealTooltipTimer) {
+        window.clearTimeout(revealTooltipTimer);
+        revealTooltipTimer = null;
+      }
+      recommendationTooltip.classList.remove("is-visible");
+      recommendationTooltip.setAttribute("aria-hidden", "true");
+    };
+
+    card.addEventListener("mouseenter", (event) => {
+      cancelTooltipReveal();
+      setTooltipAnchorFromPointer(event);
+      revealTooltipTimer = window.setTimeout(() => {
+        recommendationTooltip.classList.add("is-visible");
+        recommendationTooltip.setAttribute("aria-hidden", "false");
+      }, 1800);
+    });
+
+    card.addEventListener("mousemove", (event) => {
+      setTooltipAnchorFromPointer(event);
+    });
+
+    card.addEventListener("mouseleave", cancelTooltipReveal);
+    card.addEventListener("blur", cancelTooltipReveal, true);
+  }
 
   return card;
 }
