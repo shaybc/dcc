@@ -9,7 +9,7 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
   process.env.PROJECT_SCAN_AI_ENABLED = "false";
 
   const { scanDevProjects } = await import("../src/server/projects/scan.js");
-  const projects = await scanDevProjects([fixturesRoot]);
+  const projects = await scanDevProjects([fixturesRoot], { detectNonGitProjects: true });
   const byName = new Map(projects.map((project) => [path.basename(project.path), project]));
 
   const expectedTypes = {
@@ -55,4 +55,25 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
   const markdownProject = byName.get("markdown-only");
   assert.ok(markdownProject?.projectTechnologies.includes("markdown"));
   assert.ok(!markdownProject?.projectTechnologies.includes("unknown"));
+});
+
+
+test("scanDevProjects skips non-git parent directories by default", async () => {
+  const os = await import("os");
+  const fs = await import("fs/promises");
+
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dcc-scan-root-"));
+  const parent = path.join(root, "parent");
+  const child = path.join(parent, "child-repo");
+
+  await fs.mkdir(path.join(child, ".git"), { recursive: true });
+  await fs.writeFile(path.join(parent, "main.yaml"), "name: parent\n", "utf8");
+  await fs.writeFile(path.join(child, "package.json"), '{"name":"child"}\n', "utf8");
+
+  const { scanDevProjects } = await import("../src/server/projects/scan.js");
+  const projects = await scanDevProjects([root]);
+
+  const byName = new Map(projects.map((project) => [path.basename(project.path), project]));
+  assert.ok(byName.has("child-repo"));
+  assert.ok(!byName.has("parent"));
 });

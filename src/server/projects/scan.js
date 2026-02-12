@@ -760,8 +760,9 @@ async function detectRepoSignals(repoPath, rootEntries, options = {}) {
   };
 }
 
-export async function scanDevProjects(roots) {
+export async function scanDevProjects(roots, options = {}) {
   const projects = new Map();
+  const detectNonGitProjects = options.detectNonGitProjects === true;
 
   async function scanDir(dir) {
     let stat;
@@ -795,16 +796,6 @@ export async function scanDevProjects(roots) {
       return;
     }
 
-    const rootMetadata = await detectRepoSignals(dir, entries, { includeTreeSignals: false });
-    if (rootMetadata.projectType !== PROJECT_TYPES.UNKNOWN || rootMetadata.detectedSignals.length > 0) {
-      projects.set(dir, {
-        path: dir,
-        ...rootMetadata,
-      });
-      return;
-    }
-
-    const projectCountBeforeChildren = projects.size;
     for (const entry of entries) {
       if (entry.isDirectory()) {
         if (shouldSkipDirectoryName(entry.name)) {
@@ -814,12 +805,21 @@ export async function scanDevProjects(roots) {
       }
     }
 
-    const hasFiles = entries.some((entry) => entry.isFile());
-    if (projects.size > projectCountBeforeChildren && !hasFiles) {
+    if (!detectNonGitProjects) {
+      return;
+    }
+
+    const rootMetadata = await detectRepoSignals(dir, entries, { includeTreeSignals: false });
+    if (rootMetadata.projectType !== PROJECT_TYPES.UNKNOWN || rootMetadata.detectedSignals.length > 0) {
+      projects.set(dir, {
+        path: dir,
+        ...rootMetadata,
+      });
       return;
     }
 
     const metadata = await detectRepoSignals(dir, entries);
+    const hasFiles = entries.some((entry) => entry.isFile());
     if (metadata.projectType !== PROJECT_TYPES.UNKNOWN || metadata.detectedSignals.length > 0 || hasFiles) {
       projects.set(dir, {
         path: dir,
