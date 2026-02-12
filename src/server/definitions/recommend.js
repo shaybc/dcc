@@ -165,6 +165,17 @@ function definitionMatchesCorePlatform(definitionTokens, corePlatform) {
   return false;
 }
 
+function detectDefinitionCorePlatforms(definitionTokens) {
+  const matches = [];
+  for (const platform of Object.values(CORE_PLATFORM)) {
+    const tokens = CORE_PLATFORM_TOKENS[platform] || new Set();
+    if ([...definitionTokens.combinedTokens].some((token) => tokens.has(token))) {
+      matches.push(platform);
+    }
+  }
+  return matches;
+}
+
 export function buildProjectTechnologyTokens(projectType, projectTechnologies = [], detectedSignals = []) {
   return normalizeProjectTechnologyTokens([
     projectType,
@@ -263,7 +274,8 @@ function scoreDefinition(definition, context) {
   return {
     score,
     reasons,
-    matchesCorePlatform: definitionMatchesCorePlatform(definitionTokens, context.corePlatform)
+    matchesCorePlatform: definitionMatchesCorePlatform(definitionTokens, context.corePlatform),
+    definitionPlatforms: detectDefinitionCorePlatforms(definitionTokens)
   };
 }
 
@@ -281,7 +293,7 @@ export function recommendDefinitions(currentProjectPath, currentProjectType, def
     projectType: normalizeToken(currentProjectType),
     projectPathTokens: uniqueTokens([String(currentProjectPath || "")]),
     projectTechnologyTokens,
-    corePlatform: inferCorePlatform(currentProjectType, projectTechnologyTokens),
+    corePlatform: normalizeToken(options.corePlatform) || inferCorePlatform(currentProjectType, projectTechnologyTokens),
     map: options.recommendationMap || PROJECT_TYPE_RECOMMENDATION_MAP
   };
 
@@ -289,18 +301,22 @@ export function recommendDefinitions(currentProjectPath, currentProjectType, def
 
   const scoredDefinitions = candidateDefinitions
     .map((definition, index) => {
-      const { score, reasons, matchesCorePlatform } = scoreDefinition(definition, context);
+      const { score, reasons, matchesCorePlatform, definitionPlatforms } = scoreDefinition(definition, context);
       const matchesTechnology = reasons.some((reason) => reason.startsWith("project technology "));
+      const hasConflictingPlatform = context.corePlatform
+        && definitionPlatforms.length > 0
+        && !definitionPlatforms.includes(context.corePlatform);
       return {
         ...definition,
         score,
         reasons,
         matchesCorePlatform,
         matchesTechnology,
+        hasConflictingPlatform,
         _index: index
       };
     })
-    .filter((definition) => definition.score > 0)
+    .filter((definition) => definition.score > 0 && !definition.hasConflictingPlatform)
     .sort((left, right) => (
       (right.score - left.score)
       || String(left.name || "").localeCompare(String(right.name || ""))
@@ -315,7 +331,7 @@ export function recommendDefinitions(currentProjectPath, currentProjectType, def
     .slice(0, fallbackLimit);
 
   return [...corePlatformMatches, ...technologyMatches, ...fallbackMatches]
-    .map(({ _index, matchesCorePlatform, matchesTechnology, ...definition }) => definition);
+    .map(({ _index, matchesCorePlatform, matchesTechnology, hasConflictingPlatform, ...definition }) => definition);
 }
 
 export default recommendDefinitions;

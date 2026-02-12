@@ -119,7 +119,6 @@ test("recommendDefinitions prioritizes core platform matches before technology a
   });
 
   assert.deepEqual(suggestions.map((item) => item.key), [
-    "rules::html",
     "prompts::unit-test"
   ]);
 });
@@ -138,4 +137,18 @@ test("recommendDefinitions limits fallback suggestions to 3 by default", () => {
   });
 
   assert.equal(suggestions.length, 3);
+});
+
+test("recommendDefinitions excludes explicit conflicting core-platform definitions", () => {
+  const definitions = [
+    { key: "rules::backend", name: "Node API rules", description: "server api", type: "rules", tags: "backend,node" },
+    { key: "rules::mobile", name: "iOS review", description: "swift mobile", type: "rules", tags: "ios,swift,mobile" }
+  ];
+
+  const suggestions = recommendDefinitions("/work/apps/node-service", "node", definitions, {
+    corePlatform: "backend",
+    projectTechnologies: ["node", "javascript"]
+  });
+
+  assert.deepEqual(suggestions.map((item) => item.key), ["rules::backend"]);
 });

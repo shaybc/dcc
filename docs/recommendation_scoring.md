@@ -7,6 +7,7 @@ This document describes how `/api/definitions/suggestions` ranks definitions.
 The scorer receives:
 - current project path (from `currentDevProject` setting),
 - current project type (from `dev_projects.projectType`),
+- current project core platform (`web`, `mobile`, `backend`, from `dev_projects.corePlatform`),
 - project technologies (from `dev_projects.projectTechnologies` and detected signals),
 - candidate definitions (`id`, `key`, `name`, `description`, `tags`, `type`).
 
@@ -66,6 +67,7 @@ Each positive match appends a human-readable entry into `reasons`.
   1. definitions matching the inferred project core platform (`web`, `mobile`, or `backend`),
   2. definitions matching detected project technologies,
   3. up to 3 fallback items from remaining scored candidates.
+- Definitions with explicit conflicting platform signals are excluded (for example mobile-only rules in a backend project).
 - Within each stage, sorting is deterministic by:
   1. higher `score`,
   2. `name` ascending,
@@ -82,3 +84,4 @@ The API maps ranked items to:
 along with top-level context:
 - `projectPath`
 - `projectType`
+- `corePlatform`
