@@ -14,6 +14,7 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
 
   const expectedTypes = {
     node: "node",
+    "node-web": "node",
     angular: "angular",
     python: "python",
     springboot: "springboot",
@@ -24,6 +25,8 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
     android: "android",
     cpp: "c++",
     "json-only": "json",
+    "yaml-majority": "yaml",
+    "markdown-only": "unknown",
     unknown: "unknown"
   };
 
@@ -32,5 +35,23 @@ test("scanDevProjects detects project types from ecosystem marker fixtures", asy
     assert.ok(project, `expected fixture ${fixtureName} to be discovered`);
     assert.equal(project.projectType, expectedType, `expected ${fixtureName} to detect as ${expectedType}`);
     assert.ok(Array.isArray(project.detectedSignals));
+    assert.ok(Array.isArray(project.projectTechnologies));
+
+    assert.ok(project.projectTechnologies.length >= 1);
+    assert.ok(project.projectTechnologies.length <= 4);
   }
+
+  const yamlProject = byName.get("yaml-majority");
+  assert.ok(yamlProject?.projectTechnologies.includes("yaml"));
+
+  const nodeWebProject = byName.get("node-web");
+  assert.ok(nodeWebProject?.projectTechnologies.includes("node"));
+  assert.ok(nodeWebProject?.projectTechnologies.includes("html"));
+  assert.ok(nodeWebProject?.projectTechnologies.includes("js"));
+  assert.ok(!nodeWebProject?.projectTechnologies.includes("package"));
+  assert.ok(!nodeWebProject?.projectTechnologies.includes("example"));
+
+  const markdownProject = byName.get("markdown-only");
+  assert.ok(markdownProject?.projectTechnologies.includes("markdown"));
+  assert.ok(!markdownProject?.projectTechnologies.includes("unknown"));
 });
