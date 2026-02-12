@@ -53,6 +53,7 @@ Returns project-aware ranked suggestions:
 {
   "projectPath": "...",
   "projectType": "python",
+  "projectTechnologies": ["python", "fastapi", "api"],
   "suggestions": [
     {
       "definitionId": 1,
@@ -141,7 +142,7 @@ Body: `{ roots: string[] }`.
 Replaces stored roots and refreshes discovered projects.
 
 ### `GET /api/dev-projects`
-Returns discovered projects with `projectType`, `detectedSignals`, `lastScannedAt`.
+Returns discovered projects with `projectType`, `detectedSignals`, `projectTechnologies`, `lastScannedAt`.
 
 ---
 
