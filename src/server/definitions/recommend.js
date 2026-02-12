@@ -4,14 +4,18 @@ const DEFAULT_MATCH_WEIGHTS = Object.freeze({
   tag: 3,
   keyword: 2,
   dccMetadata: 2,
-  projectPathKeyword: 1
+  projectTechnologyTag: 3,
+  projectTechnologyKeyword: 2,
+  projectTechnologyMetadata: 2,
+  projectPathKeyword: 1,
+  projectPathTag: 2
 });
 
 export const PROJECT_TYPE_RECOMMENDATION_MAP = Object.freeze({
   node: Object.freeze({
     definitionTypes: Object.freeze({ configs: 3, workflows: 2, prompts: 1 }),
-    tags: Object.freeze({ typescript: 3, npm: 3, eslint: 3, jest: 3 }),
-    keywords: Object.freeze({ typescript: 2, npm: 2, eslint: 2, jest: 2 })
+    tags: Object.freeze({ typescript: 3, npm: 3, eslint: 3, jest: 3, javascript: 2, frontend: 2, html: 2 }),
+    keywords: Object.freeze({ typescript: 2, npm: 2, eslint: 2, jest: 2, javascript: 2, frontend: 2, html: 2 })
   }),
   python: Object.freeze({
     definitionTypes: Object.freeze({ configs: 3, workflows: 2, prompts: 1 }),
@@ -20,13 +24,33 @@ export const PROJECT_TYPE_RECOMMENDATION_MAP = Object.freeze({
   })
 });
 
+const PROJECT_TECH_STOP_WORDS = new Set([
+  "ai",
+  "application",
+  "artifactid",
+  "build",
+  "core",
+  "file",
+  "format",
+  "git",
+  "lock",
+  "main",
+  "package",
+  "path",
+  "reason",
+  "resources",
+  "src"
+]);
+const SHORT_TECH_TOKEN_ALLOWLIST = new Set(["go", "ui"]);
+const PROJECT_TECH_CANONICAL_MAP = Object.freeze({ js: "javascript", ts: "typescript", md: "markdown" });
+
 function normalizeToken(value) {
   return String(value || "").trim().toLowerCase();
 }
 
 function tokenize(value) {
   return normalizeToken(value)
-    .split(/[^a-z0-9_+-]+/)
+    .split(/[^a-z0-9_+]+/)
     .map((token) => token.trim())
     .filter(Boolean);
 }
@@ -59,6 +83,21 @@ function collectDccMetadataTokens(definition) {
     metadataValues.push(...Object.values(definition.dcc));
   }
   return uniqueTokens(metadataValues.map((value) => String(value || "")));
+}
+
+function normalizeProjectTechnologyTokens(values) {
+  const canonicalTokens = uniqueTokens(values).map((token) => PROJECT_TECH_CANONICAL_MAP[token] || token);
+  return [...new Set(canonicalTokens)]
+    .filter((token) => token.length >= 3 || SHORT_TECH_TOKEN_ALLOWLIST.has(token))
+    .filter((token) => !PROJECT_TECH_STOP_WORDS.has(token));
+}
+
+export function buildProjectTechnologyTokens(projectType, projectTechnologies = [], detectedSignals = []) {
+  return normalizeProjectTechnologyTokens([
+    projectType,
+    ...(Array.isArray(projectTechnologies) ? projectTechnologies : []),
+    ...(Array.isArray(detectedSignals) ? detectedSignals : [])
+  ]);
 }
 
 function scoreDefinition(definition, context) {
@@ -103,11 +142,35 @@ function scoreDefinition(definition, context) {
     reasons.push(`dcc metadata match: ${keyword}`);
   }
 
+  for (const technology of context.projectTechnologyTokens) {
+    if (tags.includes(technology)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTechnologyTag;
+      reasons.push(`project technology tag: ${technology}`);
+    }
+
+    if (textBlob.includes(technology)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTechnologyKeyword;
+      reasons.push(`project technology keyword: ${technology}`);
+    }
+
+    if (dccMetadataTokens.includes(technology)) {
+      score += DEFAULT_MATCH_WEIGHTS.projectTechnologyMetadata;
+      reasons.push(`project technology metadata: ${technology}`);
+    }
+  }
+
   for (const token of context.projectPathTokens) {
     if (!token || token.length < 3) continue;
     if (!textBlob.includes(token)) continue;
     score += DEFAULT_MATCH_WEIGHTS.projectPathKeyword;
     reasons.push(`project path keyword: ${token}`);
+  }
+
+  for (const token of context.projectPathTokens) {
+    if (!token || token.length < 3) continue;
+    if (!tags.includes(token)) continue;
+    score += DEFAULT_MATCH_WEIGHTS.projectPathTag;
+    reasons.push(`project path tag: ${token}`);
   }
 
   return { score, reasons };
@@ -121,6 +184,11 @@ export function recommendDefinitions(currentProjectPath, currentProjectType, def
   const context = {
     projectType: normalizeToken(currentProjectType),
     projectPathTokens: uniqueTokens([String(currentProjectPath || "")]),
+    projectTechnologyTokens: buildProjectTechnologyTokens(
+      currentProjectType,
+      options.projectTechnologies,
+      options.detectedSignals
+    ),
     map: options.recommendationMap || PROJECT_TYPE_RECOMMENDATION_MAP
   };
 

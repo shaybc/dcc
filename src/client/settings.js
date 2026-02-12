@@ -232,24 +232,107 @@ function renderDevRoots(roots) {
 }
 
 
-function formatProjectType(projectType) {
-  const value = String(projectType || "unknown").toLowerCase();
+const TECHNOLOGY_CANONICAL_LABEL_MAP = Object.freeze({ js: "javascript", ts: "typescript", md: "markdown" });
+
+
+const PRIMARY_LANGUAGE_TECHNOLOGIES = new Set([
+  "node",
+  "python",
+  "java",
+  "csharp",
+  "dotnet",
+  "go",
+  "rust",
+  "swift",
+  "swiftui",
+  "objective-c",
+  "c++",
+  "groovy",
+  "android",
+  "angular",
+  "springboot"
+]);
+
+const MINOR_TECHNOLOGIES = new Set([
+  "javascript",
+  "typescript",
+  "react",
+  "vue",
+  "html",
+  "css",
+  "scss"
+]);
+
+const DATA_CONFIG_TECHNOLOGIES = new Set([
+  "json",
+  "yaml",
+  "xml",
+  "markdown"
+]);
+
+function technologyPriority(token, projectType) {
+  if (token === projectType && projectType && projectType !== "unknown") {
+    return -1;
+  }
+  if (PRIMARY_LANGUAGE_TECHNOLOGIES.has(token)) {
+    return 0;
+  }
+  if (MINOR_TECHNOLOGIES.has(token)) {
+    return 1;
+  }
+  if (DATA_CONFIG_TECHNOLOGIES.has(token)) {
+    return 2;
+  }
+  return 3;
+}
+
+function formatTechnologyLabel(value) {
+  const token = String(value || "").trim().toLowerCase();
+  if (!token) return "";
   const labels = {
-    dotnet: ".NET",
-    springboot: "Spring Boot",
-    android: "Android",
-    swiftui: "SwiftUI",
-    swift: "Swift",
-    "objective-c": "Objective-C",
-    "c++": "C++",
-    csharp: "C#",
-    groovy: "Groovy",
-    javascript: "JavaScript",
+    js: "JS",
+    ts: "TS",
+    jsx: "JSX",
+    tsx: "TSX",
     html: "HTML",
-    angular: "Angular",
+    css: "CSS",
+    scss: "SCSS",
+    yaml: "YAML",
+    json: "JSON",
+    xml: "XML",
+    dotnet: ".NET",
+    csharp: "C#",
+    "c++": "C++",
+    "objective-c": "Objective-C",
+    swiftui: "SwiftUI",
+    javascript: "JavaScript",
+    typescript: "TypeScript",
+    springboot: "Spring Boot"
   };
-  if (!value) return "Unknown";
-  return labels[value] || (value.charAt(0).toUpperCase() + value.slice(1));
+  return labels[token] || (token.charAt(0).toUpperCase() + token.slice(1));
+}
+
+function collectDisplayTechnologies(projectData) {
+  const technologies = Array.isArray(projectData.projectTechnologies) ? projectData.projectTechnologies : [];
+  const normalized = technologies
+    .map((value) => TECHNOLOGY_CANONICAL_LABEL_MAP[String(value || "").trim().toLowerCase()] || String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  const projectType = String(projectData.projectType || "").trim().toLowerCase();
+  if (projectType && projectType !== "unknown") {
+    normalized.unshift(projectType);
+  }
+
+  const deduped = [...new Set(normalized)];
+  const withoutUnknown = deduped.filter((value) => value !== "unknown");
+  const finalValues = withoutUnknown.length > 0 ? withoutUnknown : deduped;
+
+  return finalValues
+    .sort((left, right) => (
+      technologyPriority(left, projectType) - technologyPriority(right, projectType)
+      || left.localeCompare(right)
+    ))
+    .slice(0, 4);
 }
 
 function formatLastScannedAt(lastScannedAt) {
@@ -289,19 +372,15 @@ function renderDevProjects(projects) {
     const metadataSummary = document.createElement("div");
     metadataSummary.className = "project-meta-summary";
 
-    const typeBadge = createMetaBadge(formatProjectType(projectData.projectType), "project-meta-badge--type");
-    metadataSummary.appendChild(typeBadge);
+    const displayTechnologies = collectDisplayTechnologies(projectData);
 
-    const signals = Array.isArray(projectData.detectedSignals) ? projectData.detectedSignals : [];
-    if (signals.length > 0) {
-      signals.slice(0, 3).forEach((signal) => {
-        metadataSummary.appendChild(createMetaBadge(signal, "project-meta-badge--signal"));
+    if (displayTechnologies.length > 0) {
+      displayTechnologies.forEach((technology, index) => {
+        const badgeClass = index === 0 ? "project-meta-badge--type" : "project-meta-badge--technology";
+        metadataSummary.appendChild(createMetaBadge(formatTechnologyLabel(technology), badgeClass));
       });
-      if (signals.length > 3) {
-        metadataSummary.appendChild(createMetaBadge(`+${signals.length - 3} more`, "project-meta-badge--signal"));
-      }
     } else {
-      metadataSummary.appendChild(createMetaBadge("No signals", "project-meta-badge--muted"));
+      metadataSummary.appendChild(createMetaBadge("No technologies", "project-meta-badge--muted"));
     }
 
     const scannedAt = document.createElement("p");
