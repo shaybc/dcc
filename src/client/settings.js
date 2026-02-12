@@ -232,24 +232,44 @@ function renderDevRoots(roots) {
 }
 
 
-function formatProjectType(projectType) {
-  const value = String(projectType || "unknown").toLowerCase();
+function formatTechnologyLabel(value) {
+  const token = String(value || "").trim().toLowerCase();
+  if (!token) return "";
   const labels = {
-    dotnet: ".NET",
-    springboot: "Spring Boot",
-    android: "Android",
-    swiftui: "SwiftUI",
-    swift: "Swift",
-    "objective-c": "Objective-C",
-    "c++": "C++",
-    csharp: "C#",
-    groovy: "Groovy",
-    javascript: "JavaScript",
+    js: "JS",
+    ts: "TS",
+    jsx: "JSX",
+    tsx: "TSX",
     html: "HTML",
-    angular: "Angular",
+    css: "CSS",
+    scss: "SCSS",
+    yaml: "YAML",
+    json: "JSON",
+    xml: "XML",
+    dotnet: ".NET",
+    csharp: "C#",
+    "c++": "C++",
+    "objective-c": "Objective-C",
+    swiftui: "SwiftUI",
+    javascript: "JavaScript",
+    typescript: "TypeScript",
+    springboot: "Spring Boot"
   };
-  if (!value) return "Unknown";
-  return labels[value] || (value.charAt(0).toUpperCase() + value.slice(1));
+  return labels[token] || (token.charAt(0).toUpperCase() + token.slice(1));
+}
+
+function collectDisplayTechnologies(projectData) {
+  const technologies = Array.isArray(projectData.projectTechnologies) ? projectData.projectTechnologies : [];
+  const normalized = technologies
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  const projectType = String(projectData.projectType || "").trim().toLowerCase();
+  if (projectType && projectType !== "unknown") {
+    normalized.unshift(projectType);
+  }
+
+  return [...new Set(normalized)];
 }
 
 function formatLastScannedAt(lastScannedAt) {
@@ -289,19 +309,18 @@ function renderDevProjects(projects) {
     const metadataSummary = document.createElement("div");
     metadataSummary.className = "project-meta-summary";
 
-    const typeBadge = createMetaBadge(formatProjectType(projectData.projectType), "project-meta-badge--type");
-    metadataSummary.appendChild(typeBadge);
+    const displayTechnologies = collectDisplayTechnologies(projectData);
 
-    const signals = Array.isArray(projectData.detectedSignals) ? projectData.detectedSignals : [];
-    if (signals.length > 0) {
-      signals.slice(0, 3).forEach((signal) => {
-        metadataSummary.appendChild(createMetaBadge(signal, "project-meta-badge--signal"));
+    if (displayTechnologies.length > 0) {
+      displayTechnologies.slice(0, 8).forEach((technology, index) => {
+        const badgeClass = index === 0 ? "project-meta-badge--type" : "project-meta-badge--technology";
+        metadataSummary.appendChild(createMetaBadge(formatTechnologyLabel(technology), badgeClass));
       });
-      if (signals.length > 3) {
-        metadataSummary.appendChild(createMetaBadge(`+${signals.length - 3} more`, "project-meta-badge--signal"));
+      if (displayTechnologies.length > 8) {
+        metadataSummary.appendChild(createMetaBadge(`+${displayTechnologies.length - 8} more`, "project-meta-badge--muted"));
       }
     } else {
-      metadataSummary.appendChild(createMetaBadge("No signals", "project-meta-badge--muted"));
+      metadataSummary.appendChild(createMetaBadge("No technologies", "project-meta-badge--muted"));
     }
 
     const scannedAt = document.createElement("p");
