@@ -61,8 +61,12 @@ Each positive match appends a human-readable entry into `reasons`.
 
 ## Output behavior
 
-- Only definitions with `score > 0` are returned.
-- Sorting is deterministic:
+- Only definitions with `score > 0` are candidates.
+- Candidates are then ordered in stages:
+  1. definitions matching the inferred project core platform (`web`, `mobile`, or `backend`),
+  2. definitions matching detected project technologies,
+  3. up to 3 fallback items from remaining scored candidates.
+- Within each stage, sorting is deterministic by:
   1. higher `score`,
   2. `name` ascending,
   3. `key` ascending,
