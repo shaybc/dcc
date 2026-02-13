@@ -12,3 +12,59 @@
   gap: 12px;
   margin-top: 14px;
 }
+.pagination {
+  margin: 28px auto 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.pagination-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 8px;
+  list-style: none;
+}
+
+.pagination-btn {
+  height: 34px;
+  min-width: 34px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--muted);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-btn.is-active {
+  border-color: var(--border);
+  background: var(--card);
+}
+
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
