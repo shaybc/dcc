@@ -2257,6 +2257,12 @@ function setupEventListeners() {
       onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
       updateLocalDefinitionsToggleState();
       renderCards();
+      return;
+    }
+    if (event.key === ONLY_LOCAL_DEFINITIONS_STORAGE_KEY) {
+      onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
+      updateLocalDefinitionsToggleState();
+      renderCards();
     }
   });
   
