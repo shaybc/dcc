@@ -34,6 +34,7 @@ const recommendationsToggleButton = document.getElementById("recommendationsTogg
 const hubMenuToggleButton = document.getElementById("hubMenuToggle");
 const hubMenu = document.getElementById("hubMenu");
 const localDefinitionsToggle = document.getElementById("localDefinitionsToggle");
+const hideInstalledMenuToggle = document.getElementById("hideInstalledMenuToggle");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const versionHistoryButton = document.getElementById("versionHistoryButton");
@@ -138,6 +139,14 @@ function getStoredHideInstalledDefinitions() {
     return localStorage.getItem(HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) === "true";
   } catch (_error) {
     return false;
+  }
+}
+
+function persistHideInstalledDefinitions(value) {
+  try {
+    localStorage.setItem(HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY, String(Boolean(value)));
+  } catch (_error) {
+    // Ignore local storage access errors and keep in-memory state.
   }
 }
 
@@ -2178,6 +2187,11 @@ function updateLocalDefinitionsToggleState() {
   localDefinitionsToggle.setAttribute("aria-checked", String(onlyLocalDefinitions));
 }
 
+function updateHideInstalledToggleState() {
+  if (!hideInstalledMenuToggle) return;
+  hideInstalledMenuToggle.setAttribute("aria-checked", String(getStoredHideInstalledDefinitions()));
+}
+
 function closeHubMenu({ animate = true } = {}) {
   if (!hubMenu || !hubMenuToggleButton || hubMenu.hidden) return;
   hubMenuToggleButton.classList.remove("is-open");
@@ -2235,6 +2249,13 @@ function setupEventListeners() {
 
   window.addEventListener("storage", (event) => {
     if (event.key === HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) {
+      updateHideInstalledToggleState();
+      renderCards();
+      return;
+    }
+    if (event.key === ONLY_LOCAL_DEFINITIONS_STORAGE_KEY) {
+      onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
+      updateLocalDefinitionsToggleState();
       renderCards();
       return;
     }
@@ -2465,6 +2486,17 @@ function setupEventListeners() {
       onlyLocalDefinitions = !onlyLocalDefinitions;
       persistOnlyLocalDefinitions(onlyLocalDefinitions);
       updateLocalDefinitionsToggleState();
+      currentCardsPage = 1;
+      renderCards();
+    });
+  }
+
+  if (hideInstalledMenuToggle) {
+    updateHideInstalledToggleState();
+    hideInstalledMenuToggle.addEventListener("click", () => {
+      const nextValue = !getStoredHideInstalledDefinitions();
+      persistHideInstalledDefinitions(nextValue);
+      updateHideInstalledToggleState();
       currentCardsPage = 1;
       renderCards();
     });
