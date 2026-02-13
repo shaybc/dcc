@@ -84,6 +84,7 @@ let definitions = [];
 let suggestionDefinitionIds = [];
 let suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
 const RECOMMENDATIONS_VISIBILITY_STORAGE_KEY = "dcc.recommendations.visible";
+const HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY = "dcc.hub.hideInstalledDefinitions";
 let recommendationsVisible = getStoredRecommendationsVisibility();
 let activeFilter = "all";
 let searchTerm = "";
@@ -104,6 +105,7 @@ let diffService = null;
 let currentDefinitionVersions = [];
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
+const SPECIAL_FILTERS = ["installed"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const MAX_CARD_TAG_PILLS = 3;
 const CARDS_PER_PAGE = 25;
@@ -122,6 +124,14 @@ function persistRecommendationsVisibility(value) {
     localStorage.setItem(RECOMMENDATIONS_VISIBILITY_STORAGE_KEY, String(Boolean(value)));
   } catch (_error) {
     // Ignore local storage access errors and keep the in-memory state.
+  }
+}
+
+function getStoredHideInstalledDefinitions() {
+  try {
+    return localStorage.getItem(HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) === "true";
+  } catch (_error) {
+    return false;
   }
 }
 
@@ -316,6 +326,9 @@ function formatFilterLabel(type) {
   if (type === "all") {
     return "All";
   }
+  if (type === "installed") {
+    return "Installed";
+  }
   return type
     .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -505,10 +518,10 @@ function renderFilters() {
   const definitionTypes = definitions.map((def) => normalizeFilterType(def.type));
   const uniqueTypes = new Set(
     [...FILTER_TYPES, ...definitionTypes]
-      .filter(Boolean)
+      .filter((type) => Boolean(type) && String(type).toLowerCase() !== "unknown")
       .map((type) => String(type).toLowerCase())
   );
-  const types = ["all", ...uniqueTypes];
+  const types = ["all", ...SPECIAL_FILTERS, ...uniqueTypes];
   filtersContainer.innerHTML = "";
   filterMenu.innerHTML = "";
   types.forEach((type) => {
@@ -785,9 +798,17 @@ function renderRecommendationSection() {
 function renderCards() {
   const queryTags = parseTagSearchQuery(searchTerm);
   const tagOnlyMode = isTagOnlyQuery(queryTags);
+  const hasSelectedProject = Boolean(String(devProjectInput.value || "").trim());
+  const hideInstalledDefinitions = getStoredHideInstalledDefinitions();
 
   const filtered = definitions.filter((def) => {
-    const matchesFilter = activeFilter === "all" || def.type === activeFilter;
+    const isInstalledInCurrentProject = def.status === "saved" && hasSelectedProject;
+    if (hideInstalledDefinitions && activeFilter !== "installed" && isInstalledInCurrentProject) {
+      return false;
+    }
+    const matchesFilter = activeFilter === "all"
+      || (activeFilter === "installed" && isInstalledInCurrentProject)
+      || def.type === activeFilter;
     const text = `${def.name} ${def.description}`.toLowerCase();
     const matchesTagSearch = queryTags.every((tag) => def.tagsNormalized.includes(tag));
     const matchesSearch = tagOnlyMode ? matchesTagSearch : text.includes(searchTerm);
@@ -2135,6 +2156,12 @@ filterButton.addEventListener("click", () => {
     }
     if (activeVersionDropdown && !event.target.closest(".version-dropdown") && !event.target.closest("#versionHistoryButton")) {
       closeVersionDropdown();
+    }
+  });
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) {
+      renderCards();
     }
   });
   
