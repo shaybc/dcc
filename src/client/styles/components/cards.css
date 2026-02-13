@@ -158,9 +158,9 @@
 
 .definitions-count-label {
   margin: 0 0 12px;
-  color: var(--muted);
+  color: #6083b5;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: normal;
   text-align: left;
 }
 
@@ -172,7 +172,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 12px 14px 14px;
   transform-origin: top center;
   max-height: 900px;
   opacity: 1;
