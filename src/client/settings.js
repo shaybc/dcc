@@ -20,9 +20,6 @@ const saveDevRootsButton = document.getElementById("saveDevRoots");
 const devRootsNotice = document.getElementById("devRootsNotice");
 const themeToggle = document.getElementById("themeToggle");
 const themeToggleLabel = document.getElementById("themeToggleLabel");
-const hideInstalledDefinitionsToggle = document.getElementById("hideInstalledDefinitionsToggle");
-
-const HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY = "dcc.hub.hideInstalledDefinitions";
 const loadingTimeoutInput = document.getElementById("loadingTimeoutInput");
 const saveLoadingTimeoutButton = document.getElementById("saveLoadingTimeoutBtn");
 function normalizeLocalPath(localPath = "") {
@@ -187,22 +184,6 @@ function updateThemeToggleLabel(isLightMode) {
 }
 
 
-function getStoredHideInstalledDefinitions() {
-  try {
-    return window.localStorage.getItem(HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) === "true";
-  } catch (_error) {
-    return false;
-  }
-}
-
-function persistHideInstalledDefinitions(value) {
-  try {
-    window.localStorage.setItem(HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY, String(Boolean(value)));
-  } catch (_error) {
-    // Ignore storage errors and keep the in-memory toggle value only.
-  }
-}
-
 if (themeToggle) {
   const currentTheme = window.dccTheme?.getPreferredTheme?.() || "dark";
   const isLightMode = currentTheme === "light";
@@ -213,13 +194,6 @@ if (themeToggle) {
     const nextTheme = event.target.checked ? "light" : "dark";
     const appliedTheme = window.dccTheme?.setPreferredTheme?.(nextTheme) || nextTheme;
     updateThemeToggleLabel(appliedTheme === "light");
-  });
-}
-
-if (hideInstalledDefinitionsToggle) {
-  hideInstalledDefinitionsToggle.checked = getStoredHideInstalledDefinitions();
-  hideInstalledDefinitionsToggle.addEventListener("change", (event) => {
-    persistHideInstalledDefinitions(event.target.checked);
   });
 }
 
