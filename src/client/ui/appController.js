@@ -2,6 +2,7 @@ import { runWithLoading } from "../services/loadingService.js";
 import { createDiffService } from "../services/diffService.js";
 
 const cardsContainer = document.getElementById("cards");
+const definitionsCountLabel = document.getElementById("definitionsCountLabel");
 const paginationContainer = document.getElementById("pagination");
 const filtersContainer = document.getElementById("filters");
 const searchInput = document.getElementById("search");
@@ -816,6 +817,9 @@ function renderCards() {
   });
 
   const totalPages = Math.max(Math.ceil(filtered.length / CARDS_PER_PAGE), 1);
+  if (definitionsCountLabel) {
+    definitionsCountLabel.textContent = `Showing: ${filtered.length}/${definitions.length} Definitions.`;
+  }
   currentCardsPage = Math.min(Math.max(currentCardsPage, 1), totalPages);
   const pageStartIndex = (currentCardsPage - 1) * CARDS_PER_PAGE;
   const pageDefinitions = filtered.slice(pageStartIndex, pageStartIndex + CARDS_PER_PAGE);
