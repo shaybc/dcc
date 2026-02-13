@@ -31,37 +31,64 @@
         <p>Discover, sync, and deploy Continue definitions from your team hub.</p>
       </div>
       <div class="actions">
-        <button class="btn recommendations-header-toggle" id="recommendationsToggleButton" type="button" aria-controls="recommendations-content" aria-expanded="false" aria-label="Show Recommendations">
-          <svg class="recommendations-star recommendations-star-outline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m12 2.6 2.81 5.95 6.49.99-4.69 4.81 1.11 6.79L12 17.99l-5.72 3.15 1.1-6.79-4.68-4.81 6.49-.99L12 2.6z"></path>
-          </svg>
-        </button>
-        <div class="new-menu-wrap">
-          <button class="btn new-definition-btn" id="newDefinitionButton" type="button" aria-haspopup="menu" aria-expanded="false">
-            <svg class="new-definition-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 3.8h7.2L18.2 7.8V18a2.2 2.2 0 0 1-2.2 2.2H7A2.2 2.2 0 0 1 4.8 18V6A2.2 2.2 0 0 1 7 3.8z"></path>
-              <path d="M14.2 3.8V8h4"></path>
-              <path d="M8.2 10.2h5.8"></path>
-              <path d="M8.2 13.1h4.6"></path>
-              <circle cx="16.6" cy="16.7" r="3.5"></circle>
-              <path d="M16.6 15.2v3"></path>
-              <path d="M15.1 16.7h3"></path>
-            </svg>
-            <span>New</span>
+        <div class="header-menu-wrap">
+          <button class="btn header-menu-toggle" id="hubMenuToggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="hubMenu" aria-label="Open main menu">
+            <span class="hamburger-icon" aria-hidden="true">
+              <span class="hamburger-line"></span>
+              <span class="hamburger-line"></span>
+              <span class="hamburger-line"></span>
+            </span>
           </button>
-          <div class="new-menu" id="newDefinitionMenu" hidden>
-            <button type="button" data-new-type="prompt" data-type-label="Prompt"></button>
-            <button type="button" data-new-type="mcpServer" data-type-label="MCP Server"></button>
-            <button type="button" data-new-type="agent" data-type-label="Agent"></button>
-            <button type="button" data-new-type="rule" data-type-label="Rule"></button>
-            <button type="button" data-new-type="model" data-type-label="Model"></button>
-            <button type="button" data-new-type="workflow" data-type-label="Workflow"></button>
-            <button type="button" data-new-type="context" data-type-label="Context"></button>
-            <button type="button" data-new-type="doc" data-type-label="Doc"></button>
-            <button type="button" data-new-type="config" data-type-label="Config"></button>
+          <div class="hub-menu" id="hubMenu" role="menu" aria-label="Main hub menu" hidden>
+            <button class="hub-menu-item" id="localDefinitionsToggle" type="button" role="menuitemcheckbox" aria-checked="false">
+              <span class="hub-menu-item-icon" aria-hidden="true">
+                <svg class="icon-eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2.8 12s3.5-6 9.2-6 9.2 6 9.2 6-3.5 6-9.2 6-9.2-6-9.2-6z"></path>
+                  <circle cx="12" cy="12" r="2.8"></circle>
+                </svg>
+                <svg class="icon-eye-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2.8 12s3.5-6 9.2-6 9.2 6 9.2 6-3.5 6-9.2 6-9.2-6-9.2-6z"></path>
+                  <circle cx="12" cy="12" r="2.8"></circle>
+                  <path d="M4 20 20 4"></path>
+                </svg>
+              </span>
+              <span class="hub-menu-item-text">Only Local Definitions</span>
+            </button>
           </div>
         </div>
-        <a class="btn" href="/settings.html">⚙ Settings</a>
+        <div class="header-action-buttons">
+          <button class="btn recommendations-header-toggle" id="recommendationsToggleButton" type="button" aria-controls="recommendations-content" aria-expanded="false" aria-label="Show Recommendations">
+            <svg class="recommendations-star recommendations-star-outline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m12 2.6 2.81 5.95 6.49.99-4.69 4.81 1.11 6.79L12 17.99l-5.72 3.15 1.1-6.79-4.68-4.81 6.49-.99L12 2.6z"></path>
+            </svg>
+          </button>
+          <div class="new-menu-wrap">
+            <button class="btn new-definition-btn" id="newDefinitionButton" type="button" aria-haspopup="menu" aria-expanded="false">
+              <svg class="new-definition-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M7 3.8h7.2L18.2 7.8V18a2.2 2.2 0 0 1-2.2 2.2H7A2.2 2.2 0 0 1 4.8 18V6A2.2 2.2 0 0 1 7 3.8z"></path>
+                <path d="M14.2 3.8V8h4"></path>
+                <path d="M8.2 10.2h5.8"></path>
+                <path d="M8.2 13.1h4.6"></path>
+                <circle cx="16.6" cy="16.7" r="3.5"></circle>
+                <path d="M16.6 15.2v3"></path>
+                <path d="M15.1 16.7h3"></path>
+              </svg>
+              <span>New</span>
+            </button>
+            <div class="new-menu" id="newDefinitionMenu" hidden>
+              <button type="button" data-new-type="prompt" data-type-label="Prompt"></button>
+              <button type="button" data-new-type="mcpServer" data-type-label="MCP Server"></button>
+              <button type="button" data-new-type="agent" data-type-label="Agent"></button>
+              <button type="button" data-new-type="rule" data-type-label="Rule"></button>
+              <button type="button" data-new-type="model" data-type-label="Model"></button>
+              <button type="button" data-new-type="workflow" data-type-label="Workflow"></button>
+              <button type="button" data-new-type="context" data-type-label="Context"></button>
+              <button type="button" data-new-type="doc" data-type-label="Doc"></button>
+              <button type="button" data-new-type="config" data-type-label="Config"></button>
+            </div>
+          </div>
+          <a class="btn" href="/settings.html">⚙ Settings</a>
+        </div>
       </div>
     </header>
     <main id="hubMain">
