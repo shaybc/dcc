@@ -84,6 +84,7 @@ let definitions = [];
 let suggestionDefinitionIds = [];
 let suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
 const RECOMMENDATIONS_VISIBILITY_STORAGE_KEY = "dcc.recommendations.visible";
+const HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY = "dcc.hub.hideInstalledDefinitions";
 let recommendationsVisible = getStoredRecommendationsVisibility();
 let activeFilter = "all";
 let searchTerm = "";
@@ -123,6 +124,14 @@ function persistRecommendationsVisibility(value) {
     localStorage.setItem(RECOMMENDATIONS_VISIBILITY_STORAGE_KEY, String(Boolean(value)));
   } catch (_error) {
     // Ignore local storage access errors and keep the in-memory state.
+  }
+}
+
+function getStoredHideInstalledDefinitions() {
+  try {
+    return localStorage.getItem(HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) === "true";
+  } catch (_error) {
+    return false;
   }
 }
 
@@ -790,9 +799,13 @@ function renderCards() {
   const queryTags = parseTagSearchQuery(searchTerm);
   const tagOnlyMode = isTagOnlyQuery(queryTags);
   const hasSelectedProject = Boolean(String(devProjectInput.value || "").trim());
+  const hideInstalledDefinitions = getStoredHideInstalledDefinitions();
 
   const filtered = definitions.filter((def) => {
     const isInstalledInCurrentProject = def.status === "saved" && hasSelectedProject;
+    if (hideInstalledDefinitions && activeFilter !== "installed" && isInstalledInCurrentProject) {
+      return false;
+    }
     const matchesFilter = activeFilter === "all"
       || (activeFilter === "installed" && isInstalledInCurrentProject)
       || def.type === activeFilter;
@@ -2143,6 +2156,12 @@ filterButton.addEventListener("click", () => {
     }
     if (activeVersionDropdown && !event.target.closest(".version-dropdown") && !event.target.closest("#versionHistoryButton")) {
       closeVersionDropdown();
+    }
+  });
+
+  window.addEventListener("storage", (event) => {
+    if (event.key === HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) {
+      renderCards();
     }
   });
   

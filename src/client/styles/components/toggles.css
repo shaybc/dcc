@@ -63,3 +63,17 @@
   color: var(--muted);
   min-width: 72px;
 }
+
+
+.settings-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.settings-checkbox input {
+  margin: 0;
+}
