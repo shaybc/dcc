@@ -2,6 +2,7 @@ import { runWithLoading } from "../services/loadingService.js";
 import { createDiffService } from "../services/diffService.js";
 
 const cardsContainer = document.getElementById("cards");
+const paginationContainer = document.getElementById("pagination");
 const filtersContainer = document.getElementById("filters");
 const searchInput = document.getElementById("search");
 const clearSearchButton = document.getElementById("clearSearch");
@@ -105,6 +106,8 @@ let currentDefinitionVersions = [];
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const MAX_CARD_TAG_PILLS = 3;
+const CARDS_PER_PAGE = 25;
+let currentCardsPage = 1;
 
 function getStoredRecommendationsVisibility() {
   try {
@@ -257,6 +260,7 @@ function setSearchValue(value) {
   searchTerm = String(value || "").toLowerCase();
   searchInput.value = value || "";
   searchField.classList.toggle("has-value", searchTerm.length > 0);
+  currentCardsPage = 1;
 }
 
 function renderTagPills(tags, { truncate = false } = {}) {
@@ -528,6 +532,7 @@ function renderFilters() {
         } else {
           activeFilter = type;
         }
+        currentCardsPage = 1;
         renderFilters();
         renderCards();
       });
@@ -544,6 +549,7 @@ function renderFilters() {
     `;
     menuItem.addEventListener("click", () => {
       activeFilter = type;
+      currentCardsPage = 1;
       renderFilters();
       renderCards();
       closeFilterMenu();
@@ -788,12 +794,122 @@ function renderCards() {
     return matchesFilter && matchesSearch;
   });
 
+  const totalPages = Math.max(Math.ceil(filtered.length / CARDS_PER_PAGE), 1);
+  currentCardsPage = Math.min(Math.max(currentCardsPage, 1), totalPages);
+  const pageStartIndex = (currentCardsPage - 1) * CARDS_PER_PAGE;
+  const pageDefinitions = filtered.slice(pageStartIndex, pageStartIndex + CARDS_PER_PAGE);
+
   cardsContainer.innerHTML = "";
-  filtered.forEach((def) => {
+  pageDefinitions.forEach((def) => {
     cardsContainer.appendChild(createDefinitionCard(def));
   });
 
+  renderPagination({ totalItems: filtered.length, totalPages });
+
   renderRecommendationSection();
+}
+
+function createPaginationButton({ label, page, disabled = false, active = false, ariaLabel = "" }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "pagination-btn";
+  button.textContent = label;
+  if (active) {
+    button.classList.add("is-active");
+    button.setAttribute("aria-current", "page");
+  }
+  if (ariaLabel) {
+    button.setAttribute("aria-label", ariaLabel);
+  }
+  button.disabled = disabled;
+  button.addEventListener("click", () => {
+    if (disabled || active) {
+      return;
+    }
+    currentCardsPage = page;
+    renderCards();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  return button;
+}
+
+function createPaginationEllipsis() {
+  const ellipsis = document.createElement("span");
+  ellipsis.className = "pagination-ellipsis";
+  ellipsis.setAttribute("aria-hidden", "true");
+  ellipsis.textContent = "...";
+  return ellipsis;
+}
+
+function getVisiblePaginationPages(totalPages, currentPage) {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, "ellipsis", totalPages];
+  }
+
+  if (currentPage >= totalPages - 2) {
+    return [1, "ellipsis", totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [1, "ellipsis", currentPage, "ellipsis", totalPages];
+}
+
+function renderPagination({ totalItems, totalPages }) {
+  if (!paginationContainer) {
+    return;
+  }
+
+  paginationContainer.innerHTML = "";
+
+  if (totalItems <= CARDS_PER_PAGE) {
+    paginationContainer.hidden = true;
+    return;
+  }
+
+  paginationContainer.hidden = false;
+
+  const list = document.createElement("ul");
+  list.className = "pagination-list";
+
+  const previousItem = document.createElement("li");
+  previousItem.appendChild(createPaginationButton({
+    label: "Previous",
+    page: currentCardsPage - 1,
+    disabled: currentCardsPage === 1,
+    ariaLabel: "Go to previous page"
+  }));
+  list.appendChild(previousItem);
+
+  getVisiblePaginationPages(totalPages, currentCardsPage).forEach((entry) => {
+    const item = document.createElement("li");
+    if (entry === "ellipsis") {
+      item.appendChild(createPaginationEllipsis());
+      list.appendChild(item);
+      return;
+    }
+
+    item.appendChild(createPaginationButton({
+      label: String(entry),
+      page: entry,
+      active: entry === currentCardsPage,
+      ariaLabel: `Go to page ${entry}`
+    }));
+    list.appendChild(item);
+  });
+
+  const nextItem = document.createElement("li");
+  nextItem.appendChild(createPaginationButton({
+    label: "Next",
+    page: currentCardsPage + 1,
+    disabled: currentCardsPage === totalPages,
+    ariaLabel: "Go to next page"
+  }));
+  list.appendChild(nextItem);
+
+  paginationContainer.appendChild(list);
 }
 
 function setupRecommendationsSection() {
