@@ -104,6 +104,7 @@ let diffService = null;
 let currentDefinitionVersions = [];
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
+const SPECIAL_FILTERS = ["installed"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const MAX_CARD_TAG_PILLS = 3;
 const CARDS_PER_PAGE = 25;
@@ -316,6 +317,9 @@ function formatFilterLabel(type) {
   if (type === "all") {
     return "All";
   }
+  if (type === "installed") {
+    return "Installed";
+  }
   return type
     .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -505,10 +509,10 @@ function renderFilters() {
   const definitionTypes = definitions.map((def) => normalizeFilterType(def.type));
   const uniqueTypes = new Set(
     [...FILTER_TYPES, ...definitionTypes]
-      .filter(Boolean)
+      .filter((type) => Boolean(type) && String(type).toLowerCase() !== "unknown")
       .map((type) => String(type).toLowerCase())
   );
-  const types = ["all", ...uniqueTypes];
+  const types = ["all", ...SPECIAL_FILTERS, ...uniqueTypes];
   filtersContainer.innerHTML = "";
   filterMenu.innerHTML = "";
   types.forEach((type) => {
@@ -785,9 +789,13 @@ function renderRecommendationSection() {
 function renderCards() {
   const queryTags = parseTagSearchQuery(searchTerm);
   const tagOnlyMode = isTagOnlyQuery(queryTags);
+  const hasSelectedProject = Boolean(String(devProjectInput.value || "").trim());
 
   const filtered = definitions.filter((def) => {
-    const matchesFilter = activeFilter === "all" || def.type === activeFilter;
+    const isInstalledInCurrentProject = def.status === "saved" && hasSelectedProject;
+    const matchesFilter = activeFilter === "all"
+      || (activeFilter === "installed" && isInstalledInCurrentProject)
+      || def.type === activeFilter;
     const text = `${def.name} ${def.description}`.toLowerCase();
     const matchesTagSearch = queryTags.every((tag) => def.tagsNormalized.includes(tag));
     const matchesSearch = tagOnlyMode ? matchesTagSearch : text.includes(searchTerm);
