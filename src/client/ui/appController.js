@@ -31,6 +31,9 @@ const editDefinitionButton = document.getElementById("editDefinition");
 const newDefinitionButton = document.getElementById("newDefinitionButton");
 const newDefinitionMenu = document.getElementById("newDefinitionMenu");
 const recommendationsToggleButton = document.getElementById("recommendationsToggleButton");
+const hubMenuToggleButton = document.getElementById("hubMenuToggle");
+const hubMenu = document.getElementById("hubMenu");
+const localDefinitionsToggle = document.getElementById("localDefinitionsToggle");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const versionHistoryButton = document.getElementById("versionHistoryButton");
@@ -86,6 +89,7 @@ let suggestionDefinitionIds = [];
 let suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
 const RECOMMENDATIONS_VISIBILITY_STORAGE_KEY = "dcc.recommendations.visible";
 const HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY = "dcc.hub.hideInstalledDefinitions";
+const ONLY_LOCAL_DEFINITIONS_STORAGE_KEY = "dcc.hub.onlyLocalDefinitions";
 let recommendationsVisible = getStoredRecommendationsVisibility();
 let activeFilter = "all";
 let searchTerm = "";
@@ -111,6 +115,7 @@ const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const MAX_CARD_TAG_PILLS = 3;
 const CARDS_PER_PAGE = 25;
 let currentCardsPage = 1;
+let onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
 
 function getStoredRecommendationsVisibility() {
   try {
@@ -133,6 +138,22 @@ function getStoredHideInstalledDefinitions() {
     return localStorage.getItem(HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) === "true";
   } catch (_error) {
     return false;
+  }
+}
+
+function getStoredOnlyLocalDefinitions() {
+  try {
+    return localStorage.getItem(ONLY_LOCAL_DEFINITIONS_STORAGE_KEY) === "true";
+  } catch (_error) {
+    return false;
+  }
+}
+
+function persistOnlyLocalDefinitions(value) {
+  try {
+    localStorage.setItem(ONLY_LOCAL_DEFINITIONS_STORAGE_KEY, String(Boolean(value)));
+  } catch (_error) {
+    // Ignore local storage access errors and keep in-memory state.
   }
 }
 
@@ -804,6 +825,10 @@ function renderCards() {
 
   const filtered = definitions.filter((def) => {
     const isInstalledInCurrentProject = def.status === "saved" && hasSelectedProject;
+    const isLocalUntrackedDefinition = String(def.source || "").toLowerCase() === "untracked";
+    if (onlyLocalDefinitions && !isLocalUntrackedDefinition) {
+      return false;
+    }
     if (hideInstalledDefinitions && activeFilter !== "installed" && isInstalledInCurrentProject) {
       return false;
     }
@@ -2148,8 +2173,50 @@ function closeFilterMenu() {
   filterButton.setAttribute("aria-expanded", "false");
 }
 
+function updateLocalDefinitionsToggleState() {
+  if (!localDefinitionsToggle) return;
+  localDefinitionsToggle.setAttribute("aria-checked", String(onlyLocalDefinitions));
+}
+
+function closeHubMenu({ animate = true } = {}) {
+  if (!hubMenu || !hubMenuToggleButton || hubMenu.hidden) return;
+  hubMenuToggleButton.classList.remove("is-open");
+  hubMenuToggleButton.setAttribute("aria-expanded", "false");
+  hubMenuToggleButton.setAttribute("aria-label", "Open main menu");
+  if (!animate) {
+    hubMenu.classList.remove("is-visible", "is-hiding");
+    hubMenu.hidden = true;
+    return;
+  }
+  hubMenu.classList.remove("is-visible");
+  hubMenu.classList.add("is-hiding");
+  window.setTimeout(() => {
+    hubMenu.classList.remove("is-hiding");
+    hubMenu.hidden = true;
+  }, 200);
+}
+
+function openHubMenu() {
+  if (!hubMenu || !hubMenuToggleButton) return;
+  hubMenu.hidden = false;
+  hubMenu.classList.remove("is-hiding");
+  hubMenu.classList.add("is-visible");
+  hubMenuToggleButton.classList.add("is-open");
+  hubMenuToggleButton.setAttribute("aria-expanded", "true");
+  hubMenuToggleButton.setAttribute("aria-label", "Close main menu");
+}
+
+function toggleHubMenu() {
+  if (!hubMenu || !hubMenuToggleButton) return;
+  if (hubMenu.hidden) {
+    openHubMenu();
+    return;
+  }
+  closeHubMenu();
+}
+
 function setupEventListeners() {
-filterButton.addEventListener("click", () => {
+  filterButton.addEventListener("click", () => {
     const isOpen = filterMenu.classList.toggle("open");
     filterButton.setAttribute("aria-expanded", String(isOpen));
   });
@@ -2158,6 +2225,9 @@ filterButton.addEventListener("click", () => {
     if (!event.target.closest(".filter-dropdown")) {
       closeFilterMenu();
     }
+    if (hubMenu && !hubMenu.hidden && !event.target.closest(".header-menu-wrap")) {
+      closeHubMenu();
+    }
     if (activeVersionDropdown && !event.target.closest(".version-dropdown") && !event.target.closest("#versionHistoryButton")) {
       closeVersionDropdown();
     }
@@ -2165,6 +2235,12 @@ filterButton.addEventListener("click", () => {
 
   window.addEventListener("storage", (event) => {
     if (event.key === HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) {
+      renderCards();
+      return;
+    }
+    if (event.key === ONLY_LOCAL_DEFINITIONS_STORAGE_KEY) {
+      onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
+      updateLocalDefinitionsToggleState();
       renderCards();
     }
   });
@@ -2376,6 +2452,30 @@ filterButton.addEventListener("click", () => {
     });
   }
   
+  if (hubMenuToggleButton) {
+    hubMenuToggleButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleHubMenu();
+    });
+  }
+
+  if (localDefinitionsToggle) {
+    updateLocalDefinitionsToggleState();
+    localDefinitionsToggle.addEventListener("click", () => {
+      onlyLocalDefinitions = !onlyLocalDefinitions;
+      persistOnlyLocalDefinitions(onlyLocalDefinitions);
+      updateLocalDefinitionsToggleState();
+      currentCardsPage = 1;
+      renderCards();
+    });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && hubMenu && !hubMenu.hidden) {
+      closeHubMenu();
+    }
+  });
+
   if (editDefinitionButton) {
     editDefinitionButton.addEventListener("click", () => {
       openEditorForCurrentDefinition();
