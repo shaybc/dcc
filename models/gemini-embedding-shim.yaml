@@ -1,0 +1,18 @@
+name: Gemini Embeddings via Shim
+dcc_uri: models/gemini_embedding_shim
+description: Continue model definition routing Gemini embeddings through an OpenAI-compatible shim.
+version: 1.0.0
+schema: v1
+dcc_tags:
+  - gemini
+  - embedding
+  - shim
+  - openai-compatible
+models:
+  - name: Gemini Embeddings (Shim)
+    provider: openai
+    model: text-embedding-004
+    apiBase: ${{ inputs.GEMINI_SHIM_BASE_URL }}
+    apiKey: ${{ inputs.GEMINI_SHIM_API_KEY }}
+    roles:
+      - embed
