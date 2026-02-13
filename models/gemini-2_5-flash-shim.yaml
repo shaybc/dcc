@@ -1,0 +1,20 @@
+name: Gemini 2.5 Flash via Shim
+dcc_uri: models/gemini_2_5_flash_shim
+description: Continue model definition routing Gemini 2.5 Flash through an OpenAI-compatible shim.
+version: 1.0.0
+schema: v1
+dcc_tags:
+  - gemini
+  - shim
+  - openai-compatible
+models:
+  - name: Gemini 2.5 Flash (Shim)
+    provider: openai
+    model: gemini-2.5-flash
+    apiBase: ${{ inputs.GEMINI_SHIM_BASE_URL }}
+    apiKey: ${{ inputs.GEMINI_SHIM_API_KEY }}
+    roles:
+      - chat
+      - edit
+      - apply
+      - summarize
