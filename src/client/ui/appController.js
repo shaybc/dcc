@@ -2062,11 +2062,10 @@ function updateInstallDefinitionButtonState() {
   }
 
   const hasSelectedProject = Boolean(devProjectInput.value.trim());
-  const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
   const isLocalOnlyDefinition = currentDetailDefinitionStatus === "local-only";
   const isSavedInCurrentProject = currentDetailDefinitionStatus === "saved";
   const hasDefinition = Number.isFinite(Number(currentDetailDefinitionId)) && currentDetailDefinitionId > 0;
-  const canInstall = !isUntrackedDefinition && !isLocalOnlyDefinition;
+  const canInstall = !isLocalOnlyDefinition;
 
   installDefinitionButton.hidden = !canInstall;
   if (!canInstall) {
