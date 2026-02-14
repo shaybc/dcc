@@ -750,7 +750,9 @@ function renderHubTagFilterSection() {
   clearTagsFilterButton.textContent = "×";
   clearTagsFilterButton.setAttribute("title", "Clear Tags filter");
   clearTagsFilterButton.setAttribute("aria-label", "Clear Tags filter");
-  clearTagsFilterButton.addEventListener("click", () => {
+  clearTagsFilterButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+
     selectedTagFilters.clear();
     showUntaggedDefinitions = false;
     currentCardsPage = 1;
@@ -802,6 +804,8 @@ function renderHubTagFilterSection() {
   });
 
   tagPillsContainer.addEventListener("click", (event) => {
+    event.stopPropagation();
+
     const target = event.target.closest(".hub-menu-tag-pill");
     if (!target || target.disabled) {
       return;
