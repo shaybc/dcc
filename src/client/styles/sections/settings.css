@@ -41,6 +41,17 @@
   margin-top: 0;
 }
 
+.settings-subsection {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-subsection h3 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+}
+
 .settings-section .theme-toggle-row {
   align-items: flex-start;
 }
