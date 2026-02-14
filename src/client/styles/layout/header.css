@@ -132,6 +132,92 @@ header .actions .btn {
   animation: hubMenuRollUp 0.2s ease forwards;
 }
 
+
+.hub-menu-tag-section {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.hub-menu-tag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0 2px;
+}
+
+.hub-tag-filter-mode {
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  display: inline-flex;
+  gap: 10px;
+}
+
+.hub-tag-filter-mode-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.hub-tag-filter-mode-option input {
+  accent-color: var(--accent);
+}
+
+.hub-tag-filter-mode-option input:checked + span {
+  color: var(--text);
+}
+
+.hub-menu-tag-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 2px 4px 2px 2px;
+}
+
+.hub-menu-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hub-menu-tag-pill:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.hub-menu-tag-pill.is-selected {
+  border-color: var(--chip-active-border);
+  background: var(--chip-active-bg);
+  color: var(--chip-active-text);
+  box-shadow: var(--chip-active-shadow);
+}
+
+.hub-menu-tag-pill.is-empty {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .hub-menu-item {
   width: 100%;
   border: 0;
