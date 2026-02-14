@@ -19,7 +19,6 @@ const typeParam = params.get("type") || "prompt";
 const pathParam = params.get("path") || "";
 const definitionIdParam = params.get("id") || "";
 const destinationRepoIdParam = params.get("repoId") || "";
-const destinationRepoPathParam = params.get("repoPath") || "";
 
 const formMount = document.getElementById("formMount");
 const rawText = document.getElementById("rawText");
@@ -34,6 +33,8 @@ let format = "yaml";
 let unknown = {};
 let availableTags = [];
 let definitionReferences = [];
+let assetRepos = [];
+let repoFolderPathsById = new Map();
 let promptContentFormat = "yaml";
 const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
 const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags"];
@@ -84,6 +85,187 @@ function renderEditorTitle(type) {
     return;
   }
   editorTitle.innerHTML = `<span class="editor-title-icon">${typeIconSvg(type)}</span><span>Edit ${label}</span>`;
+}
+
+function getDefaultExtension() {
+  return format === "markdown" ? "md" : "yaml";
+}
+
+function buildDefaultFilenameFromDccUri(dccUri) {
+  const cleaned = String(dccUri || "").trim().replace(/\/+$/, "");
+  const segments = cleaned.split("/").map((segment) => segment.trim()).filter(Boolean);
+  const baseName = segments.length > 0 ? segments.at(-1) : "definition";
+  return `${baseName}.${getDefaultExtension()}`;
+}
+
+function buildRepoFolderPaths(definitions) {
+  const pathsByRepo = new Map();
+  (Array.isArray(definitions) ? definitions : []).forEach((definition) => {
+    const repoId = Number(definition?.repoId || 0);
+    if (!Number.isInteger(repoId) || repoId <= 0) return;
+
+    const normalizedPath = String(definition?.filePath || "").replace(/\\/g, "/").trim();
+    const slashIndex = normalizedPath.lastIndexOf("/");
+    const folderPath = slashIndex <= 0 ? "" : normalizedPath.slice(0, slashIndex);
+
+    if (!pathsByRepo.has(repoId)) {
+      pathsByRepo.set(repoId, new Set());
+    }
+    if (folderPath) {
+      pathsByRepo.get(repoId).add(folderPath);
+    }
+  });
+
+  return new Map(
+    [...pathsByRepo.entries()].map(([repoId, paths]) => [repoId, [...paths].sort((a, b) => a.localeCompare(b))])
+  );
+}
+
+function openCreateSaveDialog({ defaults = {}, repos = [], folderPathsByRepoId = new Map() } = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "editor-modal-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "editor-modal editor-save-dialog";
+
+    const title = document.createElement("h3");
+    title.textContent = "Save definition";
+
+    const subtitle = document.createElement("p");
+    subtitle.className = "editor-save-dialog-subtitle";
+    subtitle.textContent = "Choose where to save this definition.";
+
+    const form = document.createElement("div");
+    form.className = "editor-modal-form";
+
+    const error = document.createElement("div");
+    error.className = "error";
+    error.hidden = true;
+
+    const repoRow = document.createElement("label");
+    repoRow.className = "editor-field";
+    const repoLabel = document.createElement("span");
+    repoLabel.textContent = "Destination repository";
+    const repoSelect = document.createElement("select");
+    repoSelect.className = "editor-save-dialog-select";
+
+    repos.forEach((repo) => {
+      const option = document.createElement("option");
+      option.value = String(repo.id);
+      option.textContent = repo.name || repo.key || repo.localPath || String(repo.id);
+      repoSelect.append(option);
+    });
+
+    if (repos.length === 0) {
+      const emptyOption = document.createElement("option");
+      emptyOption.value = "";
+      emptyOption.textContent = "No repositories found";
+      emptyOption.disabled = true;
+      emptyOption.selected = true;
+      repoSelect.append(emptyOption);
+      repoSelect.disabled = true;
+    } else {
+      const defaultRepoId = String(defaults.destinationRepoId || "");
+      const hasDefault = repos.some((repo) => String(repo.id) === defaultRepoId);
+      repoSelect.value = hasDefault ? defaultRepoId : String(repos[0].id);
+    }
+
+    repoRow.append(repoLabel, repoSelect);
+
+    const filenameRow = document.createElement("label");
+    filenameRow.className = "editor-field";
+    const filenameLabel = document.createElement("span");
+    filenameLabel.textContent = "Filename (with extension)";
+    const filenameInput = document.createElement("input");
+    filenameInput.type = "text";
+    filenameInput.value = defaults.filename || "";
+    filenameInput.placeholder = "example.yaml";
+    filenameRow.append(filenameLabel, filenameInput);
+
+    const targetPathRow = document.createElement("label");
+    targetPathRow.className = "editor-field";
+    const targetPathLabel = document.createElement("span");
+    targetPathLabel.textContent = "Folder path relative to repo";
+    const targetPathInput = document.createElement("input");
+    targetPathInput.type = "text";
+    targetPathInput.value = defaults.targetPath || "";
+    targetPathInput.placeholder = "optional/subfolder";
+    const folderPathListId = `folder-path-options-${Date.now()}`;
+    targetPathInput.setAttribute("list", folderPathListId);
+    const folderPathList = document.createElement("datalist");
+    folderPathList.id = folderPathListId;
+    targetPathRow.append(targetPathLabel, targetPathInput, folderPathList);
+
+    const refreshFolderPathOptions = () => {
+      folderPathList.innerHTML = "";
+      const selectedRepoId = Number(repoSelect.value || 0);
+      const options = folderPathsByRepoId.get(selectedRepoId) || [];
+      options.forEach((folderPath) => {
+        const option = document.createElement("option");
+        option.value = folderPath;
+        folderPathList.append(option);
+      });
+    };
+    repoSelect.addEventListener("change", refreshFolderPathOptions);
+    refreshFolderPathOptions();
+
+    const actions = document.createElement("div");
+    actions.className = "editor-modal-actions";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "btn";
+    cancel.textContent = "Cancel";
+
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "btn btn-primary";
+    save.textContent = "Save";
+
+    const close = (value) => {
+      overlay.remove();
+      resolve(value);
+    };
+
+    cancel.addEventListener("click", () => close(null));
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) close(null);
+    });
+
+    save.addEventListener("click", () => {
+      const value = {
+        filename: String(filenameInput.value || "").trim(),
+        targetPath: String(targetPathInput.value || "").trim(),
+        destinationRepoId: String(repoSelect.value || "").trim()
+      };
+
+      if (!value.destinationRepoId) {
+        error.hidden = false;
+        error.textContent = "Destination repository is required.";
+        return;
+      }
+      if (!value.filename) {
+        error.hidden = false;
+        error.textContent = "Filename is required.";
+        return;
+      }
+      error.hidden = true;
+      close(value);
+    });
+
+    actions.append(cancel, save);
+    form.append(repoRow, filenameRow, targetPathRow);
+    modal.append(title, subtitle, form, error, actions);
+    overlay.append(modal);
+    document.body.append(overlay);
+    if (repoSelect.value) {
+      filenameInput.focus();
+      filenameInput.select();
+    } else {
+      repoSelect.focus();
+    }
+  });
 }
 
 
@@ -561,6 +743,27 @@ async function boot() {
   } catch (_error) {
     definitionReferences = [];
   }
+  try {
+    const reposResponse = await fetch("/api/asset-repos");
+    if (reposResponse.ok) {
+      const reposPayload = await reposResponse.json();
+      assetRepos = (Array.isArray(reposPayload) ? reposPayload : [])
+        .filter((repo) => Boolean(repo?.enabled))
+        .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+    }
+  } catch (_error) {
+    assetRepos = [];
+  }
+
+  try {
+    const definitionsResponse = await fetch("/api/definitions");
+    if (definitionsResponse.ok) {
+      const definitionsPayload = await definitionsResponse.json();
+      repoFolderPathsById = buildRepoFolderPaths(definitionsPayload);
+    }
+  } catch (_error) {
+    repoFolderPathsById = new Map();
+  }
 
   console.debug(`${TAG_DEBUG_PREFIX} boot: initializing form type`, definitionType, "with tags count", availableTags.length);
 
@@ -589,29 +792,40 @@ async function boot() {
 document.getElementById("cancelButton").addEventListener("click", () => window.location.assign("/"));
 document.getElementById("saveButton").addEventListener("click", async () => {
   let filename;
-  let targetPath;
+  let targetPath = "";
   let destinationRepoId;
-  let destinationRepoPath;
-  if (mode === "create") {
-    filename = window.prompt("Filename (with extension)");
-    if (!filename) return;
-    targetPath = window.prompt("Folder path relative to repo", "") || "";
-    const repoIdInput = (destinationRepoIdParam || window.prompt("Destination repo id (optional if path provided)", "") || "").trim();
-    destinationRepoPath = (destinationRepoPathParam || window.prompt("Destination repo path (optional if id provided)", "") || "").trim();
-    destinationRepoId = repoIdInput ? Number(repoIdInput) : null;
-
-    if ((!Number.isInteger(destinationRepoId) || destinationRepoId <= 0) && !destinationRepoPath) {
-      parseError.hidden = false;
-      parseError.textContent = "Destination repository id or path is required.";
-      return;
-    }
-  }
 
   const currentState = formController?.getState?.() || {};
-  if (!String(currentState.dcc_uri || "").trim()) {
+  const dccUri = String(currentState.dcc_uri || "").trim();
+  if (!dccUri) {
     parseError.hidden = false;
     parseError.textContent = "DCC URI is required.";
     return;
+  }
+
+  if (mode === "create") {
+    const dialogResult = await openCreateSaveDialog({
+      defaults: {
+        filename: buildDefaultFilenameFromDccUri(dccUri),
+        targetPath: "",
+        destinationRepoId: destinationRepoIdParam
+      },
+      repos: assetRepos,
+      folderPathsByRepoId: repoFolderPathsById
+    });
+    if (!dialogResult) return;
+
+    filename = dialogResult.filename;
+    targetPath = dialogResult.targetPath;
+
+    const repoIdInput = dialogResult.destinationRepoId;
+    destinationRepoId = repoIdInput ? Number(repoIdInput) : null;
+
+    if (!Number.isInteger(destinationRepoId) || destinationRepoId <= 0) {
+      parseError.hidden = false;
+      parseError.textContent = "Destination repository id is required.";
+      return;
+    }
   }
 
   const response = await runWithLoading(
@@ -627,7 +841,6 @@ document.getElementById("saveButton").addEventListener("click", async () => {
         filename,
         targetPath,
         destinationRepoId,
-        destinationRepoPath
       })
     }),
     {
