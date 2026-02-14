@@ -97,6 +97,13 @@
   flex-wrap: wrap;
 }
 
+#geminiSettingsSaveButton {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .settings-form label {
   display: block;
   margin-bottom: 8px;
