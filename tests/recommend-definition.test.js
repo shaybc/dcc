@@ -208,3 +208,19 @@ test("recommendDefinitions allows backend projects to receive html/javascript te
   assert.ok(suggestions[0].reasons.includes("project technology tag: javascript"));
 });
 
+test("recommendDefinitions limits total suggestions to 8 by default", () => {
+  const definitions = Array.from({ length: 12 }, (_, index) => ({
+    key: `rules::node-${index + 1}`,
+    name: `Node Rule ${index + 1}`,
+    description: "Node backend helper",
+    type: "rules",
+    tags: "node,backend"
+  }));
+
+  const suggestions = recommendDefinitions("/work/apps/node-service", "node", definitions, {
+    corePlatform: "backend",
+    projectTechnologies: ["node", "javascript"]
+  });
+
+  assert.equal(suggestions.length, 8);
+});
