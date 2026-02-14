@@ -1,0 +1,990 @@
+openapi: 3.0.3
+info:
+  title: DCC Server API
+  version: 1.0.0
+  description: |
+    Full API surface for DCC Express server, including `/api/*` application routes
+    and OpenAI-compatible facade routes under `/v1/*`.
+
+servers:
+  - url: http://localhost:3000
+    description: Local default server
+
+tags:
+  - name: Settings
+  - name: Asset Repos
+  - name: Dev Projects
+  - name: Repository Sync
+  - name: Definitions
+  - name: Definition Lifecycle
+  - name: Validation
+  - name: Versions
+  - name: Editor
+  - name: OpenAI Facade
+
+paths:
+  /api/settings:
+    get:
+      tags: [Settings]
+      summary: Get app settings
+      responses:
+        "200":
+          description: Current settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  maxRecommendedDefinitions: { type: integer, minimum: 3, maximum: 8 }
+                  geminiApiKey: { type: string }
+                  geminiModel: { type: string }
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Settings]
+      summary: Update app settings
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                repoUrl: { type: string }
+                repoPath: { type: string }
+                maxRecommendedDefinitions: { type: integer }
+                geminiApiKey: { type: string }
+                geminiModel: { type: string }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/asset-repos:
+    get:
+      tags: [Asset Repos]
+      summary: List asset repositories
+      responses:
+        "200":
+          description: Repositories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AssetRepo" }
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Asset Repos]
+      summary: Create asset repository
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetRepoCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetRepo"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/asset-repos/{id}:
+    put:
+      tags: [Asset Repos]
+      summary: Update asset repository
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetRepoUpdate"
+      responses:
+        "200":
+          description: Updated repo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetRepo"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+    delete:
+      tags: [Asset Repos]
+      summary: Delete asset repository
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/asset-repos/sync:
+    post:
+      tags: [Repository Sync]
+      summary: Sync enabled asset repositories
+      responses:
+        "200":
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/current-dev-project:
+    get:
+      tags: [Settings]
+      summary: Get current dev project
+      responses:
+        "200":
+          description: Current dev project path
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path: { type: string }
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Settings]
+      summary: Set current dev project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path: { type: string }
+              required: [path]
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  path: { type: string }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dev-project-roots:
+    get:
+      tags: [Dev Projects]
+      summary: List dev project roots
+      responses:
+        "200":
+          description: Root paths
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    path: { type: string }
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Dev Projects]
+      summary: Replace roots and refresh projects
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roots:
+                  type: array
+                  items: { type: string }
+              required: [roots]
+      responses:
+        "200":
+          description: Roots saved and projects refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  projects:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/dev-projects:
+    get:
+      tags: [Dev Projects]
+      summary: List discovered dev projects
+      responses:
+        "200":
+          description: Discovered projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DevProject"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/load-definitions:
+    post:
+      tags: [Repository Sync]
+      summary: Reload definitions into catalog
+      responses:
+        "200":
+          description: Load result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definition-tags:
+    get:
+      tags: [Definitions]
+      summary: List all definition tags
+      responses:
+        "200":
+          description: Tag list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/references:
+    get:
+      tags: [Definitions]
+      summary: List DCC URI references
+      responses:
+        "200":
+          description: References
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions:
+    get:
+      tags: [Definitions]
+      summary: List definitions
+      responses:
+        "200":
+          description: Definitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, additionalProperties: true }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/suggestions:
+    get:
+      tags: [Definitions]
+      summary: Get ranked definition suggestions for current project
+      responses:
+        "200":
+          description: Suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projectPath: { type: string }
+                  projectType: { type: string }
+                  projectTechnologies:
+                    type: array
+                    items: { type: string }
+                  suggestions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        definitionId: { type: integer }
+                        score: { type: number }
+                        reasons:
+                          type: array
+                          items: { type: string }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}:
+    get:
+      tags: [Definitions]
+      summary: Get definition by id
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Definition
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/definitions/{id}/duplicate:
+    post:
+      tags: [Definition Lifecycle]
+      summary: Duplicate definition
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Duplication result
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/push-upstream:
+    post:
+      tags: [Definition Lifecycle]
+      summary: Push definition into upstream/team repository
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                targetRepoId: { type: integer, nullable: true }
+      responses:
+        "200":
+          description: Push result
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: Permission denied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/save:
+    post:
+      tags: [Definition Lifecycle]
+      summary: Save definition into current dev project
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/publish:
+    post:
+      tags: [Definition Lifecycle]
+      summary: Publish definition to configured repo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: Permission denied
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/delete-repo:
+    post:
+      tags: [Definition Lifecycle]
+      summary: Delete definition file from team repo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Deleted from repo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/remove:
+    post:
+      tags: [Definition Lifecycle]
+      summary: Remove definition from local project tracking
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/validate:
+    post:
+      tags: [Validation]
+      summary: Run validation for a definition
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  durationMs: { type: integer }
+                  result: { type: object, additionalProperties: true }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/validate/latest:
+    get:
+      tags: [Validation]
+      summary: Get latest validation result
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Latest validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  found: { type: boolean }
+                  result: { type: object, additionalProperties: true, nullable: true }
+                  createdAt: { type: string, nullable: true }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/validate/history:
+    get:
+      tags: [Validation]
+      summary: Get validation history
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Validation history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, additionalProperties: true }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/versions:
+    get:
+      tags: [Versions]
+      summary: List version history for definition
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, additionalProperties: true }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/versions/{version}:
+    get:
+      tags: [Versions]
+      summary: Get specific historical version content
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Version content
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/versions/{version}/restore:
+    post:
+      tags: [Versions]
+      summary: Restore historical version
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Restored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/editor/definition:
+    get:
+      tags: [Editor]
+      summary: Load definition for editor
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Editor definition payload
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/editor/detect-type:
+    post:
+      tags: [Editor]
+      summary: Detect definition type from content/path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content: { type: string }
+                path: { type: string }
+      responses:
+        "200":
+          description: Detected type
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  type: { type: string }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/editor/save:
+    post:
+      tags: [Editor]
+      summary: Save editor content (new or update)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: { type: string, enum: [create, update] }
+                path: { type: string }
+                content: { type: string }
+                format: { type: string }
+              required: [mode, path, content]
+      responses:
+        "200":
+          description: Save result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Duplicate DCC URI / conflict
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /v1/models:
+    get:
+      tags: [OpenAI Facade]
+      summary: List models (OpenAI-compatible shape)
+      responses:
+        "200":
+          description: Model list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object: { type: string, example: list }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        object: { type: string, example: model }
+                        created: { type: integer }
+                        owned_by: { type: string }
+        "500":
+          description: OpenAI-style error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenAiErrorEnvelope"
+
+  /v1/completions:
+    post:
+      tags: [OpenAI Facade]
+      summary: Text completion (OpenAI-compatible)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                model: { type: string }
+                stream: { type: boolean }
+                prompt: { type: string }
+                stop:
+                  oneOf:
+                    - type: string
+                    - type: array
+                      items: { type: string }
+                temperature: { type: number, minimum: 0, maximum: 2 }
+                max_tokens: { type: integer, minimum: 1, maximum: 65536 }
+      responses:
+        "200":
+          description: Completion response or SSE stream
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+            text/event-stream:
+              schema:
+                type: string
+        "400":
+          description: OpenAI-style invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenAiErrorEnvelope"
+
+  /v1/chat/completions:
+    post:
+      tags: [OpenAI Facade]
+      summary: Chat completion (OpenAI-compatible)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                model: { type: string }
+                stream: { type: boolean }
+                messages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [system, user, assistant, tool]
+                      content:
+                        oneOf:
+                          - type: string
+                          - type: array
+                            items: {}
+                temperature: { type: number, minimum: 0, maximum: 2 }
+                max_tokens: { type: integer, minimum: 1, maximum: 65536 }
+                tools:
+                  type: array
+                  items: {}
+                tool_choice: {}
+      responses:
+        "200":
+          description: Chat response or SSE stream
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+            text/event-stream:
+              schema: { type: string }
+        "400":
+          description: OpenAI-style invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenAiErrorEnvelope"
+
+  /v1/embeddings:
+    post:
+      tags: [OpenAI Facade]
+      summary: Embeddings (OpenAI-compatible)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                model: { type: string }
+                input:
+                  oneOf:
+                    - type: string
+                    - type: array
+                      items:
+                        type: string
+      responses:
+        "200":
+          description: Embeddings response
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "400":
+          description: OpenAI-style invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenAiErrorEnvelope"
+
+components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+
+  schemas:
+    ErrorEnvelope:
+      type: object
+      properties:
+        error: { type: string }
+
+    OpenAiErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            message: { type: string }
+            type: { type: string }
+
+    AssetRepo:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        repoUrl: { type: string }
+        repoPath: { type: string }
+        branch: { type: string, nullable: true }
+        enabled: { type: boolean }
+        createdAt: { type: string, nullable: true }
+        updatedAt: { type: string, nullable: true }
+
+    AssetRepoCreate:
+      type: object
+      properties:
+        name: { type: string }
+        repoUrl: { type: string }
+        repoPath: { type: string }
+        branch: { type: string }
+        enabled: { type: boolean }
+      required: [name, repoUrl, repoPath]
+
+    AssetRepoUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        repoUrl: { type: string }
+        repoPath: { type: string }
+        branch: { type: string }
+        enabled: { type: boolean }
+
+    DevProject:
+      type: object
+      properties:
+        id: { type: integer }
+        path: { type: string }
+        projectType: { type: string, nullable: true }
+        corePlatform: { type: string, nullable: true }
+        detectedSignals:
+          type: array
+          items: { type: string }
+        projectTechnologies:
+          type: array
+          items: { type: string }
+        lastScannedAt: { type: string, nullable: true }
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
