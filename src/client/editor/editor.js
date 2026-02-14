@@ -660,6 +660,45 @@ function setPromptFormat(nextFormat) {
   }
 }
 
+function convertPromptContentFormat(nextFormat) {
+  if (definitionType !== "prompt") return false;
+
+  const normalizedFormat = nextFormat === "markdown" ? "markdown" : "yaml";
+  const previousFormat = promptContentFormat;
+  if (normalizedFormat === previousFormat) {
+    setPromptFormat(normalizedFormat);
+    return true;
+  }
+
+  const previousRawText = rawText.value;
+  const previousUnknown = { ...unknown };
+  const promptHandler = handlers.prompt;
+  let nextState = formController?.getState?.() || {};
+
+  try {
+    const parsed = promptHandler.parse(previousRawText);
+    captureUnknownFields("prompt", parsed);
+    nextState = normalizeState("prompt", parsed);
+  } catch (_error) {
+    unknown = previousUnknown;
+  }
+
+  try {
+    setPromptFormat(normalizedFormat);
+    formController?.setState(nextState);
+    rawText.value = promptHandler.serialize(nextState);
+    sync?.updateFormFromText({ reason: "switch-format" });
+    sync?.setError("");
+    return true;
+  } catch (error) {
+    setPromptFormat(previousFormat);
+    unknown = previousUnknown;
+    rawText.value = previousRawText;
+    sync?.setError(error?.message || "Failed to convert prompt format.");
+    return false;
+  }
+}
+
 function setPromptFormatControlVisibility(visible) {
   if (!promptFormatControl) return;
   promptFormatControl.hidden = !visible;
@@ -1159,8 +1198,7 @@ document.getElementById("saveButton").addEventListener("click", async () => {
 if (promptFormatSelect) {
   promptFormatSelect.addEventListener("change", () => {
     if (definitionType !== "prompt") return;
-    setPromptFormat(promptFormatSelect.value);
-    sync?.updateFormFromText();
+    convertPromptContentFormat(promptFormatSelect.value);
   });
 }
 
