@@ -50,6 +50,13 @@ body {
   padding: 16px 20px;
 }
 
+.structured-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .raw-header {
   display: flex;
   justify-content: space-between;
@@ -62,6 +69,10 @@ body {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+}
+
+.prompt-format-control[hidden] {
+  display: none !important;
 }
 
 .prompt-format-control select {
