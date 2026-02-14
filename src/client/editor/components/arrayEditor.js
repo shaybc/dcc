@@ -31,10 +31,9 @@ function attachAutocomplete(input, options, { allowTagFallback = false } = {}) {
 
   const filterValues = (query) => {
     const normalized = String(query || "").trim().toLowerCase();
-    if (!normalized) return values.slice(0, 8);
+    if (!normalized) return values;
     return values
-      .filter((value) => value.toLowerCase().includes(normalized))
-      .slice(0, 8);
+      .filter((value) => value.toLowerCase().includes(normalized));
   };
 
   const hideMenu = () => {
