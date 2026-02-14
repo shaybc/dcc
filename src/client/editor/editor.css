@@ -50,6 +50,13 @@ body {
   padding: 16px 20px;
 }
 
+.structured-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .raw-header {
   display: flex;
   justify-content: space-between;
