@@ -72,6 +72,16 @@
             <span class="switch-label" id="themeToggleLabel">Dark mode</span>
           </label>
         </div>
+
+        <div class="settings-subsection">
+          <h3>Recommendations</h3>
+          <p class="helper-text">Set the maximum number of recommended definitions shown in the hub (3 to 8).</p>
+          <div class="table-actions">
+            <label for="maxRecommendedDefinitionsInput">Max recommended definitions</label>
+            <input id="maxRecommendedDefinitionsInput" type="number" min="3" max="8" step="1" value="8" />
+            <button class="btn btn-primary" type="button" id="saveMaxRecommendedDefinitionsBtn">Save recommendation limit</button>
+          </div>
+        </div>
       </section>
 
       <section class="settings-section settings-card settings-card--wide">
@@ -100,16 +110,6 @@
           <label for="loadingTimeoutInput">Timeout (seconds)</label>
           <input id="loadingTimeoutInput" type="number" min="15" max="300" step="15" value="60" />
           <button class="btn btn-primary" type="button" id="saveLoadingTimeoutBtn">Save timeout</button>
-        </div>
-      </section>
-
-      <section class="settings-section settings-card">
-        <h2>Recommendations</h2>
-        <p class="helper-text">Set the maximum number of recommended definitions shown in the hub (3 to 8).</p>
-        <div class="table-actions">
-          <label for="maxRecommendedDefinitionsInput">Max recommended definitions</label>
-          <input id="maxRecommendedDefinitionsInput" type="number" min="3" max="8" step="1" value="8" />
-          <button class="btn btn-primary" type="button" id="saveMaxRecommendedDefinitionsBtn">Save recommendation limit</button>
         </div>
       </section>
 
