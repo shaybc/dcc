@@ -11,19 +11,31 @@ import {
 
 const router = express.Router();
 
+function normalizeMaxRecommendedDefinitions(value, fallback = 8) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return fallback;
+  return Math.min(8, Math.max(3, Math.round(numericValue)));
+}
+
 router.get("/api/settings", async (req, res) => {
   try {
-    res.json({});
+    const maxRecommendedDefinitions = normalizeMaxRecommendedDefinitions(await getSetting("maxRecommendedDefinitions"), 8);
+    await setSetting("maxRecommendedDefinitions", String(maxRecommendedDefinitions));
+    res.json({ maxRecommendedDefinitions });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 router.post("/api/settings", async (req, res) => {
-  const { repoUrl, repoPath } = req.body;
+  const { repoUrl, repoPath, maxRecommendedDefinitions } = req.body || {};
   try {
     if (repoUrl !== undefined || repoPath !== undefined) {
       await upsertLegacyAssetRepo(repoUrl, repoPath);
+    }
+    if (maxRecommendedDefinitions !== undefined) {
+      const normalizedValue = normalizeMaxRecommendedDefinitions(maxRecommendedDefinitions, 8);
+      await setSetting("maxRecommendedDefinitions", String(normalizedValue));
     }
     res.json({ ok: true });
   } catch (error) {

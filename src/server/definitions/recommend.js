@@ -303,6 +303,7 @@ export function recommendDefinitions(currentProjectPath, currentProjectType, def
   };
 
   const fallbackLimit = Math.max(0, Number(options.fallbackSuggestionLimit ?? 3));
+  const maxSuggestions = Math.max(0, Number(options.maxSuggestions ?? 8));
 
   const scoredDefinitions = candidateDefinitions
     .map((definition, index) => {
@@ -336,6 +337,7 @@ export function recommendDefinitions(currentProjectPath, currentProjectType, def
     .slice(0, fallbackLimit);
 
   return [...corePlatformMatches, ...technologyMatches, ...fallbackMatches]
+    .slice(0, maxSuggestions)
     .map(({ _index, matchesCorePlatform, matchesTechnology, hasConflictingPlatform, ...definition }) => definition);
 }
 

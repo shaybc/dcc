@@ -22,6 +22,8 @@ const themeToggle = document.getElementById("themeToggle");
 const themeToggleLabel = document.getElementById("themeToggleLabel");
 const loadingTimeoutInput = document.getElementById("loadingTimeoutInput");
 const saveLoadingTimeoutButton = document.getElementById("saveLoadingTimeoutBtn");
+const maxRecommendedDefinitionsInput = document.getElementById("maxRecommendedDefinitionsInput");
+const saveMaxRecommendedDefinitionsButton = document.getElementById("saveMaxRecommendedDefinitionsBtn");
 function normalizeLocalPath(localPath = "") {
   return String(localPath || "").trim();
 }
@@ -181,6 +183,20 @@ function renderRepoSyncResults(results = []) {
 
 function updateThemeToggleLabel(isLightMode) {
   themeToggleLabel.textContent = isLightMode ? "Light mode" : "Dark mode";
+}
+
+
+async function loadRecommendationSettings() {
+  if (!maxRecommendedDefinitionsInput) return;
+  const response = await fetch("/api/settings");
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Failed to load settings.");
+  }
+  const data = await response.json().catch(() => ({}));
+  const rawValue = Number(data?.maxRecommendedDefinitions);
+  const normalizedValue = Number.isFinite(rawValue) ? Math.min(8, Math.max(3, Math.round(rawValue))) : 8;
+  maxRecommendedDefinitionsInput.value = String(normalizedValue);
 }
 
 
@@ -607,6 +623,33 @@ saveLoadingTimeoutButton?.addEventListener("click", () => {
   setNotice("Loading timeout updated.");
 });
 
-Promise.all([loadAssetRepos(), loadDevProjects()]).catch(() => {
+
+saveMaxRecommendedDefinitionsButton?.addEventListener("click", async () => {
+  const rawValue = Number(maxRecommendedDefinitionsInput?.value || 0);
+  if (!Number.isFinite(rawValue) || rawValue < 3 || rawValue > 8) {
+    setNotice("Recommendation limit must be between 3 and 8.", true);
+    return;
+  }
+
+  const maxRecommendedDefinitions = Math.round(rawValue);
+  const response = await fetch("/api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ maxRecommendedDefinitions })
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    setNotice(data.error || "Failed to save recommendation limit.", true);
+    return;
+  }
+
+  if (maxRecommendedDefinitionsInput) {
+    maxRecommendedDefinitionsInput.value = String(maxRecommendedDefinitions);
+  }
+  setNotice("Recommendation limit updated.");
+});
+
+Promise.all([loadAssetRepos(), loadDevProjects(), loadRecommendationSettings()]).catch(() => {
   setNotice("Failed to load settings.", true);
 });

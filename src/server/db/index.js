@@ -21,6 +21,10 @@ db.serialize(() => {
     )`
   );
   db.run(
+    "INSERT INTO settings (key, value) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM settings WHERE key = ?)",
+    ["maxRecommendedDefinitions", "8", "maxRecommendedDefinitions"]
+  );
+  db.run(
     `CREATE TABLE IF NOT EXISTS asset_repos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
