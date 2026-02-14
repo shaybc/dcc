@@ -24,6 +24,9 @@ const loadingTimeoutInput = document.getElementById("loadingTimeoutInput");
 const saveLoadingTimeoutButton = document.getElementById("saveLoadingTimeoutBtn");
 const maxRecommendedDefinitionsInput = document.getElementById("maxRecommendedDefinitionsInput");
 const saveMaxRecommendedDefinitionsButton = document.getElementById("saveMaxRecommendedDefinitionsBtn");
+const geminiApiKeyInput = document.getElementById("geminiApiKeyInput");
+const geminiModelInput = document.getElementById("geminiModelInput");
+const saveGeminiSettingsButton = document.getElementById("saveGeminiSettingsBtn");
 function normalizeLocalPath(localPath = "") {
   return String(localPath || "").trim();
 }
@@ -187,7 +190,7 @@ function updateThemeToggleLabel(isLightMode) {
 
 
 async function loadRecommendationSettings() {
-  if (!maxRecommendedDefinitionsInput) return;
+  if (!maxRecommendedDefinitionsInput && !geminiApiKeyInput && !geminiModelInput) return;
   const response = await fetch("/api/settings");
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
@@ -196,7 +199,15 @@ async function loadRecommendationSettings() {
   const data = await response.json().catch(() => ({}));
   const rawValue = Number(data?.maxRecommendedDefinitions);
   const normalizedValue = Number.isFinite(rawValue) ? Math.min(8, Math.max(3, Math.round(rawValue))) : 8;
-  maxRecommendedDefinitionsInput.value = String(normalizedValue);
+  if (maxRecommendedDefinitionsInput) {
+    maxRecommendedDefinitionsInput.value = String(normalizedValue);
+  }
+  if (geminiApiKeyInput) {
+    geminiApiKeyInput.value = String(data?.geminiApiKey || "");
+  }
+  if (geminiModelInput) {
+    geminiModelInput.value = String(data?.geminiModel || "gemini-2.5-pro");
+  }
 }
 
 
@@ -648,6 +659,31 @@ saveMaxRecommendedDefinitionsButton?.addEventListener("click", async () => {
     maxRecommendedDefinitionsInput.value = String(maxRecommendedDefinitions);
   }
   setNotice("Recommendation limit updated.");
+});
+
+saveGeminiSettingsButton?.addEventListener("click", async () => {
+  const geminiApiKey = String(geminiApiKeyInput?.value || "").trim();
+  const geminiModel = String(geminiModelInput?.value || "").trim() || "gemini-2.5-pro";
+
+  const response = await fetch("/api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ geminiApiKey, geminiModel })
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    setNotice(data.error || "Failed to save Gemini settings.", true);
+    return;
+  }
+
+  if (geminiApiKeyInput) {
+    geminiApiKeyInput.value = geminiApiKey;
+  }
+  if (geminiModelInput) {
+    geminiModelInput.value = geminiModel;
+  }
+  setNotice("Gemini settings updated.");
 });
 
 Promise.all([loadAssetRepos(), loadDevProjects(), loadRecommendationSettings()]).catch(() => {

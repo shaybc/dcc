@@ -4,20 +4,21 @@ import { z } from "zod";
 import { env } from "../utils/env.js";
 import { logError, logInfo } from "../utils/logger.js";
 import { GeminiAIStudioClient } from "../services/ai/geminiAIStudioClient.js";
+import { getGeminiSettings, normalizeGeminiModel } from "../utils/geminiSettings.js";
 
 const openaiRouter = express.Router();
 
 export default openaiRouter;
 
-function normalizeGeminiModel(model) {
-  if (!model) return "gemini-2.5-pro";
-  return model.startsWith("models/") ? model.slice("models/".length) : model;
-}
-
-function getClientForModel(modelFromRequest) {
-  const model = normalizeGeminiModel(modelFromRequest || env.GEMINI_MODEL);
+async function getClientForModel(modelFromRequest) {
+  const settings = await getGeminiSettings();
+  const model = normalizeGeminiModel(modelFromRequest || settings.model || env.GEMINI_MODEL);
+  const apiKey = String(settings.apiKey || "").trim();
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured. Please set it in Settings.");
+  }
   return new GeminiAIStudioClient({
-    apiKey: env.GEMINI_API_KEY,
+    apiKey,
     model
   });
 }
@@ -25,7 +26,7 @@ function getClientForModel(modelFromRequest) {
 openaiRouter.get("/models", async (req, res) => {
   const reqId = req._reqId || "no-id";
   try {
-    const client = getClientForModel();
+    const client = await getClientForModel();
     const data = await client.listModels();
 
     const payload = {
@@ -83,9 +84,8 @@ openaiRouter.post("/completions", async (req, res) => {
 
     const parsed = CompletionSchema.parse(req.body);
 
-    logInfo(`[OPENAI] id=${reqId} completions stream=${Boolean(parsed.stream)} model=${parsed.model || env.GEMINI_MODEL}`);
-
-    const client = getClientForModel(parsed.model);
+    const client = await getClientForModel(parsed.model);
+    logInfo(`[OPENAI] id=${reqId} completions stream=${Boolean(parsed.stream)} model=${parsed.model || client.model}`);
 
     const generationConfig = cleanUndefined({
       temperature: parsed.temperature,
@@ -123,7 +123,7 @@ openaiRouter.post("/completions", async (req, res) => {
 
     logInfo(`[OPENAI] id=${reqId} completions_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
 
-    const modelName = normalizeGeminiModel(parsed.model || env.GEMINI_MODEL);
+    const modelName = normalizeGeminiModel(parsed.model || client.model);
     const created = Math.floor(Date.now() / 1000);
     const id = `cmpl_${Date.now()}`;
 
@@ -209,13 +209,12 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       }))
       .filter(m => m.parts[0].text.trim().length > 0);
 
-    logInfo(`[OPENAI] id=${reqId} chat.completions stream=${Boolean(parsed.stream)} model=${parsed.model || env.GEMINI_MODEL}`);
+    const client = await getClientForModel(parsed.model);
+    logInfo(`[OPENAI] id=${reqId} chat.completions stream=${Boolean(parsed.stream)} model=${parsed.model || client.model}`);
 
     if (!contents.length) {
       return res.status(400).json({ error: { message: "No user message content found", type: "invalid_request_error" } });
     }
-
-    const client = getClientForModel(parsed.model);
 
     const generationConfig = cleanUndefined({
       temperature: parsed.temperature,
@@ -244,7 +243,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
           id: "chatcmpl_stream",
           object: "chat.completion.chunk",
           created: Math.floor(Date.now() / 1000),
-          model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+          model: normalizeGeminiModel(parsed.model || client.model),
           choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }]
         });
 
@@ -256,7 +255,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
               id: "chatcmpl_stream",
               object: "chat.completion.chunk",
               created: Math.floor(Date.now() / 1000),
-              model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+              model: normalizeGeminiModel(parsed.model || client.model),
               choices: [{ index: 0, delta: { content: text }, finish_reason: null }]
             });
           }
@@ -279,7 +278,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
               id: "chatcmpl_stream",
               object: "chat.completion.chunk",
               created: Math.floor(Date.now() / 1000),
-              model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+              model: normalizeGeminiModel(parsed.model || client.model),
               choices: [{ index: 0, delta: { tool_calls: toolCalls }, finish_reason: null }]
             });
           }
@@ -289,7 +288,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
           id: "chatcmpl_stream",
           object: "chat.completion.chunk",
           created: Math.floor(Date.now() / 1000),
-          model: normalizeGeminiModel(parsed.model || env.GEMINI_MODEL),
+          model: normalizeGeminiModel(parsed.model || client.model),
           choices: [{ index: 0, delta: {}, finish_reason: sawToolCalls ? "tool_calls" : "stop" }]
         });
 
@@ -310,7 +309,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
     logInfo(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
 
-    const modelName = normalizeGeminiModel(parsed.model || env.GEMINI_MODEL);
+    const modelName = normalizeGeminiModel(parsed.model || client.model);
     const created = Math.floor(Date.now() / 1000);
     const id = `chatcmpl_${Date.now()}`;
 
@@ -366,7 +365,7 @@ openaiRouter.post("/embeddings", async (req, res) => {
 
     logInfo(`[OPENAI] id=${reqId} embeddings model=${modelName}`);
 
-    const client = getClientForModel(modelName);
+    const client = await getClientForModel(modelName);
     const inputs = Array.isArray(parsed.input) ? parsed.input : [parsed.input];
 
     const data = [];

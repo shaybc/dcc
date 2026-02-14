@@ -3,6 +3,7 @@ import path from "path";
 import { runDb } from "../db/helpers.js";
 import { GeminiAIStudioClient } from "../services/ai/geminiAIStudioClient.js";
 import { env } from "../utils/env.js";
+import { getGeminiSettings } from "../utils/geminiSettings.js";
 
 const fsp = fs.promises;
 
@@ -67,9 +68,17 @@ const CORE_PLATFORM_TECHNOLOGY_HINTS = Object.freeze({
 
 const PROJECT_TYPE_VALUES = new Set(Object.values(PROJECT_TYPES));
 const AI_ENABLED = env.PROJECT_SCAN_AI_ENABLED;
-const aiClient = AI_ENABLED
-  ? new GeminiAIStudioClient({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL })
-  : null;
+
+async function getAiClient() {
+  if (!AI_ENABLED) {
+    return null;
+  }
+  const gemini = await getGeminiSettings();
+  if (!gemini.apiKey) {
+    return null;
+  }
+  return new GeminiAIStudioClient({ apiKey: gemini.apiKey, model: gemini.model });
+}
 
 const SIGNAL_DETECTORS = [
   { signal: "package.json", ecosystem: PROJECT_TYPES.NODE, type: "file" },
@@ -506,6 +515,7 @@ function parseJsonObject(text) {
 }
 
 async function detectUnknownProjectWithAi(repoPath, entries, deterministicSignals = []) {
+  const aiClient = await getAiClient();
   if (!aiClient) {
     return null;
   }
