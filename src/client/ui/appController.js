@@ -35,6 +35,7 @@ const hubMenuToggleButton = document.getElementById("hubMenuToggle");
 const hubMenu = document.getElementById("hubMenu");
 const localDefinitionsToggle = document.getElementById("localDefinitionsToggle");
 const hideInstalledMenuToggle = document.getElementById("hideInstalledMenuToggle");
+const installGuideMenuItem = document.getElementById("installGuideMenuItem");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const versionHistoryButton = document.getElementById("versionHistoryButton");
@@ -2767,6 +2768,13 @@ function setupEventListeners() {
       updateHideInstalledToggleState();
       currentCardsPage = 1;
       renderCards();
+    });
+  }
+
+  if (installGuideMenuItem) {
+    installGuideMenuItem.addEventListener("click", () => {
+      closeHubMenu({ animate: false });
+      window.location.assign("/install-guide.html");
     });
   }
 
