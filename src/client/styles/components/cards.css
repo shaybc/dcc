@@ -209,6 +209,8 @@
   grid-template-columns: repeat(auto-fit, 240px);
   gap: 10px;
   justify-content: center;
+  max-width: 70%;
+  align-self: center;
 }
 
 .recommendation-meta {
