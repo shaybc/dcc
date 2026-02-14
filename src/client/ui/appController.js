@@ -94,6 +94,10 @@ const ONLY_LOCAL_DEFINITIONS_STORAGE_KEY = "dcc.hub.onlyLocalDefinitions";
 let recommendationsVisible = getStoredRecommendationsVisibility();
 let activeFilter = "all";
 let searchTerm = "";
+let tagFilterMode = "or";
+let showUntaggedDefinitions = false;
+let tagFilterSearchTerm = "";
+const selectedTagFilters = new Set();
 let devProjects = [];
 let currentDetailDefinitionId = null;
 let currentDetailDefinitionSource = "";
@@ -600,6 +604,202 @@ function renderFilters() {
     });
     filterMenu.appendChild(menuItem);
   });
+
+  renderHubTagFilterSection();
+}
+
+function getSortedUniqueTags() {
+  const uniqueTags = new Map();
+  definitions.forEach((definition) => {
+    definition.tags.forEach((tag) => {
+      const normalized = normalizeTagValue(tag);
+      if (!normalized || uniqueTags.has(normalized)) {
+        return;
+      }
+      uniqueTags.set(normalized, tag);
+    });
+  });
+
+  return Array.from(uniqueTags.values()).sort((tagA, tagB) => tagA.localeCompare(tagB));
+}
+
+function createTagFilterPill(label, { selected = false, emptyState = false } = {}) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "hub-menu-tag-pill";
+  button.textContent = label;
+  if (selected) {
+    button.classList.add("is-selected");
+  }
+  if (emptyState) {
+    button.classList.add("is-empty");
+    button.disabled = true;
+  }
+  return button;
+}
+
+function applyTagSearchFilter(tagPillsContainer, emptySearchState, rawQuery) {
+  const query = String(rawQuery || "").trim().toLowerCase();
+  const pills = Array.from(tagPillsContainer.querySelectorAll(".hub-menu-tag-pill[data-tag-filter-value]"));
+  let visibleCount = 0;
+
+  pills.forEach((pill) => {
+    const value = String(pill.dataset.tagFilterValue || "");
+    if (value === "__untagged__") {
+      pill.hidden = false;
+      return;
+    }
+
+    const label = String(pill.dataset.tagLabel || "").toLowerCase();
+    const shouldShow = !query || label.includes(query);
+    pill.hidden = !shouldShow;
+    if (shouldShow) {
+      visibleCount += 1;
+    }
+  });
+
+  if (emptySearchState) {
+    emptySearchState.hidden = visibleCount > 0 || !query;
+  }
+}
+
+function renderHubTagFilterSection() {
+  if (!hubMenu) {
+    return;
+  }
+
+  const existingSection = hubMenu.querySelector("#hubTagFilterSection");
+  if (existingSection) {
+    existingSection.remove();
+  }
+
+  const tagSection = document.createElement("section");
+  tagSection.id = "hubTagFilterSection";
+  tagSection.className = "hub-menu-tag-section";
+
+  const tagHeader = document.createElement("div");
+  tagHeader.className = "hub-menu-tag-header";
+  tagHeader.innerHTML = "<span>Tags</span>";
+
+  const modeSelector = document.createElement("fieldset");
+  modeSelector.className = "hub-tag-filter-mode";
+  modeSelector.setAttribute("aria-label", "Tag filter mode");
+
+  ["or", "and"].forEach((mode) => {
+    const optionLabel = document.createElement("label");
+    optionLabel.className = "hub-tag-filter-mode-option";
+    optionLabel.innerHTML = `
+      <input type="radio" name="tagFilterMode" value="${mode}" ${tagFilterMode === mode ? "checked" : ""} />
+      <span>${mode === "or" ? "Or" : "And"}</span>
+    `;
+    modeSelector.appendChild(optionLabel);
+  });
+
+  modeSelector.addEventListener("change", (event) => {
+    const selectedMode = String(event.target?.value || "").toLowerCase();
+    if (!["or", "and"].includes(selectedMode)) {
+      return;
+    }
+    tagFilterMode = selectedMode;
+    currentCardsPage = 1;
+    renderCards();
+  });
+
+  const tagSearchInput = document.createElement("input");
+  tagSearchInput.type = "text";
+  tagSearchInput.className = "hub-menu-tag-search";
+  tagSearchInput.placeholder = "Search tags";
+  tagSearchInput.value = tagFilterSearchTerm;
+  tagSearchInput.setAttribute("aria-label", "Search tags");
+
+  const tagPillsContainer = document.createElement("div");
+  tagPillsContainer.className = "hub-menu-tag-pills";
+  const uniqueTags = getSortedUniqueTags();
+
+  const emptySearchState = document.createElement("p");
+  emptySearchState.className = "hub-menu-tag-empty-state";
+  emptySearchState.textContent = "No matching tags";
+  emptySearchState.hidden = true;
+
+  const untaggedPill = createTagFilterPill("Untagged", { selected: showUntaggedDefinitions });
+  untaggedPill.dataset.tagFilterValue = "__untagged__";
+  tagPillsContainer.appendChild(untaggedPill);
+
+  if (uniqueTags.length === 0) {
+    tagPillsContainer.appendChild(createTagFilterPill("No tags available", { emptyState: true }));
+  } else {
+    uniqueTags.forEach((tag) => {
+      const normalizedTag = normalizeTagValue(tag);
+      const pill = createTagFilterPill(tag, { selected: selectedTagFilters.has(normalizedTag) });
+      pill.dataset.tagFilterValue = normalizedTag;
+      pill.dataset.tagLabel = tag;
+      tagPillsContainer.appendChild(pill);
+    });
+  }
+
+  tagSearchInput.addEventListener("input", (event) => {
+    tagFilterSearchTerm = String(event.target?.value || "");
+    applyTagSearchFilter(tagPillsContainer, emptySearchState, tagFilterSearchTerm);
+  });
+
+  tagPillsContainer.addEventListener("click", (event) => {
+    const target = event.target.closest(".hub-menu-tag-pill");
+    if (!target || target.disabled) {
+      return;
+    }
+
+    const value = String(target.dataset.tagFilterValue || "").trim();
+    if (!value) {
+      return;
+    }
+
+    if (value === "__untagged__") {
+      showUntaggedDefinitions = !showUntaggedDefinitions;
+      target.classList.toggle("is-selected", showUntaggedDefinitions);
+    } else if (selectedTagFilters.has(value)) {
+      selectedTagFilters.delete(value);
+      target.classList.remove("is-selected");
+    } else {
+      selectedTagFilters.add(value);
+      target.classList.add("is-selected");
+    }
+
+    currentCardsPage = 1;
+    renderCards();
+  });
+
+  applyTagSearchFilter(tagPillsContainer, emptySearchState, tagFilterSearchTerm);
+
+  tagSection.appendChild(tagHeader);
+  tagSection.appendChild(modeSelector);
+  tagSection.appendChild(tagSearchInput);
+  tagSection.appendChild(tagPillsContainer);
+  tagSection.appendChild(emptySearchState);
+  hubMenu.appendChild(tagSection);
+}
+
+function matchesSelectedTagFilters(definition) {
+  const selectedTags = Array.from(selectedTagFilters);
+  const definitionTags = Array.isArray(definition.tagsNormalized) ? definition.tagsNormalized : [];
+  const hasNoTags = definitionTags.length === 0;
+
+  if (selectedTags.length === 0) {
+    return showUntaggedDefinitions ? hasNoTags : true;
+  }
+
+  if (showUntaggedDefinitions && tagFilterMode === "and") {
+    return false;
+  }
+
+  const matchesTags = tagFilterMode === "and"
+    ? selectedTags.every((tag) => definitionTags.includes(tag))
+    : selectedTags.some((tag) => definitionTags.includes(tag));
+
+  if (showUntaggedDefinitions) {
+    return matchesTags || hasNoTags;
+  }
+
+  return matchesTags;
 }
 
 function handleDefinitionCardClick(definition, event) {
@@ -847,7 +1047,8 @@ function renderCards() {
     const text = `${def.name} ${def.description}`.toLowerCase();
     const matchesTagSearch = queryTags.every((tag) => def.tagsNormalized.includes(tag));
     const matchesSearch = tagOnlyMode ? matchesTagSearch : text.includes(searchTerm);
-    return matchesFilter && matchesSearch;
+    const matchesTagFilters = matchesSelectedTagFilters(def);
+    return matchesFilter && matchesSearch && matchesTagFilters;
   });
 
   const totalPages = Math.max(Math.ceil(filtered.length / CARDS_PER_PAGE), 1);
@@ -2212,6 +2413,7 @@ function closeHubMenu({ animate = true } = {}) {
 
 function openHubMenu() {
   if (!hubMenu || !hubMenuToggleButton) return;
+  renderHubTagFilterSection();
   hubMenu.hidden = false;
   hubMenu.classList.remove("is-hiding");
   hubMenu.classList.add("is-visible");
