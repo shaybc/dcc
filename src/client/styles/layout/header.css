@@ -178,6 +178,22 @@ header .actions .btn {
   color: var(--text);
 }
 
+.hub-menu-tag-search {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-overlay);
+  color: var(--text);
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
+.hub-menu-tag-search:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
 .hub-menu-tag-pills {
   display: flex;
   flex-wrap: wrap;
@@ -216,6 +232,13 @@ header .actions .btn {
 .hub-menu-tag-pill.is-empty {
   opacity: 0.6;
   cursor: default;
+}
+
+.hub-menu-tag-empty-state {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 2px 2px 0;
 }
 
 .hub-menu-item {

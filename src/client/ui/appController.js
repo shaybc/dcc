@@ -96,6 +96,7 @@ let activeFilter = "all";
 let searchTerm = "";
 let tagFilterMode = "or";
 let showUntaggedDefinitions = false;
+let tagFilterSearchTerm = "";
 const selectedTagFilters = new Set();
 let devProjects = [];
 let currentDetailDefinitionId = null;
@@ -637,6 +638,31 @@ function createTagFilterPill(label, { selected = false, emptyState = false } = {
   return button;
 }
 
+function applyTagSearchFilter(tagPillsContainer, emptySearchState, rawQuery) {
+  const query = String(rawQuery || "").trim().toLowerCase();
+  const pills = Array.from(tagPillsContainer.querySelectorAll(".hub-menu-tag-pill[data-tag-filter-value]"));
+  let visibleCount = 0;
+
+  pills.forEach((pill) => {
+    const value = String(pill.dataset.tagFilterValue || "");
+    if (value === "__untagged__") {
+      pill.hidden = false;
+      return;
+    }
+
+    const label = String(pill.dataset.tagLabel || "").toLowerCase();
+    const shouldShow = !query || label.includes(query);
+    pill.hidden = !shouldShow;
+    if (shouldShow) {
+      visibleCount += 1;
+    }
+  });
+
+  if (emptySearchState) {
+    emptySearchState.hidden = visibleCount > 0 || !query;
+  }
+}
+
 function renderHubTagFilterSection() {
   if (!hubMenu) {
     return;
@@ -679,9 +705,21 @@ function renderHubTagFilterSection() {
     renderCards();
   });
 
+  const tagSearchInput = document.createElement("input");
+  tagSearchInput.type = "text";
+  tagSearchInput.className = "hub-menu-tag-search";
+  tagSearchInput.placeholder = "Search tags";
+  tagSearchInput.value = tagFilterSearchTerm;
+  tagSearchInput.setAttribute("aria-label", "Search tags");
+
   const tagPillsContainer = document.createElement("div");
   tagPillsContainer.className = "hub-menu-tag-pills";
   const uniqueTags = getSortedUniqueTags();
+
+  const emptySearchState = document.createElement("p");
+  emptySearchState.className = "hub-menu-tag-empty-state";
+  emptySearchState.textContent = "No matching tags";
+  emptySearchState.hidden = true;
 
   const untaggedPill = createTagFilterPill("Untagged", { selected: showUntaggedDefinitions });
   untaggedPill.dataset.tagFilterValue = "__untagged__";
@@ -694,9 +732,15 @@ function renderHubTagFilterSection() {
       const normalizedTag = normalizeTagValue(tag);
       const pill = createTagFilterPill(tag, { selected: selectedTagFilters.has(normalizedTag) });
       pill.dataset.tagFilterValue = normalizedTag;
+      pill.dataset.tagLabel = tag;
       tagPillsContainer.appendChild(pill);
     });
   }
+
+  tagSearchInput.addEventListener("input", (event) => {
+    tagFilterSearchTerm = String(event.target?.value || "");
+    applyTagSearchFilter(tagPillsContainer, emptySearchState, tagFilterSearchTerm);
+  });
 
   tagPillsContainer.addEventListener("click", (event) => {
     const target = event.target.closest(".hub-menu-tag-pill");
@@ -724,9 +768,13 @@ function renderHubTagFilterSection() {
     renderCards();
   });
 
+  applyTagSearchFilter(tagPillsContainer, emptySearchState, tagFilterSearchTerm);
+
   tagSection.appendChild(tagHeader);
   tagSection.appendChild(modeSelector);
+  tagSection.appendChild(tagSearchInput);
   tagSection.appendChild(tagPillsContainer);
+  tagSection.appendChild(emptySearchState);
   hubMenu.appendChild(tagSection);
 }
 
@@ -2364,6 +2412,7 @@ function closeHubMenu({ animate = true } = {}) {
 
 function openHubMenu() {
   if (!hubMenu || !hubMenuToggleButton) return;
+  renderHubTagFilterSection();
   hubMenu.hidden = false;
   hubMenu.classList.remove("is-hiding");
   hubMenu.classList.add("is-visible");
