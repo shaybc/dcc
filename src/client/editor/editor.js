@@ -146,20 +146,31 @@ function openCreateSaveDialog({ defaults = {}, repos = [], folderPathsByRepoId =
     const repoRow = document.createElement("label");
     repoRow.className = "editor-field";
     const repoLabel = document.createElement("span");
-    repoLabel.textContent = "Destination repo id";
+    repoLabel.textContent = "Destination repository";
     const repoSelect = document.createElement("select");
     repoSelect.className = "editor-save-dialog-select";
-    const placeholderOption = document.createElement("option");
-    placeholderOption.value = "";
-    placeholderOption.textContent = repos.length ? "Select a repository" : "No repositories found";
-    repoSelect.append(placeholderOption);
+
     repos.forEach((repo) => {
       const option = document.createElement("option");
       option.value = String(repo.id);
-      option.textContent = `${repo.id} — ${repo.name || repo.key || repo.localPath || "Repository"}`;
+      option.textContent = repo.name || repo.key || repo.localPath || String(repo.id);
       repoSelect.append(option);
     });
-    repoSelect.value = String(defaults.destinationRepoId || "");
+
+    if (repos.length === 0) {
+      const emptyOption = document.createElement("option");
+      emptyOption.value = "";
+      emptyOption.textContent = "No repositories found";
+      emptyOption.disabled = true;
+      emptyOption.selected = true;
+      repoSelect.append(emptyOption);
+      repoSelect.disabled = true;
+    } else {
+      const defaultRepoId = String(defaults.destinationRepoId || "");
+      const hasDefault = repos.some((repo) => String(repo.id) === defaultRepoId);
+      repoSelect.value = hasDefault ? defaultRepoId : String(repos[0].id);
+    }
+
     repoRow.append(repoLabel, repoSelect);
 
     const filenameRow = document.createElement("label");
