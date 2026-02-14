@@ -1,5 +1,6 @@
 import express from "express";
 import { getSetting, setSetting } from "../utils/settings.js";
+import { getGeminiSettings, normalizeGeminiModel, saveGeminiSettings } from "../utils/geminiSettings.js";
 import {
   createAssetRepo,
   deleteAssetRepo,
@@ -20,15 +21,20 @@ function normalizeMaxRecommendedDefinitions(value, fallback = 8) {
 router.get("/api/settings", async (req, res) => {
   try {
     const maxRecommendedDefinitions = normalizeMaxRecommendedDefinitions(await getSetting("maxRecommendedDefinitions"), 8);
+    const gemini = await getGeminiSettings();
     await setSetting("maxRecommendedDefinitions", String(maxRecommendedDefinitions));
-    res.json({ maxRecommendedDefinitions });
+    res.json({
+      maxRecommendedDefinitions,
+      geminiApiKey: gemini.apiKey,
+      geminiModel: normalizeGeminiModel(gemini.model),
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 router.post("/api/settings", async (req, res) => {
-  const { repoUrl, repoPath, maxRecommendedDefinitions } = req.body || {};
+  const { repoUrl, repoPath, maxRecommendedDefinitions, geminiApiKey, geminiModel } = req.body || {};
   try {
     if (repoUrl !== undefined || repoPath !== undefined) {
       await upsertLegacyAssetRepo(repoUrl, repoPath);
@@ -37,6 +43,7 @@ router.post("/api/settings", async (req, res) => {
       const normalizedValue = normalizeMaxRecommendedDefinitions(maxRecommendedDefinitions, 8);
       await setSetting("maxRecommendedDefinitions", String(normalizedValue));
     }
+    await saveGeminiSettings({ apiKey: geminiApiKey, model: geminiModel });
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
