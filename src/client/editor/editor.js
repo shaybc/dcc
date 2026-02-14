@@ -944,6 +944,10 @@ function normalizeState(type, parsed) {
   };
 }
 
+function shouldShowPromptFormatControl(type) {
+  return type === "prompt" && (mode === "create" || mode === "edit");
+}
+
 function captureUnknownFields(type, parsed) {
   const knownByType = {
     prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts", "prompt", "invokable", "__contentFormat"],
@@ -1026,7 +1030,7 @@ function setupForType(type, initialRaw) {
     }
   });
 
-  if (type === "prompt") {
+  if (shouldShowPromptFormatControl(type)) {
     setPromptFormatControlVisibility(true);
     if (mode === "edit") {
       setPromptFormat(detectPromptFormat(initialRaw));
