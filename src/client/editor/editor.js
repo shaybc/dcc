@@ -37,6 +37,11 @@ let availableTags = [];
 let definitionReferences = [];
 let assetRepos = [];
 let repoFolderPathsById = new Map();
+let promptFormatSuggestionNode;
+let promptFormatSuggestionTextNode;
+let promptFormatSwitchButton;
+let promptFormatKeepButton;
+let dismissedPromptFormatConflict = "";
 let promptContentFormat = "yaml";
 const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
 const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags"];
@@ -431,19 +436,94 @@ function isMarkdownPath(filePath = "") {
   return normalized.endsWith(".md") || normalized.endsWith(".markdown") || normalized.endsWith(".mdx");
 }
 
+function detectPromptFormatFromRawInput(text = "") {
+  const source = String(text || "").trimStart();
+  return source.startsWith("---") ? "markdown" : "yaml";
+}
+
 function detectPromptFormat(text = "") {
   if (isMarkdownPath(pathParam)) {
     return "markdown";
   }
 
-  const source = String(text || "").trimStart();
-  return source.startsWith("---") ? "markdown" : "yaml";
+  return detectPromptFormatFromRawInput(text);
+}
+
+function formatDisplayName(contentFormat) {
+  return contentFormat === "markdown" ? "Markdown" : "YAML";
+}
+
+function promptParseGuidance(activeFormat, detectedFormat) {
+  if (activeFormat === detectedFormat) return "";
+  return ` This content looks like ${formatDisplayName(detectedFormat)}. Use the format selector to switch.`;
+}
+
+function ensurePromptFormatSuggestionBanner() {
+  if (promptFormatSuggestionNode) return;
+
+  promptFormatSuggestionNode = document.createElement("div");
+  promptFormatSuggestionNode.className = "prompt-format-suggestion";
+  promptFormatSuggestionNode.hidden = true;
+
+  promptFormatSuggestionTextNode = document.createElement("span");
+
+  const actionsNode = document.createElement("div");
+  actionsNode.className = "prompt-format-suggestion-actions";
+
+  promptFormatSwitchButton = document.createElement("button");
+  promptFormatSwitchButton.type = "button";
+  promptFormatSwitchButton.className = "btn btn-primary small";
+
+  promptFormatKeepButton = document.createElement("button");
+  promptFormatKeepButton.type = "button";
+  promptFormatKeepButton.className = "btn small";
+
+  actionsNode.append(promptFormatKeepButton, promptFormatSwitchButton);
+  promptFormatSuggestionNode.append(promptFormatSuggestionTextNode, actionsNode);
+
+  parseError.parentNode?.insertBefore(promptFormatSuggestionNode, parseError);
+}
+
+function hidePromptFormatSuggestion() {
+  if (!promptFormatSuggestionNode) return;
+  promptFormatSuggestionNode.hidden = true;
+}
+
+function showPromptFormatSuggestion(detectedFormat) {
+  if (definitionType !== "prompt") return;
+  ensurePromptFormatSuggestionBanner();
+
+  const activeFormat = promptContentFormat;
+  const conflictKey = `${activeFormat}->${detectedFormat}`;
+  if (dismissedPromptFormatConflict === conflictKey) return;
+
+  promptFormatSuggestionTextNode.textContent = `Pasted content looks like ${formatDisplayName(detectedFormat)}. Switch format?`;
+  promptFormatSwitchButton.textContent = `Switch to ${formatDisplayName(detectedFormat)}`;
+  promptFormatKeepButton.textContent = `Keep ${formatDisplayName(activeFormat)}`;
+
+  promptFormatSwitchButton.onclick = () => {
+    dismissedPromptFormatConflict = "";
+    hidePromptFormatSuggestion();
+    setPromptFormat(detectedFormat);
+    sync?.updateFormFromText({ reason: "switch-format" });
+  };
+
+  promptFormatKeepButton.onclick = () => {
+    dismissedPromptFormatConflict = conflictKey;
+    hidePromptFormatSuggestion();
+    sync?.setError(`Keeping ${formatDisplayName(activeFormat)} format.${promptParseGuidance(activeFormat, detectedFormat)}`);
+    sync?.updateFormFromText({ reason: "keep-format" });
+  };
+
+  promptFormatSuggestionNode.hidden = false;
 }
 
 function setPromptFormat(nextFormat) {
   const normalizedFormat = nextFormat === "markdown" ? "markdown" : "yaml";
   promptContentFormat = normalizedFormat;
   format = normalizedFormat;
+  dismissedPromptFormatConflict = "";
+  hidePromptFormatSuggestion();
   rawLabel.textContent = normalizedFormat === "markdown" ? "Raw Markdown" : "Raw YAML";
   if (promptFormatSelect) {
     promptFormatSelect.value = normalizedFormat;
@@ -719,13 +799,38 @@ function setupForType(type, initialRaw) {
     textArea: rawText,
     errorNode: parseError,
     parseText: (text) => {
-      const parsed = handler.parse(text);
-      captureUnknownFields(type, parsed);
-      return normalizeState(type, parsed);
+      try {
+        const parsed = handler.parse(text);
+        captureUnknownFields(type, parsed);
+        return normalizeState(type, parsed);
+      } catch (error) {
+        if (type === "prompt") {
+          const detectedFormat = detectPromptFormatFromRawInput(text);
+          const guidance = promptParseGuidance(promptContentFormat, detectedFormat);
+          if (guidance) {
+            error.message = `${error.message || "Failed to parse text."}${guidance}`;
+          }
+        }
+        throw error;
+      }
     },
     serializeState: (state) => handler.serialize(state),
     readState: () => formController.getState(),
-    writeState: (state) => formController.setState(state)
+    writeState: (state) => formController.setState(state),
+    onTextInput: ({ text, reason, event }) => {
+      if (type !== "prompt" || reason !== "input") return;
+      const inputType = event?.inputType || "";
+      if (!inputType.startsWith("insert")) return;
+
+      const detectedFormat = detectPromptFormatFromRawInput(text);
+      if (detectedFormat === promptContentFormat) {
+        dismissedPromptFormatConflict = "";
+        hidePromptFormatSuggestion();
+        return;
+      }
+
+      showPromptFormatSuggestion(detectedFormat);
+    }
   });
 
   if (type === "prompt") {
@@ -737,6 +842,7 @@ function setupForType(type, initialRaw) {
     }
   } else {
     setPromptFormatControlVisibility(false);
+    hidePromptFormatSuggestion();
     format = type === "agent" || type === "rule" ? "markdown" : "yaml";
     rawLabel.textContent = format === "markdown" ? "Raw Markdown" : "Raw YAML";
   }

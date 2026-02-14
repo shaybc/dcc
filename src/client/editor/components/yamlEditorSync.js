@@ -1,4 +1,12 @@
-export function createTextFormSync({ textArea, errorNode, parseText, serializeState, readState, writeState }) {
+export function createTextFormSync({
+  textArea,
+  errorNode,
+  parseText,
+  serializeState,
+  readState,
+  writeState,
+  onTextInput
+}) {
   let suppressTextUpdate = false;
   let suppressFormUpdate = false;
 
@@ -20,8 +28,12 @@ export function createTextFormSync({ textArea, errorNode, parseText, serializeSt
     }
   }
 
-  function updateFormFromText() {
+  function updateFormFromText({ reason = "input", event } = {}) {
     if (suppressFormUpdate) return;
+    if (typeof onTextInput === "function") {
+      const result = onTextInput({ text: textArea.value, reason, event });
+      if (result?.skipParse) return;
+    }
     try {
       suppressTextUpdate = true;
       const parsed = parseText(textArea.value);
@@ -34,7 +46,7 @@ export function createTextFormSync({ textArea, errorNode, parseText, serializeSt
     }
   }
 
-  textArea.addEventListener("input", updateFormFromText);
+  textArea.addEventListener("input", (event) => updateFormFromText({ reason: "input", event }));
 
   return {
     updateTextFromForm,
