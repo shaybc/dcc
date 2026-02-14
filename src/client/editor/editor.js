@@ -765,6 +765,7 @@ const handlers = {
     serialize: (state) => {
       const normalizedModels = (state.models || []).map((entry) => ({
         ...entry,
+        ...(entry.apiKey == null || String(entry.apiKey).trim() === "" ? {} : { apiKey: String(entry.apiKey) }),
         roles: Array.isArray(entry.roles) ? entry.roles : [],
         defaultCompletionOptions: {
           ...(entry.defaultCompletionOptions || {}),
@@ -772,6 +773,9 @@ const handlers = {
         }
       })).map((entry) => {
         const { contextLength, ...rest } = entry;
+        if (rest.apiKey == null || String(rest.apiKey).trim() === "") {
+          delete rest.apiKey;
+        }
         if (!rest.defaultCompletionOptions || Object.keys(rest.defaultCompletionOptions).length === 0) {
           delete rest.defaultCompletionOptions;
         }
