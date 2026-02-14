@@ -50,6 +50,24 @@ body {
   padding: 16px 20px;
 }
 
+.raw-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompt-format-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.prompt-format-control select {
+  min-width: 120px;
+}
+
 #formMount {
   display: flex;
   flex-direction: column;
