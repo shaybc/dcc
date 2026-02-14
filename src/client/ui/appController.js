@@ -2498,10 +2498,13 @@ function setupEventListeners() {
   });
   
   document.addEventListener("click", (event) => {
+    const eventPath = typeof event.composedPath === "function" ? event.composedPath() : [];
+    const clickedInsideHubMenuWrap = eventPath.includes(hubMenu) || eventPath.some((node) => node?.classList?.contains?.("header-menu-wrap"));
+
     if (!event.target.closest(".filter-dropdown")) {
       closeFilterMenu();
     }
-    if (hubMenu && !hubMenu.hidden && !event.target.closest(".header-menu-wrap")) {
+    if (hubMenu && !hubMenu.hidden && !clickedInsideHubMenuWrap) {
       closeHubMenu();
     }
     if (activeVersionDropdown && !event.target.closest(".version-dropdown") && !event.target.closest("#versionHistoryButton")) {
