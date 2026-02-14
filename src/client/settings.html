@@ -85,13 +85,19 @@
 
         <div class="settings-subsection">
           <h3>Gemini</h3>
-          <p class="helper-text">Store your Gemini API key and default model in app settings.</p>
+          <p class="helper-text">Set your Gemini API key & Model for DCC use.</p>
           <div class="table-actions">
-            <label for="geminiApiKeyInput">Gemini API key</label>
-            <input id="geminiApiKeyInput" type="password" autocomplete="off" placeholder="AIza..." />
-            <label for="geminiModelInput">Gemini model</label>
-            <input id="geminiModelInput" type="text" placeholder="gemini-2.5-pro" />
-            <button class="btn btn-primary" type="button" id="saveGeminiSettingsBtn">Save Gemini settings</button>
+            <div id="geminiAPIKeySettings">
+              <label for="geminiApiKeyInput">Gemini API key</label>
+              <input id="geminiApiKeyInput" type="password" autocomplete="off" placeholder="AIza..." />
+            </div>
+            <div id="geminiModelSettings">
+              <label for="geminiModelInput">Gemini model</label>
+              <input id="geminiModelInput" type="text" placeholder="gemini-2.5-pro" />
+            </div>
+            <div id="geminiSettingsSaveButton">
+              <button class="btn btn-primary" type="button" id="saveGeminiSettingsBtn">Save Gemini settings</button>
+            </div>
           </div>
         </div>
       </section>
