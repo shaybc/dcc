@@ -17,12 +17,8 @@
     </header>
     <main class="editor-main">
       <section>
-        <h3>Structured Form</h3>
-        <div id="formMount"></div>
-      </section>
-      <section>
-        <div class="raw-header">
-          <h3 id="rawLabel">Raw YAML</h3>
+        <div class="structured-header">
+          <h3>Structured Form</h3>
           <label id="promptFormatControl" class="prompt-format-control" hidden>
             <span>Format</span>
             <select id="promptFormatSelect">
@@ -30,6 +26,12 @@
               <option value="markdown">Markdown</option>
             </select>
           </label>
+        </div>
+        <div id="formMount"></div>
+      </section>
+      <section>
+        <div class="raw-header">
+          <h3 id="rawLabel">Raw YAML</h3>
         </div>
         <div id="parseError" class="error" hidden></div>
         <textarea id="rawText" rows="30"></textarea>
