@@ -215,6 +215,10 @@ select:focus-visible {
   overflow: auto;
 }
 
+.autocomplete-menu[hidden] {
+  display: none !important;
+}
+
 .autocomplete-option {
   text-align: left;
   border: 0;
