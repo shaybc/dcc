@@ -71,6 +71,10 @@ body {
   font-size: 13px;
 }
 
+.prompt-format-control[hidden] {
+  display: none !important;
+}
+
 .prompt-format-control select {
   min-width: 120px;
 }
