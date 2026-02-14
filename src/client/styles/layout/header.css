@@ -234,6 +234,15 @@ header .actions .btn {
   cursor: default;
 }
 
+
+.hub-menu-tag-pill[hidden] {
+  display: none;
+}
+
+.hub-menu-tag-empty-state[hidden] {
+  display: none;
+}
+
 .hub-menu-tag-empty-state {
   margin: 0;
   color: var(--muted);
