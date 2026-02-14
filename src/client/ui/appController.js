@@ -783,19 +783,16 @@ function matchesSelectedTagFilters(definition) {
   const definitionTags = Array.isArray(definition.tagsNormalized) ? definition.tagsNormalized : [];
   const hasNoTags = definitionTags.length === 0;
 
-  if (selectedTags.length === 0 && !showUntaggedDefinitions) {
-    return true;
+  if (selectedTags.length === 0) {
+    return showUntaggedDefinitions ? hasNoTags : true;
   }
 
-  let matchesTags = selectedTags.length === 0;
-  if (selectedTags.length > 0) {
-    matchesTags = tagFilterMode === "and"
-      ? selectedTags.every((tag) => definitionTags.includes(tag))
-      : selectedTags.some((tag) => definitionTags.includes(tag));
-  }
+  const matchesTags = tagFilterMode === "and"
+    ? selectedTags.every((tag) => definitionTags.includes(tag))
+    : selectedTags.some((tag) => definitionTags.includes(tag));
 
-  if (showUntaggedDefinitions && hasNoTags) {
-    return true;
+  if (showUntaggedDefinitions) {
+    return matchesTags || hasNoTags;
   }
 
   return matchesTags;
