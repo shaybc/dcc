@@ -153,6 +153,34 @@ header .actions .btn {
   padding: 0 2px;
 }
 
+
+.hub-tag-filter-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hub-tag-filter-clear-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.hub-tag-filter-clear-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
 .hub-tag-filter-mode {
   margin: 0;
   padding: 0 2px;

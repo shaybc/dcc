@@ -681,6 +681,9 @@ function renderHubTagFilterSection() {
   tagHeader.className = "hub-menu-tag-header";
   tagHeader.innerHTML = "<span>Tags</span>";
 
+  const modeRow = document.createElement("div");
+  modeRow.className = "hub-tag-filter-mode-row";
+
   const modeSelector = document.createElement("fieldset");
   modeSelector.className = "hub-tag-filter-mode";
   modeSelector.setAttribute("aria-label", "Tag filter mode");
@@ -704,6 +707,25 @@ function renderHubTagFilterSection() {
     currentCardsPage = 1;
     renderCards();
   });
+
+  const clearTagsFilterButton = document.createElement("button");
+  clearTagsFilterButton.type = "button";
+  clearTagsFilterButton.className = "hub-tag-filter-clear-btn";
+  clearTagsFilterButton.textContent = "×";
+  clearTagsFilterButton.setAttribute("title", "Clear Tags filter");
+  clearTagsFilterButton.setAttribute("aria-label", "Clear Tags filter");
+  clearTagsFilterButton.addEventListener("click", () => {
+    selectedTagFilters.clear();
+    showUntaggedDefinitions = false;
+    currentCardsPage = 1;
+    tagPillsContainer.querySelectorAll(".hub-menu-tag-pill.is-selected").forEach((pill) => {
+      pill.classList.remove("is-selected");
+    });
+    renderCards();
+  });
+
+  modeRow.appendChild(modeSelector);
+  modeRow.appendChild(clearTagsFilterButton);
 
   const tagSearchInput = document.createElement("input");
   tagSearchInput.type = "text";
@@ -771,7 +793,7 @@ function renderHubTagFilterSection() {
   applyTagSearchFilter(tagPillsContainer, emptySearchState, tagFilterSearchTerm);
 
   tagSection.appendChild(tagHeader);
-  tagSection.appendChild(modeSelector);
+  tagSection.appendChild(modeRow);
   tagSection.appendChild(tagSearchInput);
   tagSection.appendChild(tagPillsContainer);
   tagSection.appendChild(emptySearchState);
