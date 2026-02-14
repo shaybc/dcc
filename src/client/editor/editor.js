@@ -94,15 +94,41 @@ function renderEditorTitle(type) {
   editorTitle.innerHTML = `<span class="editor-title-icon">${typeIconSvg(type)}</span><span>Edit ${label}</span>`;
 }
 
-function getDefaultExtension() {
-  return format === "markdown" ? "md" : "yaml";
+function getDefaultExtensionForFormat(selectedFormat) {
+  return selectedFormat === "markdown" ? "md" : "yaml";
 }
 
-function buildDefaultFilenameFromDccUri(dccUri) {
+function getAllowedExtensionsForFormat(selectedFormat) {
+  if (selectedFormat === "markdown") {
+    return ["md", "markdown", "mdx"];
+  }
+  return ["yaml", "yml"];
+}
+
+function readFilenameExtension(filename) {
+  const trimmed = String(filename || "").trim();
+  const dotIndex = trimmed.lastIndexOf(".");
+  if (dotIndex <= 0 || dotIndex === trimmed.length - 1) return "";
+  return trimmed.slice(dotIndex + 1).toLowerCase();
+}
+
+function replaceFilenameExtension(filename, nextExtension) {
+  const trimmed = String(filename || "").trim();
+  const ext = String(nextExtension || "").replace(/^\.+/, "");
+  if (!trimmed) return `definition.${ext}`;
+  const slashIndex = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  const dotIndex = trimmed.lastIndexOf(".");
+  if (dotIndex <= slashIndex || dotIndex < 0) {
+    return `${trimmed}.${ext}`;
+  }
+  return `${trimmed.slice(0, dotIndex)}.${ext}`;
+}
+
+function buildDefaultFilenameFromDccUri(dccUri, selectedFormat = format) {
   const cleaned = String(dccUri || "").trim().replace(/\/+$/, "");
   const segments = cleaned.split("/").map((segment) => segment.trim()).filter(Boolean);
   const baseName = segments.length > 0 ? segments.at(-1) : "definition";
-  return `${baseName}.${getDefaultExtension()}`;
+  return `${baseName}.${getDefaultExtensionForFormat(selectedFormat)}`;
 }
 
 function buildRepoFolderPaths(definitions) {
@@ -131,7 +157,7 @@ function buildRepoFolderPaths(definitions) {
   );
 }
 
-function openCreateSaveDialog({ defaults = {}, repos = [], folderPathsByRepoId = new Map() } = {}) {
+function openCreateSaveDialog({ defaults = {}, repos = [], folderPathsByRepoId = new Map(), formats = ["yaml", "markdown"] } = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "editor-modal-overlay";
@@ -193,6 +219,47 @@ function openCreateSaveDialog({ defaults = {}, repos = [], folderPathsByRepoId =
     filenameInput.placeholder = "example.yaml";
     filenameRow.append(filenameLabel, filenameInput);
 
+    const formatRow = document.createElement("label");
+    formatRow.className = "editor-field";
+    const formatLabel = document.createElement("span");
+    formatLabel.textContent = "Format";
+    const formatSelect = document.createElement("select");
+    formatSelect.className = "editor-save-dialog-select";
+    const selectableFormats = (Array.isArray(formats) ? formats : ["yaml"])
+      .map((entry) => entry === "markdown" ? "markdown" : "yaml")
+      .filter((entry, index, array) => array.indexOf(entry) === index);
+
+    selectableFormats.forEach((formatValue) => {
+      const option = document.createElement("option");
+      option.value = formatValue;
+      option.textContent = formatDisplayName(formatValue);
+      formatSelect.append(option);
+    });
+    const defaultDialogFormat = defaults.format === "markdown" ? "markdown" : "yaml";
+    formatSelect.value = selectableFormats.includes(defaultDialogFormat)
+      ? defaultDialogFormat
+      : selectableFormats[0] || "yaml";
+    formatSelect.disabled = selectableFormats.length <= 1;
+    formatRow.append(formatLabel, formatSelect);
+
+    let lastSuggestedFilename = String(filenameInput.value || "").trim();
+    let filenameManuallyOverridden = false;
+
+    filenameInput.addEventListener("input", () => {
+      const current = String(filenameInput.value || "").trim();
+      filenameManuallyOverridden = current !== lastSuggestedFilename;
+    });
+
+    formatSelect.addEventListener("change", () => {
+      if (filenameManuallyOverridden) return;
+      const nextFilename = replaceFilenameExtension(
+        filenameInput.value,
+        getDefaultExtensionForFormat(formatSelect.value)
+      );
+      filenameInput.value = nextFilename;
+      lastSuggestedFilename = String(nextFilename || "").trim();
+    });
+
     const targetPathRow = document.createElement("label");
     targetPathRow.className = "editor-field";
     const targetPathLabel = document.createElement("span");
@@ -244,10 +311,12 @@ function openCreateSaveDialog({ defaults = {}, repos = [], folderPathsByRepoId =
     });
 
     save.addEventListener("click", () => {
+      const selectedFormat = formatSelect.value === "markdown" ? "markdown" : "yaml";
       const value = {
         filename: String(filenameInput.value || "").trim(),
         targetPath: String(targetPathInput.value || "").trim(),
-        destinationRepoId: String(repoSelect.value || "").trim()
+        destinationRepoId: String(repoSelect.value || "").trim(),
+        format: selectedFormat
       };
 
       if (!value.destinationRepoId) {
@@ -260,12 +329,33 @@ function openCreateSaveDialog({ defaults = {}, repos = [], folderPathsByRepoId =
         error.textContent = "Filename is required.";
         return;
       }
+
+      const ext = readFilenameExtension(value.filename);
+      const allowed = getAllowedExtensionsForFormat(selectedFormat);
+      if (!allowed.includes(ext)) {
+        const correctedFilename = replaceFilenameExtension(
+          value.filename,
+          getDefaultExtensionForFormat(selectedFormat)
+        );
+        const shouldAutoCorrect = window.confirm(
+          `Filename extension does not match ${formatDisplayName(selectedFormat)} format.\n\n` +
+          `Press OK to use \"${correctedFilename}\" or Cancel to keep \"${value.filename}\".`
+        );
+
+        if (shouldAutoCorrect) {
+          value.filename = correctedFilename;
+          filenameInput.value = correctedFilename;
+          lastSuggestedFilename = correctedFilename;
+          filenameManuallyOverridden = false;
+        }
+      }
+
       error.hidden = true;
       close(value);
     });
 
     actions.append(cancel, save);
-    form.append(repoRow, filenameRow, targetPathRow);
+    form.append(repoRow, filenameRow, formatRow, targetPathRow);
     modal.append(title, subtitle, form, error, actions);
     overlay.append(modal);
     document.body.append(overlay);
@@ -941,12 +1031,14 @@ document.getElementById("saveButton").addEventListener("click", async () => {
   if (mode === "create") {
     const dialogResult = await openCreateSaveDialog({
       defaults: {
-        filename: buildDefaultFilenameFromDccUri(dccUri),
+        filename: buildDefaultFilenameFromDccUri(dccUri, format),
         targetPath: "",
-        destinationRepoId: destinationRepoIdParam
+        destinationRepoId: destinationRepoIdParam,
+        format
       },
       repos: assetRepos,
-      folderPathsByRepoId: repoFolderPathsById
+      folderPathsByRepoId: repoFolderPathsById,
+      formats: definitionType === "prompt" ? ["yaml", "markdown"] : [format]
     });
     if (!dialogResult) return;
 
@@ -955,6 +1047,7 @@ document.getElementById("saveButton").addEventListener("click", async () => {
 
     const repoIdInput = dialogResult.destinationRepoId;
     destinationRepoId = repoIdInput ? Number(repoIdInput) : null;
+    format = dialogResult.format === "markdown" ? "markdown" : "yaml";
 
     if (!Number.isInteger(destinationRepoId) || destinationRepoId <= 0) {
       parseError.hidden = false;
