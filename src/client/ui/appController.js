@@ -787,6 +787,10 @@ function matchesSelectedTagFilters(definition) {
     return showUntaggedDefinitions ? hasNoTags : true;
   }
 
+  if (showUntaggedDefinitions && tagFilterMode === "and") {
+    return false;
+  }
+
   const matchesTags = tagFilterMode === "and"
     ? selectedTags.every((tag) => definitionTags.includes(tag))
     : selectedTags.some((tag) => definitionTags.includes(tag));
