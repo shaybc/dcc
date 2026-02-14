@@ -104,9 +104,12 @@ function buildRepoFolderPaths(definitions) {
     const repoId = Number(definition?.repoId || 0);
     if (!Number.isInteger(repoId) || repoId <= 0) return;
 
-    const normalizedPath = String(definition?.filePath || "").replace(/\\/g, "/").trim();
-    const slashIndex = normalizedPath.lastIndexOf("/");
-    const folderPath = slashIndex <= 0 ? "" : normalizedPath.slice(0, slashIndex);
+    const normalizedRelativePath = String(definition?.repoRelativePath || "")
+      .replace(/\\/g, "/")
+      .replace(/^\.\//, "")
+      .trim();
+    const slashIndex = normalizedRelativePath.lastIndexOf("/");
+    const folderPath = slashIndex <= 0 ? "" : normalizedRelativePath.slice(0, slashIndex);
 
     if (!pathsByRepo.has(repoId)) {
       pathsByRepo.set(repoId, new Set());
