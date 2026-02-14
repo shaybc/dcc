@@ -105,3 +105,36 @@ test("GET /api/definitions/suggestions handles missing project metadata", async 
     });
   });
 });
+
+
+test("GET /api/definitions/suggestions respects maxRecommendedDefinitions setting", async () => {
+  await resetTables();
+  await runDb("INSERT INTO settings (key, value) VALUES (?, ?)", ["currentDevProject", "/workspace/apps/node-service"]);
+  await runDb("INSERT INTO settings (key, value) VALUES (?, ?)", ["maxRecommendedDefinitions", "5"]);
+  await runDb("INSERT INTO dev_projects (path, projectType, corePlatform, detectedSignals, projectTechnologies, lastScannedAt) VALUES (?, ?, ?, ?, ?, ?)", [
+    "/workspace/apps/node-service",
+    "node",
+    "backend",
+    "[]",
+    JSON.stringify(["node", "javascript"]),
+    new Date().toISOString()
+  ]);
+
+  for (let index = 1; index <= 12; index += 1) {
+    await runDb("INSERT INTO definitions (key, name, description, tags, type) VALUES (?, ?, ?, ?, ?)", [
+      `rules::node-${index}`,
+      `Node Rule ${index}`,
+      "Node backend helper",
+      "node,backend",
+      "rules"
+    ]);
+  }
+
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/definitions/suggestions`);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+
+    assert.equal(payload.suggestions.length, 5);
+  });
+});

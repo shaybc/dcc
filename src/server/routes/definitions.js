@@ -10,6 +10,12 @@ import { buildProjectTechnologyTokens, recommendDefinitions } from "../definitio
 
 const router = express.Router();
 
+function normalizeMaxRecommendedDefinitions(value, fallback = 8) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return fallback;
+  return Math.min(8, Math.max(3, Math.round(numericValue)));
+}
+
 function normalizeRepoDisplayMetadata(definitionRow, repoRow) {
   const repoName = String(repoRow?.name || definitionRow?.repoName || "").trim();
   const repoRemoteUrl = String(repoRow?.remoteUrl || "").trim();
@@ -158,10 +164,13 @@ router.get("/api/definitions/suggestions", async (_req, res) => {
       "SELECT id, key, name, description, tags, type FROM definitions"
     );
 
+    const maxRecommendedDefinitions = normalizeMaxRecommendedDefinitions(await getSetting("maxRecommendedDefinitions"), 8);
+
     const rankedSuggestions = recommendDefinitions(currentDevProject, projectType, definitionsRows, {
       corePlatform,
       projectTechnologies,
-      detectedSignals
+      detectedSignals,
+      maxSuggestions: maxRecommendedDefinitions
     })
       .map((definition) => ({
         definitionId: definition.id,
