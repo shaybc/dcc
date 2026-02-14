@@ -63,7 +63,8 @@ body {
 }
 
 input,
-textarea {
+textarea,
+select {
   background: var(--bg-soft);
   color: var(--text);
   border: 1px solid var(--border);
@@ -104,7 +105,8 @@ textarea::placeholder {
 
 .btn:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+select:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.35);
 }
@@ -162,6 +164,15 @@ textarea:focus-visible {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 16px;
+}
+
+.editor-save-dialog {
+  box-shadow: var(--shadow);
+}
+
+.editor-save-dialog-subtitle {
+  margin: 4px 0 12px;
+  color: var(--muted);
 }
 
 .editor-modal-actions {

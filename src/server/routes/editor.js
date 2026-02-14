@@ -136,20 +136,17 @@ router.post("/api/editor/save", async (req, res) => {
       definitionPath = context.absoluteFilePath;
     } else if (mode === "create") {
       const destinationRepoId = Number(req.body?.destinationRepoId);
-      const destinationRepoPath = String(req.body?.destinationRepoPath || "").trim();
-      if (Number.isInteger(destinationRepoId) && destinationRepoId > 0) {
-        const destinationRepo = await getAssetRepo(destinationRepoId);
-        if (!destinationRepo) {
-          res.status(400).json({ error: "Selected destination repository was not found." });
-          return;
-        }
-        repoPath = destinationRepo.localPath;
-      } else if (destinationRepoPath) {
-        repoPath = destinationRepoPath;
-      } else {
-        res.status(400).json({ error: "Destination repository id or path is required for create mode." });
+      if (!Number.isInteger(destinationRepoId) || destinationRepoId <= 0) {
+        res.status(400).json({ error: "Destination repository id is required for create mode." });
         return;
       }
+
+      const destinationRepo = await getAssetRepo(destinationRepoId);
+      if (!destinationRepo) {
+        res.status(400).json({ error: "Selected destination repository was not found." });
+        return;
+      }
+      repoPath = destinationRepo.localPath;
     } else {
       res.status(400).json({ error: "Invalid editor mode." });
       return;
