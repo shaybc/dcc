@@ -531,6 +531,27 @@ function detectPromptFormatFromRawInput(text = "") {
   return source.startsWith("---") ? "markdown" : "yaml";
 }
 
+function isCertainYamlPaste(text = "") {
+  const source = String(text || "").trim();
+  if (!source || source.startsWith("---")) return false;
+
+  const hasYamlKeyPattern = /(^|\n)\s*[A-Za-z0-9_][\w-]*\s*:\s*/.test(source);
+  if (!hasYamlKeyPattern) return false;
+
+  try {
+    const parsed = YAML.parse(source);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return false;
+
+    const keys = Object.keys(parsed);
+    if (keys.length === 0) return false;
+
+    const knownPromptKeys = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags", "prompts", "prompt"];
+    return keys.some((key) => knownPromptKeys.includes(key));
+  } catch (_error) {
+    return false;
+  }
+}
+
 function detectPromptFormat(text = "") {
   if (isMarkdownPath(pathParam)) {
     return "markdown";
@@ -916,6 +937,18 @@ function setupForType(type, initialRaw) {
       if (detectedFormat === promptContentFormat) {
         dismissedPromptFormatConflict = "";
         hidePromptFormatSuggestion();
+        return;
+      }
+
+      if (
+        inputType === "insertFromPaste" &&
+        detectedFormat === "yaml" &&
+        promptContentFormat === "markdown" &&
+        isCertainYamlPaste(text)
+      ) {
+        dismissedPromptFormatConflict = "";
+        setPromptFormat("yaml");
+        sync?.updateFormFromText({ reason: "auto-switch-format" });
         return;
       }
 
