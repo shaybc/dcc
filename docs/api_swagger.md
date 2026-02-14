@@ -2,6 +2,13 @@
 
 This is a concise route map derived from the current Express route modules.
 
+## Interactive Swagger UI
+- Start the app with `npm start` and open `http://localhost:3000/swagger`.
+- The page loads the OpenAPI file from `/docs/swagger/dcc-server-openapi.yaml`, so updates to that YAML appear immediately in the UI.
+- In Swagger's **Servers** dropdown, keep **Current host (recommended)** selected so requests target the same origin that served the page (avoids localhost/port mismatches).
+
+---
+
 ## Base URLs
 - Application API: `http://localhost:3000/api`
 - OpenAI-compatible facade: `http://localhost:3000/v1`
