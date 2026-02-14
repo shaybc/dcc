@@ -21,6 +21,11 @@ app.use(express.static(path.join(__dirname, "../client"), {
     res.setHeader("Cache-Control", "no-store");
   }
 }));
+app.use("/docs", express.static(path.join(__dirname, "../../docs"), {
+  setHeaders: (res) => {
+    res.setHeader("Cache-Control", "no-store");
+  }
+}));
 
 app.use("/v1", openaiRouter);
 app.use(editorRouter);
@@ -31,6 +36,10 @@ app.use(definitionsRouter);
 app.use(lifecycleRouter);
 app.use(validationRouter);
 app.use(versionsRouter);
+
+app.get("/swagger", (req, res) => {
+  res.sendFile(path.join(__dirname, "../client/swagger.html"));
+});
 
 app.get("/settings", (req, res) => {
   res.redirect("/?tab=settings");

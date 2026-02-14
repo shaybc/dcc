@@ -27,6 +27,10 @@ const saveMaxRecommendedDefinitionsButton = document.getElementById("saveMaxReco
 const geminiApiKeyInput = document.getElementById("geminiApiKeyInput");
 const geminiModelInput = document.getElementById("geminiModelInput");
 const saveGeminiSettingsButton = document.getElementById("saveGeminiSettingsBtn");
+const getModelsButton = document.getElementById("getModelsBtn");
+const modelsDialogOverlay = document.getElementById("modelsDialogOverlay");
+const closeModelsDialogButton = document.getElementById("closeModelsDialogBtn");
+const modelsDialogContent = document.getElementById("modelsDialogContent");
 function normalizeLocalPath(localPath = "") {
   return String(localPath || "").trim();
 }
@@ -684,6 +688,88 @@ saveGeminiSettingsButton?.addEventListener("click", async () => {
     geminiModelInput.value = geminiModel;
   }
   setNotice("Gemini settings updated.");
+});
+
+function closeModelsDialog() {
+  if (!modelsDialogOverlay) return;
+  modelsDialogOverlay.hidden = true;
+}
+
+function openModelsDialog() {
+  if (!modelsDialogOverlay) return;
+  modelsDialogOverlay.hidden = false;
+}
+
+function renderModelCards(models = []) {
+  if (!modelsDialogContent) return;
+  modelsDialogContent.innerHTML = "";
+
+  if (!Array.isArray(models) || models.length === 0) {
+    const emptyState = document.createElement("p");
+    emptyState.className = "helper-text";
+    emptyState.textContent = "No models were returned by /v1/models.";
+    modelsDialogContent.appendChild(emptyState);
+    return;
+  }
+
+  models.forEach((model) => {
+    const card = document.createElement("article");
+    card.className = "model-card";
+
+    const title = document.createElement("h4");
+    title.textContent = String(model?.id || model?.name || "Unnamed model");
+
+    const details = document.createElement("pre");
+    details.textContent = JSON.stringify(model, null, 2);
+
+    card.append(title, details);
+    modelsDialogContent.appendChild(card);
+  });
+}
+
+async function fetchAndShowModels() {
+  if (!modelsDialogContent) return;
+
+  openModelsDialog();
+  modelsDialogContent.innerHTML = '<p class="helper-text">Loading models from /v1/models…</p>';
+
+  const response = await fetch("/v1/models");
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = payload?.error?.message || payload?.error || "Failed to load models.";
+    modelsDialogContent.innerHTML = `<p class="helper-text" style="color:#dc2626">${message}</p>`;
+    return;
+  }
+
+  const models = Array.isArray(payload?.data)
+    ? payload.data
+    : (Array.isArray(payload?.models) ? payload.models : []);
+
+  renderModelCards(models);
+}
+
+getModelsButton?.addEventListener("click", () => {
+  fetchAndShowModels().catch((error) => {
+    if (!modelsDialogContent) return;
+    const message = error instanceof Error ? error.message : "Failed to load models.";
+    modelsDialogContent.innerHTML = `<p class="helper-text" style="color:#dc2626">${message}</p>`;
+    openModelsDialog();
+  });
+});
+
+closeModelsDialogButton?.addEventListener("click", closeModelsDialog);
+
+modelsDialogOverlay?.addEventListener("click", (event) => {
+  if (event.target === modelsDialogOverlay) {
+    closeModelsDialog();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && modelsDialogOverlay && !modelsDialogOverlay.hidden) {
+    closeModelsDialog();
+  }
 });
 
 Promise.all([loadAssetRepos(), loadDevProjects(), loadRecommendationSettings()]).catch(() => {

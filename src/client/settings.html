@@ -97,6 +97,8 @@
             </div>
             <div id="geminiSettingsSaveButton">
               <button class="btn btn-primary" type="button" id="saveGeminiSettingsBtn">Save Gemini settings</button>
+              <a class="btn" href="/swagger" target="_blank" rel="noopener noreferrer">Open API Swagger</a>
+              <button class="btn" type="button" id="getModelsBtn">Get Models</button>
             </div>
           </div>
         </div>
@@ -145,6 +147,21 @@
         </table>
       </section>
     </main>
+
+
+    <div class="settings-models-overlay" id="modelsDialogOverlay" hidden>
+      <div class="settings-models-dialog" role="dialog" aria-modal="true" aria-labelledby="modelsDialogTitle">
+        <div class="modal-topbar">
+          <div>
+            <p class="modal-kicker">OpenAI facade</p>
+            <h3 id="modelsDialogTitle">Available Models</h3>
+          </div>
+          <button class="btn" type="button" id="closeModelsDialogBtn">Close</button>
+        </div>
+        <p class="helper-text">Loaded from <code>/v1/models</code>.</p>
+        <div class="settings-models-content" id="modelsDialogContent"></div>
+      </div>
+    </div>
 
     <script type="module" src="/settings.js"></script>
   
