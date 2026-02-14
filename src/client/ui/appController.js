@@ -459,6 +459,14 @@ function renderDescriptionMarkdown(description) {
 }
 
 function filterIconSvg(type) {
+  if (type === "tags" || type === "tag") {
+    return `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 13 11 22l-9-9V4h9z"></path>
+        <circle cx="7" cy="9" r="1.5"></circle>
+      </svg>
+    `;
+  }
   if (type === "prompt" || type === "prompts") {
     return `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -605,6 +613,34 @@ function renderFilters() {
     filterMenu.appendChild(menuItem);
   });
 
+  if (selectedTagFilters.size > 0 || showUntaggedDefinitions) {
+    const tagsChip = document.createElement("button");
+    tagsChip.className = "chip active";
+    tagsChip.type = "button";
+    tagsChip.innerHTML = `
+      <span class="chip-icon">${filterIconSvg("tags")}</span>
+      <span class="chip-label">Tags</span>
+      <span class="chip-clear" role="button" aria-label="Clear Tags filter">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6 6 18"></path>
+          <path d="m6 6 12 12"></path>
+        </svg>
+      </span>
+    `;
+    tagsChip.addEventListener("click", (event) => {
+      if (!event.target.closest(".chip-clear")) {
+        return;
+      }
+
+      selectedTagFilters.clear();
+      showUntaggedDefinitions = false;
+      currentCardsPage = 1;
+      renderFilters();
+      renderCards();
+    });
+    filtersContainer.appendChild(tagsChip);
+  }
+
   renderHubTagFilterSection();
 }
 
@@ -721,6 +757,7 @@ function renderHubTagFilterSection() {
     tagPillsContainer.querySelectorAll(".hub-menu-tag-pill.is-selected").forEach((pill) => {
       pill.classList.remove("is-selected");
     });
+    renderFilters();
     renderCards();
   });
 
@@ -787,6 +824,7 @@ function renderHubTagFilterSection() {
     }
 
     currentCardsPage = 1;
+    renderFilters();
     renderCards();
   });
 
@@ -2460,10 +2498,13 @@ function setupEventListeners() {
   });
   
   document.addEventListener("click", (event) => {
+    const eventPath = typeof event.composedPath === "function" ? event.composedPath() : [];
+    const clickedInsideHubMenuWrap = eventPath.includes(hubMenu) || eventPath.some((node) => node?.classList?.contains?.("header-menu-wrap"));
+
     if (!event.target.closest(".filter-dropdown")) {
       closeFilterMenu();
     }
-    if (hubMenu && !hubMenu.hidden && !event.target.closest(".header-menu-wrap")) {
+    if (hubMenu && !hubMenu.hidden && !clickedInsideHubMenuWrap) {
       closeHubMenu();
     }
     if (activeVersionDropdown && !event.target.closest(".version-dropdown") && !event.target.closest("#versionHistoryButton")) {
