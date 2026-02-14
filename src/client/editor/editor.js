@@ -24,6 +24,8 @@ const formMount = document.getElementById("formMount");
 const rawText = document.getElementById("rawText");
 const parseError = document.getElementById("parseError");
 const rawLabel = document.getElementById("rawLabel");
+const promptFormatControl = document.getElementById("promptFormatControl");
+const promptFormatSelect = document.getElementById("promptFormatSelect");
 const editorTitle = document.getElementById("editorTitle");
 
 let formController;
@@ -429,7 +431,7 @@ function isMarkdownPath(filePath = "") {
   return normalized.endsWith(".md") || normalized.endsWith(".markdown") || normalized.endsWith(".mdx");
 }
 
-function inferPromptFormat(text = "") {
+function detectPromptFormat(text = "") {
   if (isMarkdownPath(pathParam)) {
     return "markdown";
   }
@@ -438,13 +440,25 @@ function inferPromptFormat(text = "") {
   return source.startsWith("---") ? "markdown" : "yaml";
 }
 
+function setPromptFormat(nextFormat) {
+  const normalizedFormat = nextFormat === "markdown" ? "markdown" : "yaml";
+  promptContentFormat = normalizedFormat;
+  format = normalizedFormat;
+  rawLabel.textContent = normalizedFormat === "markdown" ? "Raw Markdown" : "Raw YAML";
+  if (promptFormatSelect) {
+    promptFormatSelect.value = normalizedFormat;
+  }
+}
+
+function setPromptFormatControlVisibility(visible) {
+  if (!promptFormatControl) return;
+  promptFormatControl.hidden = !visible;
+}
 
 const handlers = {
   prompt: {
     createForm: createPromptForm,
     parse: (txt) => {
-      promptContentFormat = inferPromptFormat(txt);
-      format = promptContentFormat;
       if (promptContentFormat === "markdown") {
         const parsed = matter(txt || "");
         return {
@@ -713,11 +727,23 @@ function setupForType(type, initialRaw) {
     readState: () => formController.getState(),
     writeState: (state) => formController.setState(state)
   });
+
+  if (type === "prompt") {
+    setPromptFormatControlVisibility(true);
+    if (mode === "edit") {
+      setPromptFormat(detectPromptFormat(initialRaw));
+    } else {
+      setPromptFormat(promptFormatSelect?.value || "yaml");
+    }
+  } else {
+    setPromptFormatControlVisibility(false);
+    format = type === "agent" || type === "rule" ? "markdown" : "yaml";
+    rawLabel.textContent = format === "markdown" ? "Raw Markdown" : "Raw YAML";
+  }
+
   rawText.value = initialRaw || "";
   sync.updateFormFromText();
   sync.updateTextFromForm();
-  format = type === "agent" || type === "rule" ? "markdown" : (type === "prompt" ? inferPromptFormat(initialRaw) : "yaml");
-  rawLabel.textContent = format === "markdown" ? "Raw Markdown" : "Raw YAML";
   renderEditorTitle(type);
 }
 
@@ -865,6 +891,15 @@ document.getElementById("saveButton").addEventListener("click", async () => {
   queueNotification(payload.message || "Saved.");
   window.location.assign("/");
 });
+
+
+if (promptFormatSelect) {
+  promptFormatSelect.addEventListener("change", () => {
+    if (definitionType !== "prompt") return;
+    setPromptFormat(promptFormatSelect.value);
+    sync?.updateFormFromText();
+  });
+}
 
 boot().catch((error) => {
   parseError.hidden = false;

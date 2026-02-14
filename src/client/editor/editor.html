@@ -21,7 +21,16 @@
         <div id="formMount"></div>
       </section>
       <section>
-        <h3 id="rawLabel">Raw YAML</h3>
+        <div class="raw-header">
+          <h3 id="rawLabel">Raw YAML</h3>
+          <label id="promptFormatControl" class="prompt-format-control" hidden>
+            <span>Format</span>
+            <select id="promptFormatSelect">
+              <option value="yaml">YAML</option>
+              <option value="markdown">Markdown</option>
+            </select>
+          </label>
+        </div>
         <div id="parseError" class="error" hidden></div>
         <textarea id="rawText" rows="30"></textarea>
       </section>
