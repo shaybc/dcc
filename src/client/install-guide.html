@@ -174,9 +174,13 @@
           title: "VS Code install steps",
           steps: [
             "Locate <code>extensions/continue.continue-1.2.14-win32-x64.vsix</code> in this repository.",
-            "Open <strong>Extensions</strong> in VS Code and choose <strong>Install from VSIX...</strong>.",
+            "Open <strong>Extensions</strong> in VS Code, then click the <strong>⋯</strong> menu and choose <strong>Install from VSIX...</strong>.",
             "Select the VSIX file from the repository.",
             "Reload the IDE window if prompted so Continue activates."
+          ],
+          images: [
+            { src: "/img/InstallVsix1.png", alt: "VS Code Extensions menu press the 3 dots from the upper left corner and select 'Install from VSIX...'", caption: "VS Code Extensions menu press the 3 dots from the upper left corner and select 'Install from VSIX...'" },
+            { src: "/img/InstallVsix2.png", alt: "After the Extensions install, move Continue panel to the right sidebar from Appearance menu (optional).", caption: "After the Extensions install, move Continue panel to the right sidebar from Appearance menu (optional)." }
           ]
         },
         jetbrains: {
@@ -193,8 +197,23 @@
       function renderInstructions(ideType) {
         const selected = instructionsByIde[ideType] || instructionsByIde.vscode;
         const listItems = selected.steps.map((step) => `<li>${step}</li>`).join("");
-        ideInstructions.innerHTML = `<h3>${selected.title}</h3><ol>${listItems}</ol>`;
-        installGuideStatus.textContent = `Showing steps for ${selected.title}.`;
+
+        const imagesHtml = (selected.images || [])
+          .map(
+            (img) => `
+              <figure class="install-guide-figure">
+                <img class="install-guide-img" src="${img.src}" alt="${img.alt}" loading="lazy" />
+                <figcaption class="install-guide-caption">${img.caption}</figcaption>
+              </figure>
+            `
+          )
+          .join("");
+
+        ideInstructions.innerHTML = `
+          <h3>${selected.title}</h3>
+          <ol>${listItems}</ol>
+          ${imagesHtml}
+        `;
       }
 
       ideTypeSelect.addEventListener("change", (event) => {
