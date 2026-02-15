@@ -326,6 +326,15 @@ header .actions .btn {
   color: var(--accent);
 }
 
+.hub-menu-divider {
+  border-top: 1px solid var(--border);
+  margin: 6px 4px;
+}
+
+.hub-menu-nav-item .hub-menu-item-icon {
+  color: var(--text-muted, var(--muted));
+}
+
 @keyframes hubMenuRollDown {
   from {
     opacity: 0;

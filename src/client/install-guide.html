@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DCC Hub · Install Guide</title>
+    <link rel="stylesheet" href="/styles/main.css" />
+    <link rel="icon" href="/img/dcc_black_logo.png" type="image/png" />
+    <script src="/theme.js"></script>
+    <style>
+      .install-guide-page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 18px 20px 44px;
+      }
+
+      .install-guide-topbar {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        margin-bottom: 18px;
+      }
+
+      .install-guide-content {
+        display: grid;
+        gap: 22px;
+      }
+
+      .install-guide-heading h1 {
+        margin: 0 0 8px;
+      }
+
+      .install-guide-heading p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .install-guide-section {
+        padding-top: 8px;
+      }
+
+      .install-guide-section + .install-guide-section {
+        border-top: 1px solid var(--border);
+        padding-top: 20px;
+      }
+
+      .install-guide-section h2 {
+        margin-top: 0;
+      }
+
+      .install-guide-select {
+        width: 100%;
+        max-width: 420px;
+        margin-top: 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--bg-soft);
+        color: var(--text);
+        padding: 11px 12px;
+        font-size: 14px;
+      }
+
+      .install-guide-instructions ol {
+        margin: 12px 0 0;
+        padding-left: 22px;
+      }
+
+      .install-guide-instructions li + li {
+        margin-top: 8px;
+      }
+
+      code {
+        background: var(--surface-hover);
+        border-radius: 6px;
+        padding: 2px 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="install-guide-page">
+      <div class="install-guide-topbar">
+        <a class="btn" href="/">← Back to Hub</a>
+      </div>
+
+      <div class="install-guide-content">
+        <section class="install-guide-heading">
+          <h1>Continue Extension Install Guide</h1>
+          <p>
+            Select your IDE to display the correct installation steps for the Continue extension files bundled in this
+            DCC repository.
+          </p>
+        </section>
+
+        <section class="install-guide-section" aria-labelledby="ide-install-title">
+          <h2 id="ide-install-title">Install Continue extension in your IDE</h2>
+
+          <label for="ideTypeSelect"><strong>IDE type</strong></label>
+          <select id="ideTypeSelect" class="install-guide-select" aria-label="Select IDE type">
+            <option value="vscode">VS Code / Cursor (VSIX)</option>
+            <option value="jetbrains">JetBrains IDEs (ZIP plugin)</option>
+          </select>
+
+          <div id="ideInstructions" class="install-guide-instructions" aria-live="polite"></div>
+        </section>
+
+        <section class="install-guide-section" aria-labelledby="hub-install-title">
+          <h2 id="hub-install-title">Install Continue.dev definitions into a project via DCC Hub</h2>
+          <ol>
+            <li>Open DCC Hub and pick the target project from the <strong>Dev project</strong> selector.</li>
+            <li>Find a definition you need and open its details page.</li>
+            <li>Click <strong>Install definition in current project</strong> to add it to the selected project.</li>
+            <li>Repeat for all required definition types (models, prompts, rules, docs, context, workflows, etc.).</li>
+            <li>Reload your IDE workspace so Continue re-reads the installed project definitions.</li>
+          </ol>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const ideTypeSelect = document.getElementById("ideTypeSelect");
+      const ideInstructions = document.getElementById("ideInstructions");
+
+      const instructionsByIde = {
+        vscode: {
+          title: "VS Code / Cursor install steps",
+          steps: [
+            "Locate <code>extensions/continue.continue-1.2.14-win32-x64.vsix</code> in this repository.",
+            "In VS Code or Cursor, open Extensions and choose <strong>Install from VSIX...</strong>.",
+            "Select the VSIX file from the repository.",
+            "Reload the IDE window if prompted so Continue activates."
+          ]
+        },
+        jetbrains: {
+          title: "JetBrains IDE install steps",
+          steps: [
+            "Locate <code>extensions/continue-intellij-extension-1.0.59.zip</code> in this repository.",
+            "Open <strong>Settings/Preferences → Plugins</strong> in your JetBrains IDE.",
+            "Use the gear icon and select <strong>Install Plugin from Disk...</strong>, then choose the ZIP file.",
+            "Restart the IDE to finish enabling Continue."
+          ]
+        }
+      };
+
+      function renderInstructions(ideType) {
+        const selected = instructionsByIde[ideType] || instructionsByIde.vscode;
+        const listItems = selected.steps.map((step) => `<li>${step}</li>`).join("");
+        ideInstructions.innerHTML = `<h3>${selected.title}</h3><ol>${listItems}</ol>`;
+      }
+
+      ideTypeSelect.addEventListener("change", (event) => {
+        renderInstructions(event.target.value);
+      });
+
+      renderInstructions(ideTypeSelect.value);
+    </script>
+  </body>
+</html>
