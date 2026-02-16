@@ -17,11 +17,11 @@ alwaysApply: true
 Avoid interpolating untrusted input into raw HTML output.
 `;
 
-test("validateDefinition accepts Continue rule targeting fields in strict mode", () => {
+test("validateDefinition accepts Continue rule targeting fields in strict mode for singular rule type", () => {
   const result = validateDefinition({
     definition: {
       key: "rules/xss-protection.md",
-      type: "rules",
+      type: "rule",
       content: ruleMarkdown,
       filePath: "rules/xss-protection.md"
     },
