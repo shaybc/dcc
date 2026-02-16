@@ -4,9 +4,11 @@
 
 **DCC (Definition Control Center)** is this management system for organizing Continue definitions in one place so they can be discovered, reviewed, validated, versioned, and installed into real projects.
 
+![DCC-Hub](images/DCC-Hub.png)
+
 ## Definition types in DCC
 
-Below are the definition types supported by this DCC system, with one-sentence summaries of each:
+Below are the definition types supported by this DCC system:
 
 - **Prompt:** a reusable instruction (single prompt or message set) for specific AI tasks.
 - **Rule:** a guideline that shapes model behavior and output style across interactions.
