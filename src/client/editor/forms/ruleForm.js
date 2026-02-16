@@ -1,8 +1,19 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 import { attachEnhancePromptBehavior } from "./promptEnhancer.js";
 
+function normalizeListValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+  return [];
+}
+
 export function createRuleForm({ mount, onChange, availableTags = [] }) {
-  const state = { name: "", dcc_uri: "", description: "", version: "", globs: "", regex: "", alwaysApply: undefined, tags: [], body: "" };
+  const state = { name: "", dcc_uri: "", description: "", version: "", globs: [], regex: "", alwaysApply: undefined, tags: [], body: "" };
   const parsePatternInput = (value) => {
     const parts = String(value || "")
       .split(",")
@@ -46,6 +57,44 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
   globs.addEventListener("input", () => {
     state.globs = parsePatternInput(globs.value);
     onChange();
+  });
+
+  const regex = row("regex", "regex", "e.g., \"^import .* from '.*';$\"");
+  regex.addEventListener("input", () => {
+    state.regex = parsePatternInput(regex.value);
+    onChange();
+  });
+
+  const alwaysApplyWrap = document.createElement("label");
+  alwaysApplyWrap.className = "editor-field";
+  alwaysApplyWrap.innerHTML = "<span>alwaysApply</span>";
+  const alwaysApply = document.createElement("select");
+  alwaysApply.innerHTML = `
+    <option value="">default (undefined)</option>
+    <option value="true">true</option>
+    <option value="false">false</option>
+  `;
+  alwaysApply.addEventListener("change", () => {
+    if (alwaysApply.value === "true") {
+      state.alwaysApply = true;
+    } else if (alwaysApply.value === "false") {
+      state.alwaysApply = false;
+    } else {
+      state.alwaysApply = undefined;
+    }
+    onChange();
+  });
+  alwaysApplyWrap.append(alwaysApply);
+  mount.append(alwaysApplyWrap);
+
+  const globs = createArrayEditor({
+    mount,
+    label: "globs",
+    fields: [{ name: "value", label: "globs", placeholder: 'e.g., "**/*.{ts,tsx}"' }],
+    onChange: (values) => {
+      state.globs = normalizeListValue(values);
+      onChange();
+    }
   });
 
   const regex = row("regex", "regex", "e.g., \"^import .* from '.*';$\"");
@@ -121,7 +170,12 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
 
   return {
     getState() {
-      return { ...state, tags: tags.getItems() };
+      const globItems = normalizeListValue(globs.getItems());
+      return {
+        ...state,
+        globs: globItems.length ? globItems : undefined,
+        tags: tags.getItems()
+      };
     },
     setState(next) {
       Object.assign(state, next || {});
@@ -129,7 +183,7 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
       dccUri.value = state.dcc_uri || "";
       description.value = state.description || "";
       version.value = state.version || "";
-      globs.value = formatPatternInput(state.globs);
+      globs.setItems(normalizeListValue(state.globs));
       regex.value = formatPatternInput(state.regex);
       alwaysApply.value = state.alwaysApply === true ? "true" : state.alwaysApply === false ? "false" : "";
       body.value = state.body || "";
