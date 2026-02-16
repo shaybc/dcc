@@ -48,7 +48,13 @@ function schemaForType(type, strict) {
     return applyMode(z.object({ ...base, ...commonMetadata, prompt: z.string().optional(), messages: z.array(z.any()).optional() }));
   }
   if (type === "rules") {
-    return applyMode(z.object({ ...base, ...commonMetadata }));
+    return applyMode(z.object({
+      ...base,
+      ...commonMetadata,
+      globs: z.union([z.array(z.string()), z.string()]).optional(),
+      regex: z.string().optional(),
+      alwaysApply: z.boolean().optional(),
+    }));
   }
   if (type === "workflows") {
     return applyMode(z.object({ ...base, ...commonMetadata, steps: z.array(z.object({ id: z.string().min(1).optional() })).min(1) }));
