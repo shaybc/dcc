@@ -2068,17 +2068,30 @@ function updateInstallDefinitionButtonState() {
   const hasDefinition = Number.isFinite(Number(currentDetailDefinitionId)) && currentDetailDefinitionId > 0;
   const canInstall = !isLocalOnlyDefinition;
 
+  installDefinitionButton.innerHTML = isSavedInCurrentProject
+    ? `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 6 9 17l-5-5"></path>
+      </svg>
+    `
+    : `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 5v14"></path>
+        <path d="M5 12h14"></path>
+      </svg>
+    `;
+
   installDefinitionButton.hidden = !canInstall;
   if (!canInstall) {
     installDefinitionButton.disabled = true;
     return;
   }
 
-  installDefinitionButton.disabled = !hasDefinition || !hasSelectedProject || isSavedInCurrentProject;
+  installDefinitionButton.disabled = !hasDefinition || !hasSelectedProject;
 
   if (isSavedInCurrentProject) {
-    installDefinitionButton.title = "Definition already installed in current project";
-    installDefinitionButton.setAttribute("aria-label", "Definition already installed in current project");
+    installDefinitionButton.title = "Remove definition from current project";
+    installDefinitionButton.setAttribute("aria-label", "Remove definition from current project");
     return;
   }
 
@@ -2603,12 +2616,17 @@ function setupEventListeners() {
     }
 
     try {
-      const result = await saveDefinition(currentDetailDefinitionId);
+      const isSavedInCurrentProject = currentDetailDefinitionStatus === "saved";
+      const result = isSavedInCurrentProject
+        ? await removeDefinition(currentDetailDefinitionId)
+        : await saveDefinition(currentDetailDefinitionId);
       await fetchDefinitions();
       await showDetails(currentDetailDefinitionId);
-      window.alert(result?.message || "Definition installed in current project.");
+      window.alert(result?.message || (isSavedInCurrentProject
+        ? "Definition removed from current project."
+        : "Definition installed in current project."));
     } catch (error) {
-      window.alert(error.message || "Unable to install definition in current project.");
+      window.alert(error.message || "Unable to update definition in current project.");
     }
   });
   
