@@ -125,6 +125,44 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
   alwaysApplyWrap.append(alwaysApply);
   mount.append(alwaysApplyWrap);
 
+  const globsEditor = createArrayEditor({
+    mount,
+    label: "globs",
+    fields: [{ name: "value", label: "globs", placeholder: 'e.g., "**/*.{ts,tsx}"' }],
+    onChange: (values) => {
+      state.globs = normalizeListValue(values);
+      onChange();
+    }
+  });
+
+  const regex = row("regex", "regex", "e.g., \"^import .* from '.*';$\"");
+  regex.addEventListener("input", () => {
+    state.regex = parsePatternInput(regex.value);
+    onChange();
+  });
+
+  const alwaysApplyWrap = document.createElement("label");
+  alwaysApplyWrap.className = "editor-field";
+  alwaysApplyWrap.innerHTML = "<span>alwaysApply</span>";
+  const alwaysApply = document.createElement("select");
+  alwaysApply.innerHTML = `
+    <option value="">default (undefined)</option>
+    <option value="true">true</option>
+    <option value="false">false</option>
+  `;
+  alwaysApply.addEventListener("change", () => {
+    if (alwaysApply.value === "true") {
+      state.alwaysApply = true;
+    } else if (alwaysApply.value === "false") {
+      state.alwaysApply = false;
+    } else {
+      state.alwaysApply = undefined;
+    }
+    onChange();
+  });
+  alwaysApplyWrap.append(alwaysApply);
+  mount.append(alwaysApplyWrap);
+
   const tags = createArrayEditor({
     mount,
     label: "dcc_tags",
@@ -170,7 +208,7 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
 
   return {
     getState() {
-      const globItems = normalizeListValue(globs.getItems());
+      const globItems = normalizeListValue(globsEditor.getItems());
       return {
         ...state,
         globs: globItems.length ? globItems : undefined,
@@ -183,7 +221,7 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
       dccUri.value = state.dcc_uri || "";
       description.value = state.description || "";
       version.value = state.version || "";
-      globs.setItems(normalizeListValue(state.globs));
+      globsEditor.setItems(normalizeListValue(state.globs));
       regex.value = formatPatternInput(state.regex);
       alwaysApply.value = state.alwaysApply === true ? "true" : state.alwaysApply === false ? "false" : "";
       body.value = state.body || "";
