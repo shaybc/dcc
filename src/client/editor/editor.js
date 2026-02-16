@@ -891,7 +891,17 @@ function normalizeState(type, parsed) {
     mcpServers: normalizeMcpServers(data.mcpServers)
   };
   if (type === "agent") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.dcc_tags || data.tags || [], body: data.body || "" };
-  if (type === "rule") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.dcc_tags || data.tags || [], body: data.body || "" };
+  if (type === "rule") return {
+    name: data.name || "",
+    dcc_uri: data.dcc_uri || "",
+    description: data.description || "",
+    version: data.version || "",
+    globs: data.globs || "",
+    regex: data.regex || "",
+    alwaysApply: typeof data.alwaysApply === "boolean" ? data.alwaysApply : undefined,
+    tags: data.dcc_tags || data.tags || [],
+    body: data.body || ""
+  };
   if (type === "model") return {
     name: data.name || "",
     description: data.description || "",
@@ -957,7 +967,7 @@ function captureUnknownFields(type, parsed) {
     prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts", "prompt", "invokable", "__contentFormat"],
     mcpServer: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "mcpServers"],
     agent: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
-    rule: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
+    rule: ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "body"],
     model: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models"],
     workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
     context: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "context"],
