@@ -16,4 +16,12 @@ The details page is split into three tabs:
 
 A practical flow is: start in Preview for quick understanding, verify exact content in Source, and then run validation in Test.
 
+## Source view checklist for rule definitions
+
+While reviewing Source for a **rule** definition, confirm these attributes are present when needed:
+
+- **`globs`** for file-based matching.
+- **`regex`** for content-based matching.
+- **`alwaysApply`** for explicit inclusion behavior (`true`, `false`, or omitted default).
+
 ![Definition Test tab](../images/test=tab.png)

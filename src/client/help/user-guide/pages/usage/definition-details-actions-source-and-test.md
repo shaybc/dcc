@@ -48,6 +48,17 @@ When you open a historical version, a banner appears with two important actions:
 
 The Test tab focuses on quality checks for the current definition.
 
+### Rule matching attributes to verify for rule definitions
+
+When the definition type is **rule**, validate that these targeting fields are configured correctly before publishing:
+
+- **`globs`**: file-path pattern(s) used to include the rule when matching files are present in context.
+- **`regex`**: content pattern(s) used to include the rule when file contents match.
+- **`alwaysApply`**:
+  - `true` keeps the rule always active,
+  - `false` keeps it conditional (matching `globs` or agent decision via `description`),
+  - omitted uses default include behavior.
+
 ### Validation toggles
 You can enable or disable checks before running validation:
 
