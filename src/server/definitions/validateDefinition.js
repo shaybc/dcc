@@ -1,6 +1,7 @@
 import matter from "gray-matter";
 import YAML from "yaml";
 import { z } from "zod";
+import { normalizeDefinitionType } from "./parse.js";
 
 function inferFormat(filePath, content) {
   const normalizedPath = String(filePath || "").toLowerCase();
@@ -48,7 +49,13 @@ function schemaForType(type, strict) {
     return applyMode(z.object({ ...base, ...commonMetadata, prompt: z.string().optional(), messages: z.array(z.any()).optional() }));
   }
   if (type === "rules") {
-    return applyMode(z.object({ ...base, ...commonMetadata }));
+    return applyMode(z.object({
+      ...base,
+      ...commonMetadata,
+      globs: z.union([z.array(z.string()), z.string()]).optional(),
+      regex: z.string().optional(),
+      alwaysApply: z.boolean().optional(),
+    }));
   }
   if (type === "workflows") {
     return applyMode(z.object({ ...base, ...commonMetadata, steps: z.array(z.object({ id: z.string().min(1).optional() })).min(1) }));
@@ -211,8 +218,8 @@ function checkReferenceExists(reference, knownDefinitions, expectedTypes) {
   return Boolean(match);
 }
 
-function runReferenceChecks(definition, normalized, knownDefinitions, checks) {
-  const type = String(definition.type || "").toLowerCase();
+function runReferenceChecks(definitionType, normalized, knownDefinitions, checks) {
+  const type = normalizeDefinitionType(definitionType);
 
   const addRefFailure = (id, message, path) => {
     addCheck(checks, {
@@ -333,7 +340,8 @@ export function validateDefinition({ definition, options = {}, knownDefinitions 
     });
   }
 
-  const schema = schemaForType(String(definition.type || "").toLowerCase(), strict);
+  const normalizedDefinitionType = normalizeDefinitionType(definition.type || "");
+  const schema = schemaForType(normalizedDefinitionType, strict);
   const schemaResult = schema.safeParse(normalized);
 
   if (!schemaResult.success) {
@@ -397,7 +405,7 @@ export function validateDefinition({ definition, options = {}, knownDefinitions 
   }
 
   if (referencesEnabled) {
-    runReferenceChecks(definition, normalized, knownDefinitions, checks);
+    runReferenceChecks(normalizedDefinitionType, normalized, knownDefinitions, checks);
   }
 
   const summary = summarizeChecks(checks);
@@ -407,7 +415,7 @@ export function validateDefinition({ definition, options = {}, knownDefinitions 
     success: true,
     status,
     definitionKey: definition.key,
-    definitionType: String(definition.type || ""),
+    definitionType: normalizedDefinitionType || String(definition.type || ""),
     durationMs: Date.now() - startedAt,
     summary,
     checks,
