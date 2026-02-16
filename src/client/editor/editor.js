@@ -857,7 +857,7 @@ const handlers = {
     parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
     serialize: (state) => {
       const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
-      return matter.stringify(body, { ...frontmatter, dcc_tags: normalizeStringArray(tags) });
+      return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags) }));
     }
   },
   rule: {
@@ -865,10 +865,14 @@ const handlers = {
     parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
     serialize: (state) => {
       const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
-      return matter.stringify(body, { ...frontmatter, dcc_tags: normalizeStringArray(tags) });
+      return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags) }));
     }
   }
 };
+
+function omitUndefinedValues(value) {
+  return Object.fromEntries(Object.entries(value || {}).filter(([, entryValue]) => entryValue !== undefined));
+}
 
 function normalizeState(type, parsed) {
   const data = parsed || {};
