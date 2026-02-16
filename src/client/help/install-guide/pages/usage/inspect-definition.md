@@ -18,3 +18,5 @@ Open a definition to review details before installing or editing.
 5. Proceed to install or edit.
 
 ![Definition details page with overview, source, and test tabs](../images/usage-inspect-definition-details-tabs.png)
+For a full walkthrough of every button and control, see **[Definition Details Actions](definition-details-actions.md)**.
+
