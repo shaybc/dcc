@@ -15,3 +15,5 @@ The details page is split into three tabs:
 - **Test**: runs validation checks and displays validation results.
 
 A practical flow is: start in Preview for quick understanding, verify exact content in Source, and then run validation in Test.
+
+![Definition Test tab](../images/test=tab.png)

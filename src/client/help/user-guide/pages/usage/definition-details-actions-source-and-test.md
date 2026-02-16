@@ -42,6 +42,8 @@ When you open a historical version, a banner appears with two important actions:
 - **Restore this version**: previews diff and then restores that version as the latest definition after confirmation.
 - **Back to current**: exits historical mode and returns to the current version.
 
+![Compare Versions feature](../images/compare-versions.png)
+
 ## Test tab: validation actions
 
 The Test tab focuses on quality checks for the current definition.
@@ -70,3 +72,5 @@ Use this after any edit or before installing/publishing a definition.
 Click **Copy JSON report** to copy the raw validation report.
 
 Use this when you need to share exact machine-readable validation output in tickets, PRs, or chat.
+
+![Definition Test tab](../images/test=tab.png)
