@@ -16,4 +16,4 @@ Use the editor to modify existing definitions safely and quickly.
 3. Optionally switch to raw YAML/MD for direct source edits.
 4. Save and validate the updated definition.
 
-![Definition edit form with autocomplete and raw source options](images/usage-edit-definition-form-and-raw.png)
+![Definition edit form with autocomplete and raw source options](../images/usage-edit-definition-form-and-raw.png)

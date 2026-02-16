@@ -13,6 +13,10 @@ Choose the IDE you use and install the bundled Continue extension package from t
 
 ![VS Code install from VSIX menu](images/install-vscode-install-from-vsix.png)
 
+Tip: After Extension is installed - move the Continue panel to the right side
+
+![VS Code change AI panel Layout](images/Move-to-right.png)
+
 ## JetBrains IDEs (ZIP plugin)
 
 1. Open the `extensions` folder in this repository.

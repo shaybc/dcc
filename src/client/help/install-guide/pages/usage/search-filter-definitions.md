@@ -16,4 +16,8 @@ DCC Hub provides several ways to narrow down definitions quickly.
 3. Use tags on a promising definition to jump to related content.
 4. Refine until only relevant definitions remain.
 
-![Hub search bar and filter controls](images/usage-search-and-filter-controls.png)
+![Hub search bar](../images/usage-search-bar.png)
+
+![Hub filter controls](../images/usage-filter-controls.png)
+
+![Menu filter controls](../images/usage-menu-filter-controls.png)

@@ -17,4 +17,4 @@ Open a definition to review details before installing or editing.
 4. Check the Test tab results and notes.
 5. Proceed to install or edit.
 
-![Definition details page with overview, source, and test tabs](images/usage-inspect-definition-details-tabs.png)
+![Definition details page with overview, source, and test tabs](../images/usage-inspect-definition-details-tabs.png)

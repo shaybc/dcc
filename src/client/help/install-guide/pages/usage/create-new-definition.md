@@ -16,4 +16,6 @@ Creating a new definition follows the same editing experience used for existing 
 - The same form and raw-edit tools from **Edit Definition** are available.
 - Keep metadata and tags accurate so search/filter/recommendation works well.
 
-![Create new definition dialog and editor](images/usage-create-definition-dialog-and-editor.png)
+![Create new definition](../images/usage-create-new-definition.png)
+
+![Create new definition dialog and editor](../images/usage-create-definition-dialog-and-editor.png)

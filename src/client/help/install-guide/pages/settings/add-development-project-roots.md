@@ -20,4 +20,4 @@ Adding roots only stores locations. Scanning is what:
 - Makes projects available in the Hub project selector.
 - Enables relevant prompt and AI asset recommendations per project context.
 
-![Settings Dev Project Roots and Scan button](images/settings-dev-project-roots-scan.png)
+![Settings Dev Project Roots and Scan button](../images/settings-dev-project-roots-scan.png)

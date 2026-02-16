@@ -27,4 +27,4 @@ Use AI Assets repositories to keep prompts, rules, docs, workflows, and other as
 - **Pull** updates an existing local clone with latest remote changes.
 - Re-run pull regularly so recommendations and definitions stay current.
 
-![Settings Asset Repositories section with Add Repository action](images/settings-add-ai-assets-repo-form.png)
+![Settings Asset Repositories section with Add Repository action](../images/settings-add-ai-assets-repo-form.png)

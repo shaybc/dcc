@@ -15,6 +15,8 @@ When you switch projects, installation markers update so you can see what is alr
 2. Click the **+** button (**Install definition in current project**).
 3. DCC Hub installs the definition into the selected project.
 
+![Install definition button and installed markers per selected project](../images/usage-install-definition-into-project.png)
+
 ## Installed state and filtering options
 
 - Installed definitions are visibly marked for the current project.
@@ -32,4 +34,4 @@ For complex definitions (such as configuration-based definitions), installation 
 
 This helps apply shared definitions without fully replacing project-specific customization.
 
-![Install definition button and installed markers per selected project](images/usage-install-definition-into-project.png)
+![Install definition button and installed markers per selected project](../images/usage-merge-behavior.png)
