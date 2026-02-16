@@ -185,7 +185,7 @@
     </main>
 
     <script>
-      const HELP_PAGES_BASE = "/help/install-guide/pages";
+      const HELP_PAGES_BASE = "/help/user-guide/pages";
       const helpGuideStatus = document.getElementById("helpGuideStatus");
       const helpGuideToc = document.getElementById("helpGuideToc");
       const helpGuidePageLabel = document.getElementById("helpGuidePageLabel");
@@ -391,7 +391,7 @@
               <div class="toc-links">
                 ${section.pages.map((page) => {
                   const activeClass = page.id === activePageId ? "is-active" : "";
-                  return `<a class="toc-link ${activeClass}" href="/install-guide.html?page=${page.id}">${page.title}</a>`;
+                  return `<a class="toc-link ${activeClass}" href="/user-guide.html?page=${page.id}">${page.title}</a>`;
                 }).join("")}
               </div>
             </section>

@@ -2774,7 +2774,7 @@ function setupEventListeners() {
   if (installGuideMenuItem) {
     installGuideMenuItem.addEventListener("click", () => {
       closeHubMenu({ animate: false });
-      window.location.assign("/install-guide.html");
+      window.location.assign("/user-guide.html");
     });
   }
 
