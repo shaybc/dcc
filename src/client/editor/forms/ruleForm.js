@@ -53,6 +53,39 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
   const dccUri = row("DCC URI", "dcc_uri", 'e.g., "rules/java_rules"');
   const description = row("description", "description", 'e.g., "this are the java rules"');
   const version = row("version", "version");
+  const globs = row("globs", "globs", 'e.g., "**/*.{ts,tsx}, src/**/*.js"');
+  globs.addEventListener("input", () => {
+    state.globs = parsePatternInput(globs.value);
+    onChange();
+  });
+
+  const regex = row("regex", "regex", "e.g., \"^import .* from '.*';$\"");
+  regex.addEventListener("input", () => {
+    state.regex = parsePatternInput(regex.value);
+    onChange();
+  });
+
+  const alwaysApplyWrap = document.createElement("label");
+  alwaysApplyWrap.className = "editor-field";
+  alwaysApplyWrap.innerHTML = "<span>alwaysApply</span>";
+  const alwaysApply = document.createElement("select");
+  alwaysApply.innerHTML = `
+    <option value="">default (undefined)</option>
+    <option value="true">true</option>
+    <option value="false">false</option>
+  `;
+  alwaysApply.addEventListener("change", () => {
+    if (alwaysApply.value === "true") {
+      state.alwaysApply = true;
+    } else if (alwaysApply.value === "false") {
+      state.alwaysApply = false;
+    } else {
+      state.alwaysApply = undefined;
+    }
+    onChange();
+  });
+  alwaysApplyWrap.append(alwaysApply);
+  mount.append(alwaysApplyWrap);
 
   const globs = createArrayEditor({
     mount,
