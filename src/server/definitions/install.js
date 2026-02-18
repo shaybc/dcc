@@ -10,19 +10,18 @@ export function getProjectDestinationInfo(projectPath, type, filePath) {
   const normalizedType = normalizeDefinitionType(type);
   const fileName = path.basename(filePath || "");
   const mappings = {
-    rules: ["rules", "rules"],
-    prompts: ["rules", "prompts"],
-    workflows: ["workflows", "workflows"],
-    models: ["models", "models"],
-    agents: ["agents", "agents"],
-    mcpservers: ["mcpServers", "mcpServers"],
-    docs: ["docs", "docs"],
-    configs: ["configs", ""]
+    rules: [".continue", "rules", "team", "rules"],
+    prompts: [".continue", "rules", "team", "prompts"],
+    workflows: [".continue", "workflows", "team", "workflows"],
+    models: [".continue", "models", "team", "models"],
+    agents: [".continue", "agents", "team", "agents"],
+    mcpservers: [".continue", "mcpServers", "team", "mcpServers"],
+    docs: [".continue", "docs", "team", "docs"],
+    configs: [".continue", "agents", "configs", "team"]
   };
-  const mapped = mappings[normalizedType];
-  if (!mapped) return null;
-  const [continueFolder, typeFolder] = mapped;
-  const destDir = path.join(projectPath, ".continue", continueFolder, "team", typeFolder);
+  const destinationSegments = mappings[normalizedType];
+  if (!destinationSegments) return null;
+  const destDir = path.join(projectPath, ...destinationSegments);
   return { destDir, destPath: path.join(destDir, fileName), normalizedType };
 }
 
