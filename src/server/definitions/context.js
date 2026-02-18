@@ -6,17 +6,38 @@ import { readDefinitionYamlData, sanitizeYamlHeaderScalars } from "./content.js"
 
 const fsp = fs.promises;
 
-export function mergeConfigSection(merged, key, rawContent, filePath = "") {
+export function mergeConfigSection(merged, key, rawContent, filePath = "", options = {}) {
   const { data, body } = readDefinitionYamlData(rawContent, filePath);
-  if (key === "rules" || key === "prompts") {
+  if (key === "rules") {
     if (body) merged[key].push(body);
+    return;
+  }
+  if (key === "prompts") {
+    if (typeof options.resolvePromptUse === "function") {
+      const uses = options.resolvePromptUse({ data, filePath });
+      if (uses) {
+        merged[key].push({ uses });
+        return;
+      }
+    }
+    if (Array.isArray(data.prompts)) {
+      merged[key].push(...data.prompts);
+      return;
+    }
+    if (body) {
+      const promptEntry = {};
+      if (typeof data.name === "string" && data.name.trim()) promptEntry.name = data.name.trim();
+      if (typeof data.description === "string" && data.description.trim()) promptEntry.description = data.description.trim();
+      promptEntry.prompt = body;
+      merged[key].push(promptEntry);
+    }
     return;
   }
   if (!Array.isArray(data[key])) return;
   merged[key].push(...data[key]);
 }
 
-export async function buildMergedConfigContent(configDoc, definitionsByDccUri) {
+export async function buildMergedConfigContent(configDoc, definitionsByDccUri, options = {}) {
   const merged = { name: configDoc.name || "", version: configDoc.version || "", schema: configDoc.schema || "v1", description: configDoc.description || "", tags: configDoc.tags || [], models: [], context: [], rules: [], prompts: [], docs: [], mcpServers: [] };
   for (const section of ["models", "context", "rules", "prompts", "docs", "mcpServers"]) {
     const refs = Array.isArray(configDoc[section]) ? configDoc[section] : [];
@@ -25,7 +46,9 @@ export async function buildMergedConfigContent(configDoc, definitionsByDccUri) {
       if (!dccUse) continue;
       const referenced = definitionsByDccUri.get(dccUse.toLowerCase());
       if (!referenced) throw new Error(`Config references unknown definition '${dccUse}'.`);
-      mergeConfigSection(merged, section, referenced.content || "", referenced.filePath || "");
+      mergeConfigSection(merged, section, referenced.content || "", referenced.filePath || "", {
+        resolvePromptUse: section === "prompts" ? () => options.promptUsesByDccUri?.get(dccUse.toLowerCase()) || "" : null
+      });
     }
   }
   return YAML.stringify(stripDccMetadataDeep(merged));
