@@ -138,6 +138,46 @@
         padding: 2px 6px;
       }
 
+      .md-content pre {
+        margin: 0 0 14px;
+      }
+
+      .md-code-block {
+        background: #0b0f17;
+        border: 1px solid #232a36;
+        border-radius: 10px;
+        padding: 12px 14px;
+        overflow-x: auto;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      }
+
+      .md-code-block code {
+        display: block;
+        background: transparent;
+        border-radius: 0;
+        padding: 0;
+        white-space: pre;
+        color: #d7dde6;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }
+
+      .md-code-key {
+        color: #e06c75;
+      }
+
+      .md-code-string {
+        color: #98c379;
+      }
+
+      .md-code-number,
+      .md-code-boolean {
+        color: #d19a66;
+      }
+
+      .md-code-comment {
+        color: #7f848e;
+      }
+
       .help-guide-figure {
         margin: 14px 0;
       }
@@ -276,6 +316,56 @@
                   id: "definition-details-actions-test",
                   title: "Test Tab Actions",
                   file: "usage/definition-details-actions-test.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-common",
+                  title: "Test Schema: Common Fields",
+                  file: "usage/definition-details-actions-test-schema-common.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-rule",
+                  title: "Test Schema: Rule Structure",
+                  file: "usage/definition-details-actions-test-schema-rule.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-prompt",
+                  title: "Test Schema: Prompt Structure",
+                  file: "usage/definition-details-actions-test-schema-prompt.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-workflow",
+                  title: "Test Schema: Workflow Structure",
+                  file: "usage/definition-details-actions-test-schema-workflow.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-agent",
+                  title: "Test Schema: Agent Structure",
+                  file: "usage/definition-details-actions-test-schema-agent.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-model",
+                  title: "Test Schema: Model Structure",
+                  file: "usage/definition-details-actions-test-schema-model.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-context",
+                  title: "Test Schema: Context Structure",
+                  file: "usage/definition-details-actions-test-schema-context.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-mcpserver",
+                  title: "Test Schema: MCP Server Structure",
+                  file: "usage/definition-details-actions-test-schema-mcpserver.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-config",
+                  title: "Test Schema: Config Structure",
+                  file: "usage/definition-details-actions-test-schema-config.md"
+                },
+                {
+                  id: "definition-details-actions-test-schema-docs",
+                  title: "Test Schema: Docs Structure",
+                  file: "usage/definition-details-actions-test-schema-docs.md"
                 }
               ]
             },
@@ -337,6 +427,27 @@
         return `${normalizedBase}/${pathValue}`;
       }
 
+      function highlightCode(source, language) {
+        const escaped = escapeHtml(source);
+        if (!["yaml", "yml", "json"].includes((language || "").toLowerCase())) {
+          return escaped;
+        }
+
+        return escaped
+          .replace(/(^|\s)(true|false|null)(?=\s|$|[\],}])/gm, "$1<span class=\"md-code-boolean\">$2</span>")
+          .replace(/(^|\s)(-?\d+(?:\.\d+)?)(?=\s|$|[\],}])/gm, "$1<span class=\"md-code-number\">$2</span>")
+          .replace(/("(?:\\.|[^"])*"|'(?:\\.|[^'])*')/g, "<span class=\"md-code-string\">$1</span>")
+          .replace(/(^\s*#.*$)/gm, "<span class=\"md-code-comment\">$1</span>")
+          .replace(/(^\s*[\w.-]+)(\s*:)/gm, "<span class=\"md-code-key\">$1</span>$2");
+      }
+
+      function renderCodeBlock(codeLines, language) {
+        const lang = escapeHtml((language || "").toLowerCase());
+        const source = codeLines.join("\n");
+        const highlighted = highlightCode(source, language);
+        return `<pre class="md-code-block"><code class="language-${lang}">${highlighted}</code></pre>`;
+      }
+
       function markdownToHtml(markdown, markdownPath) {
         const baseDir = markdownPath.includes("/")
           ? `${HELP_PAGES_BASE}/${markdownPath.slice(0, markdownPath.lastIndexOf("/"))}`
@@ -346,6 +457,8 @@
         const html = [];
         let paragraphBuffer = [];
         let listType = null;
+        let codeFenceLanguage = null;
+        let codeFenceLines = [];
 
         function flushParagraph() {
           if (!paragraphBuffer.length) return;
@@ -364,6 +477,26 @@
 
         for (const rawLine of lines) {
           const line = rawLine.trim();
+
+          if (codeFenceLanguage !== null) {
+            if (line.startsWith("```")) {
+              html.push(renderCodeBlock(codeFenceLines, codeFenceLanguage));
+              codeFenceLanguage = null;
+              codeFenceLines = [];
+            } else {
+              codeFenceLines.push(rawLine);
+            }
+            continue;
+          }
+
+          const codeFenceMatch = line.match(/^```\s*([\w-]+)?\s*$/);
+          if (codeFenceMatch) {
+            flushParagraph();
+            closeList();
+            codeFenceLanguage = codeFenceMatch[1] || "";
+            codeFenceLines = [];
+            continue;
+          }
 
           if (!line) {
             flushParagraph();
@@ -424,6 +557,9 @@
 
         flushParagraph();
         closeList();
+        if (codeFenceLanguage !== null) {
+          html.push(renderCodeBlock(codeFenceLines, codeFenceLanguage));
+        }
         return html.join("\n");
       }
 
