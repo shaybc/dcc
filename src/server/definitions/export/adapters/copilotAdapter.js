@@ -1,33 +1,22 @@
 import path from "path";
-import BaseAdapter, {
-  buildDefinitionIdentity,
-  buildTraceabilityHeader,
-  stableSlug
-} from "./baseAdapter.js";
-
-const COPILOT_RULES_FILE = path.join(".github", "copilot-instructions.md");
-const COPILOT_PROMPTS_DIR = path.join(".github", "prompts");
+import BaseAdapter, { buildTraceabilityHeader } from "./baseAdapter.js";
+import {
+  getDccBlockMarkers,
+  getManagedRelativePath,
+} from "../fileStrategy.js";
 
 function normalizeType(definitionRow = {}) {
   return String(definitionRow.normalizedType || definitionRow.type || "").trim().toLowerCase();
 }
 
-function buildRuleBlockMarkers(definitionRow = {}) {
-  const identity = buildDefinitionIdentity(definitionRow);
-  return {
-    start: `<!-- DCC:BEGIN ${identity} -->`,
-    end: `<!-- DCC:END ${identity} -->`
-  };
-}
-
 function buildRulesBlock(definitionRow = {}) {
-  const { start, end } = buildRuleBlockMarkers(definitionRow);
+  const { start, end } = getDccBlockMarkers(definitionRow) || {};
   const header = buildTraceabilityHeader(definitionRow);
   const content = String(definitionRow.content || "").trim();
   const lines = [start];
   if (header) lines.push(header);
   if (content) lines.push(content);
-  lines.push(end);
+  if (end) lines.push(end);
   return `${lines.join("\n")}\n`;
 }
 
@@ -60,19 +49,18 @@ export class CopilotAdapter extends BaseAdapter {
       return {
         destination: this.destination,
         type: normalizedType,
-        relativePath: COPILOT_RULES_FILE,
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri }),
         mergeStrategy: "dcc_marked_block",
-        markers: buildRuleBlockMarkers(definitionRow),
+        markers: getDccBlockMarkers(definitionRow),
         content: buildRulesBlock(definitionRow)
       };
     }
 
     if (normalizedType === "prompts") {
-      const slug = stableSlug(definitionRow);
       return {
         destination: this.destination,
         type: normalizedType,
-        relativePath: path.join(COPILOT_PROMPTS_DIR, `${slug}.prompt.md`),
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri }),
         mergeStrategy: "replace_file",
         content: buildPromptContent(definitionRow)
       };
@@ -97,16 +85,15 @@ export class CopilotAdapter extends BaseAdapter {
     if (normalizedType === "rules") {
       return [{
         op: "remove_marked_block",
-        relativePath: COPILOT_RULES_FILE,
-        markers: buildRuleBlockMarkers(definitionRow)
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri }),
+        markers: getDccBlockMarkers(definitionRow)
       }];
     }
 
     if (normalizedType === "prompts") {
-      const slug = stableSlug(definitionRow);
       return [{
         op: "delete_file",
-        relativePath: path.join(COPILOT_PROMPTS_DIR, `${slug}.prompt.md`)
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri })
       }];
     }
 
