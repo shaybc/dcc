@@ -100,6 +100,22 @@ db.serialize(() => {
     )`
   );
   db.run(
+    `CREATE TABLE IF NOT EXISTS project_definition_destinations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      projectPath TEXT NOT NULL,
+      definitionKey TEXT NOT NULL,
+      destination TEXT NOT NULL,
+      copiedAt TEXT,
+      UNIQUE(projectPath, definitionKey, destination)
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_project_definition_destinations_project ON project_definition_destinations(projectPath)");
+  db.run("CREATE INDEX IF NOT EXISTS idx_project_definition_destinations_definition ON project_definition_destinations(definitionKey)");
+  db.run(
+    `INSERT OR IGNORE INTO project_definition_destinations (projectPath, definitionKey, destination, copiedAt)
+     SELECT projectPath, definitionKey, 'continue', copiedAt FROM project_definition_copies`
+  );
+  db.run(
     `CREATE TABLE IF NOT EXISTS validation_results (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       definition_key TEXT NOT NULL,
@@ -161,6 +177,8 @@ db.serialize(() => {
       db.run("ALTER TABLE dev_projects ADD COLUMN lastScannedAt TEXT", () => {});
     }
   });
+
+  db.run("DELETE FROM project_definition_destinations WHERE destination IS NULL OR trim(destination) = ''", () => {});
 });
 
 export default db;
