@@ -52,6 +52,14 @@
   background: var(--bg-soft);
 }
 
+
+.install-destination-menu-item-logo {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex: 0 0 16px;
+}
+
 .install-destination-menu-item-check {
   width: 14px;
   display: inline-flex;

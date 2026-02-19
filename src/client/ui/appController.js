@@ -120,9 +120,9 @@ const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "co
 const SPECIAL_FILTERS = ["installed"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const INSTALL_DESTINATION_OPTIONS = [
-  { key: "continue", label: "Continue" },
-  { key: "copilot", label: "GitHub Copilot" },
-  { key: "gemini", label: "Gemini CLI" }
+  { key: "continue", label: "Continue", logo: "/img/continue_small_logo.png" },
+  { key: "copilot", label: "GitHub Copilot", logo: "/img/copilot_small_logo.png" },
+  { key: "gemini", label: "Gemini CLI", logo: "/img/gemini_small_logo.png" }
 ];
 let activeInstallDestinationMenu = null;
 
@@ -2189,6 +2189,7 @@ function openInstallDestinationMenu(anchorEl, definition) {
       return `
         <button type="button" class="install-destination-menu-item" data-destination="${escapeHtml(option.key)}" role="menuitemcheckbox" aria-checked="${isInstalled ? "true" : "false"}">
           <span class="install-destination-menu-item-check">${isInstalled ? "✓" : ""}</span>
+          <img class="install-destination-menu-item-logo" src="${escapeHtml(option.logo || "")}" alt="" aria-hidden="true" />
           <span>${escapeHtml(option.label)}</span>
         </button>
       `;
