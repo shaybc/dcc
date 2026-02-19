@@ -138,6 +138,17 @@
         padding: 2px 6px;
       }
 
+      .md-inline-quoted {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--surface-hover) 86%, white 14%);
+        color: var(--text);
+        border: 1px solid color-mix(in srgb, var(--border) 70%, white 30%);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.93em;
+      }
+
       .md-content pre {
         margin: 0 0 14px;
       }
@@ -410,7 +421,11 @@
       function renderInline(text, baseDir) {
         const escaped = escapeHtml(text);
         const withCode = escaped.replace(/`([^`]+)`/g, "<code>$1</code>");
-        const withBold = withCode.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+        const withQuotedToken = withCode.replace(
+          /(^|[\s(])&#39;([^<>&\n]+?)&#39;(?=$|[\s).,:;!?])/g,
+          '$1<span class="md-inline-quoted">$2</span>'
+        );
+        const withBold = withQuotedToken.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
         const withItalic = withBold.replace(/\*([^*]+)\*/g, "<em>$1</em>");
         return withItalic.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, href) => {
           const resolved = resolvePath(href, baseDir);
