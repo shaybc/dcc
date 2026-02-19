@@ -250,8 +250,6 @@ router.post("/api/definitions/:id/save", async (req, res) => {
         await fsp.mkdir(destinationInfo.destDir, { recursive: true });
 
         const configDoc = YAML.parse(sanitizeYamlHeaderScalars(row.content || "")) || {};
-        const promptUsesByDccUri = new Map();
-        const promptDestinationInfo = (filePath) => getProjectDestinationInfo(currentDevProject, "prompts", filePath);
 
         const knownDefinitions = await allDb("SELECT content, filePath FROM definitions");
         const definitionsByDccUri = new Map();
@@ -262,23 +260,7 @@ router.post("/api/definitions/:id/save", async (req, res) => {
           }
         });
 
-        const promptRefs = Array.isArray(configDoc.prompts) ? configDoc.prompts : [];
-        for (const ref of promptRefs) {
-          const dccUse = String(ref?.dcc_use || "").trim();
-          if (!dccUse) continue;
-          const referenced = definitionsByDccUri.get(dccUse.toLowerCase());
-          if (!referenced?.filePath) continue;
-          const destInfo = promptDestinationInfo(referenced.filePath);
-          if (!destInfo) continue;
-          await fsp.mkdir(destInfo.destDir, { recursive: true });
-          const definitionContent = await fsp.readFile(referenced.filePath, "utf8");
-          const sanitizedContent = stripDccProjectMetadata(definitionContent, referenced.filePath);
-          await fsp.writeFile(destInfo.destPath, sanitizedContent, "utf8");
-          const promptPath = destInfo.destPath.replace(/\\/g, "/");
-          promptUsesByDccUri.set(dccUse.toLowerCase(), `file://${promptPath}`);
-        }
-
-        const mergedContent = await buildMergedConfigContent(configDoc, definitionsByDccUri, { promptUsesByDccUri });
+        const mergedContent = await buildMergedConfigContent(configDoc, definitionsByDccUri);
         const configDestPath = path.join(destinationInfo.destDir, configFileName);
         await fsp.writeFile(configDestPath, mergedContent, "utf8");
       } else {
