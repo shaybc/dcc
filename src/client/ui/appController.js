@@ -124,6 +124,11 @@ const INSTALL_DESTINATION_OPTIONS = [
   { key: "copilot", label: "GitHub Copilot" },
   { key: "gemini", label: "Gemini CLI" }
 ];
+const DESTINATION_COMPATIBILITY = {
+  continue: new Set(["rules", "prompts", "workflows", "models", "agents", "mcpservers", "context", "docs", "configs"]),
+  copilot: new Set(["prompts", "models", "docs"]),
+  gemini: new Set(["prompts", "models", "docs"])
+};
 let activeInstallDestinationMenu = null;
 
 const MAX_CARD_TAG_PILLS = 3;
@@ -913,6 +918,10 @@ function handleDefinitionCardClick(definition, event) {
     }
     if (!devProjectInput.value.trim()) {
       window.alert("Please select a project first.");
+      return;
+    }
+    if (getSupportedDestinationOptions(definition).length === 0) {
+      window.alert("This definition type cannot be installed/exported to available destinations.");
       return;
     }
     openInstallDestinationMenu(saveAction, definition);
@@ -2071,6 +2080,18 @@ async function showDetails(id) {
   showDetailPage();
 }
 
+function normalizeDestinationCompatibilityType(type) {
+  const normalizedType = normalizeFilterType(type);
+  if (normalizedType === "mcp servers") return "mcpservers";
+  return normalizedType;
+}
+
+function getSupportedDestinationOptions(definition = {}) {
+  const normalizedType = normalizeDestinationCompatibilityType(definition?.type);
+  if (!normalizedType || normalizedType === "unknown") return [];
+  return INSTALL_DESTINATION_OPTIONS.filter((option) => DESTINATION_COMPATIBILITY[option.key]?.has(normalizedType));
+}
+
 function getDestinationLogoPath(destinationKey) {
   const normalizedKey = String(destinationKey || "").trim().toLowerCase();
   const currentTheme = String(document.documentElement.getAttribute("data-theme") || "dark").trim().toLowerCase();
@@ -2188,10 +2209,14 @@ function openInstallDestinationMenu(anchorEl, definition) {
   if (!anchorEl) return;
 
   const installedSet = getInstalledDestinationSet(definition);
+  const destinationOptions = getSupportedDestinationOptions(definition);
+  if (destinationOptions.length === 0) {
+    return;
+  }
   const menu = document.createElement("div");
   menu.className = "install-destination-menu";
   menu.setAttribute("role", "menu");
-  menu.innerHTML = INSTALL_DESTINATION_OPTIONS
+  menu.innerHTML = destinationOptions
     .map((option) => {
       const isInstalled = installedSet.has(option.key);
       return `
@@ -2289,7 +2314,9 @@ function updateInstallDefinitionButtonState() {
   const isLocalOnlyDefinition = currentDetailDefinitionStatus === "local-only";
   const isSavedInCurrentProject = currentDetailDefinitionStatus === "saved";
   const hasDefinition = Number.isFinite(Number(currentDetailDefinitionId)) && currentDetailDefinitionId > 0;
-  const canInstall = !isLocalOnlyDefinition;
+  const currentDefinition = definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId));
+  const hasSupportedDestinations = getSupportedDestinationOptions(currentDefinition || {}).length > 0;
+  const canInstall = !isLocalOnlyDefinition && hasSupportedDestinations;
 
   installDefinitionButton.innerHTML = isSavedInCurrentProject
     ? `
@@ -2307,6 +2334,10 @@ function updateInstallDefinitionButtonState() {
   installDefinitionButton.hidden = !canInstall;
   if (!canInstall) {
     installDefinitionButton.disabled = true;
+    if (!isLocalOnlyDefinition && !hasSupportedDestinations) {
+      installDefinitionButton.title = "No compatible destinations for this definition type";
+      installDefinitionButton.setAttribute("aria-label", "No compatible destinations for this definition type");
+    }
     return;
   }
 
@@ -2847,6 +2878,10 @@ function setupEventListeners() {
     const currentDefinition = definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId));
     if (!currentDefinition) {
       window.alert("Definition not found.");
+      return;
+    }
+    if (getSupportedDestinationOptions(currentDefinition).length === 0) {
+      window.alert("This definition type cannot be installed/exported to available destinations.");
       return;
     }
 
