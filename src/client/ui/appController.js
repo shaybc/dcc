@@ -120,9 +120,9 @@ const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "co
 const SPECIAL_FILTERS = ["installed"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const INSTALL_DESTINATION_OPTIONS = [
-  { key: "continue", label: "Continue", logo: "/img/continue_small_logo.png" },
-  { key: "copilot", label: "GitHub Copilot", logo: "/img/copilot_small_logo.png" },
-  { key: "gemini", label: "Gemini CLI", logo: "/img/gemini_small_logo.png" }
+  { key: "continue", label: "Continue" },
+  { key: "copilot", label: "GitHub Copilot" },
+  { key: "gemini", label: "Gemini CLI" }
 ];
 let activeInstallDestinationMenu = null;
 
@@ -2071,6 +2071,14 @@ async function showDetails(id) {
   showDetailPage();
 }
 
+function getDestinationLogoPath(destinationKey) {
+  const normalizedKey = String(destinationKey || "").trim().toLowerCase();
+  const currentTheme = String(document.documentElement.getAttribute("data-theme") || "dark").trim().toLowerCase();
+  const logoTone = currentTheme === "light" ? "black" : "white";
+  if (!["continue", "copilot", "gemini"].includes(normalizedKey)) return "";
+  return `/img/${normalizedKey}_small_${logoTone}_logo.png`;
+}
+
 function getDestinationLabel(destination) {
   const normalizedDestination = String(destination || "continue").trim().toLowerCase();
   if (normalizedDestination === "copilot") return "GitHub Copilot";
@@ -2189,7 +2197,7 @@ function openInstallDestinationMenu(anchorEl, definition) {
       return `
         <button type="button" class="install-destination-menu-item" data-destination="${escapeHtml(option.key)}" role="menuitemcheckbox" aria-checked="${isInstalled ? "true" : "false"}">
           <span class="install-destination-menu-item-check">${isInstalled ? "✓" : ""}</span>
-          <img class="install-destination-menu-item-logo" src="${escapeHtml(option.logo || "")}" alt="" aria-hidden="true" />
+          <img class="install-destination-menu-item-logo" src="${escapeHtml(getDestinationLogoPath(option.key))}" alt="" aria-hidden="true" />
           <span>${escapeHtml(option.label)}</span>
         </button>
       `;
