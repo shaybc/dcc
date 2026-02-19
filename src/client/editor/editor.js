@@ -43,6 +43,7 @@ let promptFormatSwitchButton;
 let promptFormatKeepButton;
 let dismissedPromptFormatConflict = "";
 let promptContentFormat = "yaml";
+let ruleContentFormat = "markdown";
 const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
 const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags"];
 
@@ -531,6 +532,11 @@ function detectPromptFormatFromRawInput(text = "") {
   return source.startsWith("---") ? "markdown" : "yaml";
 }
 
+function detectRuleFormatFromRawInput(text = "") {
+  const source = String(text || "").trimStart();
+  return source.startsWith("---") ? "markdown" : "yaml";
+}
+
 function isCertainYamlPaste(text = "") {
   const source = String(text || "").trim();
   if (!source || source.startsWith("---")) return false;
@@ -571,12 +577,60 @@ function isCertainMarkdownPaste(text = "") {
   }
 }
 
+function isCertainRuleYamlPaste(text = "") {
+  const source = String(text || "").trim();
+  if (!source || source.startsWith("---")) return false;
+
+  const hasYamlKeyPattern = /(^|\n)\s*[A-Za-z0-9_][\w-]*\s*:\s*/.test(source);
+  if (!hasYamlKeyPattern) return false;
+
+  try {
+    const parsed = YAML.parse(source);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return false;
+
+    const keys = Object.keys(parsed);
+    if (keys.length === 0) return false;
+
+    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rule", "body"];
+    return keys.some((key) => knownRuleKeys.includes(key));
+  } catch (_error) {
+    return false;
+  }
+}
+
+function isCertainRuleMarkdownPaste(text = "") {
+  const source = String(text || "").trim();
+  if (!source.startsWith("---")) return false;
+
+  try {
+    const parsed = matter(source);
+    const frontmatter = parsed?.data;
+    if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return false;
+
+    const keys = Object.keys(frontmatter);
+    if (keys.length === 0) return false;
+
+    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags"];
+    return keys.some((key) => knownRuleKeys.includes(key));
+  } catch (_error) {
+    return false;
+  }
+}
+
 function detectPromptFormat(text = "") {
   if (isMarkdownPath(pathParam)) {
     return "markdown";
   }
 
   return detectPromptFormatFromRawInput(text);
+}
+
+function detectRuleFormat(text = "") {
+  if (isMarkdownPath(pathParam)) {
+    return "markdown";
+  }
+
+  return detectRuleFormatFromRawInput(text);
 }
 
 function formatDisplayName(contentFormat) {
@@ -862,10 +916,21 @@ const handlers = {
   },
   rule: {
     createForm: createRuleForm,
-    parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
+    parse: (txt) => {
+      if (ruleContentFormat === "markdown") {
+        const m = matter(txt || "");
+        return { ...m.data, body: m.content.trimStart() };
+      }
+
+      return YAML.parse(txt || "") || {};
+    },
     serialize: (state) => {
       const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
-      return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags) }));
+      if (ruleContentFormat === "markdown") {
+        return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags) }));
+      }
+
+      return stringifyYamlDefinition(omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags), rule: body }));
     }
   }
 };
@@ -904,7 +969,7 @@ function normalizeState(type, parsed) {
     regex: data.regex || "",
     alwaysApply: typeof data.alwaysApply === "boolean" ? data.alwaysApply : undefined,
     tags: data.dcc_tags || data.tags || [],
-    body: data.body || ""
+    body: data.rule || data.body || ""
   };
   if (type === "model") return {
     name: data.name || "",
@@ -963,7 +1028,7 @@ function normalizeState(type, parsed) {
 }
 
 function shouldShowPromptFormatControl(type) {
-  return type === "prompt" && (mode === "create" || mode === "edit");
+  return (type === "prompt" || type === "rule") && (mode === "create" || mode === "edit");
 }
 
 function captureUnknownFields(type, parsed) {
@@ -971,7 +1036,7 @@ function captureUnknownFields(type, parsed) {
     prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts", "prompt", "invokable", "__contentFormat"],
     mcpServer: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "mcpServers"],
     agent: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
-    rule: ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "body"],
+    rule: ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rule", "body"],
     model: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models"],
     workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
     context: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "context"],
@@ -1002,6 +1067,13 @@ function setupForType(type, initialRaw) {
             error.message = `${error.message || "Failed to parse text."}${guidance}`;
           }
         }
+        if (type === "rule") {
+          const detectedFormat = detectRuleFormatFromRawInput(text);
+          const guidance = promptParseGuidance(ruleContentFormat, detectedFormat);
+          if (guidance) {
+            error.message = `${error.message || "Failed to parse text."}${guidance}`;
+          }
+        }
         throw error;
       }
     },
@@ -1009,25 +1081,65 @@ function setupForType(type, initialRaw) {
     readState: () => formController.getState(),
     writeState: (state) => formController.setState(state),
     onTextInput: ({ text, reason, event }) => {
-      if (type !== "prompt" || reason !== "input") return;
+      if (reason !== "input") return;
       const inputType = event?.inputType || "";
       if (!inputType.startsWith("insert")) return;
 
-      const detectedFormat = detectPromptFormatFromRawInput(text);
-      if (detectedFormat === promptContentFormat) {
-        dismissedPromptFormatConflict = "";
-        hidePromptFormatSuggestion();
+      if (type === "prompt") {
+        const detectedFormat = detectPromptFormatFromRawInput(text);
+        if (detectedFormat === promptContentFormat) {
+          dismissedPromptFormatConflict = "";
+          hidePromptFormatSuggestion();
+          return;
+        }
+
+        if (
+          inputType === "insertFromPaste" &&
+          detectedFormat === "yaml" &&
+          promptContentFormat === "markdown" &&
+          isCertainYamlPaste(text)
+        ) {
+          dismissedPromptFormatConflict = "";
+          setPromptFormat("yaml");
+          sync?.updateFormFromText({ reason: "auto-switch-format" });
+          return;
+        }
+
+        if (
+          inputType === "insertFromPaste" &&
+          detectedFormat === "markdown" &&
+          promptContentFormat === "yaml" &&
+          isCertainMarkdownPaste(text)
+        ) {
+          dismissedPromptFormatConflict = "";
+          setPromptFormat("markdown");
+          sync?.updateFormFromText({ reason: "auto-switch-format" });
+          return;
+        }
+
+        showPromptFormatSuggestion(detectedFormat);
+        return;
+      }
+
+      if (type !== "rule") return;
+
+      const detectedFormat = detectRuleFormatFromRawInput(text);
+      if (detectedFormat === ruleContentFormat) {
         return;
       }
 
       if (
         inputType === "insertFromPaste" &&
         detectedFormat === "yaml" &&
-        promptContentFormat === "markdown" &&
-        isCertainYamlPaste(text)
+        ruleContentFormat === "markdown" &&
+        isCertainRuleYamlPaste(text)
       ) {
-        dismissedPromptFormatConflict = "";
-        setPromptFormat("yaml");
+        ruleContentFormat = "yaml";
+        format = "yaml";
+        rawLabel.textContent = "Raw YAML";
+        if (promptFormatSelect) {
+          promptFormatSelect.value = "yaml";
+        }
         sync?.updateFormFromText({ reason: "auto-switch-format" });
         return;
       }
@@ -1035,25 +1147,40 @@ function setupForType(type, initialRaw) {
       if (
         inputType === "insertFromPaste" &&
         detectedFormat === "markdown" &&
-        promptContentFormat === "yaml" &&
-        isCertainMarkdownPaste(text)
+        ruleContentFormat === "yaml" &&
+        isCertainRuleMarkdownPaste(text)
       ) {
-        dismissedPromptFormatConflict = "";
-        setPromptFormat("markdown");
+        ruleContentFormat = "markdown";
+        format = "markdown";
+        rawLabel.textContent = "Raw Markdown";
+        if (promptFormatSelect) {
+          promptFormatSelect.value = "markdown";
+        }
         sync?.updateFormFromText({ reason: "auto-switch-format" });
-        return;
       }
-
-      showPromptFormatSuggestion(detectedFormat);
     }
   });
 
   if (shouldShowPromptFormatControl(type)) {
     setPromptFormatControlVisibility(true);
-    if (mode === "edit") {
+    if (type === "prompt" && mode === "edit") {
       setPromptFormat(detectPromptFormat(initialRaw));
-    } else {
+    } else if (type === "prompt") {
       setPromptFormat(promptFormatSelect?.value || "yaml");
+    } else if (mode === "edit") {
+      ruleContentFormat = detectRuleFormat(initialRaw);
+      format = ruleContentFormat;
+      rawLabel.textContent = format === "markdown" ? "Raw Markdown" : "Raw YAML";
+      if (promptFormatSelect) {
+        promptFormatSelect.value = format;
+      }
+    } else {
+      ruleContentFormat = promptFormatSelect?.value === "yaml" ? "yaml" : "markdown";
+      format = ruleContentFormat;
+      rawLabel.textContent = format === "markdown" ? "Raw Markdown" : "Raw YAML";
+      if (promptFormatSelect) {
+        promptFormatSelect.value = format;
+      }
     }
   } else {
     setPromptFormatControlVisibility(false);
@@ -1163,7 +1290,7 @@ document.getElementById("saveButton").addEventListener("click", async () => {
       },
       repos: assetRepos,
       folderPathsByRepoId: repoFolderPathsById,
-      formats: definitionType === "prompt" ? ["yaml", "markdown"] : [format]
+      formats: definitionType === "prompt" || definitionType === "rule" ? ["yaml", "markdown"] : [format]
     });
     if (!dialogResult) return;
 
@@ -1219,8 +1346,49 @@ document.getElementById("saveButton").addEventListener("click", async () => {
 
 if (promptFormatSelect) {
   promptFormatSelect.addEventListener("change", () => {
-    if (definitionType !== "prompt") return;
-    convertPromptContentFormat(promptFormatSelect.value);
+    if (definitionType === "prompt") {
+      convertPromptContentFormat(promptFormatSelect.value);
+      return;
+    }
+
+    if (definitionType !== "rule") return;
+
+    const nextFormat = promptFormatSelect.value === "yaml" ? "yaml" : "markdown";
+    if (nextFormat === ruleContentFormat) return;
+
+    const previousFormat = ruleContentFormat;
+    const previousRawText = rawText.value;
+    const previousUnknown = { ...unknown };
+    const ruleHandler = handlers.rule;
+    let nextState = formController?.getState?.() || {};
+
+    try {
+      const parsed = ruleHandler.parse(previousRawText);
+      captureUnknownFields("rule", parsed);
+      nextState = normalizeState("rule", parsed);
+    } catch (_error) {
+      unknown = previousUnknown;
+    }
+
+    try {
+      ruleContentFormat = nextFormat;
+      format = nextFormat;
+      rawLabel.textContent = nextFormat === "markdown" ? "Raw Markdown" : "Raw YAML";
+      formController?.setState(nextState);
+      rawText.value = ruleHandler.serialize(nextState);
+      sync?.updateFormFromText({ reason: "switch-format" });
+      sync?.setError("");
+    } catch (error) {
+      ruleContentFormat = previousFormat;
+      format = previousFormat;
+      rawLabel.textContent = previousFormat === "markdown" ? "Raw Markdown" : "Raw YAML";
+      unknown = previousUnknown;
+      rawText.value = previousRawText;
+      if (promptFormatSelect) {
+        promptFormatSelect.value = previousFormat;
+      }
+      sync?.setError(error?.message || "Failed to convert rule format.");
+    }
   });
 }
 
