@@ -126,8 +126,8 @@ const INSTALL_DESTINATION_OPTIONS = [
 ];
 const DESTINATION_COMPATIBILITY = {
   continue: new Set(["rules", "prompts", "workflows", "models", "agents", "mcpservers", "context", "docs", "configs"]),
-  copilot: new Set(["prompts", "models", "docs"]),
-  gemini: new Set(["prompts", "models", "docs"])
+  copilot: new Set(["rules", "prompts"]),
+  gemini: new Set(["rules", "prompts"])
 };
 let activeInstallDestinationMenu = null;
 

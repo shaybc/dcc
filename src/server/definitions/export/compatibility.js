@@ -19,14 +19,12 @@ export const EXPORT_COMPATIBILITY = Object.freeze({
     "configs"
   ]),
   [DESTINATIONS.COPILOT]: Object.freeze([
-    "prompts",
-    "models",
-    "docs"
+    "rules",
+    "prompts"
   ]),
   [DESTINATIONS.GEMINI]: Object.freeze([
-    "prompts",
-    "models",
-    "docs"
+    "rules",
+    "prompts"
   ])
 });
 
