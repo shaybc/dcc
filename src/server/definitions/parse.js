@@ -56,7 +56,7 @@ export function buildKey(type, filePath, { dccUri = "" } = {}) {
   return `${normalizedType}/${path.basename(filePath)}`;
 }
 
-export const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "tags", "dcc_tags", "dcc_uri"]);
+export const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "dcc_tags", "dcc_uri"]);
 
 export function parseYamlHeaderFields(raw) {
   const headers = {};
@@ -140,7 +140,7 @@ export function parseDefinitionContent(raw, filePath) {
     try { parsed = matter(raw); } catch (_error) { parsed = { data: {}, content: raw }; }
   }
   const type = deriveType(filePath, parsed.data, raw);
-  const tags = normalizeTags(parsed.data.dcc_tags || parsed.data.tags);
+  const tags = normalizeTags(parsed.data.dcc_tags);
   const name = parsed.data.name || path.basename(filePath);
   const description = parsed.data.description || "";
   const schema = parsed.data.schema || "";

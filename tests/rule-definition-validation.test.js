@@ -32,3 +32,30 @@ test("validateDefinition accepts Continue rule targeting fields in strict mode f
   assert.equal(result.status, "success");
   assert.equal(result.summary.errors, 0);
 });
+
+
+test("validateDefinition rejects legacy tags field in strict mode", () => {
+  const legacyTagsRule = `---
+name: Legacy Tags Rule
+dcc_uri: sec/rules/legacy-tags
+description: Rule using unsupported legacy tags field.
+tags: legacy
+---
+
+Body
+`;
+
+  const result = validateDefinition({
+    definition: {
+      key: "rules/legacy-tags.md",
+      type: "rule",
+      content: legacyTagsRule,
+      filePath: "rules/legacy-tags.md"
+    },
+    options: { strict: true, lint: false, references: false },
+    knownDefinitions: []
+  });
+
+  assert.equal(result.status, "failure");
+  assert.ok(result.checks.some((finding) => String(finding.message || "").includes("Unrecognized key(s) in object: 'tags'")));
+});
