@@ -132,6 +132,7 @@ export async function loadDefinitions() {
   else await runDb("DELETE FROM definitions WHERE source = 'team'");
 
   await runDb("DELETE FROM project_definition_copies WHERE definitionKey NOT IN (SELECT key FROM definitions)");
+  await runDb("DELETE FROM project_definition_destinations WHERE definitionKey NOT IN (SELECT key FROM definitions)");
 
   return { repoCount: repoFiles.length, teamCount: teamFiles.length, repoRoots: availableRepos.map((repo) => repo.localPath) };
 }
