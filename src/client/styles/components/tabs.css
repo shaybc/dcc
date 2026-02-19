@@ -26,6 +26,7 @@
   position: absolute;
   z-index: 1200;
   min-width: 190px;
+  max-width: calc(100vw - 16px);
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--card);

@@ -2196,9 +2196,31 @@ function openInstallDestinationMenu(anchorEl, definition) {
     .join("");
 
   document.body.appendChild(menu);
-  const rect = anchorEl.getBoundingClientRect();
-  menu.style.left = `${Math.max(8, rect.left + window.scrollX)}px`;
-  menu.style.top = `${rect.bottom + window.scrollY + 6}px`;
+
+  const positionMenu = () => {
+    const rect = anchorEl.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+    const margin = 8;
+
+    let left = rect.left + window.scrollX;
+    const maxLeft = window.scrollX + viewportWidth - menuRect.width - margin;
+    left = Math.min(Math.max(window.scrollX + margin, left), Math.max(window.scrollX + margin, maxLeft));
+
+    const preferredTop = rect.bottom + window.scrollY + 6;
+    const maxTop = window.scrollY + viewportHeight - menuRect.height - margin;
+    let top = preferredTop;
+    if (preferredTop > maxTop) {
+      top = rect.top + window.scrollY - menuRect.height - 6;
+    }
+    top = Math.min(Math.max(window.scrollY + margin, top), Math.max(window.scrollY + margin, maxTop));
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  };
+
+  positionMenu();
 
   const onMenuClick = async (event) => {
     const target = event.target.closest("[data-destination]");
@@ -2227,16 +2249,24 @@ function openInstallDestinationMenu(anchorEl, definition) {
     }
   };
 
+  const onViewportChange = () => {
+    positionMenu();
+  };
+
   const cleanup = () => {
     menu.removeEventListener("click", onMenuClick);
     document.removeEventListener("mousedown", onOutsideClick);
     document.removeEventListener("keydown", onEscape);
+    window.removeEventListener("resize", onViewportChange);
+    window.removeEventListener("scroll", onViewportChange, true);
     menu.remove();
   };
 
   menu.addEventListener("click", onMenuClick);
   document.addEventListener("mousedown", onOutsideClick);
   document.addEventListener("keydown", onEscape);
+  window.addEventListener("resize", onViewportChange);
+  window.addEventListener("scroll", onViewportChange, true);
 
   activeInstallDestinationMenu = { cleanup };
 }
