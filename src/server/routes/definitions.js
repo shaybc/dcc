@@ -129,11 +129,26 @@ router.get("/api/definitions", async (req, res) => {
     }
 
     const copiedRows = await allDb(
-      "SELECT definitionKey FROM project_definition_copies WHERE projectPath = ?",
+      "SELECT definitionKey, destination FROM project_definition_destinations WHERE projectPath = ?",
       [currentDevProject]
     );
-    const copiedKeys = new Set(copiedRows.map((row) => row.definitionKey));
-    const rows = definitionsWithRepoMetadata.map((row) => ({ ...row, status: copiedKeys.has(row.key) ? "saved" : "repo" }));
+    const installedByKey = new Map();
+    copiedRows.forEach((row) => {
+      const key = String(row?.definitionKey || "").trim();
+      const destination = String(row?.destination || "").trim().toLowerCase();
+      if (!key || !destination) return;
+      if (!installedByKey.has(key)) installedByKey.set(key, new Set());
+      installedByKey.get(key).add(destination);
+    });
+
+    const rows = definitionsWithRepoMetadata.map((row) => {
+      const installedDestinations = Array.from(installedByKey.get(row.key) || []);
+      return {
+        ...row,
+        installedDestinations,
+        status: installedDestinations.length > 0 ? "saved" : "repo"
+      };
+    });
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
