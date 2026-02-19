@@ -532,6 +532,11 @@ function detectPromptFormatFromRawInput(text = "") {
   return source.startsWith("---") ? "markdown" : "yaml";
 }
 
+function detectRuleFormatFromRawInput(text = "") {
+  const source = String(text || "").trimStart();
+  return source.startsWith("---") ? "markdown" : "yaml";
+}
+
 function isCertainYamlPaste(text = "") {
   const source = String(text || "").trim();
   if (!source || source.startsWith("---")) return false;
@@ -572,6 +577,46 @@ function isCertainMarkdownPaste(text = "") {
   }
 }
 
+function isCertainRuleYamlPaste(text = "") {
+  const source = String(text || "").trim();
+  if (!source || source.startsWith("---")) return false;
+
+  const hasYamlKeyPattern = /(^|\n)\s*[A-Za-z0-9_][\w-]*\s*:\s*/.test(source);
+  if (!hasYamlKeyPattern) return false;
+
+  try {
+    const parsed = YAML.parse(source);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return false;
+
+    const keys = Object.keys(parsed);
+    if (keys.length === 0) return false;
+
+    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "body"];
+    return keys.some((key) => knownRuleKeys.includes(key));
+  } catch (_error) {
+    return false;
+  }
+}
+
+function isCertainRuleMarkdownPaste(text = "") {
+  const source = String(text || "").trim();
+  if (!source.startsWith("---")) return false;
+
+  try {
+    const parsed = matter(source);
+    const frontmatter = parsed?.data;
+    if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) return false;
+
+    const keys = Object.keys(frontmatter);
+    if (keys.length === 0) return false;
+
+    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags"];
+    return keys.some((key) => knownRuleKeys.includes(key));
+  } catch (_error) {
+    return false;
+  }
+}
+
 function detectPromptFormat(text = "") {
   if (isMarkdownPath(pathParam)) {
     return "markdown";
@@ -585,8 +630,7 @@ function detectRuleFormat(text = "") {
     return "markdown";
   }
 
-  const source = String(text || "").trimStart();
-  return source.startsWith("---") ? "markdown" : "yaml";
+  return detectRuleFormatFromRawInput(text);
 }
 
 function formatDisplayName(contentFormat) {
@@ -1023,6 +1067,13 @@ function setupForType(type, initialRaw) {
             error.message = `${error.message || "Failed to parse text."}${guidance}`;
           }
         }
+        if (type === "rule") {
+          const detectedFormat = detectRuleFormatFromRawInput(text);
+          const guidance = promptParseGuidance(ruleContentFormat, detectedFormat);
+          if (guidance) {
+            error.message = `${error.message || "Failed to parse text."}${guidance}`;
+          }
+        }
         throw error;
       }
     },
@@ -1030,25 +1081,65 @@ function setupForType(type, initialRaw) {
     readState: () => formController.getState(),
     writeState: (state) => formController.setState(state),
     onTextInput: ({ text, reason, event }) => {
-      if (type !== "prompt" || reason !== "input") return;
+      if (reason !== "input") return;
       const inputType = event?.inputType || "";
       if (!inputType.startsWith("insert")) return;
 
-      const detectedFormat = detectPromptFormatFromRawInput(text);
-      if (detectedFormat === promptContentFormat) {
-        dismissedPromptFormatConflict = "";
-        hidePromptFormatSuggestion();
+      if (type === "prompt") {
+        const detectedFormat = detectPromptFormatFromRawInput(text);
+        if (detectedFormat === promptContentFormat) {
+          dismissedPromptFormatConflict = "";
+          hidePromptFormatSuggestion();
+          return;
+        }
+
+        if (
+          inputType === "insertFromPaste" &&
+          detectedFormat === "yaml" &&
+          promptContentFormat === "markdown" &&
+          isCertainYamlPaste(text)
+        ) {
+          dismissedPromptFormatConflict = "";
+          setPromptFormat("yaml");
+          sync?.updateFormFromText({ reason: "auto-switch-format" });
+          return;
+        }
+
+        if (
+          inputType === "insertFromPaste" &&
+          detectedFormat === "markdown" &&
+          promptContentFormat === "yaml" &&
+          isCertainMarkdownPaste(text)
+        ) {
+          dismissedPromptFormatConflict = "";
+          setPromptFormat("markdown");
+          sync?.updateFormFromText({ reason: "auto-switch-format" });
+          return;
+        }
+
+        showPromptFormatSuggestion(detectedFormat);
+        return;
+      }
+
+      if (type !== "rule") return;
+
+      const detectedFormat = detectRuleFormatFromRawInput(text);
+      if (detectedFormat === ruleContentFormat) {
         return;
       }
 
       if (
         inputType === "insertFromPaste" &&
         detectedFormat === "yaml" &&
-        promptContentFormat === "markdown" &&
-        isCertainYamlPaste(text)
+        ruleContentFormat === "markdown" &&
+        isCertainRuleYamlPaste(text)
       ) {
-        dismissedPromptFormatConflict = "";
-        setPromptFormat("yaml");
+        ruleContentFormat = "yaml";
+        format = "yaml";
+        rawLabel.textContent = "Raw YAML";
+        if (promptFormatSelect) {
+          promptFormatSelect.value = "yaml";
+        }
         sync?.updateFormFromText({ reason: "auto-switch-format" });
         return;
       }
@@ -1056,16 +1147,17 @@ function setupForType(type, initialRaw) {
       if (
         inputType === "insertFromPaste" &&
         detectedFormat === "markdown" &&
-        promptContentFormat === "yaml" &&
-        isCertainMarkdownPaste(text)
+        ruleContentFormat === "yaml" &&
+        isCertainRuleMarkdownPaste(text)
       ) {
-        dismissedPromptFormatConflict = "";
-        setPromptFormat("markdown");
+        ruleContentFormat = "markdown";
+        format = "markdown";
+        rawLabel.textContent = "Raw Markdown";
+        if (promptFormatSelect) {
+          promptFormatSelect.value = "markdown";
+        }
         sync?.updateFormFromText({ reason: "auto-switch-format" });
-        return;
       }
-
-      showPromptFormatSuggestion(detectedFormat);
     }
   });
 
