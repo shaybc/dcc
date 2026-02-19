@@ -12,3 +12,9 @@ test("parseDefinitionContent sets empty dccUri when missing", () => {
   const parsed = parseDefinitionContent("# README", "README.md");
   assert.equal(parsed.dccUri, "");
 });
+
+
+test("parseDefinitionContent ignores legacy tags field", () => {
+  const parsed = parseDefinitionContent("name: Test\ndcc_uri: prompts/my-prompt\ntags: legacy\n", "prompts/test.yaml");
+  assert.equal(parsed.tags, "");
+});

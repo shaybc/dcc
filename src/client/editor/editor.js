@@ -979,7 +979,7 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.dcc_tags || data.tags),
+    tags: normalizeStringArray(data.dcc_tags),
     prompts: Array.isArray(data.prompts) ? data.prompts : (data.prompt ? [{ name: data.name || "", description: data.description || "", prompt: data.prompt }] : [])
   };
   if (type === "mcpServer") return {
@@ -988,10 +988,10 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.dcc_tags || data.tags),
+    tags: normalizeStringArray(data.dcc_tags),
     mcpServers: normalizeMcpServers(data.mcpServers)
   };
-  if (type === "agent") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.dcc_tags || data.tags || [], body: data.body || "" };
+  if (type === "agent") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.dcc_tags || [], body: data.body || "" };
   if (type === "rule") return {
     name: data.name || "",
     dcc_uri: data.dcc_uri || "",
@@ -1000,7 +1000,7 @@ function normalizeState(type, parsed) {
     globs: data.globs || "",
     regex: data.regex || "",
     alwaysApply: typeof data.alwaysApply === "boolean" ? data.alwaysApply : undefined,
-    tags: data.dcc_tags || data.tags || [],
+    tags: data.dcc_tags || [],
     body: data.rule || data.body || ""
   };
   if (type === "model") return {
@@ -1009,7 +1009,7 @@ function normalizeState(type, parsed) {
     dcc_uri: data.dcc_uri || "",
     version: data.version || "",
     schema: data.schema || "",
-    tags: normalizeStringArray(data.dcc_tags || data.tags),
+    tags: normalizeStringArray(data.dcc_tags),
     models: normalizeModelEntries(data.models)
   };
   if (type === "workflow") return {
@@ -1018,7 +1018,7 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.dcc_tags || data.tags),
+    tags: normalizeStringArray(data.dcc_tags),
     models: normalizeWorkflowModels(data.models),
     context: normalizeUsesArray(data.context),
     mcpServers: normalizeUsesArray(data.mcpServers),
@@ -1030,7 +1030,7 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.dcc_tags || data.tags),
+    tags: normalizeStringArray(data.dcc_tags),
     docs: Array.isArray(data.docs) ? data.docs : []
   };
   if (type === "config") return {
@@ -1039,7 +1039,7 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.dcc_tags || data.tags),
+    tags: normalizeStringArray(data.dcc_tags),
     dcc_config_type: data.dcc_config_type || data?.dcc?.config_type || "agents",
     models: normalizeUsesArray(data.models).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
     context: normalizeUsesArray(data.context).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
@@ -1054,7 +1054,7 @@ function normalizeState(type, parsed) {
     version: data.version || "",
     schema: data.schema || "",
     description: data.description || "",
-    tags: normalizeStringArray(data.dcc_tags || data.tags),
+    tags: normalizeStringArray(data.dcc_tags),
     context: normalizeContextEntries(data.context)
   };
 }
