@@ -591,7 +591,7 @@ function isCertainRuleYamlPaste(text = "") {
     const keys = Object.keys(parsed);
     if (keys.length === 0) return false;
 
-    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rule", "body"];
+    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rules", "rule", "body"];
     return keys.some((key) => knownRuleKeys.includes(key));
   } catch (_error) {
     return false;
@@ -922,7 +922,19 @@ const handlers = {
         return { ...m.data, body: m.content.trimStart() };
       }
 
-      return YAML.parse(txt || "") || {};
+      const parsed = YAML.parse(txt || "") || {};
+      const firstRule = Array.isArray(parsed.rules) && parsed.rules[0] && typeof parsed.rules[0] === "object"
+        ? parsed.rules[0]
+        : {};
+
+      return {
+        ...parsed,
+        globs: parsed.globs ?? firstRule.globs,
+        regex: parsed.regex ?? firstRule.regex,
+        alwaysApply: parsed.alwaysApply ?? firstRule.alwaysApply,
+        rule: parsed.rule ?? firstRule.rule,
+        body: parsed.body ?? firstRule.body,
+      };
     },
     serialize: (state) => {
       const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
@@ -930,7 +942,27 @@ const handlers = {
         return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags) }));
       }
 
-      return stringifyYamlDefinition(omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags), rule: body }));
+      const normalizedGlobs = Array.isArray(frontmatter.globs)
+        ? frontmatter.globs.map((entry) => String(entry || "").trim()).filter(Boolean)
+        : (typeof frontmatter.globs === "string" && frontmatter.globs.trim() ? frontmatter.globs.trim() : undefined);
+      const normalizedRegex = Array.isArray(frontmatter.regex)
+        ? frontmatter.regex.map((entry) => String(entry || "").trim()).filter(Boolean)
+        : (typeof frontmatter.regex === "string" && frontmatter.regex.trim() ? frontmatter.regex.trim() : undefined);
+
+      const ruleEntry = omitUndefinedValues({
+        name: String(frontmatter.name || "").trim() || undefined,
+        globs: normalizedGlobs,
+        regex: normalizedRegex,
+        alwaysApply: typeof frontmatter.alwaysApply === "boolean" ? frontmatter.alwaysApply : undefined,
+        rule: String(body || "")
+      });
+
+      const { globs, regex, alwaysApply, rule, ...topLevel } = frontmatter;
+      return stringifyYamlDefinition(omitUndefinedValues({
+        ...topLevel,
+        dcc_tags: normalizeStringArray(tags),
+        rules: [ruleEntry]
+      }));
     }
   }
 };
@@ -1036,7 +1068,7 @@ function captureUnknownFields(type, parsed) {
     prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts", "prompt", "invokable", "__contentFormat"],
     mcpServer: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "mcpServers"],
     agent: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
-    rule: ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rule", "body"],
+    rule: ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rules", "rule", "body"],
     model: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models"],
     workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
     context: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "context"],
