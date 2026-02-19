@@ -41,6 +41,8 @@ const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefini
 const versionHistoryButton = document.getElementById("versionHistoryButton");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const installDefinitionButton = document.getElementById("installDefinition");
+const installDestinationSelect = document.getElementById("installDestination");
+const installDestinationControl = installDestinationSelect?.closest(".definition-destination-control") || null;
 const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
@@ -2047,6 +2049,12 @@ async function showDetails(id) {
   deleteDefinitionButton.hidden = !canDeleteDefinition;
   pushUpstreamDefinitionButton.hidden = !isUntrackedDefinition;
   pushUpstreamDefinitionButton.disabled = !isUntrackedDefinition;
+  if (installDestinationControl) {
+    installDestinationControl.hidden = false;
+  }
+  if (installDestinationSelect) {
+    installDestinationSelect.disabled = false;
+  }
   updateInstallDefinitionButtonState();
   definitionTabPreview.disabled = false;
   lastValidationResult = null;
@@ -2055,6 +2063,63 @@ async function showDetails(id) {
   setDefinitionTab("preview");
   renderVersionBanner("");
   showDetailPage();
+}
+
+function getSelectedInstallDestination() {
+  const selectedDestination = String(installDestinationSelect?.value || "").trim().toLowerCase();
+  return selectedDestination || "continue";
+}
+
+function formatSkippedReason(skippedItem) {
+  const reason = String(skippedItem?.reason || "not_exported").trim().toLowerCase();
+  const message = String(skippedItem?.message || "").trim();
+  const reasonLabels = {
+    unknown_destination: "unknown destination",
+    unsupported_type_for_destination: "unsupported definition type",
+    conversion_failed: "conversion failed",
+    no_write_plan: "no output generated",
+    unsupported_destination: "unsupported destination",
+    unknown_operation: "unsupported write operation"
+  };
+
+  const label = reasonLabels[reason] || reason.replace(/_/g, " ");
+  return message ? `${label} (${message})` : label;
+}
+
+function buildInstallExportSummary(result, destination) {
+  const normalizedDestination = String(destination || "continue").trim().toLowerCase();
+  const destinationLabel = normalizedDestination === "continue"
+    ? "current project"
+    : normalizedDestination === "copilot"
+      ? "GitHub Copilot"
+      : normalizedDestination === "gemini"
+        ? "Gemini CLI"
+        : normalizedDestination;
+
+  const writtenFiles = Array.isArray(result?.writtenFiles) ? result.writtenFiles : [];
+  const skipped = Array.isArray(result?.skipped) ? result.skipped : [];
+  const exportedCount = Number.isFinite(Number(result?.exportedCount))
+    ? Number(result.exportedCount)
+    : (result?.exported ? 1 : 0);
+
+  const lines = [
+    normalizedDestination === "continue"
+      ? "Definition installed in current project."
+      : `Definition exported to ${destinationLabel}.`,
+    `Exported: ${exportedCount}`,
+    `Files written: ${writtenFiles.length}`,
+    `Skipped definitions: ${skipped.length}`
+  ];
+
+  if (skipped.length > 0) {
+    lines.push("Skipped details:");
+    skipped.forEach((entry, index) => {
+      const label = entry?.name || entry?.key || entry?.definitionKey || `Definition ${index + 1}`;
+      lines.push(`- ${label}: ${formatSkippedReason(entry)}`);
+    });
+  }
+
+  return lines.join("\n");
 }
 
 function updateInstallDefinitionButtonState() {
@@ -2082,9 +2147,19 @@ function updateInstallDefinitionButtonState() {
     `;
 
   installDefinitionButton.hidden = !canInstall;
+  if (installDestinationControl) {
+    installDestinationControl.hidden = !canInstall;
+  }
   if (!canInstall) {
     installDefinitionButton.disabled = true;
+    if (installDestinationSelect) {
+      installDestinationSelect.disabled = true;
+    }
     return;
+  }
+
+  if (installDestinationSelect) {
+    installDestinationSelect.disabled = false;
   }
 
   installDefinitionButton.disabled = !hasDefinition || !hasSelectedProject;
@@ -2098,6 +2173,14 @@ function updateInstallDefinitionButtonState() {
   if (!hasSelectedProject) {
     installDefinitionButton.title = "Select a project first";
     installDefinitionButton.setAttribute("aria-label", "Select a project first");
+    return;
+  }
+
+  const selectedDestination = getSelectedInstallDestination();
+  if (selectedDestination !== "continue") {
+    const destinationLabel = selectedDestination === "copilot" ? "GitHub Copilot" : "Gemini CLI";
+    installDefinitionButton.title = `Install/Export definition to ${destinationLabel}`;
+    installDefinitionButton.setAttribute("aria-label", `Install/Export definition to ${destinationLabel}`);
     return;
   }
 
@@ -2135,6 +2218,12 @@ function showHubPage() {
   if (installDefinitionButton) {
     installDefinitionButton.hidden = true;
     installDefinitionButton.disabled = true;
+  }
+  if (installDestinationControl) {
+    installDestinationControl.hidden = true;
+  }
+  if (installDestinationSelect) {
+    installDestinationSelect.disabled = true;
   }
   hubHeader.hidden = false;
   hubMain.hidden = false;
@@ -2196,11 +2285,18 @@ async function copyDefinitionToClipboard() {
 async function saveDefinition(id) {
   if (!devProjectInput.value.trim()) {
     window.alert("Please select a project first.");
-    return;
+    return null;
   }
-  await fetchWithErrorHandling(`/api/definitions/${id}/save`, { method: "POST" }, "Unable to save definition.", {
-    title: "Saving definition...",
-    description: "Installing definition in selected project.",
+  const destination = getSelectedInstallDestination();
+  return fetchWithErrorHandling(`/api/definitions/${id}/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ destination })
+  }, "Unable to save definition.", {
+    title: destination === "continue" ? "Saving definition..." : "Exporting definition...",
+    description: destination === "continue"
+      ? "Installing definition in selected project."
+      : "Installing/Exporting definition for selected destination.",
   });
 }
 
@@ -2606,6 +2702,10 @@ function setupEventListeners() {
     }
   });
 
+  installDestinationSelect?.addEventListener("change", () => {
+    updateInstallDefinitionButtonState();
+  });
+
   installDefinitionButton?.addEventListener("click", async () => {
     if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
       return;
@@ -2617,14 +2717,17 @@ function setupEventListeners() {
 
     try {
       const isSavedInCurrentProject = currentDetailDefinitionStatus === "saved";
+      const selectedDestination = getSelectedInstallDestination();
       const result = isSavedInCurrentProject
         ? await removeDefinition(currentDetailDefinitionId)
         : await saveDefinition(currentDetailDefinitionId);
       await fetchDefinitions();
       await showDetails(currentDetailDefinitionId);
-      window.alert(result?.message || (isSavedInCurrentProject
-        ? "Definition removed from current project."
-        : "Definition installed in current project."));
+      if (isSavedInCurrentProject) {
+        window.alert(result?.message || "Definition removed from current project.");
+      } else {
+        window.alert(buildInstallExportSummary(result, selectedDestination));
+      }
     } catch (error) {
       window.alert(error.message || "Unable to update definition in current project.");
     }

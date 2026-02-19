@@ -254,8 +254,17 @@ router.post("/api/definitions/:id/save", async (req, res) => {
         });
 
         const exported = exportResult.writtenFiles?.length > 0;
-        const skipped = Array.isArray(exportResult.skipped) ? exportResult.skipped : [];
+        const rawSkipped = Array.isArray(exportResult.skipped) ? exportResult.skipped : [];
+        const skipped = rawSkipped.map((entry, index) => ({
+          key: entry?.definition?.key || entry?.definitionKey || `definition-${index + 1}`,
+          name: entry?.definition?.name || entry?.name || entry?.definitionKey || `Definition ${index + 1}`,
+          reason: entry?.reason || "not_exported",
+          message: entry?.message || "",
+          destination: entry?.destination || destination,
+          type: entry?.normalizedType || entry?.type || "unknown"
+        }));
         const hasSkipped = skipped.length > 0;
+        const writtenFiles = Array.isArray(exportResult.writtenFiles) ? exportResult.writtenFiles : [];
 
         if (exported) {
           await runDb(
@@ -272,6 +281,8 @@ router.post("/api/definitions/:id/save", async (req, res) => {
           skipped,
           warnings: exportResult.warnings || [],
           countsByType: exportResult.countsByType || {},
+          writtenFiles,
+          exportedCount: exported ? 1 : 0,
           message: exported && hasSkipped
             ? "Definition exported with skipped items."
             : exported
@@ -336,6 +347,16 @@ router.post("/api/definitions/:id/save", async (req, res) => {
             ok: true,
             destination: DESTINATIONS.CONTINUE,
             exported: true,
+            exportedCount: 1,
+            writtenFiles: [{
+              definitionId: row.key || row.id,
+              destination: DESTINATIONS.CONTINUE,
+              mode: "install",
+              type: normalizeDefinitionType(row.type),
+              relativePath: row.filePath || "",
+              filePath: row.filePath || "",
+              op: "write"
+            }],
             skipped: [],
             warnings: [],
             countsByType: {},
