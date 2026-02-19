@@ -9,7 +9,15 @@ const fsp = fs.promises;
 export function mergeConfigSection(merged, key, rawContent, filePath = "") {
   const { data, body } = readDefinitionYamlData(rawContent, filePath);
   if (key === "rules") {
-    if (body) merged[key].push(body);
+    const ruleBody = String(body || data.rule || "").trim();
+    if (!ruleBody) return;
+    const nextRule = {
+      name: String(data.name || "").trim(),
+      globs: data.globs,
+      alwaysApply: typeof data.alwaysApply === "boolean" ? data.alwaysApply : undefined,
+      rule: ruleBody
+    };
+    merged[key].push(nextRule);
     return;
   }
   if (key === "prompts") {
