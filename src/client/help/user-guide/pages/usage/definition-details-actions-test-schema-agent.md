@@ -1,4 +1,4 @@
-## Test tab schema: agent structure (`agents`)
+## Agent structure (`agents`)
 
 - Uses common fields only in schema checks.
 

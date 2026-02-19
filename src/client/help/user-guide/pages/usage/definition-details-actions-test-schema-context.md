@@ -1,4 +1,4 @@
-## Test tab schema: context structure (`context`)
+## Context structure (`context`)
 
 - `provider` - optional context provider identifier.
 

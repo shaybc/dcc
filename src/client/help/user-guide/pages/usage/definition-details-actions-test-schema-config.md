@@ -1,4 +1,4 @@
-## Test tab schema: config structure (`configs`)
+## Config structure (`configs`)
 
 - `dcc_config_type` - required enum: `agents` or `ide`.
 - `dcc.config_type` - optional enum: `agents` or `ide`.

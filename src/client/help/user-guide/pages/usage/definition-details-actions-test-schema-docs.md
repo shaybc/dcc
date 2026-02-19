@@ -1,4 +1,4 @@
-## Test tab schema: docs structure (`docs`)
+## Docs structure (`docs`)
 
 - `docs` - required non-empty list of doc source objects.
 - `docs[].name` - required display name.

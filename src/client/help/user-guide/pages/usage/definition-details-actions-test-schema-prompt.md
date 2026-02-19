@@ -1,4 +1,4 @@
-## Test tab schema: prompt structure (`prompts`)
+## Prompt structure (`prompts`)
 
 - `prompt` - optional single prompt text.
 - `messages` - optional structured chat message array.

@@ -1,4 +1,4 @@
-## Test tab schema: common fields
+## Common fields
 
 These fields are shared across definition types and are validated where applicable.
 

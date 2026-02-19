@@ -1,4 +1,4 @@
-## Test tab schema: model structure (`models`)
+## Model structure (`models`)
 
 - `provider` - optional model provider name.
 - `model` - optional model identifier.

@@ -1,4 +1,4 @@
-## Test tab schema: MCP Server structure (`mcpservers`)
+## MCP Server structure (`mcpservers`)
 
 - `transport` - optional transport type.
 - `tools` - optional list of exposed tools.

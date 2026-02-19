@@ -1,4 +1,4 @@
-# Source and Test Tab Actions
+# Source Tab Actions
 
 This page covers advanced review actions available in the **Source** tab.
 

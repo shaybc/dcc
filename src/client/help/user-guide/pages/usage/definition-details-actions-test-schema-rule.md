@@ -1,4 +1,4 @@
-## Test tab schema: rule structure (`rules`)
+## Rule structure (`rules`)
 
 - `globs` - optional file glob or list of globs.
 - `regex` - optional regex matcher string.

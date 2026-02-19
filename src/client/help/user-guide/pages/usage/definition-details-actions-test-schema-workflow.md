@@ -1,4 +1,4 @@
-## Test tab schema: workflow structure (`workflows`)
+## Workflow structure (`workflows`)
 
 - `steps` - required non-empty list of workflow step objects.
 - `steps[].id` - optional per-step identifier.
