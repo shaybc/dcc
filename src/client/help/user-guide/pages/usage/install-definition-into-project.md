@@ -74,3 +74,8 @@ Reason: those types do not yet have stable destination-specific conversions, so 
 This keeps export safe to run repeatedly during normal iteration.
 
 For a focused walkthrough, see **Export to Copilot and Gemini**.
+
+to learn more on each AI system go to:
+[Continue.dev](https://docs.continue.dev/customize/overview)
+[Github Copilot](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions?tool=vscode)
+[Gemini CLI](https://geminicli.com/docs/cli/custom-commands/)
