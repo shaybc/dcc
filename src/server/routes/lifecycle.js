@@ -21,6 +21,26 @@ const fsp = fs.promises;
 const router = express.Router();
 const VALID_SAVE_DESTINATIONS = new Set(Object.values(DESTINATIONS));
 
+async function listInstalledDestinations(projectPath, definitionKey) {
+  const rows = await allDb(
+    "SELECT destination FROM project_definition_destinations WHERE projectPath = ? AND definitionKey = ? ORDER BY destination ASC",
+    [projectPath, definitionKey]
+  );
+  return rows
+    .map((entry) => String(entry?.destination || "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
+async function syncDefinitionSavedStatus(definitionId, projectPath, definitionKey) {
+  const installed = await listInstalledDestinations(projectPath, definitionKey);
+  const hasInstallations = installed.length > 0;
+  await runDb(
+    "UPDATE definitions SET inTeam = ?, status = ? WHERE id = ?",
+    [hasInstallations ? 1 : 0, hasInstallations ? "saved" : "repo", definitionId]
+  );
+  return installed;
+}
+
 router.post("/api/definitions/:id/duplicate", async (req, res) => {
   db.get("SELECT * FROM definitions WHERE id = ?", [req.params.id], async (err, row) => {
     if (err) {
@@ -268,10 +288,10 @@ router.post("/api/definitions/:id/save", async (req, res) => {
 
         if (exported) {
           await runDb(
-            "INSERT OR IGNORE INTO project_definition_copies (projectPath, definitionKey, copiedAt) VALUES (?, ?, ?)",
-            [currentDevProject, row.key, new Date().toISOString()]
+            "INSERT OR REPLACE INTO project_definition_destinations (projectPath, definitionKey, destination, copiedAt) VALUES (?, ?, ?, ?)",
+            [currentDevProject, row.key, destination, new Date().toISOString()]
           );
-          await runDb("UPDATE definitions SET inTeam = 1, status = 'saved' WHERE id = ?", [row.id]);
+          await syncDefinitionSavedStatus(row.id, currentDevProject, row.key);
         }
 
         res.json({
@@ -332,37 +352,29 @@ router.post("/api/definitions/:id/save", async (req, res) => {
       }
 
       await runDb(
-        "INSERT OR IGNORE INTO project_definition_copies (projectPath, definitionKey, copiedAt) VALUES (?, ?, ?)",
-        [currentDevProject, row.key, new Date().toISOString()]
+        "INSERT OR REPLACE INTO project_definition_destinations (projectPath, definitionKey, destination, copiedAt) VALUES (?, ?, ?, ?)",
+        [currentDevProject, row.key, DESTINATIONS.CONTINUE, new Date().toISOString()]
       );
-      db.run(
-        "UPDATE definitions SET inTeam = 1, status = 'saved' WHERE id = ?",
-        [row.id],
-        (updateErr) => {
-          if (updateErr) {
-            res.status(500).json({ error: updateErr.message });
-            return;
-          }
-          res.json({
-            ok: true,
-            destination: DESTINATIONS.CONTINUE,
-            exported: true,
-            exportedCount: 1,
-            writtenFiles: [{
-              definitionId: row.key || row.id,
-              destination: DESTINATIONS.CONTINUE,
-              mode: "install",
-              type: normalizeDefinitionType(row.type),
-              relativePath: row.filePath || "",
-              filePath: row.filePath || "",
-              op: "write"
-            }],
-            skipped: [],
-            warnings: [],
-            countsByType: {},
-          });
-        }
-      );
+      await syncDefinitionSavedStatus(row.id, currentDevProject, row.key);
+
+      res.json({
+        ok: true,
+        destination: DESTINATIONS.CONTINUE,
+        exported: true,
+        exportedCount: 1,
+        writtenFiles: [{
+          definitionId: row.key || row.id,
+          destination: DESTINATIONS.CONTINUE,
+          mode: "install",
+          type: normalizeDefinitionType(row.type),
+          relativePath: row.filePath || "",
+          filePath: row.filePath || "",
+          op: "write"
+        }],
+        skipped: [],
+        warnings: [],
+        countsByType: {},
+      });
     } catch (error) {
       console.error("[definition-save] failed to save definition", {
         id: row.id,
@@ -584,6 +596,38 @@ router.post("/api/definitions/:id/remove", async (req, res) => {
         return;
       }
 
+      const destination = String(req.body?.destination || DESTINATIONS.CONTINUE).trim().toLowerCase();
+      if (!VALID_SAVE_DESTINATIONS.has(destination)) {
+        res.status(400).json({ error: `Unsupported destination: ${destination}` });
+        return;
+      }
+
+      if (destination === DESTINATIONS.COPILOT || destination === DESTINATIONS.GEMINI) {
+        const exportResult = await exportDefinitionsToDestination({
+          projectPath: currentDevProject,
+          destination,
+          definitions: [row],
+          mode: "remove"
+        });
+
+        await runDb(
+          "DELETE FROM project_definition_destinations WHERE projectPath = ? AND definitionKey = ? AND destination = ?",
+          [currentDevProject, row.key, destination]
+        );
+        const installedDestinations = await syncDefinitionSavedStatus(row.id, currentDevProject, row.key);
+
+        res.json({
+          ok: true,
+          destination,
+          removed: true,
+          writtenFiles: exportResult.writtenFiles || [],
+          skipped: exportResult.skipped || [],
+          warnings: exportResult.warnings || [],
+          installedDestinations
+        });
+        return;
+      }
+
       const normalizedType = normalizeDefinitionType(row.type);
       if (normalizedType === "context") {
         await removeContextProviders(currentDevProject, row.content || "");
@@ -610,21 +654,11 @@ router.post("/api/definitions/:id/remove", async (req, res) => {
       }
 
       await runDb(
-        "DELETE FROM project_definition_copies WHERE projectPath = ? AND definitionKey = ?",
-        [currentDevProject, row.key]
+        "DELETE FROM project_definition_destinations WHERE projectPath = ? AND definitionKey = ? AND destination = ?",
+        [currentDevProject, row.key, DESTINATIONS.CONTINUE]
       );
-
-      db.run(
-        "UPDATE definitions SET inTeam = 0, status = 'repo' WHERE id = ?",
-        [row.id],
-        (updateErr) => {
-          if (updateErr) {
-            res.status(500).json({ error: updateErr.message });
-            return;
-          }
-          res.json({ ok: true });
-        }
-      );
+      const installedDestinations = await syncDefinitionSavedStatus(row.id, currentDevProject, row.key);
+      res.json({ ok: true, destination: DESTINATIONS.CONTINUE, installedDestinations });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
