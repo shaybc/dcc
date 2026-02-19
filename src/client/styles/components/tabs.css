@@ -21,6 +21,23 @@
   gap: 8px;
 }
 
+.definition-destination-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.definition-destination-control select {
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
 .definition-tab-buttons {
   display: flex;
   gap: 0;
