@@ -12,7 +12,7 @@ These fields appear in many definition schemas. Use this as a practical guide fo
   - **What it is:** The unique, stable identifier for the definition.
   - **What to fill in:** A URI-style string that should remain constant even when the definition is updated.
   - **Tips:** Keep it globally unique and avoid changing it after publication, because installs and references depend on it.
-  - **Example:** `"dcc://acme/agent/code-review-assistant"`.
+  - **Example:** `"dev/agents/code-review-assistant"`.
 
 - `description` (**required**)
   - **What it is:** A short summary of what the definition does.
