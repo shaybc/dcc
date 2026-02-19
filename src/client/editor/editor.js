@@ -591,7 +591,7 @@ function isCertainRuleYamlPaste(text = "") {
     const keys = Object.keys(parsed);
     if (keys.length === 0) return false;
 
-    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "body"];
+    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rule", "body"];
     return keys.some((key) => knownRuleKeys.includes(key));
   } catch (_error) {
     return false;
@@ -930,7 +930,7 @@ const handlers = {
         return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags) }));
       }
 
-      return stringifyYamlDefinition(omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags), body }));
+      return stringifyYamlDefinition(omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags), rule: body }));
     }
   }
 };
@@ -969,7 +969,7 @@ function normalizeState(type, parsed) {
     regex: data.regex || "",
     alwaysApply: typeof data.alwaysApply === "boolean" ? data.alwaysApply : undefined,
     tags: data.dcc_tags || data.tags || [],
-    body: data.body || ""
+    body: data.rule || data.body || ""
   };
   if (type === "model") return {
     name: data.name || "",
@@ -1036,7 +1036,7 @@ function captureUnknownFields(type, parsed) {
     prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts", "prompt", "invokable", "__contentFormat"],
     mcpServer: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "mcpServers"],
     agent: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
-    rule: ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "body"],
+    rule: ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rule", "body"],
     model: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models"],
     workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
     context: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "context"],
