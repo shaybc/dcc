@@ -5,7 +5,7 @@
 
 ```yaml
 name: PR Review Workflow
-dcc_uri: dcc://workflows/pr-review
+dcc_uri: dev/workflows/pr-review
 description: Review and prepare a pull request
 steps:
   - id: gather-context

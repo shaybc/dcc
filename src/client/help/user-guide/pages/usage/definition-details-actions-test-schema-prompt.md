@@ -13,14 +13,7 @@ At least one of these should be present:
   - Best for straightforward templates where one instruction block is enough.
   - Supports multiline content with YAML `|` syntax.
 
-- `messages` (array, optional)
-  - A structured conversation history.
-  - Best when you want role-based behavior (`system`, `user`, optionally `assistant`) or multi-step setup context.
-  - Each item should include:
-    - `role`: who is speaking.
-    - `content`: what that message says.
-
-> Tip: Use `prompt` for simple reusable instructions, and `messages` for more advanced prompt engineering where role separation matters.
+> Tip: Use yaml `prompt` for simple reusable instructions, or in a markdown file for a more advanced prompt engineering (you can use both, but MD is easier to format and is a more human readable format).
 
 ### Common metadata fields used with prompts
 
@@ -30,7 +23,7 @@ Prompt definitions also use common fields shared across schema types:
   - Human-friendly display name shown in DCC and Continue prompt pickers.
 
 - `dcc_uri` (required)
-  - Stable unique identifier (for example: `dcc://prompts/bug-fix`).
+  - Stable unique identifier (for example: `dev/prompts/bug-fix`).
   - Used for tracking, versioning, and installs.
 
 - `description` (required)
@@ -47,7 +40,7 @@ Prompt definitions also use common fields shared across schema types:
 
 ```yaml
 name: Bug Fix Prompt
-dcc_uri: dcc://prompts/bug-fix
+dcc_uri: dev/prompts/bug-fix
 description: Prompt template for fixing bugs
 invokable: true
 prompt: |
@@ -55,27 +48,9 @@ prompt: |
   Explain root cause, code change, and regression risk.
 ```
 
-### Example: structured `messages`
+### Tips
 
-```yaml
-name: Bug Fix Prompt (Structured)
-dcc_uri: dcc://prompts/bug-fix-structured
-description: Bug-fix prompt with role-based setup
-invokable: true
-messages:
-  - role: system
-    content: You are a careful coding assistant focused on minimal, safe fixes.
-  - role: user
-    content: Fix the failing test and explain why it was failing.
-```
-
-### When to choose each format
-
-- Choose `prompt` when:
-  - You want a concise instruction template.
-  - You do not need role separation.
-
-- Choose `messages` when:
-  - You need system-level behavior constraints.
-  - You want more deterministic setup before user input.
-  - You need to model a specific multi-message context.
+- When writing `prompt`:
+  - keep a concise instruction template.
+  - specify a system-level behavior constraints.
+  - Build a more deterministic setup before user input.

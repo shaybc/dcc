@@ -19,7 +19,7 @@ Supported model fields include:
 
 ```yaml
 name: GPT-5.2 Codex
-dcc_uri: dcc://models/gpt-5-2-codex
+dcc_uri: dev/models/gpt-5-2-codex
 description: Primary coding model
 provider: openai
 model: gpt-5.2-codex

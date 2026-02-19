@@ -69,7 +69,7 @@ This keeps configs modular and easier to maintain across teams.
 
 ```yaml
 name: Team IDE Config
-dcc_uri: dcc://configs/team-ide
+dcc_uri: dev/configs/team-ide
 description: IDE config for team setup
 dcc_config_type: ide
 models:

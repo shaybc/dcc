@@ -10,7 +10,7 @@ In practice, rules are how you enforce coding standards, documentation conventio
   Human-readable title shown in UI and logs. Keep it short and specific (for example, `TypeScript Style Guide`).
 
 - `dcc_uri` (**required in DCC**)  
-  Canonical identifier for the definition, usually in the format `dcc://rules/<slug>`. Other definitions can reference this rule using `dcc_use`.
+  Canonical identifier for the definition, usually in the format `dev/rules/<slug>`. Other definitions can reference this rule using `dcc_use`.
 
 - `description` (optional, but strongly recommended)  
   Plain-language explanation of what the rule is for and when it should apply. This helps users quickly understand intent before opening full content.
@@ -53,7 +53,7 @@ This keeps rules focused and avoids polluting unrelated prompts.
 
 ```yaml
 name: JS Style Rule
-dcc_uri: dcc://rules/js-style
+dcc_uri: dev/rules/js-style
 description: Enforce JavaScript style and discourage debug logging in production code
 globs:
   - "**/*.js"

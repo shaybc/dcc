@@ -4,7 +4,7 @@
 
 ```yaml
 name: Senior Engineer Agent
-dcc_uri: dcc://agents/senior-engineer
+dcc_uri: dev/agents/senior-engineer
 description: Agent persona for implementation and review
 invokable: true
 ```

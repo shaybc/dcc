@@ -16,7 +16,7 @@ In addition to [common fields](/user-guide.html?page=definition-details-actions-
 name: Browser MCP
 version: 0.0.1
 schema: v1
-dcc_uri: dcc://mcpservers/browser
+dcc_uri: dev/mcpservers/browser
 description: Browser automation MCP server
 type: stdio
 command: npx
@@ -35,7 +35,7 @@ tools:
 name: Docs MCP
 version: 0.0.1
 schema: v1
-dcc_uri: dcc://mcpservers/docs
+dcc_uri: dev/mcpservers/docs
 type: sse
 url: https://example.com/mcp/events
 env:
