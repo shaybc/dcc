@@ -39,7 +39,7 @@ export class CopilotAdapter extends BaseAdapter {
   }
 
   getDestinationRoot(projectPath) {
-    return path.resolve(projectPath, ".github");
+    return path.resolve(projectPath);
   }
 
   convertDefinition(definitionRow = {}) {

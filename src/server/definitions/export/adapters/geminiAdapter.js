@@ -40,7 +40,7 @@ export class GeminiAdapter extends BaseAdapter {
   }
 
   getDestinationRoot(projectPath) {
-    return path.resolve(projectPath, ".gemini");
+    return path.resolve(projectPath);
   }
 
   convertDefinition(definitionRow = {}) {

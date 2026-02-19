@@ -37,6 +37,7 @@ test("unsupported types are skipped with explicit reason during export", async (
 
 test("re-export updates existing managed prompt file without duplicating content", async () => {
   const projectPath = await fs.mkdtemp(path.join(os.tmpdir(), "dcc-export-prompt-"));
+  const expectedPromptPath = path.join(projectPath, ".github", "prompts", "prompts-code-review.prompt.md");
 
   const firstExport = await exportDefinitionsToDestination({
     projectPath,
@@ -53,6 +54,7 @@ test("re-export updates existing managed prompt file without duplicating content
   });
 
   const promptPath = secondExport.writtenFiles[0]?.filePath || firstExport.writtenFiles[0]?.filePath;
+  assert.equal(promptPath, expectedPromptPath);
   const updated = await fs.readFile(promptPath, "utf8");
 
   assert.equal((updated.match(/^# Prompt$/gm) || []).length, 1);
