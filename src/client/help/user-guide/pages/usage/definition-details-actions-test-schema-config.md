@@ -1,7 +1,6 @@
 ## Config structure (`configs`)
 
 - `dcc_config_type` - required enum: `agents` or `ide`.
-- `dcc.config_type` - optional enum: `agents` or `ide`.
 - `models[]` / `context[]` / `rules[]` / `prompts[]` / `docs[]` / `mcpServers[]` - optional arrays where each item contains:
   - `dcc_use` - required string reference.
 
@@ -10,8 +9,6 @@ name: Team IDE Config
 dcc_uri: dcc://configs/team-ide
 description: IDE config for team setup
 dcc_config_type: ide
-dcc:
-  config_type: ide
 models:
   - dcc_use: models/gpt-5-2-codex
 rules:

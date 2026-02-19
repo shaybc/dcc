@@ -117,7 +117,7 @@ export function createConfigForm({ mount, onChange, availableTags = [], definiti
       version.value = state.version || "";
       schema.value = state.schema || "";
       description.value = state.description || "";
-      configTypeSelect.value = state.dcc_config_type || state?.dcc?.config_type || "agents";
+      configTypeSelect.value = state.dcc_config_type || "agents";
       tags.setItems(state.tags || []);
       models.setItems(toReferenceItems(state.models));
       context.setItems(toReferenceItems(state.context));

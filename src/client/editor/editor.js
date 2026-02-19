@@ -1040,7 +1040,7 @@ function normalizeState(type, parsed) {
     schema: data.schema || "",
     description: data.description || "",
     tags: normalizeStringArray(data.dcc_tags),
-    dcc_config_type: data.dcc_config_type || data?.dcc?.config_type || "agents",
+    dcc_config_type: data.dcc_config_type || "agents",
     models: normalizeUsesArray(data.models).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
     context: normalizeUsesArray(data.context).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
     rules: normalizeUsesArray(data.rules).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" })),
@@ -1073,7 +1073,7 @@ function captureUnknownFields(type, parsed) {
     workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
     context: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "context"],
     doc: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "docs"],
-    config: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "dcc_config_type", "dcc", "models", "context", "rules", "prompts", "docs", "mcpServers"]
+    config: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "dcc_config_type", "models", "context", "rules", "prompts", "docs", "mcpServers"]
   };
   const known = new Set(knownByType[type] || []);
   unknown = Object.fromEntries(Object.entries(parsed || {}).filter(([key]) => !known.has(key)));

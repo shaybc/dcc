@@ -76,7 +76,6 @@ function schemaForType(type, strict) {
       ...base,
       ...commonMetadata,
       dcc_config_type: z.enum(["agents", "ide"]),
-      dcc: z.object({ config_type: z.enum(["agents", "ide"]) }).optional(),
       models: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),
       context: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),
       rules: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),
