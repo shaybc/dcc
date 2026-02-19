@@ -49,159 +49,17 @@ Use this when you need to share exact machine-readable validation output in tick
 
 ![Definition Test tab](../images/test=tab.png)
 
-## Expected schema by definition type
+## Schema reference subsections
 
-The following sections summarize the expected structure for each definition type used by Test tab schema checks.
+The schema guidance is split into focused pages per definition structure:
 
-### Common fields (applies to all types)
-
-- `name` - human-readable definition name (required).
-- `dcc_uri` - stable DCC identifier URI (required).
-- `description` - short description of purpose (required).
-- `version` - optional version string.
-- `schema` - optional schema marker string.
-- `dcc_tags` / `tags` - optional tags (string or list).
-- `invokable` - optional boolean indicating runnability.
-- `key` - optional key.
-- `type` - optional type label.
-
-### Rule (`rules`)
-
-- `globs` - optional file glob or list of globs.
-- `regex` - optional regex matcher string.
-- `alwaysApply` - optional boolean to force application.
-
-```yaml
-name: JS Style Rule
-dcc_uri: dcc://rules/js-style
-description: Apply JavaScript style guidance
-globs:
-  - "**/*.js"
-regex: "console\\.log"
-alwaysApply: false
-```
-
-### Prompt (`prompts`)
-
-- `prompt` - optional single prompt text.
-- `messages` - optional structured chat message array.
-
-```yaml
-name: Bug Fix Prompt
-dcc_uri: dcc://prompts/bug-fix
-description: Prompt template for fixing bugs
-prompt: |
-  Analyze the issue and propose a minimal fix.
-messages:
-  - role: system
-    content: You are a careful coding assistant.
-  - role: user
-    content: Fix the failing test.
-```
-
-### Workflow (`workflows`)
-
-- `steps` - required non-empty list of workflow step objects.
-- `steps[].id` - optional per-step identifier.
-
-```yaml
-name: PR Review Workflow
-dcc_uri: dcc://workflows/pr-review
-description: Review and prepare a pull request
-steps:
-  - id: gather-context
-  - id: run-validation
-```
-
-### Agent (`agents`)
-
-- Uses common fields only in schema checks.
-
-```yaml
-name: Senior Engineer Agent
-dcc_uri: dcc://agents/senior-engineer
-description: Agent persona for implementation and review
-invokable: true
-```
-
-### Model (`models`)
-
-- `provider` - optional model provider name.
-- `model` - optional model identifier.
-
-```yaml
-name: GPT-5.2 Codex
-dcc_uri: dcc://models/gpt-5-2-codex
-description: Primary coding model
-provider: openai
-model: gpt-5.2-codex
-```
-
-### Context (`context`)
-
-- `provider` - optional context provider identifier.
-
-```yaml
-name: Repo Context
-dcc_uri: dcc://context/repo
-description: Repository-aware context provider
-provider: local-repo
-```
-
-### MCP Server (`mcpservers`)
-
-- `transport` - optional transport type.
-- `tools` - optional list of exposed tools.
-
-```yaml
-name: Browser MCP
-dcc_uri: dcc://mcpservers/browser
-description: Browser automation MCP server
-transport: stdio
-tools:
-  - name: navigate
-  - name: screenshot
-```
-
-### Config (`configs`)
-
-- `dcc_config_type` - required enum: `agents` or `ide`.
-- `dcc.config_type` - optional enum: `agents` or `ide`.
-- `models[]` / `context[]` / `rules[]` / `prompts[]` / `docs[]` / `mcpServers[]` - optional arrays where each item contains:
-  - `dcc_use` - required string reference.
-
-```yaml
-name: Team IDE Config
-dcc_uri: dcc://configs/team-ide
-description: IDE config for team setup
-dcc_config_type: ide
-dcc:
-  config_type: ide
-models:
-  - dcc_use: models/gpt-5-2-codex
-rules:
-  - dcc_use: rules/js-style
-prompts:
-  - dcc_use: prompts/bug-fix
-docs:
-  - dcc_use: docs/platform-docs
-mcpServers:
-  - dcc_use: mcpservers/browser
-```
-
-### Docs (`docs`)
-
-- `docs` - required non-empty list of doc source objects.
-- `docs[].name` - required display name.
-- `docs[].startUrl` - required valid URL.
-- `docs[].favicon` - optional valid URL.
-
-```yaml
-name: Platform Docs
-dcc_uri: dcc://docs/platform
-description: External documentation sources
-docs:
-  - name: API Reference
-    startUrl: https://example.com/docs/api
-    favicon: https://example.com/favicon.ico
-```
+- [Common fields (all definition types)](/user-guide.html?page=definition-details-actions-test-schema-common)
+- [Rule structure (`rules`)](/user-guide.html?page=definition-details-actions-test-schema-rule)
+- [Prompt structure (`prompts`)](/user-guide.html?page=definition-details-actions-test-schema-prompt)
+- [Workflow structure (`workflows`)](/user-guide.html?page=definition-details-actions-test-schema-workflow)
+- [Agent structure (`agents`)](/user-guide.html?page=definition-details-actions-test-schema-agent)
+- [Model structure (`models`)](/user-guide.html?page=definition-details-actions-test-schema-model)
+- [Context structure (`context`)](/user-guide.html?page=definition-details-actions-test-schema-context)
+- [MCP Server structure (`mcpservers`)](/user-guide.html?page=definition-details-actions-test-schema-mcpserver)
+- [Config structure (`configs`)](/user-guide.html?page=definition-details-actions-test-schema-config)
+- [Docs structure (`docs`)](/user-guide.html?page=definition-details-actions-test-schema-docs)
