@@ -1,6 +1,48 @@
 
 # Quick start
 
+## Feature overview
+
+### Install definitions into projects
+
+DCC Hub lets you install a definition into the currently selected development project.
+This is the primary workflow for applying Continue definitions locally and keeping a project in sync with curated assets.
+
+### Export to GitHub Copilot and Gemini CLI (v1)
+
+In addition to Continue install, DCC supports destination-aware export for external AI tooling.
+
+- **Supported types in v1:** `rules`, `prompts`
+- **Destinations:**
+  - **GitHub Copilot:** files under `.github/...`
+  - **Gemini CLI:** files under `.gemini/...`
+
+#### Output locations
+
+- **Rules**
+  - Copilot: `.github/copilot-instructions.md`
+  - Gemini CLI: `.gemini/instructions.md`
+- **Prompts**
+  - Copilot: `.github/prompts/<dcc-uri-slug>.prompt.md`
+  - Gemini CLI: `.gemini/commands/<dcc-uri-slug>.md`
+
+#### Skipped definition types (v1)
+
+Definition types outside of `rules` and `prompts` are skipped for Copilot/Gemini export in v1 because destination-specific mappings are not finalized yet.
+This avoids writing ambiguous or lossy conversions and keeps exports predictable.
+
+#### Idempotent update behavior
+
+- Re-exporting the same rule updates the DCC-managed block in the destination instructions file (it does not duplicate blocks).
+- Re-exporting the same prompt replaces the same prompt file path.
+
+This makes export runs safe to repeat as definitions evolve.
+
+#### Source-of-truth recommendation
+
+Use **Continue definitions in DCC** as your source of truth.
+Treat Copilot/Gemini outputs as generated artifacts that can be refreshed by export.
+
 ## First steps
 
 1. Install Git (if not already installed), If git is not recognized, restart PowerShell:
