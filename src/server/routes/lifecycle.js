@@ -14,9 +14,12 @@ import { updateDefinitionNameInContent, updateDefinitionMetadataInContent, sanit
 import { loadDefinitions } from "../definitions/index.js";
 import { normalizeDefinitionType, buildKey, deriveType } from "../definitions/parse.js";
 import { refreshDefinitionVersionCache } from "../versions/cache.js";
+import { exportDefinitionsToDestination } from "../definitions/export/exportService.js";
+import { DESTINATIONS } from "../definitions/export/compatibility.js";
 
 const fsp = fs.promises;
 const router = express.Router();
+const VALID_SAVE_DESTINATIONS = new Set(Object.values(DESTINATIONS));
 
 router.post("/api/definitions/:id/duplicate", async (req, res) => {
   db.get("SELECT * FROM definitions WHERE id = ?", [req.params.id], async (err, row) => {
@@ -236,6 +239,48 @@ router.post("/api/definitions/:id/save", async (req, res) => {
         return;
       }
 
+      const destination = String(req.body?.destination || DESTINATIONS.CONTINUE).trim().toLowerCase();
+      if (!VALID_SAVE_DESTINATIONS.has(destination)) {
+        res.status(400).json({ error: `Unsupported destination: ${destination}` });
+        return;
+      }
+
+      if (destination === DESTINATIONS.COPILOT || destination === DESTINATIONS.GEMINI) {
+        const exportResult = await exportDefinitionsToDestination({
+          projectPath: currentDevProject,
+          destination,
+          definitions: [row],
+          mode: "install"
+        });
+
+        const exported = exportResult.writtenFiles?.length > 0;
+        const skipped = Array.isArray(exportResult.skipped) ? exportResult.skipped : [];
+        const hasSkipped = skipped.length > 0;
+
+        if (exported) {
+          await runDb(
+            "INSERT OR IGNORE INTO project_definition_copies (projectPath, definitionKey, copiedAt) VALUES (?, ?, ?)",
+            [currentDevProject, row.key, new Date().toISOString()]
+          );
+          await runDb("UPDATE definitions SET inTeam = 1, status = 'saved' WHERE id = ?", [row.id]);
+        }
+
+        res.json({
+          ok: exported,
+          destination,
+          exported,
+          skipped,
+          warnings: exportResult.warnings || [],
+          countsByType: exportResult.countsByType || {},
+          message: exported && hasSkipped
+            ? "Definition exported with skipped items."
+            : exported
+              ? "Definition exported."
+              : "Definition could not be exported to the selected destination."
+        });
+        return;
+      }
+
       const normalizedType = normalizeDefinitionType(row.type);
       if (normalizedType === "context") {
         console.log(`[definition-save] saving context definition id=${row.id} key=${row.key} project=${currentDevProject}`);
@@ -287,7 +332,14 @@ router.post("/api/definitions/:id/save", async (req, res) => {
             res.status(500).json({ error: updateErr.message });
             return;
           }
-          res.json({ ok: true });
+          res.json({
+            ok: true,
+            destination: DESTINATIONS.CONTINUE,
+            exported: true,
+            skipped: [],
+            warnings: [],
+            countsByType: {},
+          });
         }
       );
     } catch (error) {
