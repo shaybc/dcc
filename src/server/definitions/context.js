@@ -8,8 +8,18 @@ const fsp = fs.promises;
 
 export function mergeConfigSection(merged, key, rawContent, filePath = "") {
   const { data, body } = readDefinitionYamlData(rawContent, filePath);
-  if (key === "rules" || key === "prompts") {
+  if (key === "rules") {
     if (body) merged[key].push(body);
+    return;
+  }
+  if (key === "prompts") {
+    const promptBody = String(body || data.prompt || "").trim();
+    if (!promptBody) return;
+    merged[key].push({
+      name: String(data.name || "").trim(),
+      description: String(data.description || "").trim(),
+      prompt: promptBody
+    });
     return;
   }
   if (!Array.isArray(data[key])) return;
