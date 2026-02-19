@@ -63,3 +63,32 @@ prompt: |
     prompt: "Explain this function\nwith examples."
   }]);
 });
+
+test("buildMergedConfigContent merges rule definitions into structured Continue config entries", async () => {
+  const configDoc = {
+    rules: [{ dcc_use: "rules/documentation-standards" }]
+  };
+
+  const ruleDefinition = `---
+name: Documentation Standards
+globs: docs/**/*.{md,mdx}
+alwaysApply: false
+---
+- Follow Mintlify documentation standards
+- Include YAML frontmatter with title, description, and keywords
+`;
+
+  const definitionsByDccUri = new Map([
+    ["rules/documentation-standards", { content: ruleDefinition, filePath: "rules/documentation-standards.md" }]
+  ]);
+
+  const mergedYaml = await buildMergedConfigContent(configDoc, definitionsByDccUri);
+  const mergedDoc = YAML.parse(mergedYaml);
+
+  assert.deepEqual(mergedDoc.rules, [{
+    name: "Documentation Standards",
+    globs: "docs/**/*.{md,mdx}",
+    alwaysApply: false,
+    rule: "- Follow Mintlify documentation standards\n- Include YAML frontmatter with title, description, and keywords"
+  }]);
+});
