@@ -41,8 +41,6 @@ const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefini
 const versionHistoryButton = document.getElementById("versionHistoryButton");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const installDefinitionButton = document.getElementById("installDefinition");
-const installDestinationSelect = document.getElementById("installDestination");
-const installDestinationControl = installDestinationSelect?.closest(".definition-destination-control") || null;
 const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
@@ -109,6 +107,7 @@ let currentDetailDefinitionPath = "";
 let currentDetailDefinitionContent = "";
 let currentDetailDefinitionDccUri = "";
 let currentDetailDefinitionStatus = "";
+let currentDetailInstalledDestinations = [];
 let currentDefinitionVersion = "";
 let activeHistoricalVersion = "";
 let activeVersionDropdown = null;
@@ -120,6 +119,13 @@ let currentDefinitionVersions = [];
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
 const SPECIAL_FILTERS = ["installed"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
+const INSTALL_DESTINATION_OPTIONS = [
+  { key: "continue", label: "Continue", logo: "/img/continue_small_logo.png" },
+  { key: "copilot", label: "GitHub Copilot", logo: "/img/copilot_small_logo.png" },
+  { key: "gemini", label: "Gemini CLI", logo: "/img/gemini_small_logo.png" }
+];
+let activeInstallDestinationMenu = null;
+
 const MAX_CARD_TAG_PILLS = 3;
 const CARDS_PER_PAGE = 25;
 let currentCardsPage = 1;
@@ -897,17 +903,19 @@ function handleDefinitionCardClick(definition, event) {
   const saveAction = event.target.closest("[data-action-save]");
   if (saveAction) {
     event.stopPropagation();
-    const actionPromise = definition.status === "saved"
-      ? removeDefinition(definition.id)
-      : definition.status === "local-only"
-        ? publishDefinition(definition.id)
-        : saveDefinition(definition.id);
-
-    actionPromise
-      .then(fetchDefinitions)
-      .catch((error) => {
-        window.alert(error.message || "Action failed.");
-      });
+    if (definition.status === "local-only") {
+      publishDefinition(definition.id)
+        .then(fetchDefinitions)
+        .catch((error) => {
+          window.alert(error.message || "Action failed.");
+        });
+      return;
+    }
+    if (!devProjectInput.value.trim()) {
+      window.alert("Please select a project first.");
+      return;
+    }
+    openInstallDestinationMenu(saveAction, definition);
     return;
   }
 
@@ -1986,6 +1994,7 @@ async function refreshDiffVersions() {
 }
 
 async function showDetails(id) {
+  closeInstallDestinationMenu();
   closeVersionDropdown();
   pushUpstreamDefinitionButton.hidden = true;
   const response = await fetch(`/api/definitions/${id}`);
@@ -1996,6 +2005,9 @@ async function showDetails(id) {
   currentDetailDefinitionPath = String(def.filePath || "");
   currentDetailDefinitionContent = String(def.content || "");
   currentDetailDefinitionStatus = String(def.status || "").toLowerCase();
+  currentDetailInstalledDestinations = Array.isArray(def.installedDestinations)
+    ? def.installedDestinations.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean)
+    : [];
   currentDefinitionVersion = String(def.version || "");
   currentDefinitionVersions = [];
   activeHistoricalVersion = "";
@@ -2049,12 +2061,6 @@ async function showDetails(id) {
   deleteDefinitionButton.hidden = !canDeleteDefinition;
   pushUpstreamDefinitionButton.hidden = !isUntrackedDefinition;
   pushUpstreamDefinitionButton.disabled = !isUntrackedDefinition;
-  if (installDestinationControl) {
-    installDestinationControl.hidden = false;
-  }
-  if (installDestinationSelect) {
-    installDestinationSelect.disabled = false;
-  }
   updateInstallDefinitionButtonState();
   definitionTabPreview.disabled = false;
   lastValidationResult = null;
@@ -2065,9 +2071,22 @@ async function showDetails(id) {
   showDetailPage();
 }
 
-function getSelectedInstallDestination() {
-  const selectedDestination = String(installDestinationSelect?.value || "").trim().toLowerCase();
-  return selectedDestination || "continue";
+function getDestinationLabel(destination) {
+  const normalizedDestination = String(destination || "continue").trim().toLowerCase();
+  if (normalizedDestination === "copilot") return "GitHub Copilot";
+  if (normalizedDestination === "gemini") return "Gemini CLI";
+  return "Continue";
+}
+
+function getInstalledDestinationSet(definition = {}) {
+  const installed = Array.isArray(definition?.installedDestinations) ? definition.installedDestinations : [];
+  return new Set(installed.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean));
+}
+
+function closeInstallDestinationMenu() {
+  if (!activeInstallDestinationMenu) return;
+  activeInstallDestinationMenu.cleanup?.();
+  activeInstallDestinationMenu = null;
 }
 
 function formatSkippedReason(skippedItem) {
@@ -2122,6 +2141,137 @@ function buildInstallExportSummary(result, destination) {
   return lines.join("\n");
 }
 
+
+async function toggleDefinitionDestinationInstall(definition, destination) {
+  const definitionId = Number(definition?.id || 0);
+  if (!Number.isFinite(definitionId) || definitionId <= 0) {
+    return;
+  }
+  if (!devProjectInput.value.trim()) {
+    window.alert("Please select a project first.");
+    return;
+  }
+
+  const installedSet = getInstalledDestinationSet(definition);
+  const isInstalled = installedSet.has(destination);
+  const destinationLabel = getDestinationLabel(destination);
+
+  const result = isInstalled
+    ? await removeDefinition(definitionId, destination)
+    : await saveDefinition(definitionId, destination);
+
+  await fetchDefinitions();
+
+  if (currentDetailDefinitionId === definitionId) {
+    await showDetails(definitionId);
+  } else {
+    renderCards();
+  }
+
+  if (isInstalled) {
+    window.alert(result?.message || `Definition removed from ${destinationLabel}.`);
+  } else {
+    window.alert(buildInstallExportSummary(result, destination));
+  }
+}
+
+function openInstallDestinationMenu(anchorEl, definition) {
+  closeInstallDestinationMenu();
+  if (!anchorEl) return;
+
+  const installedSet = getInstalledDestinationSet(definition);
+  const menu = document.createElement("div");
+  menu.className = "install-destination-menu";
+  menu.setAttribute("role", "menu");
+  menu.innerHTML = INSTALL_DESTINATION_OPTIONS
+    .map((option) => {
+      const isInstalled = installedSet.has(option.key);
+      return `
+        <button type="button" class="install-destination-menu-item" data-destination="${escapeHtml(option.key)}" role="menuitemcheckbox" aria-checked="${isInstalled ? "true" : "false"}">
+          <span class="install-destination-menu-item-check">${isInstalled ? "✓" : ""}</span>
+          <img class="install-destination-menu-item-logo" src="${escapeHtml(option.logo || "")}" alt="" aria-hidden="true" />
+          <span>${escapeHtml(option.label)}</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  document.body.appendChild(menu);
+
+  const positionMenu = () => {
+    const rect = anchorEl.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+    const margin = 8;
+
+    let left = rect.left + window.scrollX;
+    const maxLeft = window.scrollX + viewportWidth - menuRect.width - margin;
+    left = Math.min(Math.max(window.scrollX + margin, left), Math.max(window.scrollX + margin, maxLeft));
+
+    const preferredTop = rect.bottom + window.scrollY + 6;
+    const maxTop = window.scrollY + viewportHeight - menuRect.height - margin;
+    let top = preferredTop;
+    if (preferredTop > maxTop) {
+      top = rect.top + window.scrollY - menuRect.height - 6;
+    }
+    top = Math.min(Math.max(window.scrollY + margin, top), Math.max(window.scrollY + margin, maxTop));
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  };
+
+  positionMenu();
+
+  const onMenuClick = async (event) => {
+    const target = event.target.closest("[data-destination]");
+    if (!target) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const destination = String(target.getAttribute("data-destination") || "").trim().toLowerCase();
+    closeInstallDestinationMenu();
+    if (!destination) return;
+    try {
+      await toggleDefinitionDestinationInstall(definition, destination);
+    } catch (error) {
+      window.alert(error.message || "Unable to update definition destination.");
+    }
+  };
+
+  const onOutsideClick = (event) => {
+    if (!menu.contains(event.target) && !anchorEl.contains(event.target)) {
+      closeInstallDestinationMenu();
+    }
+  };
+
+  const onEscape = (event) => {
+    if (event.key === "Escape") {
+      closeInstallDestinationMenu();
+    }
+  };
+
+  const onViewportChange = () => {
+    positionMenu();
+  };
+
+  const cleanup = () => {
+    menu.removeEventListener("click", onMenuClick);
+    document.removeEventListener("mousedown", onOutsideClick);
+    document.removeEventListener("keydown", onEscape);
+    window.removeEventListener("resize", onViewportChange);
+    window.removeEventListener("scroll", onViewportChange, true);
+    menu.remove();
+  };
+
+  menu.addEventListener("click", onMenuClick);
+  document.addEventListener("mousedown", onOutsideClick);
+  document.addEventListener("keydown", onEscape);
+  window.addEventListener("resize", onViewportChange);
+  window.addEventListener("scroll", onViewportChange, true);
+
+  activeInstallDestinationMenu = { cleanup };
+}
+
 function updateInstallDefinitionButtonState() {
   if (!installDefinitionButton) {
     return;
@@ -2147,28 +2297,12 @@ function updateInstallDefinitionButtonState() {
     `;
 
   installDefinitionButton.hidden = !canInstall;
-  if (installDestinationControl) {
-    installDestinationControl.hidden = !canInstall;
-  }
   if (!canInstall) {
     installDefinitionButton.disabled = true;
-    if (installDestinationSelect) {
-      installDestinationSelect.disabled = true;
-    }
     return;
-  }
-
-  if (installDestinationSelect) {
-    installDestinationSelect.disabled = false;
   }
 
   installDefinitionButton.disabled = !hasDefinition || !hasSelectedProject;
-
-  if (isSavedInCurrentProject) {
-    installDefinitionButton.title = "Remove definition from current project";
-    installDefinitionButton.setAttribute("aria-label", "Remove definition from current project");
-    return;
-  }
 
   if (!hasSelectedProject) {
     installDefinitionButton.title = "Select a project first";
@@ -2176,16 +2310,8 @@ function updateInstallDefinitionButtonState() {
     return;
   }
 
-  const selectedDestination = getSelectedInstallDestination();
-  if (selectedDestination !== "continue") {
-    const destinationLabel = selectedDestination === "copilot" ? "GitHub Copilot" : "Gemini CLI";
-    installDefinitionButton.title = `Install/Export definition to ${destinationLabel}`;
-    installDefinitionButton.setAttribute("aria-label", `Install/Export definition to ${destinationLabel}`);
-    return;
-  }
-
-  installDefinitionButton.title = "Install definition in current project";
-  installDefinitionButton.setAttribute("aria-label", "Install definition in current project");
+  installDefinitionButton.title = "Manage install/export destinations";
+  installDefinitionButton.setAttribute("aria-label", "Manage install/export destinations");
 }
 
 function showDetailPage() {
@@ -2197,6 +2323,7 @@ function showDetailPage() {
 }
 
 function showHubPage() {
+  closeInstallDestinationMenu();
   detailPage.hidden = true;
   closeVersionDropdown();
   currentDetailDefinitionId = null;
@@ -2206,6 +2333,7 @@ function showHubPage() {
   currentDetailDefinitionContent = "";
   currentDetailDefinitionDccUri = "";
   currentDetailDefinitionStatus = "";
+  currentDetailInstalledDestinations = [];
   currentDefinitionVersion = "";
   detailDccUri.hidden = true;
   detailDccUri.textContent = "";
@@ -2218,12 +2346,6 @@ function showHubPage() {
   if (installDefinitionButton) {
     installDefinitionButton.hidden = true;
     installDefinitionButton.disabled = true;
-  }
-  if (installDestinationControl) {
-    installDestinationControl.hidden = true;
-  }
-  if (installDestinationSelect) {
-    installDestinationSelect.disabled = true;
   }
   hubHeader.hidden = false;
   hubMain.hidden = false;
@@ -2282,12 +2404,11 @@ async function copyDefinitionToClipboard() {
   fallbackTextArea.remove();
 }
 
-async function saveDefinition(id) {
+async function saveDefinition(id, destination = "continue") {
   if (!devProjectInput.value.trim()) {
     window.alert("Please select a project first.");
     return null;
   }
-  const destination = getSelectedInstallDestination();
   return fetchWithErrorHandling(`/api/definitions/${id}/save`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -2307,10 +2428,14 @@ async function publishDefinition(id) {
   });
 }
 
-async function removeDefinition(id) {
-  await fetchWithErrorHandling(`/api/definitions/${id}/remove`, { method: "POST" }, "Unable to remove definition.", {
+async function removeDefinition(id, destination = "continue") {
+  return fetchWithErrorHandling(`/api/definitions/${id}/remove`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ destination })
+  }, "Unable to remove definition.", {
     title: "Removing definition...",
-    description: "Removing definition from current project.",
+    description: `Removing definition from ${getDestinationLabel(destination)}.`,
   });
 }
 
@@ -2702,11 +2827,7 @@ function setupEventListeners() {
     }
   });
 
-  installDestinationSelect?.addEventListener("change", () => {
-    updateInstallDefinitionButtonState();
-  });
-
-  installDefinitionButton?.addEventListener("click", async () => {
+  installDefinitionButton?.addEventListener("click", () => {
     if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
       return;
     }
@@ -2715,22 +2836,13 @@ function setupEventListeners() {
       return;
     }
 
-    try {
-      const isSavedInCurrentProject = currentDetailDefinitionStatus === "saved";
-      const selectedDestination = getSelectedInstallDestination();
-      const result = isSavedInCurrentProject
-        ? await removeDefinition(currentDetailDefinitionId)
-        : await saveDefinition(currentDetailDefinitionId);
-      await fetchDefinitions();
-      await showDetails(currentDetailDefinitionId);
-      if (isSavedInCurrentProject) {
-        window.alert(result?.message || "Definition removed from current project.");
-      } else {
-        window.alert(buildInstallExportSummary(result, selectedDestination));
-      }
-    } catch (error) {
-      window.alert(error.message || "Unable to update definition in current project.");
+    const currentDefinition = definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId));
+    if (!currentDefinition) {
+      window.alert("Definition not found.");
+      return;
     }
+
+    openInstallDestinationMenu(installDefinitionButton, currentDefinition);
   });
   
   copyDefinitionButton.addEventListener("click", async () => {
