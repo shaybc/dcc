@@ -1,0 +1,10 @@
+## Test tab schema: agent structure (`agents`)
+
+- Uses common fields only in schema checks.
+
+```yaml
+name: Senior Engineer Agent
+dcc_uri: dcc://agents/senior-engineer
+description: Agent persona for implementation and review
+invokable: true
+```
