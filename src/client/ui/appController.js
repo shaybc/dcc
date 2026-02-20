@@ -121,6 +121,7 @@ const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "co
 const SPECIAL_FILTERS = ["installed"];
 const GENERATED_DEFINITION_STORAGE_KEY = "dcc.generated.definition";
 const GENERATABLE_DEFINITION_TYPES = ["prompt", "mcpServer", "agent", "rule", "model", "workflow", "context", "doc", "config"];
+const COMMON_DEFINITION_HELP_PAGE_PATH = "/help/user-guide/pages/usage/definition-details-actions-test-schema-common.md";
 const DEFINITION_HELP_PAGE_BY_TYPE = {
   prompt: "/help/user-guide/pages/usage/definition-details-actions-test-schema-prompt.md",
   mcpServer: "/help/user-guide/pages/usage/definition-details-actions-test-schema-mcpserver.md",
@@ -131,6 +132,26 @@ const DEFINITION_HELP_PAGE_BY_TYPE = {
   context: "/help/user-guide/pages/usage/definition-details-actions-test-schema-context.md",
   doc: "/help/user-guide/pages/usage/definition-details-actions-test-schema-docs.md",
   config: "/help/user-guide/pages/usage/definition-details-actions-test-schema-config.md"
+};
+const DEFINITION_TYPE_ALIASES = {
+  prompt: "prompt",
+  prompts: "prompt",
+  mcpserver: "mcpServer",
+  mcpservers: "mcpServer",
+  agent: "agent",
+  agents: "agent",
+  rule: "rule",
+  rules: "rule",
+  model: "model",
+  models: "model",
+  workflow: "workflow",
+  workflows: "workflow",
+  context: "context",
+  contexts: "context",
+  doc: "doc",
+  docs: "doc",
+  config: "config",
+  configs: "config"
 };
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const INSTALL_DESTINATION_OPTIONS = [
@@ -2799,8 +2820,9 @@ async function generateDefinitionFromDescription() {
 }
 
 async function buildDefinitionGenerationPrompt({ selectedType, description }) {
+  const normalizedType = normalizeDefinitionTypeForGeneration(selectedType);
   const [helpPageContent, referenceDefinitions] = await Promise.all([
-    loadDefinitionHelpPage(selectedType),
+    loadDefinitionHelpPages(normalizedType),
     loadDefinitionReferencesByType(selectedType, { minItems: 3, maxItems: 5 })
   ]);
 
@@ -2815,14 +2837,17 @@ async function buildDefinitionGenerationPrompt({ selectedType, description }) {
     : "No matching existing definitions were found.";
 
   return [
-    "Generate one complete Continue/DCC definition as valid YAML or Markdown frontmatter content.",
-    `Definition type: ${selectedType}`,
+    "Generate one complete Continue.dev definition in YAML format.",
+    `Definition type: ${normalizedType}`,
     "Output rules:",
+    "- Always output YAML.",
     "- Return only the definition content.",
     "- Do not include markdown fences.",
     "- Keep fields valid for the requested schema type.",
+    "- Include Continue.dev fields needed for the selected definition type.",
+    "- Include DCC metadata extensions when relevant (e.g., dcc_uri, dcc_tags, version).",
     "",
-    "Schema guidance from DCC Help:",
+    "Schema guidance from DCC Help (common + selected type):",
     helpPageContent,
     "",
     "Existing definitions of the same type (style references):",
@@ -2833,26 +2858,40 @@ async function buildDefinitionGenerationPrompt({ selectedType, description }) {
   ].join("\n");
 }
 
-async function loadDefinitionHelpPage(selectedType) {
-  const helpPagePath = DEFINITION_HELP_PAGE_BY_TYPE[selectedType] || "";
-  if (!helpPagePath) {
-    return "No help page available for this definition type.";
-  }
-  try {
-    const response = await fetch(helpPagePath);
-    if (!response.ok) {
-      return `Unable to load help page (${response.status}).`;
+function normalizeDefinitionTypeForGeneration(typeValue) {
+  const normalized = String(typeValue || "").trim().toLowerCase();
+  return DEFINITION_TYPE_ALIASES[normalized] || "prompt";
+}
+
+async function loadDefinitionHelpPages(selectedType) {
+  const normalizedType = normalizeDefinitionTypeForGeneration(selectedType);
+  const typeHelpPagePath = DEFINITION_HELP_PAGE_BY_TYPE[normalizedType] || "";
+  const paths = [COMMON_DEFINITION_HELP_PAGE_PATH, typeHelpPagePath].filter(Boolean);
+  const uniquePaths = [...new Set(paths)];
+  const pages = await Promise.all(uniquePaths.map(async (helpPagePath) => {
+    try {
+      const response = await fetch(helpPagePath);
+      if (!response.ok) {
+        return `Unable to load help page ${helpPagePath} (${response.status}).`;
+      }
+      const content = String(await response.text() || "").trim();
+      return [
+        `Help page: ${helpPagePath}`,
+        content || "(Empty help page content)"
+      ].join("\n");
+    } catch (_error) {
+      return `Unable to load help page ${helpPagePath}.`;
     }
-    return String(await response.text() || "").trim();
-  } catch (_error) {
-    return "Unable to load help page.";
-  }
+  }));
+
+  return pages.join("\n\n");
 }
 
 async function loadDefinitionReferencesByType(selectedType, { minItems = 3, maxItems = 5 } = {}) {
-  const normalizedType = String(selectedType || "").trim().toLowerCase();
-  const matchingDefinitions = definitions
-    .filter((definition) => String(definition?.type || "").trim().toLowerCase() === normalizedType)
+  const normalizedType = normalizeDefinitionTypeForGeneration(selectedType);
+  const definitionsIndex = await ensureDefinitionsLoadedForGeneration();
+  const matchingDefinitions = definitionsIndex
+    .filter((definition) => normalizeDefinitionTypeForGeneration(definition?.type || "") === normalizedType)
     .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))
     .slice(0, Math.max(minItems, maxItems));
 
@@ -2882,6 +2921,23 @@ async function loadDefinitionReferencesByType(selectedType, { minItems = 3, maxI
   }));
 
   return details.filter(Boolean).slice(0, maxItems);
+}
+
+async function ensureDefinitionsLoadedForGeneration() {
+  if (Array.isArray(definitions) && definitions.length > 0) {
+    return definitions;
+  }
+
+  try {
+    const response = await fetch("/api/definitions");
+    if (!response.ok) {
+      return [];
+    }
+    const payload = await response.json();
+    return Array.isArray(payload) ? payload : [];
+  } catch (_error) {
+    return [];
+  }
 }
 
 function openGenerateDefinitionModal({ defaultType = "prompt", defaultDescription = "", initialError = "" } = {}) {
