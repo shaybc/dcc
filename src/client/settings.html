@@ -117,22 +117,24 @@
       <section class="settings-section settings-card">
         <h2>AI API Service</h2>
         <p class="helper-text">Choose which Gemini service powers the OpenAI-compatible routes.</p>
-        <div class="settings-subsection">
-          <label for="geminiClientSelect">Gemini client</label>
-          <select id="geminiClientSelect">
-            <option value="aistudio">Gemini Ai Studio</option>
-            <option value="connector">Gemini Connector</option>
-          </select>
+        <div class="settings-subsection settings-subsection--compact">
+          <div class="settings-table-form-row">
+            <label for="geminiClientSelect">Gemini client</label>
+            <select id="geminiClientSelect">
+              <option value="connector">Gemini Connector</option>
+              <option value="aistudio">Gemini AI Studio</option>
+            </select>
+          </div>
         </div>
 
         <div class="settings-subsection" id="geminiAiStudioSection">
-          <h3>Gemini Ai Studio</h3>
-          <div class="table-actions">
-            <div>
+          <h3>Gemini AI Studio</h3>
+          <div class="settings-table-form">
+            <div class="settings-table-form-row">
               <label for="geminiApiKeyInput">API key</label>
               <input id="geminiApiKeyInput" type="password" autocomplete="off" placeholder="AIza..." />
             </div>
-            <div>
+            <div class="settings-table-form-row">
               <label for="geminiModelInput">Model</label>
               <input id="geminiModelInput" type="text" placeholder="gemini-2.5-pro" />
             </div>
@@ -141,20 +143,20 @@
 
         <div class="settings-subsection" id="geminiConnectorSection">
           <h3>Gemini Connector</h3>
-          <div class="table-actions">
-            <div>
+          <div class="settings-table-form">
+            <div class="settings-table-form-row">
               <label for="geminiConnectorIdInput">Connector ID</label>
               <input id="geminiConnectorIdInput" type="text" placeholder="full-01" />
             </div>
-            <div>
+            <div class="settings-table-form-row">
               <label for="geminiConnectorBaseUrlInput">Base URL</label>
               <input id="geminiConnectorBaseUrlInput" type="text" placeholder="http://localhost:3999" />
             </div>
-            <div>
+            <div class="settings-table-form-row">
               <label for="geminiConnectorApiKeyInput">API key</label>
               <input id="geminiConnectorApiKeyInput" type="password" autocomplete="off" placeholder="connector api key" />
             </div>
-            <div>
+            <div class="settings-table-form-row">
               <label for="geminiConnectorModelInput">Model</label>
               <input id="geminiConnectorModelInput" type="text" placeholder="gemini-2.5-pro" />
             </div>

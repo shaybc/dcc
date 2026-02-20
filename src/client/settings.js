@@ -201,7 +201,7 @@ function updateThemeToggleLabel(isLightMode) {
 
 
 function toggleGeminiSettingsSections() {
-  const selectedClient = String(geminiClientSelect?.value || "aistudio");
+  const selectedClient = String(geminiClientSelect?.value || "connector");
   if (geminiAiStudioSection) {
     geminiAiStudioSection.hidden = selectedClient !== "aistudio";
   }
@@ -224,7 +224,7 @@ async function loadRecommendationSettings() {
     maxRecommendedDefinitionsInput.value = String(normalizedValue);
   }
   if (geminiClientSelect) {
-    geminiClientSelect.value = String(data?.geminiClient || "aistudio");
+    geminiClientSelect.value = String(data?.geminiClient || "connector");
   }
   if (geminiApiKeyInput) {
     geminiApiKeyInput.value = String(data?.geminiApiKey || "");
@@ -703,7 +703,7 @@ saveMaxRecommendedDefinitionsButton?.addEventListener("click", async () => {
 });
 
 saveGeminiSettingsButton?.addEventListener("click", async () => {
-  const geminiClient = String(geminiClientSelect?.value || "aistudio");
+  const geminiClient = String(geminiClientSelect?.value || "connector");
   const geminiApiKey = String(geminiApiKeyInput?.value || "").trim();
   const geminiModel = String(geminiModelInput?.value || "").trim() || "gemini-2.5-pro";
   const geminiConnectorId = String(geminiConnectorIdInput?.value || "").trim();
