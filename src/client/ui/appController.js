@@ -1431,80 +1431,6 @@ function normalizeAiSuggestedEntries(items = []) {
   return normalized;
 }
 
-function tokenizeIntentSearchText(value) {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9+#.\-\s]/g, " ")
-    .split(/\s+/)
-    .map((token) => token.trim())
-    .filter((token) => token.length >= 2);
-}
-
-function buildLocalIntentSearchRanking(intent = "", catalog = []) {
-  const intentTokens = tokenizeIntentSearchText(intent);
-  if (!intentTokens.length) {
-    return [];
-  }
-
-  const uniqueIntentTokens = Array.from(new Set(intentTokens));
-  return catalog
-    .map((item, index) => {
-      const haystack = `${item.name || ""} ${item.description || ""} ${(Array.isArray(item.tags) ? item.tags : []).join(" ")}`.toLowerCase();
-      let score = 0;
-      const reasons = [];
-
-      uniqueIntentTokens.forEach((token) => {
-        if (haystack.includes(token)) {
-          score += token.length >= 6 ? 11 : 7;
-        }
-      });
-
-      const tags = Array.isArray(item.tags) ? item.tags.map((tag) => String(tag || "").toLowerCase()) : [];
-      const hasBackend = tags.includes("backend") || haystack.includes("microservice") || haystack.includes("spring");
-      const hasJava = tags.includes("java") || haystack.includes("java");
-      const hasComposer = tags.includes("composer") || haystack.includes("composer") || haystack.includes("wsbcc");
-      const hasDocker = tags.includes("docker") || haystack.includes("docker");
-
-      if (hasBackend) {
-        score += 10;
-        reasons.push("Relevant for backend development");
-      }
-      if (hasJava) {
-        score += 12;
-        reasons.push("Includes Java-focused guidance");
-      }
-      if (hasComposer) {
-        score += 12;
-        reasons.push("Matches composer migration context");
-      }
-      if (hasDocker) {
-        score += 8;
-        reasons.push("Supports containerized delivery workflows");
-      }
-
-      if (String(item.type || "").toLowerCase() === "configs") {
-        score += 4;
-      }
-      if (String(item.type || "").toLowerCase() === "rules") {
-        score += 6;
-      }
-      if (String(item.type || "").toLowerCase() === "prompts") {
-        score += 5;
-      }
-
-      return {
-        definitionId: Number(item.id),
-        score,
-        reasons: reasons.slice(0, 3),
-        index
-      };
-    })
-    .filter((entry) => Number.isFinite(entry.definitionId) && entry.score > 0)
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .slice(0, 8)
-    .map((entry) => ({ definitionId: entry.definitionId, score: Math.min(100, entry.score), reasons: entry.reasons }));
-}
-
 function buildIntentSearchCatalogSnapshot(sourceDefinitions = []) {
   return sourceDefinitions.map((definition) => {
     const tags = Array.isArray(definition.tags) ? definition.tags.slice(0, 8) : [];
@@ -1519,6 +1445,14 @@ function buildIntentSearchCatalogSnapshot(sourceDefinitions = []) {
   });
 }
 
+function truncateForIntentSearchLog(value, maxLength = 300) {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength)}...`;
+}
+
 async function suggestDefinitionsByIntent(intent = "") {
   const normalizedIntent = String(intent || "").trim();
   if (!normalizedIntent) {
@@ -1530,50 +1464,65 @@ async function suggestDefinitionsByIntent(intent = "") {
   }
 
   const catalog = buildIntentSearchCatalogSnapshot(definitions);
-  const fallbackSuggestions = buildLocalIntentSearchRanking(normalizedIntent, catalog);
+  try {
+    const response = await fetchWithErrorHandling("/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-DCC-Feature": "definition-intent-search"
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "system",
+            content: "You rank software definitions by user intent. Return JSON only with shape {\"suggestions\":[{\"definitionId\":number,\"score\":number,\"reasons\":[string]}]}. Keep top 8 suggestions ordered best-first."
+          },
+          {
+            role: "user",
+            content: JSON.stringify({ intent: normalizedIntent, definitions: catalog })
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 900
+      })
+    }, "Unable to generate AI suggestions.", {
+      title: "Generating semantic suggestions...",
+      description: "AI is ranking definitions based on your intent."
+    });
 
-  const response = await fetchWithErrorHandling("/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-DCC-Feature": "definition-intent-search"
-    },
-    body: JSON.stringify({
-      messages: [
-        {
-          role: "system",
-          content: "You rank software definitions by user intent. Return JSON only with shape {\"suggestions\":[{\"definitionId\":number,\"score\":number,\"reasons\":[string]}]}. Keep top 8 suggestions ordered best-first."
-        },
-        {
-          role: "user",
-          content: JSON.stringify({ intent: normalizedIntent, definitions: catalog })
-        }
-      ],
-      temperature: 0.2,
-      max_tokens: 900
-    })
-  }, "Unable to generate AI suggestions.", {
-    title: "Generating semantic suggestions...",
-    description: "AI is ranking definitions based on your intent."
-  });
+    const completionText = String(response?.choices?.[0]?.message?.content || "");
+    if (!completionText.trim()) {
+      console.info("[INTENT_SEARCH] ai_result=empty text_preview=\"\"");
+      await fetchDefinitionSuggestions();
+      renderRecommendationSection();
+      return;
+    }
 
-  const completionText = String(response?.choices?.[0]?.message?.content || "");
-  const payload = parseAiSuggestionPayload(completionText);
-  const suggestions = normalizeAiSuggestedEntries(payload?.suggestions);
-  const resolvedSuggestions = suggestions.length ? suggestions : fallbackSuggestions;
-  if (!resolvedSuggestions.length) {
-    throw new Error("No matching suggestions found. Try adding more task details.");
+    console.info(`[INTENT_SEARCH] ai_result=response text_preview=${JSON.stringify(truncateForIntentSearchLog(completionText, 300))}`);
+    const payload = parseAiSuggestionPayload(completionText);
+    const suggestions = normalizeAiSuggestedEntries(payload?.suggestions);
+
+    if (!suggestions.length) {
+      console.info("[INTENT_SEARCH] ai_result=invalid_json_or_no_suggestions fallback=project-suggestions");
+      await fetchDefinitionSuggestions();
+      renderRecommendationSection();
+      return;
+    }
+
+    suggestionDefinitionIds = suggestions.map((entry) => entry.definitionId);
+    suggestionsMeta = {
+      projectPath: String(devProjectInput.value || "").trim(),
+      projectType: "intent",
+      corePlatform: "",
+      suggestions
+    };
+    latestSuggestionIntent = normalizedIntent;
+    renderRecommendationSection();
+  } catch (error) {
+    console.info(`[INTENT_SEARCH] ai_result=error error_preview=${JSON.stringify(truncateForIntentSearchLog(error?.message || error, 300))}`);
+    await fetchDefinitionSuggestions();
+    renderRecommendationSection();
   }
-
-  suggestionDefinitionIds = resolvedSuggestions.map((entry) => entry.definitionId);
-  suggestionsMeta = {
-    projectPath: String(devProjectInput.value || "").trim(),
-    projectType: "intent",
-    corePlatform: "",
-    suggestions: resolvedSuggestions
-  };
-  latestSuggestionIntent = normalizedIntent;
-  renderRecommendationSection();
 }
 
 function openIntentSuggestionModal() {
