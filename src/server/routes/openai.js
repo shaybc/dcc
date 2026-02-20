@@ -123,10 +123,21 @@ openaiRouter.post("/completions", async (req, res) => {
       thinkingConfig: { thinkingBudget: parsed.max_thinking_tokens || 0 }
     });
 
-    const raw = await client.generateText({
-      prompt: parsed.prompt,
+    const fimPrompt = parseFimPrompt(parsed.prompt);
+    const generationRequest = {
       generationConfig: Object.keys(generationConfig).length ? generationConfig : undefined
-    });
+    };
+
+    if (fimPrompt) {
+      generationRequest.contents = [{
+        role: "user",
+        parts: [{ text: buildFimInstruction(fimPrompt) }]
+      }];
+    } else {
+      generationRequest.prompt = parsed.prompt;
+    }
+
+    const raw = await client.generateText(generationRequest);
 
     let text =
       raw?.candidates?.[0]?.content?.parts?.map(p => p?.text || "").join("") || "";
@@ -144,7 +155,11 @@ openaiRouter.post("/completions", async (req, res) => {
       logInfo(`[OPENAI] id=${reqId} completions_prompt_actual=${JSON.stringify(normalizedText.slice(mismatchIndex, mismatchIndex + 80))}`);
     }
     logInfo(`[OPENAI] id=${reqId} completions_prompt_len=${normalizedPrompt.length} prompt_common_prefix=${commonPrefix}`);
-    text = stripPromptEcho(text, parsed.prompt);
+    if (fimPrompt) {
+      text = normalizeFimResponse(text, fimPrompt);
+    } else {
+      text = stripPromptEcho(text, parsed.prompt);
+    }
     logInfo(`[OPENAI] id=${reqId} completions_after_echo_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
     text = applyStopSequences(text, parsed.stop);
     logInfo(`[OPENAI] id=${reqId} completions_after_stop_prefix=${JSON.stringify(text.slice(0, 120))} len=${text.length}`);
@@ -590,6 +605,69 @@ function stripPromptEcho(text, prompt) {
   }
 
   return text;
+}
+
+function parseFimPrompt(prompt) {
+  const input = String(prompt || "");
+  const markerSets = [
+    { prefix: "<fim_prefix>", suffix: "<fim_suffix>", middle: "<fim_middle>" },
+    { prefix: "<|fim_prefix|>", suffix: "<|fim_suffix|>", middle: "<|fim_middle|>" }
+  ];
+
+  for (const markers of markerSets) {
+    const prefixStart = input.indexOf(markers.prefix);
+    const suffixStart = input.indexOf(markers.suffix);
+    if (prefixStart < 0 || suffixStart < 0 || suffixStart < prefixStart) {
+      continue;
+    }
+
+    const prefix = input.slice(prefixStart + markers.prefix.length, suffixStart);
+    const middleStart = input.indexOf(markers.middle, suffixStart + markers.suffix.length);
+    const suffix = middleStart >= 0
+      ? input.slice(suffixStart + markers.suffix.length, middleStart)
+      : input.slice(suffixStart + markers.suffix.length);
+
+    return {
+      prefix,
+      suffix,
+      markers
+    };
+  }
+
+  return null;
+}
+
+function buildFimInstruction({ prefix, suffix }) {
+  return [
+    "You are completing code at a cursor position.",
+    "Return only the missing code that should appear between PREFIX and SUFFIX.",
+    "Do not repeat PREFIX or SUFFIX. Do not wrap in markdown fences.",
+    "PREFIX:",
+    prefix,
+    "SUFFIX:",
+    suffix
+  ].join("\n");
+}
+
+function normalizeFimResponse(text, fimPrompt) {
+  if (!text) {
+    return text;
+  }
+
+  let normalized = text;
+  normalized = normalized.replace(/^<\|?fim_middle\|?>/, "");
+
+  if (fimPrompt.prefix && normalized.startsWith(fimPrompt.prefix)) {
+    normalized = normalized.slice(fimPrompt.prefix.length);
+  }
+  if (fimPrompt.suffix) {
+    const suffixIndex = normalized.indexOf(fimPrompt.suffix);
+    if (suffixIndex >= 0) {
+      normalized = normalized.slice(0, suffixIndex);
+    }
+  }
+
+  return normalized;
 }
 
 function stripSingleCodeFence(text) {
