@@ -30,6 +30,7 @@ const copyDefinitionButton = document.getElementById("copyDefinition");
 const editDefinitionButton = document.getElementById("editDefinition");
 const newDefinitionButton = document.getElementById("newDefinitionButton");
 const newDefinitionMenu = document.getElementById("newDefinitionMenu");
+const generateDefinitionMenuItem = document.getElementById("generateDefinitionMenuItem");
 const recommendationsToggleButton = document.getElementById("recommendationsToggleButton");
 const hubMenuToggleButton = document.getElementById("hubMenuToggle");
 const hubMenu = document.getElementById("hubMenu");
@@ -118,6 +119,8 @@ let currentDefinitionVersions = [];
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
 const SPECIAL_FILTERS = ["installed"];
+const GENERATED_DEFINITION_STORAGE_KEY = "dcc.generated.definition";
+const GENERATABLE_DEFINITION_TYPES = ["prompt", "mcpServer", "agent", "rule", "model", "workflow", "context", "doc", "config"];
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const INSTALL_DESTINATION_OPTIONS = [
   { key: "continue", label: "Continue" },
@@ -2715,6 +2718,79 @@ function toggleNewMenu() {
   newDefinitionButton.setAttribute("aria-expanded", String(!newDefinitionMenu.hidden));
 }
 
+async function generateDefinitionFromDescription() {
+  const selectedType = String(window.prompt(
+    `Definition type (${GENERATABLE_DEFINITION_TYPES.join(", ")})`,
+    "prompt"
+  ) || "").trim();
+  if (!selectedType) {
+    return;
+  }
+  if (!GENERATABLE_DEFINITION_TYPES.includes(selectedType)) {
+    window.alert(`Unsupported definition type '${selectedType}'.`);
+    return;
+  }
+
+  const description = String(window.prompt("Describe the definition you want to generate") || "").trim();
+  if (!description) {
+    return;
+  }
+
+  const generationPrompt = [
+    "Generate a Continue/DCC definition as valid YAML.",
+    `Definition type: ${selectedType}`,
+    "Requirements:",
+    "- Include realistic values for required fields (name, dcc_uri, version, description, schema where relevant).",
+    "- Use best-practice defaults for this definition type.",
+    "- Return only the definition content; no markdown fences or explanations.",
+    "",
+    "User request:",
+    description
+  ].join("\n");
+
+  const response = await runWithLoading(
+    async () => fetch("/v1/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-DCC-Feature": "definition-generate"
+      },
+      body: JSON.stringify({
+        prompt: generationPrompt,
+        max_tokens: 4096,
+        temperature: 0.2
+      })
+    }),
+    {
+      title: "Generating definition...",
+      description: "Using DCC AI gateway to generate content.",
+      timeout: 120000
+    }
+  );
+
+  if (!response) {
+    return;
+  }
+
+  if (!response.ok) {
+    const payload = await response.text();
+    throw new Error(payload || `Definition generation failed with status ${response.status}.`);
+  }
+
+  const payload = await response.json();
+  const generatedContent = String(payload?.choices?.[0]?.text || "").trim();
+  if (!generatedContent) {
+    throw new Error("DCC AI gateway returned empty content.");
+  }
+
+  window.sessionStorage.setItem(GENERATED_DEFINITION_STORAGE_KEY, JSON.stringify({
+    type: selectedType,
+    content: generatedContent,
+    createdAt: Date.now()
+  }));
+  window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(selectedType)}&generated=1`);
+}
+
 function closeFilterMenu() {
   filterMenu.classList.remove("open");
   filterButton.setAttribute("aria-expanded", "false");
@@ -3015,6 +3091,19 @@ function setupEventListeners() {
       button.addEventListener("click", () => {
         window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(type)}`);
       });
+    });
+  }
+
+  if (generateDefinitionMenuItem) {
+    generateDefinitionMenuItem.innerHTML = `<span class="menu-type-icon">✨</span><span>Generate Definition</span>`;
+    generateDefinitionMenuItem.addEventListener("click", async () => {
+      newDefinitionMenu.hidden = true;
+      newDefinitionButton?.setAttribute("aria-expanded", "false");
+      try {
+        await generateDefinitionFromDescription();
+      } catch (error) {
+        window.alert(error.message || "Unable to generate definition.");
+      }
     });
   }
   
