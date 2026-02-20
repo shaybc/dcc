@@ -21,6 +21,9 @@ function normalizeMaxRecommendedDefinitions(value, fallback = 8) {
   return Math.min(8, Math.max(3, Math.round(numericValue)));
 }
 
+
+const DB_PATH = process.env.DCC_DB_PATH || path.join(import.meta.dirname, "../../../data", "dcc.sqlite");
+
 router.get("/api/settings", async (req, res) => {
   try {
     const maxRecommendedDefinitions = normalizeMaxRecommendedDefinitions(await getSetting("maxRecommendedDefinitions"), 8);
@@ -244,5 +247,37 @@ router.post("/api/settings/import", async (req, res) => {
   }
 });
 
+
+router.post("/api/database/backup", async (req, res) => {
+  try {
+    const filePath = String(req.body?.filePath || "").trim();
+    if (!filePath) {
+      res.status(400).json({ error: "A destination path is required." });
+      return;
+    }
+
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.copyFile(DB_PATH, filePath);
+    res.json({ ok: true, filePath });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/api/database/restore", async (req, res) => {
+  try {
+    const filePath = String(req.body?.filePath || "").trim();
+    if (!filePath) {
+      res.status(400).json({ error: "A source path is required." });
+      return;
+    }
+
+    await fs.access(filePath);
+    await fs.copyFile(filePath, DB_PATH);
+    res.json({ ok: true, filePath });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;

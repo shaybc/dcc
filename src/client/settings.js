@@ -43,6 +43,8 @@ const importExportMenuButton = document.getElementById("importExportMenuButton")
 const importExportMenuList = document.getElementById("importExportMenuList");
 const importSettingsButton = document.getElementById("importSettingsButton");
 const exportSettingsButton = document.getElementById("exportSettingsButton");
+const backupDatabaseButton = document.getElementById("backupDatabaseButton");
+const restoreDatabaseButton = document.getElementById("restoreDatabaseButton");
 const settingsImportExportOverlay = document.getElementById("settingsImportExportOverlay");
 const settingsImportExportTitle = document.getElementById("settingsImportExportTitle");
 const settingsImportExportDescription = document.getElementById("settingsImportExportDescription");
@@ -50,7 +52,7 @@ const settingsTransferPathInput = document.getElementById("settingsTransferPathI
 const settingsImportExportNotice = document.getElementById("settingsImportExportNotice");
 const confirmSettingsImportExportButton = document.getElementById("confirmSettingsImportExportBtn");
 const closeSettingsImportExportDialogButton = document.getElementById("closeSettingsImportExportDialogBtn");
-let settingsTransferMode = "export";
+let settingsTransferMode = "settings-export";
 
 function normalizeLocalPath(localPath = "") {
   return String(localPath || "").trim();
@@ -231,18 +233,58 @@ function closeImportExportDialog() {
   setSettingsTransferNotice("");
 }
 
+function getTransferModeConfig(mode) {
+  const configByMode = {
+    "settings-import": {
+      title: "Import Settings",
+      description: "Choose the JSON file path to import settings from.",
+      buttonText: "Import Settings",
+      endpoint: "/api/settings/import",
+      placeholder: "/tmp/dcc-settings.json",
+      reloadOnSuccess: true,
+      successMessage: "Settings imported."
+    },
+    "settings-export": {
+      title: "Export Settings",
+      description: "Choose a local path and file name for the exported JSON settings file.",
+      buttonText: "Export Settings",
+      endpoint: "/api/settings/export",
+      placeholder: "/tmp/dcc-settings.json",
+      reloadOnSuccess: false,
+      successMessage: "Settings exported."
+    },
+    "db-backup": {
+      title: "Backup Database",
+      description: "Choose a local path and file name for the database backup file.",
+      buttonText: "Backup Database",
+      endpoint: "/api/database/backup",
+      placeholder: "/tmp/dcc.sqlite",
+      reloadOnSuccess: false,
+      successMessage: "Database backup created."
+    },
+    "db-restore": {
+      title: "Restore Database",
+      description: "Choose the database backup file path to restore from.",
+      buttonText: "Restore Database",
+      endpoint: "/api/database/restore",
+      placeholder: "/tmp/dcc.sqlite",
+      reloadOnSuccess: true,
+      successMessage: "Database restored."
+    }
+  };
+  return configByMode[mode] || configByMode["settings-export"];
+}
+
 function openImportExportDialog(mode) {
   if (!settingsImportExportOverlay || !settingsTransferPathInput || !settingsImportExportTitle || !settingsImportExportDescription || !confirmSettingsImportExportButton) {
     return;
   }
   settingsTransferMode = mode;
-  const isImportMode = mode === "import";
-  settingsImportExportTitle.textContent = isImportMode ? "Import Settings" : "Export Settings";
-  settingsImportExportDescription.textContent = isImportMode
-    ? "Choose the JSON file path to import settings from."
-    : "Choose a local path and file name for the exported JSON settings file.";
-  confirmSettingsImportExportButton.textContent = isImportMode ? "Import Settings" : "Export Settings";
-  settingsTransferPathInput.placeholder = isImportMode ? "/tmp/dcc-settings.json" : "/tmp/dcc-settings.json";
+  const modeConfig = getTransferModeConfig(mode);
+  settingsImportExportTitle.textContent = modeConfig.title;
+  settingsImportExportDescription.textContent = modeConfig.description;
+  confirmSettingsImportExportButton.textContent = modeConfig.buttonText;
+  settingsTransferPathInput.placeholder = modeConfig.placeholder;
   setSettingsTransferNotice("");
   settingsImportExportOverlay.hidden = false;
   setTimeout(() => settingsTransferPathInput.focus(), 0);
@@ -869,12 +911,22 @@ importExportMenuButton?.addEventListener("click", () => {
 
 importSettingsButton?.addEventListener("click", () => {
   setImportExportMenuOpen(false);
-  openImportExportDialog("import");
+  openImportExportDialog("settings-import");
 });
 
 exportSettingsButton?.addEventListener("click", () => {
   setImportExportMenuOpen(false);
-  openImportExportDialog("export");
+  openImportExportDialog("settings-export");
+});
+
+backupDatabaseButton?.addEventListener("click", () => {
+  setImportExportMenuOpen(false);
+  openImportExportDialog("db-backup");
+});
+
+restoreDatabaseButton?.addEventListener("click", () => {
+  setImportExportMenuOpen(false);
+  openImportExportDialog("db-restore");
 });
 
 closeSettingsImportExportDialogButton?.addEventListener("click", closeImportExportDialog);
@@ -892,8 +944,8 @@ confirmSettingsImportExportButton?.addEventListener("click", async () => {
     return;
   }
 
-  const endpoint = settingsTransferMode === "import" ? "/api/settings/import" : "/api/settings/export";
-  const response = await fetch(endpoint, {
+  const modeConfig = getTransferModeConfig(settingsTransferMode);
+  const response = await fetch(modeConfig.endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ filePath })
@@ -901,17 +953,17 @@ confirmSettingsImportExportButton?.addEventListener("click", async () => {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    setSettingsTransferNotice(payload.error || "Settings transfer failed.", true);
+    setSettingsTransferNotice(payload.error || "Operation failed.", true);
     return;
   }
 
-  if (settingsTransferMode === "import") {
+  if (modeConfig.reloadOnSuccess) {
     closeImportExportDialog();
     window.location.reload();
     return;
   }
 
-  setSettingsTransferNotice(`Settings exported to ${filePath}.`);
+  setSettingsTransferNotice(`${modeConfig.successMessage} Saved to ${filePath}.`);
 });
 
 modelsDialogOverlay?.addEventListener("click", (event) => {
