@@ -39,7 +39,12 @@ paths:
                 properties:
                   maxRecommendedDefinitions: { type: integer, minimum: 3, maximum: 8 }
                   geminiApiKey: { type: string }
+                  geminiClient: { type: string }
                   geminiModel: { type: string }
+                  geminiConnectorId: { type: string }
+                  geminiConnectorBaseUrl: { type: string }
+                  geminiConnectorApiKey: { type: string }
+                  geminiConnectorModel: { type: string }
         "500":
           $ref: "#/components/responses/ServerError"
     post:
@@ -55,8 +60,13 @@ paths:
                 repoUrl: { type: string }
                 repoPath: { type: string }
                 maxRecommendedDefinitions: { type: integer }
+                geminiClient: { type: string }
                 geminiApiKey: { type: string }
                 geminiModel: { type: string }
+                geminiConnectorId: { type: string }
+                geminiConnectorBaseUrl: { type: string }
+                geminiConnectorApiKey: { type: string }
+                geminiConnectorModel: { type: string }
       responses:
         "200":
           description: Updated
@@ -930,9 +940,8 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
-        repoUrl: { type: string }
-        repoPath: { type: string }
-        branch: { type: string, nullable: true }
+        remoteUrl: { type: string }
+        localPath: { type: string }
         enabled: { type: boolean }
         createdAt: { type: string, nullable: true }
         updatedAt: { type: string, nullable: true }
@@ -941,19 +950,17 @@ components:
       type: object
       properties:
         name: { type: string }
-        repoUrl: { type: string }
-        repoPath: { type: string }
-        branch: { type: string }
+        remoteUrl: { type: string }
+        localPath: { type: string }
         enabled: { type: boolean }
-      required: [name, repoUrl, repoPath]
+      required: [name, remoteUrl, localPath]
 
     AssetRepoUpdate:
       type: object
       properties:
         name: { type: string }
-        repoUrl: { type: string }
-        repoPath: { type: string }
-        branch: { type: string }
+        remoteUrl: { type: string }
+        localPath: { type: string }
         enabled: { type: boolean }
 
     DevProject:

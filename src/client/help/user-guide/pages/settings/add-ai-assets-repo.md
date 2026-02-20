@@ -18,13 +18,14 @@ Use AI Assets repositories to keep prompts, rules, docs, workflows, and other as
    - **Repository Remote URL** (git URL)
    - **Clone Folder** (local folder where the repo will be cloned)
 4. Save the new repository entry.
-5. Run **Clone** (first time) or **Pull** (already cloned) to fetch the latest assets.
-6. Confirm that definitions from the repo appear in the Hub.
+5. Click **Pull all / Clone missing** to sync every enabled repository.
+6. Click **Load Definitions** to refresh the catalog from synced repositories.
+7. Confirm that definitions from the repo appear in the Hub.
 
-## Clone / Pull behavior
+## Pull all / Clone missing behavior
 
-- **Clone** downloads the repository for the first time into the chosen folder.
-- **Pull** updates an existing local clone with latest remote changes.
-- Re-run pull regularly so recommendations and definitions stay current.
+- If a configured local path does not exist, DCC runs clone for that repository.
+- If the path exists and is already a git repository, DCC runs pull.
+- The sync action runs this logic for all enabled repositories in one pass.
 
 ![Settings Asset Repositories section with Add Repository action](../images/settings-add-ai-assets-repo-form.png)
