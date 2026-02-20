@@ -54,12 +54,49 @@
         border-top: 1px solid var(--border);
       }
 
+      .toc-section-header {
+        all: unset;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        box-sizing: border-box;
+        cursor: pointer;
+        border-radius: 8px;
+        padding: 4px 6px;
+      }
+
+      .toc-section-header:hover,
+      .toc-section-header:focus-visible {
+        background: var(--surface-hover);
+        outline: none;
+      }
+
       .toc-section-title {
-        margin: 0 0 8px;
+        margin: 0;
         font-size: 13px;
         text-transform: uppercase;
         letter-spacing: 0.03em;
         color: var(--muted);
+      }
+
+      .toc-section-chevron {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1;
+        transition: transform 0.2s ease;
+      }
+
+      .toc-section.is-collapsed .toc-section-chevron {
+        transform: rotate(-90deg);
+      }
+
+      .toc-section-body {
+        margin-top: 8px;
+      }
+
+      .toc-section.is-collapsed .toc-section-body {
+        display: none;
       }
 
       .toc-links {
@@ -685,10 +722,16 @@
       function renderToc(activePageId) {
         helpGuideToc.innerHTML = `
           <h2>Help Pages</h2>
-          ${tocSections.map((section) => `
-            <section class="toc-section">
-              <h3 class="toc-section-title">${section.sectionTitle}</h3>
-              <div class="toc-links">
+          ${tocSections.map((section) => {
+            const sectionHasActivePage = section.pages.some((page) => page.id === activePageId || (Array.isArray(page.children) && page.children.some((child) => child.id === activePageId)));
+            return `
+            <section class="toc-section ${sectionHasActivePage ? "" : "is-collapsed"}">
+              <button type="button" class="toc-section-header" aria-expanded="${sectionHasActivePage ? "true" : "false"}">
+                <h3 class="toc-section-title">${section.sectionTitle}</h3>
+                <span class="toc-section-chevron" aria-hidden="true">▾</span>
+              </button>
+              <div class="toc-section-body">
+                <div class="toc-links">
                 ${section.pages.map((page) => {
                   const activeClass = page.id === activePageId ? "is-active" : "";
                   const childLinks = Array.isArray(page.children) && page.children.length
@@ -699,10 +742,22 @@
                     : "";
                   return `<a class="toc-link ${activeClass}" href="/user-guide.html?page=${page.id}">${page.title}</a>${childLinks}`;
                 }).join("")}
+                </div>
               </div>
             </section>
-          `).join("")}
+          `;
+          }).join("")}
         `;
+
+        helpGuideToc.querySelectorAll(".toc-section-header").forEach((header) => {
+          header.addEventListener("click", () => {
+            const section = header.closest(".toc-section");
+            if (!section) return;
+            section.classList.toggle("is-collapsed");
+            const expanded = !section.classList.contains("is-collapsed");
+            header.setAttribute("aria-expanded", expanded ? "true" : "false");
+          });
+        });
       }
 
       async function loadPage(pageId) {
