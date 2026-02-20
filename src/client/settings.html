@@ -102,6 +102,28 @@
           </div>
         </div>
 
+        <div class="settings-subsection">
+          <h3>AI Logging</h3>
+          <p class="helper-text">Enable or disable OpenAI facade and Gemini client request/response logs.</p>
+          <div class="settings-table-form">
+            <div class="settings-table-form-row">
+              <label for="openAiResponseLogEnabledInput">OpenAI facade response logging</label>
+              <input id="openAiResponseLogEnabledInput" type="checkbox" />
+            </div>
+            <div class="settings-table-form-row">
+              <label for="aiClientTrafficLogEnabledInput">Gemini client traffic logging</label>
+              <input id="aiClientTrafficLogEnabledInput" type="checkbox" />
+            </div>
+            <div class="settings-table-form-row">
+              <label for="aiResponseLogMaxLengthInput">Max response length to log</label>
+              <input id="aiResponseLogMaxLengthInput" type="number" min="50" max="5000" step="10" value="300" />
+            </div>
+          </div>
+          <div class="table-actions">
+            <button class="btn btn-primary" type="button" id="saveAiLoggingSettingsBtn">Save logging settings</button>
+          </div>
+        </div>
+
       </section>
 
       <section class="settings-section settings-card settings-card--wide">

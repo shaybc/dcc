@@ -1,5 +1,6 @@
 // src/services/ai/geminiAIStudioClient.js
 import { logInfo } from "../../utils/logger.js";
+import { getAiLogConfigSync, truncateAiLogPayload } from "../../utils/aiLogging.js";
 export class GeminiAIStudioClient {
   constructor({ apiKey, model }) {
     this.apiKey = apiKey;
@@ -29,12 +30,14 @@ export class GeminiAIStudioClient {
       body: JSON.stringify(body)
     });
 
+    const responsePayload = await r.text();
+    logGeminiHttpResponse({ method: "POST", url, status: r.status, body: responsePayload });
+
     if (!r.ok) {
-      const t = await r.text();
-      throw new Error(`Gemini generateContent failed: ${r.status} ${t}`);
+      throw new Error(`Gemini generateContent failed: ${r.status} ${responsePayload}`);
     }
 
-    return await r.json();
+    return JSON.parse(responsePayload || "{}");
   }
 
   /**
@@ -62,12 +65,14 @@ export class GeminiAIStudioClient {
       body: JSON.stringify(body)
     });
 
+    const responsePayload = await r.text();
+    logGeminiHttpResponse({ method: "POST", url, status: r.status, body: responsePayload });
+
     if (!r.ok) {
-      const t = await r.text();
-      throw new Error(`Gemini embedContent failed: ${r.status} ${t}`);
+      throw new Error(`Gemini embedContent failed: ${r.status} ${responsePayload}`);
     }
 
-    return await r.json();
+    return JSON.parse(responsePayload || "{}");
   }
 
   /**
@@ -87,12 +92,14 @@ export class GeminiAIStudioClient {
       headers: { "Content-Type": "application/json" }
     });
 
+    const responsePayload = await r.text();
+    logGeminiHttpResponse({ method: "GET", url, status: r.status, body: responsePayload });
+
     if (!r.ok) {
-      const t = await r.text();
-      throw new Error(`Gemini listModels failed: ${r.status} ${t}`);
+      throw new Error(`Gemini listModels failed: ${r.status} ${responsePayload}`);
     }
 
-    return await r.json();
+    return JSON.parse(responsePayload || "{}");
   }
 
   /**
@@ -118,8 +125,11 @@ export class GeminiAIStudioClient {
 
     if (!r.ok) {
       const t = await r.text();
+      logGeminiHttpResponse({ method: "POST", url, status: r.status, body: t });
       throw new Error(`Gemini streamGenerateContent failed: ${r.status} ${t}`);
     }
+
+    logGeminiHttpResponse({ method: "POST", url, status: r.status, body: "[stream opened]" });
 
     if (!r.body) return;
 
@@ -189,12 +199,28 @@ function extractGeminiParts(content) {
 }
 
 function logGeminiHttpRequest({ method, url, headers, body }) {
+  const aiLogConfig = getAiLogConfigSync();
+  if (!aiLogConfig.aiClientTrafficEnabled) {
+    return;
+  }
   const safeUrl = redactUrlKey(url);
   const safeHeaders = { ...headers };
-  logInfo(`[GEMINI] ${method} ${safeUrl}`);
-  logInfo(`[GEMINI] headers=${JSON.stringify(safeHeaders)}`);
+  logInfo(`[GEMINI] request ${method} ${safeUrl}`);
+  logInfo(`[GEMINI] request_headers=${truncateAiLogPayload(safeHeaders, aiLogConfig.responseMaxLength)}`);
   if (body !== undefined) {
-    logInfo(`[GEMINI] body=${JSON.stringify(body)}`);
+    logInfo(`[GEMINI] request_body=${truncateAiLogPayload(body, aiLogConfig.responseMaxLength)}`);
+  }
+}
+
+function logGeminiHttpResponse({ method, url, status, body }) {
+  const aiLogConfig = getAiLogConfigSync();
+  if (!aiLogConfig.aiClientTrafficEnabled) {
+    return;
+  }
+  const safeUrl = redactUrlKey(url);
+  logInfo(`[GEMINI] response ${method} ${safeUrl} status=${status}`);
+  if (body !== undefined) {
+    logInfo(`[GEMINI] response_body=${truncateAiLogPayload(body, aiLogConfig.responseMaxLength)}`);
   }
 }
 

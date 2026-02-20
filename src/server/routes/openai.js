@@ -2,6 +2,7 @@
 import express from "express";
 import { z } from "zod";
 import { env } from "../utils/env.js";
+import { getAiLogConfigSync, truncateAiLogPayload } from "../utils/aiLogging.js";
 import { logError, logInfo } from "../utils/logger.js";
 import { GeminiConnectorClient } from "../services/ai/geminiConnectorClient.js";
 import { GeminiAIStudioClient } from "../services/ai/geminiAIStudioClient.js";
@@ -555,10 +556,11 @@ function truncateLogText(value, maxLen = 300) {
 }
 
 function logOpenAiResponse(reqId, label, payload) {
-  if (!env.OPENAI_RESPONSE_LOG_ENABLED) {
+  const aiLogConfig = getAiLogConfigSync();
+  if (!aiLogConfig.openAiResponseEnabled) {
     return;
   }
-  const serialized = typeof payload === "string" ? payload : JSON.stringify(payload);
+  const serialized = truncateAiLogPayload(payload, aiLogConfig.responseMaxLength);
   logInfo(`[OPENAI] id=${reqId} response_${label}=${serialized}`);
 }
 
