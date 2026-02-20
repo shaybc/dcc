@@ -1,4 +1,5 @@
 import { attachEnhancePromptBehavior } from "../forms/promptEnhancer.js";
+import { loadAvailableDefinitionTags, suggestTagsForDefinitionContent } from "../../services/autoTagService.js";
 
 const AUTOCOMPLETE_DEBUG_PREFIX = "[tag-autocomplete]";
 
@@ -133,6 +134,12 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
   const addButton = createElement("button", "btn small", "Add item");
   addButton.type = "button";
   header.append(addButton);
+  const isTagEditor = String(label || "").toLowerCase() === "dcc_tags";
+  const autoTagButton = isTagEditor ? createElement("button", "btn small", "Auto-tag with AI") : null;
+  if (autoTagButton) {
+    autoTagButton.type = "button";
+    header.append(autoTagButton);
+  }
   const list = createElement("div", "array-editor-list");
   wrapper.append(header, list);
   mount.append(wrapper);
@@ -246,6 +253,37 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
     render();
     onChange(items);
   }));
+
+  if (autoTagButton) {
+    autoTagButton.addEventListener("click", async () => {
+      const rawEditor = document.getElementById("rawText");
+      const definitionContent = String(rawEditor?.value || "").trim();
+      if (!definitionContent) {
+        window.alert("Please enter definition content before auto-tagging.");
+        return;
+      }
+
+      const originalLabel = autoTagButton.textContent;
+      autoTagButton.disabled = true;
+      autoTagButton.textContent = "Tagging...";
+      try {
+        const availableTags = await loadAvailableDefinitionTags();
+        const nextTags = await suggestTagsForDefinitionContent({
+          definitionContent,
+          existingTags: items,
+          availableTags
+        });
+        items = [...nextTags];
+        render();
+        onChange(items);
+      } catch (error) {
+        window.alert(String(error?.message || error || "Unable to auto-tag definition."));
+      } finally {
+        autoTagButton.disabled = false;
+        autoTagButton.textContent = originalLabel;
+      }
+    });
+  }
 
   return {
     setItems(nextItems = []) {
