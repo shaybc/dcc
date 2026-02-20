@@ -222,6 +222,7 @@ openaiRouter.post("/completions", async (req, res) => {
 openaiRouter.post("/chat/completions", async (req, res) => {
   const reqId = req._reqId || "no-id";
   const t0 = Date.now();
+  const enhanceFeature = req.get("X-DCC-Feature") || "";
 
   try {
     const parsed = ChatSchema.parse(req.body);
@@ -336,6 +337,16 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     const { text, functionCalls } = extractGeminiTextAndCalls(rawResponse);
 
     logInfo(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
+    if (!text.length || enhanceFeature === "definition-intent-search") {
+      const candidate = rawResponse?.candidates?.[0] || {};
+      const finishReason = String(candidate?.finishReason || "");
+      const safetyRatings = Array.isArray(candidate?.safetyRatings) ? candidate.safetyRatings : [];
+      const promptFeedback = rawResponse?.promptFeedback || null;
+      const usageMetadata = rawResponse?.usageMetadata || null;
+      logInfo(`[OPENAI] id=${reqId} gemini_finish_reason=${JSON.stringify(finishReason)} safety_count=${safetyRatings.length}`);
+      logInfo(`[OPENAI] id=${reqId} gemini_prompt_feedback=${JSON.stringify(promptFeedback)}`);
+      logInfo(`[OPENAI] id=${reqId} gemini_usage=${JSON.stringify(usageMetadata)}`);
+    }
 
     const modelName = normalizeGeminiModel(parsed.model || client.model);
     const created = Math.floor(Date.now() / 1000);
