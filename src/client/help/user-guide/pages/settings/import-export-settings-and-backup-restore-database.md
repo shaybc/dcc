@@ -1,4 +1,4 @@
-# Import/Export Settings and Backup/Restore Database
+# Import/Export Settings & Backup/Restore Database
 
 Use the **Import / Export ...** button in **Settings** to either transfer DCC configuration in JSON format or create/restore full SQLite database backups.
 

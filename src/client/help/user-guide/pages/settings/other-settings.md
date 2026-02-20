@@ -1,4 +1,4 @@
-# Other Settings (Theme, Recommendations, and Timeout)
+# Theme, Recommendations, and Timeout
 
 This page covers the remaining settings controls that are not documented in the other Settings help pages.
 
