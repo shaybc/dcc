@@ -20,6 +20,8 @@ const pathParam = params.get("path") || "";
 const definitionIdParam = params.get("id") || "";
 const destinationRepoIdParam = params.get("repoId") || "";
 
+const GENERATED_DEFINITION_STORAGE_KEY = "dcc.generated.definition";
+
 const formMount = document.getElementById("formMount");
 const rawText = document.getElementById("rawText");
 const parseError = document.getElementById("parseError");
@@ -1275,6 +1277,22 @@ async function boot() {
   }
 
   console.debug(`${TAG_DEBUG_PREFIX} boot: initializing form type`, definitionType, "with tags count", availableTags.length);
+
+  if (mode === "create" && params.get("generated") === "1") {
+    try {
+      const rawStored = window.sessionStorage.getItem(GENERATED_DEFINITION_STORAGE_KEY);
+      if (rawStored) {
+        const parsedStored = JSON.parse(rawStored);
+        if (parsedStored && parsedStored.type === definitionType && parsedStored.content) {
+          raw = String(parsedStored.content);
+        }
+      }
+    } catch (_error) {
+      raw = "";
+    } finally {
+      window.sessionStorage.removeItem(GENERATED_DEFINITION_STORAGE_KEY);
+    }
+  }
 
   if (mode === "edit") {
     const query = new URLSearchParams();
