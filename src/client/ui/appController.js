@@ -1,5 +1,6 @@
 import { runWithLoading } from "../services/loadingService.js";
 import { createDiffService } from "../services/diffService.js";
+import { loadAvailableDefinitionTags, suggestTagsForDefinitionContent } from "../services/autoTagService.js";
 
 const cardsContainer = document.getElementById("cards");
 const definitionsCountLabel = document.getElementById("definitionsCountLabel");
@@ -27,6 +28,7 @@ const detailRepoOrigin = document.getElementById("detailRepoOrigin");
 const detailTags = document.getElementById("detailTags");
 const detailVersionMeta = document.getElementById("detailVersionMeta");
 const copyDefinitionButton = document.getElementById("copyDefinition");
+const autoTagDefinitionButton = document.getElementById("autoTagDefinition");
 const editDefinitionButton = document.getElementById("editDefinition");
 const newDefinitionButton = document.getElementById("newDefinitionButton");
 const newDefinitionMenu = document.getElementById("newDefinitionMenu");
@@ -2463,6 +2465,25 @@ async function handleRoute() {
 }
 
 
+async function applyDefinitionTags(id, tags = []) {
+  const response = await fetch(`/api/definitions/${id}/tags`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tags })
+  });
+  if (!response.ok) {
+    let message = "Unable to update definition tags.";
+    try {
+      const payload = await response.json();
+      if (payload?.error) message = payload.error;
+    } catch (_error) {
+      // ignore parse errors
+    }
+    throw new Error(message);
+  }
+  return response.json();
+}
+
 async function copyDefinitionToClipboard() {
   const definitionText = detailContent.textContent || "";
   if (!definitionText.trim()) {
@@ -3193,6 +3214,35 @@ function setupEventListeners() {
     openInstallDestinationMenu(installDefinitionButton, currentDefinition);
   });
   
+  autoTagDefinitionButton?.addEventListener("click", async () => {
+    if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
+      return;
+    }
+
+    const originalLabel = autoTagDefinitionButton.getAttribute("title") || "Auto-tag definition with AI";
+    autoTagDefinitionButton.disabled = true;
+    autoTagDefinitionButton.setAttribute("title", "Auto-tagging...");
+
+    try {
+      const availableTags = await loadAvailableDefinitionTags();
+      const existingTags = parseDefinitionTags(definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId))?.tags || "");
+      const suggestedTags = await suggestTagsForDefinitionContent({
+        definitionContent: currentDetailDefinitionContent,
+        existingTags,
+        availableTags
+      });
+      await applyDefinitionTags(currentDetailDefinitionId, suggestedTags);
+      await fetchDefinitions();
+      await showDetails(currentDetailDefinitionId);
+      window.alert(`Auto-tag complete. ${suggestedTags.length} tags are now attached.`);
+    } catch (error) {
+      window.alert(error.message || "Unable to auto-tag definition.");
+    } finally {
+      autoTagDefinitionButton.disabled = false;
+      autoTagDefinitionButton.setAttribute("title", originalLabel);
+    }
+  });
+
   copyDefinitionButton.addEventListener("click", async () => {
     try {
       await copyDefinitionToClipboard();

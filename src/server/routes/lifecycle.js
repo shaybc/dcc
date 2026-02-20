@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import express from "express";
 import YAML from "yaml";
+import matter from "gray-matter";
 import db from "../db/index.js";
 import { getDb, runDb, allDb } from "../db/helpers.js";
 import { runCommand, classifyGitError, extractCommandErrorMessage, handleGitTransactionFailure } from "../utils/git.js";
@@ -20,6 +21,30 @@ import { DESTINATIONS } from "../definitions/export/compatibility.js";
 const fsp = fs.promises;
 const router = express.Router();
 const VALID_SAVE_DESTINATIONS = new Set(Object.values(DESTINATIONS));
+
+
+function normalizeDefinitionTags(tags = []) {
+  return Array.from(new Set((Array.isArray(tags) ? tags : [])
+    .map((tag) => String(tag || "").trim())
+    .filter(Boolean)));
+}
+
+function applyTagsToDefinitionContent(content, filePath, nextTags) {
+  const normalizedPath = String(filePath || "").toLowerCase();
+  const ext = path.extname(normalizedPath);
+
+  if ([".md", ".markdown", ".mdx"].includes(ext)) {
+    const parsed = matter(String(content || ""));
+    parsed.data = parsed.data || {};
+    parsed.data.dcc_tags = nextTags;
+    return matter.stringify(parsed.content || "", parsed.data);
+  }
+
+  const parsed = YAML.parse(String(content || "")) || {};
+  parsed.dcc_tags = nextTags;
+  return YAML.stringify(parsed);
+}
+
 
 async function listInstalledDestinations(projectPath, definitionKey) {
   const rows = await allDb(
@@ -239,6 +264,47 @@ router.post("/api/definitions/:id/push-upstream", async (req, res) => {
       res.status(500).json({ error: extractCommandErrorMessage(error, "Failed to push definition to upstream.") });
     }
   });
+});
+
+
+router.post("/api/definitions/:id/tags", async (req, res) => {
+  try {
+    const definitionId = Number(req.params.id);
+    if (!Number.isInteger(definitionId) || definitionId <= 0) {
+      res.status(400).json({ error: "Valid definition id is required." });
+      return;
+    }
+
+    const definition = await getDb("SELECT id, filePath, content FROM definitions WHERE id = ?", [definitionId]);
+    if (!definition) {
+      res.status(404).json({ error: "Definition not found." });
+      return;
+    }
+
+    const tags = normalizeDefinitionTags(req.body?.tags || []);
+    const sourcePath = String(definition.filePath || "").trim() ? path.resolve(String(definition.filePath || "")) : "";
+    let currentContent = String(definition.content || "");
+    if (sourcePath && fs.existsSync(sourcePath)) {
+      currentContent = await fsp.readFile(sourcePath, "utf8");
+    }
+
+    const updatedContent = applyTagsToDefinitionContent(currentContent, sourcePath || definition.filePath || "", tags);
+
+    if (sourcePath) {
+      await fsp.writeFile(sourcePath, updatedContent, "utf8");
+    }
+
+    await runDb(
+      "UPDATE definitions SET content = ?, tags = ?, updatedAt = ? WHERE id = ?",
+      [updatedContent, tags.join(","), Date.now(), definitionId]
+    );
+
+    await loadDefinitions();
+
+    res.json({ ok: true, tags });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unable to update definition tags." });
+  }
 });
 
 router.post("/api/definitions/:id/save", async (req, res) => {
