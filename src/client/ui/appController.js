@@ -38,6 +38,7 @@ const hubMenuToggleButton = document.getElementById("hubMenuToggle");
 const hubMenu = document.getElementById("hubMenu");
 const localDefinitionsToggle = document.getElementById("localDefinitionsToggle");
 const hideInstalledMenuToggle = document.getElementById("hideInstalledMenuToggle");
+const userGuideSeparator = document.getElementById("userGuideSeparator");
 const installGuideMenuItem = document.getElementById("installGuideMenuItem");
 const settingsMenuItem = document.getElementById("settingsMenuItem");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
@@ -892,8 +893,8 @@ function renderHubTagFilterSection() {
   tagSection.appendChild(tagPillsContainer);
   tagSection.appendChild(emptySearchState);
 
-  if (settingsMenuItem?.parentNode === hubMenu) {
-    hubMenu.insertBefore(tagSection, settingsMenuItem);
+  if (userGuideSeparator?.parentNode === hubMenu) {
+    hubMenu.insertBefore(tagSection, userGuideSeparator);
   } else {
     hubMenu.appendChild(tagSection);
   }

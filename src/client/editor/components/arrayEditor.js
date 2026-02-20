@@ -131,15 +131,17 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
   const wrapper = createElement("section", "array-editor");
   const header = createElement("div", "array-editor-header");
   header.append(createElement("h4", "", label));
+  const tagsAddButtonBar = createElement("div");
   const addButton = createElement("button", "btn small", "Add item");
   addButton.type = "button";
-  header.append(addButton);
   const isTagEditor = String(label || "").toLowerCase() === "dcc_tags";
   const autoTagButton = isTagEditor ? createElement("button", "btn small", "Auto-tag with AI") : null;
   if (autoTagButton) {
     autoTagButton.type = "button";
-    header.append(autoTagButton);
+    tagsAddButtonBar.append(autoTagButton);
   }
+  tagsAddButtonBar.append(addButton);
+  header.append(tagsAddButtonBar);
   const list = createElement("div", "array-editor-list");
   wrapper.append(header, list);
   mount.append(wrapper);
