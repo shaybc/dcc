@@ -83,6 +83,16 @@
           </div>
         </div>
 
+        <div class="settings-subsection">
+          <h3>Loading Timeout</h3>
+          <p class="helper-text">Configure how long async operations can run before timing out.</p>
+          <div class="table-actions">
+            <label for="loadingTimeoutInput">Timeout (seconds)</label>
+            <input id="loadingTimeoutInput" type="number" min="15" max="300" step="15" value="60" />
+            <button class="btn btn-primary" type="button" id="saveLoadingTimeoutBtn">Save timeout</button>
+          </div>
+        </div>
+
       </section>
 
       <section class="settings-section settings-card">
@@ -156,16 +166,6 @@
           <tbody id="devRootsTable"></tbody>
         </table>
         <p class="notice" id="devRootsNotice"></p>
-      </section>
-
-      <section class="settings-section settings-card">
-        <h2>Loading Timeout</h2>
-        <p class="helper-text">Configure how long async operations can run before timing out.</p>
-        <div class="table-actions">
-          <label for="loadingTimeoutInput">Timeout (seconds)</label>
-          <input id="loadingTimeoutInput" type="number" min="15" max="300" step="15" value="60" />
-          <button class="btn btn-primary" type="button" id="saveLoadingTimeoutBtn">Save timeout</button>
-        </div>
       </section>
 
       <section class="settings-section settings-card settings-card--full">
