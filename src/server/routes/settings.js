@@ -1,6 +1,6 @@
 import express from "express";
 import { getSetting, setSetting } from "../utils/settings.js";
-import { getGeminiSettings, normalizeGeminiModel, saveGeminiSettings } from "../utils/geminiSettings.js";
+import { getGeminiSettings, normalizeGeminiClient, normalizeGeminiModel, saveGeminiSettings } from "../utils/geminiSettings.js";
 import {
   createAssetRepo,
   deleteAssetRepo,
@@ -25,8 +25,13 @@ router.get("/api/settings", async (req, res) => {
     await setSetting("maxRecommendedDefinitions", String(maxRecommendedDefinitions));
     res.json({
       maxRecommendedDefinitions,
+      geminiClient: normalizeGeminiClient(gemini.client),
       geminiApiKey: gemini.apiKey,
       geminiModel: normalizeGeminiModel(gemini.model),
+      geminiConnectorId: gemini.connectorId,
+      geminiConnectorBaseUrl: gemini.connectorBaseUrl,
+      geminiConnectorApiKey: gemini.connectorApiKey,
+      geminiConnectorModel: normalizeGeminiModel(gemini.connectorModel),
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -34,7 +39,18 @@ router.get("/api/settings", async (req, res) => {
 });
 
 router.post("/api/settings", async (req, res) => {
-  const { repoUrl, repoPath, maxRecommendedDefinitions, geminiApiKey, geminiModel } = req.body || {};
+  const {
+    repoUrl,
+    repoPath,
+    maxRecommendedDefinitions,
+    geminiClient,
+    geminiApiKey,
+    geminiModel,
+    geminiConnectorId,
+    geminiConnectorBaseUrl,
+    geminiConnectorApiKey,
+    geminiConnectorModel,
+  } = req.body || {};
   try {
     if (repoUrl !== undefined || repoPath !== undefined) {
       await upsertLegacyAssetRepo(repoUrl, repoPath);
@@ -43,7 +59,15 @@ router.post("/api/settings", async (req, res) => {
       const normalizedValue = normalizeMaxRecommendedDefinitions(maxRecommendedDefinitions, 8);
       await setSetting("maxRecommendedDefinitions", String(normalizedValue));
     }
-    await saveGeminiSettings({ apiKey: geminiApiKey, model: geminiModel });
+    await saveGeminiSettings({
+      client: geminiClient,
+      apiKey: geminiApiKey,
+      model: geminiModel,
+      connectorId: geminiConnectorId,
+      connectorBaseUrl: geminiConnectorBaseUrl,
+      connectorApiKey: geminiConnectorApiKey,
+      connectorModel: geminiConnectorModel,
+    });
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -24,8 +24,15 @@ const loadingTimeoutInput = document.getElementById("loadingTimeoutInput");
 const saveLoadingTimeoutButton = document.getElementById("saveLoadingTimeoutBtn");
 const maxRecommendedDefinitionsInput = document.getElementById("maxRecommendedDefinitionsInput");
 const saveMaxRecommendedDefinitionsButton = document.getElementById("saveMaxRecommendedDefinitionsBtn");
+const geminiClientSelect = document.getElementById("geminiClientSelect");
+const geminiAiStudioSection = document.getElementById("geminiAiStudioSection");
+const geminiConnectorSection = document.getElementById("geminiConnectorSection");
 const geminiApiKeyInput = document.getElementById("geminiApiKeyInput");
 const geminiModelInput = document.getElementById("geminiModelInput");
+const geminiConnectorIdInput = document.getElementById("geminiConnectorIdInput");
+const geminiConnectorBaseUrlInput = document.getElementById("geminiConnectorBaseUrlInput");
+const geminiConnectorApiKeyInput = document.getElementById("geminiConnectorApiKeyInput");
+const geminiConnectorModelInput = document.getElementById("geminiConnectorModelInput");
 const saveGeminiSettingsButton = document.getElementById("saveGeminiSettingsBtn");
 const getModelsButton = document.getElementById("getModelsBtn");
 const modelsDialogOverlay = document.getElementById("modelsDialogOverlay");
@@ -193,8 +200,18 @@ function updateThemeToggleLabel(isLightMode) {
 }
 
 
+function toggleGeminiSettingsSections() {
+  const selectedClient = String(geminiClientSelect?.value || "aistudio");
+  if (geminiAiStudioSection) {
+    geminiAiStudioSection.hidden = selectedClient !== "aistudio";
+  }
+  if (geminiConnectorSection) {
+    geminiConnectorSection.hidden = selectedClient !== "connector";
+  }
+}
+
 async function loadRecommendationSettings() {
-  if (!maxRecommendedDefinitionsInput && !geminiApiKeyInput && !geminiModelInput) return;
+  if (!maxRecommendedDefinitionsInput && !geminiClientSelect && !geminiApiKeyInput && !geminiModelInput) return;
   const response = await fetch("/api/settings");
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
@@ -206,12 +223,28 @@ async function loadRecommendationSettings() {
   if (maxRecommendedDefinitionsInput) {
     maxRecommendedDefinitionsInput.value = String(normalizedValue);
   }
+  if (geminiClientSelect) {
+    geminiClientSelect.value = String(data?.geminiClient || "aistudio");
+  }
   if (geminiApiKeyInput) {
     geminiApiKeyInput.value = String(data?.geminiApiKey || "");
   }
   if (geminiModelInput) {
     geminiModelInput.value = String(data?.geminiModel || "gemini-2.5-pro");
   }
+  if (geminiConnectorIdInput) {
+    geminiConnectorIdInput.value = String(data?.geminiConnectorId || "");
+  }
+  if (geminiConnectorBaseUrlInput) {
+    geminiConnectorBaseUrlInput.value = String(data?.geminiConnectorBaseUrl || "");
+  }
+  if (geminiConnectorApiKeyInput) {
+    geminiConnectorApiKeyInput.value = String(data?.geminiConnectorApiKey || "");
+  }
+  if (geminiConnectorModelInput) {
+    geminiConnectorModelInput.value = String(data?.geminiConnectorModel || "gemini-2.5-pro");
+  }
+  toggleGeminiSettingsSections();
 }
 
 
@@ -227,6 +260,10 @@ if (themeToggle) {
     updateThemeToggleLabel(appliedTheme === "light");
   });
 }
+
+geminiClientSelect?.addEventListener("change", () => {
+  toggleGeminiSettingsSections();
+});
 
 function createDevRootRow(value = "") {
   const row = document.createElement("tr");
@@ -666,13 +703,26 @@ saveMaxRecommendedDefinitionsButton?.addEventListener("click", async () => {
 });
 
 saveGeminiSettingsButton?.addEventListener("click", async () => {
+  const geminiClient = String(geminiClientSelect?.value || "aistudio");
   const geminiApiKey = String(geminiApiKeyInput?.value || "").trim();
   const geminiModel = String(geminiModelInput?.value || "").trim() || "gemini-2.5-pro";
+  const geminiConnectorId = String(geminiConnectorIdInput?.value || "").trim();
+  const geminiConnectorBaseUrl = String(geminiConnectorBaseUrlInput?.value || "").trim();
+  const geminiConnectorApiKey = String(geminiConnectorApiKeyInput?.value || "").trim();
+  const geminiConnectorModel = String(geminiConnectorModelInput?.value || "").trim() || "gemini-2.5-pro";
 
   const response = await fetch("/api/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ geminiApiKey, geminiModel })
+    body: JSON.stringify({
+      geminiClient,
+      geminiApiKey,
+      geminiModel,
+      geminiConnectorId,
+      geminiConnectorBaseUrl,
+      geminiConnectorApiKey,
+      geminiConnectorModel
+    })
   });
 
   if (!response.ok) {
@@ -681,12 +731,15 @@ saveGeminiSettingsButton?.addEventListener("click", async () => {
     return;
   }
 
-  if (geminiApiKeyInput) {
-    geminiApiKeyInput.value = geminiApiKey;
-  }
-  if (geminiModelInput) {
-    geminiModelInput.value = geminiModel;
-  }
+  if (geminiClientSelect) geminiClientSelect.value = geminiClient;
+  if (geminiApiKeyInput) geminiApiKeyInput.value = geminiApiKey;
+  if (geminiModelInput) geminiModelInput.value = geminiModel;
+  if (geminiConnectorIdInput) geminiConnectorIdInput.value = geminiConnectorId;
+  if (geminiConnectorBaseUrlInput) geminiConnectorBaseUrlInput.value = geminiConnectorBaseUrl;
+  if (geminiConnectorApiKeyInput) geminiConnectorApiKeyInput.value = geminiConnectorApiKey;
+  if (geminiConnectorModelInput) geminiConnectorModelInput.value = geminiConnectorModel;
+
+  toggleGeminiSettingsSections();
   setNotice("Gemini settings updated.");
 });
 
@@ -771,6 +824,8 @@ document.addEventListener("keydown", (event) => {
     closeModelsDialog();
   }
 });
+
+toggleGeminiSettingsSections();
 
 Promise.all([loadAssetRepos(), loadDevProjects(), loadRecommendationSettings()]).catch(() => {
   setNotice("Failed to load settings.", true);

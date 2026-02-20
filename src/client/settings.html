@@ -83,24 +83,59 @@
           </div>
         </div>
 
+      </section>
+
+      <section class="settings-section settings-card">
+        <h2>AI API Service</h2>
+        <p class="helper-text">Choose which Gemini service powers the OpenAI-compatible routes.</p>
         <div class="settings-subsection">
-          <h3>Gemini</h3>
-          <p class="helper-text">Set your Gemini API key & Model for DCC use.</p>
+          <label for="geminiClientSelect">Gemini client</label>
+          <select id="geminiClientSelect">
+            <option value="aistudio">Gemini Ai Studio</option>
+            <option value="connector">Gemini Connector</option>
+          </select>
+        </div>
+
+        <div class="settings-subsection" id="geminiAiStudioSection">
+          <h3>Gemini Ai Studio</h3>
           <div class="table-actions">
-            <div id="geminiAPIKeySettings">
-              <label for="geminiApiKeyInput">Gemini API key</label>
+            <div>
+              <label for="geminiApiKeyInput">API key</label>
               <input id="geminiApiKeyInput" type="password" autocomplete="off" placeholder="AIza..." />
             </div>
-            <div id="geminiModelSettings">
-              <label for="geminiModelInput">Gemini model</label>
+            <div>
+              <label for="geminiModelInput">Model</label>
               <input id="geminiModelInput" type="text" placeholder="gemini-2.5-pro" />
             </div>
-            <div id="geminiSettingsSaveButton">
-              <button class="btn btn-primary" type="button" id="saveGeminiSettingsBtn">Save Gemini settings</button>
-              <a class="btn" href="/swagger" target="_blank" rel="noopener noreferrer">Open API Swagger</a>
-              <button class="btn" type="button" id="getModelsBtn">Get Models</button>
+          </div>
+        </div>
+
+        <div class="settings-subsection" id="geminiConnectorSection">
+          <h3>Gemini Connector</h3>
+          <div class="table-actions">
+            <div>
+              <label for="geminiConnectorIdInput">Connector ID</label>
+              <input id="geminiConnectorIdInput" type="text" placeholder="full-01" />
+            </div>
+            <div>
+              <label for="geminiConnectorBaseUrlInput">Base URL</label>
+              <input id="geminiConnectorBaseUrlInput" type="text" placeholder="http://localhost:3999" />
+            </div>
+            <div>
+              <label for="geminiConnectorApiKeyInput">API key</label>
+              <input id="geminiConnectorApiKeyInput" type="password" autocomplete="off" placeholder="connector api key" />
+            </div>
+            <div>
+              <label for="geminiConnectorModelInput">Model</label>
+              <input id="geminiConnectorModelInput" type="text" placeholder="gemini-2.5-pro" />
             </div>
           </div>
+        </div>
+
+        <div class="table-actions" id="geminiSettingsSaveButton">
+          <button class="btn btn-primary" type="button" id="saveGeminiSettingsBtn">Save AI API settings</button>
+          <a class="btn" href="/swagger" target="_blank" rel="noopener noreferrer">Open API Swagger</a>
+          <button class="btn" type="button" id="getModelsBtn">Get Models</button>
         </div>
       </section>
 

@@ -5,39 +5,50 @@ import { env } from "../utils/env.js";
 import { logError, logInfo } from "../utils/logger.js";
 import { GeminiConnectorClient } from "../services/ai/geminiConnectorClient.js";
 import { GeminiAIStudioClient } from "../services/ai/geminiAIStudioClient.js";
-import { getGeminiSettings, normalizeGeminiModel } from "../utils/geminiSettings.js";
+import { getGeminiSettings, normalizeGeminiClient, normalizeGeminiModel } from "../utils/geminiSettings.js";
 
 const openaiRouter = express.Router();
 
 export default openaiRouter;
 
 async function getClientForModel(modelFromRequest) {
-  const useConnector = true;
-  
-  if(useConnector) {
-    const connectorId = "full-01";
-    const baseUrl = "http://localhost:3999";
-    const apiKey = "test-api-key-123";
-    const model = "gemini-2.5-pro";
+  const settings = await getGeminiSettings();
+  const selectedClient = normalizeGeminiClient(settings.client, "aistudio");
+
+  if (selectedClient === "connector") {
+    const connectorId = String(settings.connectorId || "").trim();
+    const baseUrl = String(settings.connectorBaseUrl || "").trim();
+    const apiKey = String(settings.connectorApiKey || "").trim();
+    const model = normalizeGeminiModel(modelFromRequest || settings.connectorModel || env.GEMINI_MODEL);
+
+    if (!connectorId) {
+      throw new Error("Gemini Connector ID is not configured. Please set it in Settings.");
+    }
+    if (!baseUrl) {
+      throw new Error("Gemini Connector base URL is not configured. Please set it in Settings.");
+    }
+    if (!apiKey) {
+      throw new Error("Gemini Connector API key is not configured. Please set it in Settings.");
+    }
+
     return new GeminiConnectorClient({
       apiKey,
       model,
       connectorId,
       baseUrl
     });
-  } else {
-    const settings = await getGeminiSettings();
-    const model = normalizeGeminiModel(modelFromRequest || settings.model || env.GEMINI_MODEL);
-    const apiKey = String(settings.apiKey || "").trim();
-    if (!apiKey) {
-      throw new Error("Gemini API key is not configured. Please set it in Settings.");
-    }
-    
-    return new GeminiAIStudioClient({
-      apiKey,
-      model
-    });
   }
+
+  const model = normalizeGeminiModel(modelFromRequest || settings.model || env.GEMINI_MODEL);
+  const apiKey = String(settings.apiKey || "").trim();
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured. Please set it in Settings.");
+  }
+
+  return new GeminiAIStudioClient({
+    apiKey,
+    model
+  });
 }
 
 openaiRouter.get("/models", async (req, res) => {
