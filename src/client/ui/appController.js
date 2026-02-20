@@ -37,6 +37,7 @@ const hubMenu = document.getElementById("hubMenu");
 const localDefinitionsToggle = document.getElementById("localDefinitionsToggle");
 const hideInstalledMenuToggle = document.getElementById("hideInstalledMenuToggle");
 const installGuideMenuItem = document.getElementById("installGuideMenuItem");
+const settingsMenuItem = document.getElementById("settingsMenuItem");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const versionHistoryButton = document.getElementById("versionHistoryButton");
@@ -888,7 +889,12 @@ function renderHubTagFilterSection() {
   tagSection.appendChild(tagSearchInput);
   tagSection.appendChild(tagPillsContainer);
   tagSection.appendChild(emptySearchState);
-  hubMenu.appendChild(tagSection);
+
+  if (settingsMenuItem?.parentNode === hubMenu) {
+    hubMenu.insertBefore(tagSection, settingsMenuItem);
+  } else {
+    hubMenu.appendChild(tagSection);
+  }
 }
 
 function matchesSelectedTagFilters(definition) {
@@ -3359,6 +3365,13 @@ function setupEventListeners() {
     installGuideMenuItem.addEventListener("click", () => {
       closeHubMenu({ animate: false });
       window.location.assign("/user-guide.html");
+    });
+  }
+
+  if (settingsMenuItem) {
+    settingsMenuItem.addEventListener("click", () => {
+      closeHubMenu({ animate: false });
+      window.location.assign("/settings.html");
     });
   }
 
