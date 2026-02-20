@@ -52,6 +52,32 @@
   font-size: 1.15rem;
 }
 
+.settings-subsection--compact {
+  padding-top: 14px;
+}
+
+.settings-table-form {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-table-form-row {
+  display: grid;
+  grid-template-columns: 140px minmax(220px, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.settings-table-form-row label {
+  margin-bottom: 0;
+}
+
+.settings-table-form-row input,
+.settings-table-form-row select {
+  width: 100%;
+  margin-bottom: 0;
+}
+
 .settings-section .theme-toggle-row {
   align-items: flex-start;
 }
@@ -144,6 +170,12 @@
   .settings-card--wide,
   .settings-card--full {
     grid-column: span 1;
+  }
+
+  .settings-table-form-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    align-items: stretch;
   }
 }
 

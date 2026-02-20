@@ -9,7 +9,7 @@ const GEMINI_CONNECTOR_BASE_URL_SETTING = "geminiConnectorBaseUrl";
 const GEMINI_CONNECTOR_API_KEY_SETTING = "geminiConnectorApiKey";
 const GEMINI_CONNECTOR_MODEL_SETTING = "geminiConnectorModel";
 
-export function normalizeGeminiClient(value, fallback = "aistudio") {
+export function normalizeGeminiClient(value, fallback = "connector") {
   const client = String(value || "").trim().toLowerCase();
   if (client === "connector" || client === "aistudio") {
     return client;
@@ -36,7 +36,7 @@ export async function getGeminiSettings({ persistDefaults = true } = {}) {
 
   const apiKey = String(dbApiKey ?? env.GEMINI_API_KEY ?? "").trim();
   const model = normalizeGeminiModel(dbModel ?? env.GEMINI_MODEL, "gemini-2.5-pro");
-  const client = normalizeGeminiClient(dbClient, "aistudio");
+  const client = normalizeGeminiClient(dbClient, "connector");
   const connectorId = String(dbConnectorId ?? "").trim();
   const connectorBaseUrl = String(dbConnectorBaseUrl ?? "").trim();
   const connectorApiKey = String(dbConnectorApiKey ?? "").trim();
@@ -73,7 +73,7 @@ export async function saveGeminiSettings({ apiKey, model, client, connectorId, c
     updates.push(setSetting(GEMINI_MODEL_SETTING, normalizeGeminiModel(model, "gemini-2.5-pro")));
   }
   if (client !== undefined) {
-    updates.push(setSetting(GEMINI_CLIENT_SETTING, normalizeGeminiClient(client, "aistudio")));
+    updates.push(setSetting(GEMINI_CLIENT_SETTING, normalizeGeminiClient(client, "connector")));
   }
   if (connectorId !== undefined) {
     updates.push(setSetting(GEMINI_CONNECTOR_ID_SETTING, String(connectorId || "").trim()));

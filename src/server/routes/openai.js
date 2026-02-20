@@ -13,7 +13,7 @@ export default openaiRouter;
 
 async function getClientForModel(modelFromRequest) {
   const settings = await getGeminiSettings();
-  const selectedClient = normalizeGeminiClient(settings.client, "aistudio");
+  const selectedClient = normalizeGeminiClient(settings.client, "connector");
 
   if (selectedClient === "connector") {
     const connectorId = String(settings.connectorId || "").trim();
