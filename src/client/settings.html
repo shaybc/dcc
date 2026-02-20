@@ -95,6 +95,25 @@
 
       </section>
 
+      <section class="settings-section settings-card settings-card--wide">
+        <h2>Development Project Roots</h2>
+        <p class="helper-text">Add folders that contain development projects. Changes trigger a rescan.</p>
+        <div class="table-actions">
+          <button class="btn btn-primary" type="button" id="addDevRoot">Add root</button>
+          <button class="btn" type="button" id="saveDevRoots">Save &amp; rescan projects</button>
+        </div>
+        <table class="settings-table" aria-label="Development project roots">
+          <thead>
+            <tr>
+              <th>Folder path</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="devRootsTable"></tbody>
+        </table>
+        <p class="notice" id="devRootsNotice"></p>
+      </section>
+
       <section class="settings-section settings-card">
         <h2>AI API Service</h2>
         <p class="helper-text">Choose which Gemini service powers the OpenAI-compatible routes.</p>
@@ -147,25 +166,6 @@
           <a class="btn" href="/swagger" target="_blank" rel="noopener noreferrer">Open API Swagger</a>
           <button class="btn" type="button" id="getModelsBtn">Get Models</button>
         </div>
-      </section>
-
-      <section class="settings-section settings-card settings-card--wide">
-        <h2>Development Project Roots</h2>
-        <p class="helper-text">Add folders that contain development projects. Changes trigger a rescan.</p>
-        <div class="table-actions">
-          <button class="btn btn-primary" type="button" id="addDevRoot">Add root</button>
-          <button class="btn" type="button" id="saveDevRoots">Save &amp; rescan projects</button>
-        </div>
-        <table class="settings-table" aria-label="Development project roots">
-          <thead>
-            <tr>
-              <th>Folder path</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="devRootsTable"></tbody>
-        </table>
-        <p class="notice" id="devRootsNotice"></p>
       </section>
 
       <section class="settings-section settings-card settings-card--full">
