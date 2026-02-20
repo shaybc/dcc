@@ -38,6 +38,20 @@ const getModelsButton = document.getElementById("getModelsBtn");
 const modelsDialogOverlay = document.getElementById("modelsDialogOverlay");
 const closeModelsDialogButton = document.getElementById("closeModelsDialogBtn");
 const modelsDialogContent = document.getElementById("modelsDialogContent");
+const importExportMenu = document.getElementById("importExportMenu");
+const importExportMenuButton = document.getElementById("importExportMenuButton");
+const importExportMenuList = document.getElementById("importExportMenuList");
+const importSettingsButton = document.getElementById("importSettingsButton");
+const exportSettingsButton = document.getElementById("exportSettingsButton");
+const settingsImportExportOverlay = document.getElementById("settingsImportExportOverlay");
+const settingsImportExportTitle = document.getElementById("settingsImportExportTitle");
+const settingsImportExportDescription = document.getElementById("settingsImportExportDescription");
+const settingsTransferPathInput = document.getElementById("settingsTransferPathInput");
+const settingsImportExportNotice = document.getElementById("settingsImportExportNotice");
+const confirmSettingsImportExportButton = document.getElementById("confirmSettingsImportExportBtn");
+const closeSettingsImportExportDialogButton = document.getElementById("closeSettingsImportExportDialogBtn");
+let settingsTransferMode = "export";
+
 function normalizeLocalPath(localPath = "") {
   return String(localPath || "").trim();
 }
@@ -197,6 +211,41 @@ function renderRepoSyncResults(results = []) {
 
 function updateThemeToggleLabel(isLightMode) {
   themeToggleLabel.textContent = isLightMode ? "Light mode" : "Dark mode";
+}
+
+function setSettingsTransferNotice(message, isError = false) {
+  if (!settingsImportExportNotice) return;
+  settingsImportExportNotice.textContent = message;
+  settingsImportExportNotice.style.color = isError ? "#dc2626" : "#6b7280";
+}
+
+function setImportExportMenuOpen(isOpen) {
+  if (!importExportMenuList || !importExportMenuButton) return;
+  importExportMenuList.hidden = !isOpen;
+  importExportMenuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+
+function closeImportExportDialog() {
+  if (!settingsImportExportOverlay) return;
+  settingsImportExportOverlay.hidden = true;
+  setSettingsTransferNotice("");
+}
+
+function openImportExportDialog(mode) {
+  if (!settingsImportExportOverlay || !settingsTransferPathInput || !settingsImportExportTitle || !settingsImportExportDescription || !confirmSettingsImportExportButton) {
+    return;
+  }
+  settingsTransferMode = mode;
+  const isImportMode = mode === "import";
+  settingsImportExportTitle.textContent = isImportMode ? "Import Settings" : "Export Settings";
+  settingsImportExportDescription.textContent = isImportMode
+    ? "Choose the JSON file path to import settings from."
+    : "Choose a local path and file name for the exported JSON settings file.";
+  confirmSettingsImportExportButton.textContent = isImportMode ? "Import Settings" : "Export Settings";
+  settingsTransferPathInput.placeholder = isImportMode ? "/tmp/dcc-settings.json" : "/tmp/dcc-settings.json";
+  setSettingsTransferNotice("");
+  settingsImportExportOverlay.hidden = false;
+  setTimeout(() => settingsTransferPathInput.focus(), 0);
 }
 
 
@@ -813,6 +862,58 @@ getModelsButton?.addEventListener("click", () => {
 
 closeModelsDialogButton?.addEventListener("click", closeModelsDialog);
 
+importExportMenuButton?.addEventListener("click", () => {
+  if (!importExportMenuList) return;
+  setImportExportMenuOpen(importExportMenuList.hidden);
+});
+
+importSettingsButton?.addEventListener("click", () => {
+  setImportExportMenuOpen(false);
+  openImportExportDialog("import");
+});
+
+exportSettingsButton?.addEventListener("click", () => {
+  setImportExportMenuOpen(false);
+  openImportExportDialog("export");
+});
+
+closeSettingsImportExportDialogButton?.addEventListener("click", closeImportExportDialog);
+
+settingsImportExportOverlay?.addEventListener("click", (event) => {
+  if (event.target === settingsImportExportOverlay) {
+    closeImportExportDialog();
+  }
+});
+
+confirmSettingsImportExportButton?.addEventListener("click", async () => {
+  const filePath = String(settingsTransferPathInput?.value || "").trim();
+  if (!filePath) {
+    setSettingsTransferNotice("Please provide a file path.", true);
+    return;
+  }
+
+  const endpoint = settingsTransferMode === "import" ? "/api/settings/import" : "/api/settings/export";
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filePath })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    setSettingsTransferNotice(payload.error || "Settings transfer failed.", true);
+    return;
+  }
+
+  if (settingsTransferMode === "import") {
+    closeImportExportDialog();
+    window.location.reload();
+    return;
+  }
+
+  setSettingsTransferNotice(`Settings exported to ${filePath}.`);
+});
+
 modelsDialogOverlay?.addEventListener("click", (event) => {
   if (event.target === modelsDialogOverlay) {
     closeModelsDialog();
@@ -820,8 +921,20 @@ modelsDialogOverlay?.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && settingsImportExportOverlay && !settingsImportExportOverlay.hidden) {
+    closeImportExportDialog();
+    return;
+  }
   if (event.key === "Escape" && modelsDialogOverlay && !modelsDialogOverlay.hidden) {
     closeModelsDialog();
+  }
+});
+
+document.addEventListener("click", (event) => {
+  if (!importExportMenu || !importExportMenuList || importExportMenuList.hidden) return;
+  if (!(event.target instanceof Node)) return;
+  if (!importExportMenu.contains(event.target)) {
+    setImportExportMenuOpen(false);
   }
 });
 
