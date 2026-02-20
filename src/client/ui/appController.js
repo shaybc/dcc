@@ -85,6 +85,8 @@ const devProjectInput = document.getElementById("devProjectSelect");
 const devProjectOptions = document.getElementById("devProjectOptions");
 const recommendationsSection = document.createElement("section");
 const recommendationsTitle = document.createElement("h2");
+const recommendationsActions = document.createElement("div");
+const recommendationsAiButton = document.createElement("button");
 const recommendationsMeta = document.createElement("p");
 const recommendationsState = document.createElement("p");
 const recommendationsCards = document.createElement("div");
@@ -94,6 +96,7 @@ const recommendationsContent = document.createElement("div");
 let definitions = [];
 let suggestionDefinitionIds = [];
 let suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
+let latestSuggestionIntent = "";
 const RECOMMENDATIONS_VISIBILITY_STORAGE_KEY = "dcc.recommendations.visible";
 const HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY = "dcc.hub.hideInstalledDefinitions";
 const ONLY_LOCAL_DEFINITIONS_STORAGE_KEY = "dcc.hub.onlyLocalDefinitions";
@@ -1110,14 +1113,14 @@ function renderRecommendationSection() {
     return;
   }
 
-  if (!selectedProjectPath) {
+  if (!selectedProjectPath && projectType !== "intent") {
     recommendationsState.hidden = false;
     recommendationsState.textContent = "Select a dev project to see recommended definitions.";
     recommendationsMeta.textContent = "";
     return;
   }
 
-  if (!projectType || projectType === "unknown") {
+  if ((!projectType || projectType === "unknown") && projectType !== "intent") {
     recommendationsState.hidden = false;
     recommendationsState.textContent = "Project type is unknown, so recommendations are unavailable.";
     recommendationsMeta.textContent = `Project: ${selectedProjectPath}${platformMeta}`;
@@ -1130,11 +1133,23 @@ function renderRecommendationSection() {
   if (suggestions.length === 0) {
     recommendationsState.hidden = false;
     recommendationsState.textContent = "No matching suggestions for this project type yet.";
-    recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}${platformMeta}`;
+    if (projectType === "intent") {
+      recommendationsMeta.textContent = latestSuggestionIntent
+        ? `Intent: ${latestSuggestionIntent}`
+        : "AI ranked suggestions for your described task.";
+    } else {
+      recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}${platformMeta}`;
+    }
     return;
   }
 
-  recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}${platformMeta}`;
+  if (projectType === "intent") {
+    recommendationsMeta.textContent = latestSuggestionIntent
+      ? `Intent: ${latestSuggestionIntent}`
+      : "AI ranked suggestions for your described task.";
+  } else {
+    recommendationsMeta.textContent = `Project: ${selectedProjectPath} · Type: ${projectType}${platformMeta}`;
+  }
 
   suggestions.forEach((suggestion, index) => {
     const definition = definitions.find((item) => Number(item.id) === Number(suggestion.definitionId));
@@ -1303,6 +1318,11 @@ function renderPagination({ totalItems, totalPages }) {
 function setupRecommendationsSection() {
   recommendationsSection.className = "recommendations-section";
   recommendationsTitle.className = "recommendations-title";
+  recommendationsActions.className = "recommendations-actions";
+  recommendationsAiButton.className = "btn recommendations-ai-button";
+  recommendationsAiButton.type = "button";
+  recommendationsAiButton.setAttribute("aria-label", "Semantic intent search");
+  recommendationsAiButton.innerHTML = `<span aria-hidden="true">✨</span><span>AI</span>`;
   recommendationsMeta.className = "recommendations-meta";
   recommendationsState.className = "recommendations-state";
   recommendationsCards.className = "grid recommendations-grid";
@@ -1312,6 +1332,10 @@ function setupRecommendationsSection() {
   recommendationsContent.className = "recommendations-content";
 
   recommendationsTitle.textContent = "Recommended for current project";
+  recommendationsAiButton.addEventListener("click", () => {
+    openIntentSuggestionModal();
+  });
+  recommendationsActions.append(recommendationsTitle, recommendationsAiButton);
   updateRecommendationsToggleLabel();
   recommendationsToggleButton.addEventListener("click", () => {
     recommendationsVisible = !recommendationsVisible;
@@ -1319,7 +1343,7 @@ function setupRecommendationsSection() {
     renderRecommendationSection();
   });
 
-  recommendationsContent.append(recommendationsTitle, recommendationsMeta, recommendationsState, recommendationsCards, recommendationsDivider);
+  recommendationsContent.append(recommendationsActions, recommendationsMeta, recommendationsState, recommendationsCards, recommendationsDivider);
   recommendationsSection.append(recommendationsContent);
 
   cardsContainer.parentNode?.insertBefore(recommendationsSection, cardsContainer);
@@ -1355,10 +1379,201 @@ async function fetchDefinitionSuggestions() {
       corePlatform: String(data?.corePlatform || "").trim(),
       suggestions: nextSuggestions
     };
+    latestSuggestionIntent = "";
   } catch (_error) {
     suggestionDefinitionIds = [];
     suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
+    latestSuggestionIntent = "";
   }
+}
+
+function parseAiSuggestionPayload(rawContent) {
+  const text = String(rawContent || "").trim();
+  if (!text) return null;
+
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fencedMatch?.[1] ? fencedMatch[1].trim() : text;
+
+  try {
+    return JSON.parse(candidate);
+  } catch (_error) {
+    const objectMatch = candidate.match(/\{[\s\S]*\}/);
+    if (!objectMatch) return null;
+    try {
+      return JSON.parse(objectMatch[0]);
+    } catch (_nestedError) {
+      return null;
+    }
+  }
+}
+
+function normalizeAiSuggestedEntries(items = []) {
+  const seen = new Set();
+  const normalized = [];
+
+  items.forEach((item, index) => {
+    const definitionId = Number(item?.definitionId);
+    if (!Number.isFinite(definitionId) || seen.has(definitionId)) {
+      return;
+    }
+
+    const score = Number(item?.score);
+    normalized.push({
+      definitionId,
+      score: Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : Math.max(100 - (index * 6), 40),
+      reasons: Array.isArray(item?.reasons)
+        ? item.reasons.map((reason) => String(reason || "").trim()).filter(Boolean).slice(0, 4)
+        : []
+    });
+    seen.add(definitionId);
+  });
+
+  return normalized;
+}
+
+function buildIntentSearchCatalogSnapshot(sourceDefinitions = []) {
+  return sourceDefinitions.map((definition) => {
+    const tags = Array.isArray(definition.tags) ? definition.tags.slice(0, 8) : [];
+    const description = String(definition.description || "").trim();
+    return {
+      id: Number(definition.id),
+      name: String(definition.name || "").slice(0, 120),
+      description: description.slice(0, 260),
+      type: definition.type,
+      tags
+    };
+  });
+}
+
+function truncateForIntentSearchLog(value, maxLength = 300) {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength)}...`;
+}
+
+async function suggestDefinitionsByIntent(intent = "") {
+  const normalizedIntent = String(intent || "").trim();
+  if (!normalizedIntent) {
+    throw new Error("Please describe your task before requesting AI suggestions.");
+  }
+
+  if (!Array.isArray(definitions) || definitions.length === 0) {
+    throw new Error("Definitions are still loading. Please try again in a moment.");
+  }
+
+  const catalog = buildIntentSearchCatalogSnapshot(definitions);
+  try {
+    const response = await fetchWithErrorHandling("/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-DCC-Feature": "definition-intent-search"
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "system",
+            content: "You rank software definitions by user intent. Return JSON only with shape {\"suggestions\":[{\"definitionId\":number,\"score\":number,\"reasons\":[string]}]}. Keep top 8 suggestions ordered best-first."
+          },
+          {
+            role: "user",
+            content: JSON.stringify({ intent: normalizedIntent, definitions: catalog })
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 900
+      })
+    }, "Unable to generate AI suggestions.", {
+      title: "Generating semantic suggestions...",
+      description: "AI is ranking definitions based on your intent."
+    });
+
+    const completionText = String(response?.choices?.[0]?.message?.content || "");
+    if (!completionText.trim()) {
+      console.info("[INTENT_SEARCH] ai_result=empty text_preview=\"\"");
+      await fetchDefinitionSuggestions();
+      renderRecommendationSection();
+      return;
+    }
+
+    console.info(`[INTENT_SEARCH] ai_result=response text_preview=${JSON.stringify(truncateForIntentSearchLog(completionText, 300))}`);
+    const payload = parseAiSuggestionPayload(completionText);
+    const suggestions = normalizeAiSuggestedEntries(payload?.suggestions);
+
+    if (!suggestions.length) {
+      console.info("[INTENT_SEARCH] ai_result=invalid_json_or_no_suggestions fallback=project-suggestions");
+      await fetchDefinitionSuggestions();
+      renderRecommendationSection();
+      return;
+    }
+
+    suggestionDefinitionIds = suggestions.map((entry) => entry.definitionId);
+    suggestionsMeta = {
+      projectPath: String(devProjectInput.value || "").trim(),
+      projectType: "intent",
+      corePlatform: "",
+      suggestions
+    };
+    latestSuggestionIntent = normalizedIntent;
+    renderRecommendationSection();
+  } catch (error) {
+    console.info(`[INTENT_SEARCH] ai_result=error error_preview=${JSON.stringify(truncateForIntentSearchLog(error?.message || error, 300))}`);
+    await fetchDefinitionSuggestions();
+    renderRecommendationSection();
+  }
+}
+
+function openIntentSuggestionModal() {
+  const overlay = document.createElement("div");
+  overlay.className = "duplicate-definition-overlay";
+  overlay.innerHTML = `
+    <div class="duplicate-definition-modal" role="dialog" aria-modal="true" aria-labelledby="intentSuggestionTitle">
+      <h3 id="intentSuggestionTitle">AI Intent Search</h3>
+      <label class="duplicate-definition-field">Tell me about your task, and i will suggests the definitions to use
+        <textarea data-role="intent-task" rows="8" placeholder="Example: I need API design review prompts for TypeScript backend">${escapeHtml(latestSuggestionIntent)}</textarea>
+      </label>
+      <div class="duplicate-definition-actions">
+        <button class="btn" type="button" data-role="intent-cancel">Cancel</button>
+        <button class="btn primary" type="button" data-role="intent-submit">Suggest</button>
+      </div>
+    </div>
+  `;
+
+  const intentInput = overlay.querySelector('[data-role="intent-task"]');
+  const cancelButton = overlay.querySelector('[data-role="intent-cancel"]');
+  const submitButton = overlay.querySelector('[data-role="intent-submit"]');
+
+  const closeModal = () => {
+    overlay.remove();
+  };
+
+  cancelButton?.addEventListener("click", closeModal);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      closeModal();
+    }
+  });
+
+  submitButton?.addEventListener("click", async () => {
+    const intent = String(intentInput?.value || "").trim();
+    if (!intent) {
+      window.alert("Please describe your task before requesting suggestions.");
+      intentInput?.focus();
+      return;
+    }
+
+    closeModal();
+    try {
+      await suggestDefinitionsByIntent(intent);
+    } catch (error) {
+      window.alert(String(error?.message || error || "Unable to generate AI suggestions."));
+    }
+  });
+
+  document.body.appendChild(overlay);
+  intentInput?.focus();
 }
 
 async function loadCurrentDevProject() {

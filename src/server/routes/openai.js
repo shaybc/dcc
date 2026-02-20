@@ -222,6 +222,7 @@ openaiRouter.post("/completions", async (req, res) => {
 openaiRouter.post("/chat/completions", async (req, res) => {
   const reqId = req._reqId || "no-id";
   const t0 = Date.now();
+  const enhanceFeature = req.get("X-DCC-Feature") || "";
 
   try {
     const parsed = ChatSchema.parse(req.body);
@@ -335,7 +336,19 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
     const { text, functionCalls } = extractGeminiTextAndCalls(rawResponse);
 
-    logInfo(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(text.slice(0, 200))}`);
+    logInfo(`[OPENAI] id=${reqId} gemini_text_len=${text.length} preview=${JSON.stringify(truncateLogText(text, 300))}`);
+    if (!text.length || enhanceFeature === "definition-intent-search") {
+      const candidate = rawResponse?.candidates?.[0] || {};
+      const finishReason = String(candidate?.finishReason || "");
+      const safetyRatings = Array.isArray(candidate?.safetyRatings) ? candidate.safetyRatings : [];
+      const promptFeedback = rawResponse?.promptFeedback || null;
+      const usageMetadata = rawResponse?.usageMetadata || null;
+      const resultType = text.length ? "response" : "empty";
+      logInfo(`[OPENAI] id=${reqId} ai_result=${resultType} ai_preview=${JSON.stringify(truncateLogText(text, 300))}`);
+      logInfo(`[OPENAI] id=${reqId} gemini_finish_reason=${JSON.stringify(finishReason)} safety_count=${safetyRatings.length}`);
+      logInfo(`[OPENAI] id=${reqId} gemini_prompt_feedback=${JSON.stringify(promptFeedback)}`);
+      logInfo(`[OPENAI] id=${reqId} gemini_usage=${JSON.stringify(usageMetadata)}`);
+    }
 
     const modelName = normalizeGeminiModel(parsed.model || client.model);
     const created = Math.floor(Date.now() / 1000);
@@ -373,6 +386,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
       return handleStreamError(res, reqId, e);
     }
     const msg = String(e?.message || e);
+    logInfo(`[OPENAI] id=${reqId} ai_result=error ai_preview=${JSON.stringify(truncateLogText(msg, 300))}`);
     logError(`[OPENAI] id=${reqId} ERROR ${msg}`);
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
   }
@@ -530,6 +544,14 @@ function handleStreamError(res, reqId, err) {
   res.write("data: [DONE]\n\n");
   logOpenAiResponse(reqId, "chat_completions_sse_done", "[DONE]");
   res.end();
+}
+
+function truncateLogText(value, maxLen = 300) {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLen) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLen)}...`;
 }
 
 function logOpenAiResponse(reqId, label, payload) {
