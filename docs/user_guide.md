@@ -9,21 +9,23 @@ npm start
 
 Open `http://localhost:3000`.
 
-## 2. Configure repository settings
+## 2. Configure AI asset repositories
 
-Go to **Settings** and set:
-- **Repository URL** (`repoUrl`)
-- **Local repository path** (`repoPath`)
+Go to **Settings** and add one or more asset repositories:
+- **Name**
+- **Remote URL** (`remoteUrl`)
+- **Clone Folder** (`localPath`)
+- **Enabled** toggle
 
-Click save.
+Save each row to persist it.
 
-## 3. Sync team definitions
+## 3. Sync repositories and load definitions
 
-From the Hub/controls, run:
-1. **Clone/Pull** (uses `/api/clone-pull`)
+From **Settings**, run:
+1. **Pull all / Clone missing** (uses `/api/asset-repos/sync`)
 2. **Load Definitions** (uses `/api/load-definitions`)
 
-This refreshes the catalog from the repository files.
+This refreshes the catalog from all enabled repository files.
 
 ## 4. Set up dev project discovery
 
@@ -79,10 +81,19 @@ Create/edit definitions with:
 - Type auto-detection,
 - DCC URI uniqueness checks on save.
 
-## 11. Optional AI endpoints
+## 11. Export to GitHub Copilot and Gemini CLI (v1)
+
+When installing a definition into a project, choose destination:
+- **Continue** (default install flow),
+- **GitHub Copilot**, or
+- **Gemini CLI**.
+
+In v1, destination export currently supports `rules` and `prompts` only.
+
+## 12. Optional AI endpoints
 
 If Gemini credentials are configured, DCC exposes OpenAI-like endpoints under `/v1/*` for models/completions/chat/embeddings.
 
-## 12. Theme preferences
+## 13. Theme preferences
 
 Use the Settings theme toggle to switch light/dark mode. Preference is saved in browser storage.

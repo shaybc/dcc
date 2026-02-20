@@ -18,10 +18,11 @@ This is a concise route map derived from the current Express route modules.
 ## Settings
 
 ### `GET /api/settings`
-Returns `{ repoUrl, repoPath }`.
+Returns runtime settings, including recommendation limits and Gemini provider fields:
+`{ maxRecommendedDefinitions, geminiClient, geminiApiKey, geminiModel, geminiConnectorId, geminiConnectorBaseUrl, geminiConnectorApiKey, geminiConnectorModel }`.
 
 ### `POST /api/settings`
-Body: `{ repoUrl?: string, repoPath?: string }`.
+Accepts partial updates for legacy repo compatibility + recommendation/Gemini settings.
 Returns `{ ok: true }`.
 
 ### `GET /api/current-dev-project`
@@ -33,13 +34,33 @@ Returns `{ ok: true, path }`.
 
 ---
 
-## Repository sync
+## Asset repositories and sync
 
-### `POST /api/clone-pull`
-Clones repo when `repoPath` does not exist; otherwise runs git pull.
+### `GET /api/asset-repos`
+Returns configured asset repositories.
+
+### `POST /api/asset-repos`
+Creates repository config.
+Body: `{ name, remoteUrl, localPath, enabled? }`.
+
+### `PUT /api/asset-repos/:id`
+Updates repository config.
+Body supports: `{ name, remoteUrl, localPath, enabled }`.
+
+### `DELETE /api/asset-repos/:id`
+Deletes repository config.
+Returns `{ ok: true }`.
+
+### `POST /api/asset-repos/sync`
+For each enabled repo:
+- clones if the local path does not exist,
+- pulls if it exists and is a git repository,
+- reports per-repo failure details otherwise.
+
+Returns `{ ok, results[] }`.
 
 ### `POST /api/load-definitions`
-Loads/refreshes definitions into local DB index.
+Loads/refreshes definitions into local DB index (across synced enabled repositories).
 
 ---
 
@@ -55,21 +76,7 @@ Returns extracted DCC URI references from indexed definitions.
 Returns list of definitions. Includes per-project status when `currentDevProject` is set.
 
 ### `GET /api/definitions/suggestions`
-Returns project-aware ranked suggestions:
-```json
-{
-  "projectPath": "...",
-  "projectType": "python",
-  "projectTechnologies": ["python", "fastapi", "api"],
-  "suggestions": [
-    {
-      "definitionId": 1,
-      "score": 28,
-      "reasons": ["..."]
-    }
-  ]
-}
-```
+Returns project-aware ranked suggestions.
 
 ### `GET /api/definitions/:id`
 Returns full definition row + resolved content + file creation timestamp.
@@ -82,16 +89,16 @@ Returns full definition row + resolved content + file creation timestamp.
 Duplicates definition with requested metadata/path overrides.
 
 ### `POST /api/definitions/:id/push-upstream`
-Commits/pushes local or untracked definitions to team repo.
+Commits/pushes local or untracked definitions to team repository.
 
 ### `POST /api/definitions/:id/save`
 Saves definition into current dev project.
 
 ### `POST /api/definitions/:id/publish`
-Publishes definition changes to repo (with versioning flow).
+Publishes definition changes to repository (with versioning flow).
 
 ### `POST /api/definitions/:id/delete-repo`
-Deletes definition file in repo and refreshes catalog.
+Deletes definition file in repository and refreshes catalog.
 
 ### `POST /api/definitions/:id/remove`
 Removes definition from local project and copy tracking.
