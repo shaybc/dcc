@@ -30,6 +30,7 @@ const copyDefinitionButton = document.getElementById("copyDefinition");
 const editDefinitionButton = document.getElementById("editDefinition");
 const newDefinitionButton = document.getElementById("newDefinitionButton");
 const newDefinitionMenu = document.getElementById("newDefinitionMenu");
+const generateDefinitionMenuItem = document.getElementById("generateDefinitionMenuItem");
 const recommendationsToggleButton = document.getElementById("recommendationsToggleButton");
 const hubMenuToggleButton = document.getElementById("hubMenuToggle");
 const hubMenu = document.getElementById("hubMenu");
@@ -118,6 +119,19 @@ let currentDefinitionVersions = [];
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
 const SPECIAL_FILTERS = ["installed"];
+const GENERATED_DEFINITION_STORAGE_KEY = "dcc.generated.definition";
+const GENERATABLE_DEFINITION_TYPES = ["prompt", "mcpServer", "agent", "rule", "model", "workflow", "context", "doc", "config"];
+const DEFINITION_HELP_PAGE_BY_TYPE = {
+  prompt: "/help/user-guide/pages/usage/definition-details-actions-test-schema-prompt.md",
+  mcpServer: "/help/user-guide/pages/usage/definition-details-actions-test-schema-mcpserver.md",
+  agent: "/help/user-guide/pages/usage/definition-details-actions-test-schema-agent.md",
+  rule: "/help/user-guide/pages/usage/definition-details-actions-test-schema-rule.md",
+  model: "/help/user-guide/pages/usage/definition-details-actions-test-schema-model.md",
+  workflow: "/help/user-guide/pages/usage/definition-details-actions-test-schema-workflow.md",
+  context: "/help/user-guide/pages/usage/definition-details-actions-test-schema-context.md",
+  doc: "/help/user-guide/pages/usage/definition-details-actions-test-schema-docs.md",
+  config: "/help/user-guide/pages/usage/definition-details-actions-test-schema-config.md"
+};
 const FILTER_TYPE_SET = new Set(FILTER_TYPES);
 const INSTALL_DESTINATION_OPTIONS = [
   { key: "continue", label: "Continue" },
@@ -2715,6 +2729,235 @@ function toggleNewMenu() {
   newDefinitionButton.setAttribute("aria-expanded", String(!newDefinitionMenu.hidden));
 }
 
+async function generateDefinitionFromDescription() {
+  let defaults = { defaultType: "prompt", defaultDescription: "", initialError: "" };
+
+  while (true) {
+    const request = await openGenerateDefinitionModal(defaults);
+    if (!request) {
+      return;
+    }
+
+    defaults = {
+      defaultType: request.selectedType,
+      defaultDescription: request.description,
+      initialError: ""
+    };
+
+    try {
+      const generationPrompt = await buildDefinitionGenerationPrompt({
+        selectedType: request.selectedType,
+        description: request.description
+      });
+
+      const response = await runWithLoading(
+        async () => fetch("/v1/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-DCC-Feature": "definition-generate"
+          },
+          body: JSON.stringify({
+            prompt: generationPrompt,
+            max_tokens: 4096,
+            temperature: 0.2
+          })
+        }),
+        {
+          title: "Generating definition...",
+          description: "Using DCC AI gateway to generate content.",
+          timeout: 120000
+        }
+      );
+
+      if (!response) {
+        return;
+      }
+
+      if (!response.ok) {
+        const payload = await response.text();
+        throw new Error(payload || `Definition generation failed with status ${response.status}.`);
+      }
+
+      const payload = await response.json();
+      const generatedContent = String(payload?.choices?.[0]?.text || "").trim();
+      if (!generatedContent) {
+        throw new Error("DCC AI gateway returned empty content.");
+      }
+
+      window.sessionStorage.setItem(GENERATED_DEFINITION_STORAGE_KEY, JSON.stringify({
+        type: request.selectedType,
+        content: generatedContent,
+        createdAt: Date.now()
+      }));
+      window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(request.selectedType)}&generated=1`);
+      return;
+    } catch (error) {
+      defaults.initialError = error?.message || "Unable to generate definition.";
+    }
+  }
+}
+
+async function buildDefinitionGenerationPrompt({ selectedType, description }) {
+  const [helpPageContent, referenceDefinitions] = await Promise.all([
+    loadDefinitionHelpPage(selectedType),
+    loadDefinitionReferencesByType(selectedType, { minItems: 3, maxItems: 5 })
+  ]);
+
+  const referenceBlock = referenceDefinitions.length > 0
+    ? referenceDefinitions.map((item, index) => [
+      `Reference definition ${index + 1}:`,
+      `- Name: ${item.name || "Unknown"}`,
+      `- DCC URI: ${item.dccUri || "Unknown"}`,
+      "- Content:",
+      item.content
+    ].join("\n")).join("\n\n")
+    : "No matching existing definitions were found.";
+
+  return [
+    "Generate one complete Continue/DCC definition as valid YAML or Markdown frontmatter content.",
+    `Definition type: ${selectedType}`,
+    "Output rules:",
+    "- Return only the definition content.",
+    "- Do not include markdown fences.",
+    "- Keep fields valid for the requested schema type.",
+    "",
+    "Schema guidance from DCC Help:",
+    helpPageContent,
+    "",
+    "Existing definitions of the same type (style references):",
+    referenceBlock,
+    "",
+    "User natural language request:",
+    description
+  ].join("\n");
+}
+
+async function loadDefinitionHelpPage(selectedType) {
+  const helpPagePath = DEFINITION_HELP_PAGE_BY_TYPE[selectedType] || "";
+  if (!helpPagePath) {
+    return "No help page available for this definition type.";
+  }
+  try {
+    const response = await fetch(helpPagePath);
+    if (!response.ok) {
+      return `Unable to load help page (${response.status}).`;
+    }
+    return String(await response.text() || "").trim();
+  } catch (_error) {
+    return "Unable to load help page.";
+  }
+}
+
+async function loadDefinitionReferencesByType(selectedType, { minItems = 3, maxItems = 5 } = {}) {
+  const normalizedType = String(selectedType || "").trim().toLowerCase();
+  const matchingDefinitions = definitions
+    .filter((definition) => String(definition?.type || "").trim().toLowerCase() === normalizedType)
+    .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))
+    .slice(0, Math.max(minItems, maxItems));
+
+  const details = await Promise.all(matchingDefinitions.map(async (definition) => {
+    const id = Number(definition?.id || 0);
+    if (!Number.isInteger(id) || id <= 0) {
+      return null;
+    }
+    try {
+      const response = await fetch(`/api/definitions/${id}`);
+      if (!response.ok) {
+        return null;
+      }
+      const payload = await response.json();
+      const content = String(payload?.content || "").trim();
+      if (!content) {
+        return null;
+      }
+      return {
+        name: payload?.name || definition?.name || "",
+        dccUri: extractDccUriFromDefinitionContent(content),
+        content
+      };
+    } catch (_error) {
+      return null;
+    }
+  }));
+
+  return details.filter(Boolean).slice(0, maxItems);
+}
+
+function openGenerateDefinitionModal({ defaultType = "prompt", defaultDescription = "", initialError = "" } = {}) {
+  return new Promise((resolve) => {
+    closeDuplicateDefinitionModal();
+    const overlay = document.createElement("div");
+    overlay.className = "duplicate-definition-overlay";
+    const typeOptions = GENERATABLE_DEFINITION_TYPES
+      .map((type) => `<option value="${escapeHtml(type)}" ${type === defaultType ? "selected" : ""}>${escapeHtml(formatFilterLabel(type))}</option>`)
+      .join("");
+
+    overlay.innerHTML = `
+      <div class="duplicate-definition-modal" role="dialog" aria-modal="true" aria-labelledby="generateDefinitionTitle">
+        <h3 id="generateDefinitionTitle">Generate Definition</h3>
+        <p class="duplicate-definition-subtitle">Generate a definition from a natural language request via DCC AI gateway.</p>
+        <label class="duplicate-definition-field">Definition type
+          <select data-role="generate-type">${typeOptions}</select>
+        </label>
+        <label class="duplicate-definition-field">Natural language description
+          <textarea data-role="generate-description" rows="8" placeholder="Describe the definition you want to create...">${escapeHtml(defaultDescription)}</textarea>
+        </label>
+        <p class="error" data-role="generate-error" ${initialError ? "" : "hidden"}>${escapeHtml(initialError)}</p>
+        <div class="duplicate-definition-actions">
+          <button class="btn" type="button" data-role="generate-cancel">Cancel</button>
+          <button class="btn primary" type="button" data-role="generate-submit">Generate</button>
+        </div>
+      </div>
+    `;
+
+    const typeSelect = overlay.querySelector('[data-role="generate-type"]');
+    const descriptionInput = overlay.querySelector('[data-role="generate-description"]');
+    const cancelButton = overlay.querySelector('[data-role="generate-cancel"]');
+    const submitButton = overlay.querySelector('[data-role="generate-submit"]');
+    const errorNode = overlay.querySelector('[data-role="generate-error"]');
+
+    function closeModal(result = null) {
+      overlay.remove();
+      resolve(result);
+    }
+
+    function showError(message) {
+      if (!errorNode) return;
+      errorNode.textContent = message;
+      errorNode.hidden = !message;
+    }
+
+    cancelButton?.addEventListener("click", () => closeModal(null));
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        closeModal(null);
+      }
+    });
+
+    submitButton?.addEventListener("click", () => {
+      const selectedType = String(typeSelect?.value || "").trim();
+      const description = String(descriptionInput?.value || "").trim();
+
+      if (!selectedType || !GENERATABLE_DEFINITION_TYPES.includes(selectedType)) {
+        showError("Please choose a valid definition type.");
+        typeSelect?.focus();
+        return;
+      }
+      if (!description) {
+        showError("Please enter a natural language description.");
+        descriptionInput?.focus();
+        return;
+      }
+
+      closeModal({ selectedType, description });
+    });
+
+    document.body.appendChild(overlay);
+    descriptionInput?.focus();
+  });
+}
+
 function closeFilterMenu() {
   filterMenu.classList.remove("open");
   filterButton.setAttribute("aria-expanded", "false");
@@ -3015,6 +3258,15 @@ function setupEventListeners() {
       button.addEventListener("click", () => {
         window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(type)}`);
       });
+    });
+  }
+
+  if (generateDefinitionMenuItem) {
+    generateDefinitionMenuItem.innerHTML = `<span class="menu-type-icon">✨</span><span>Generate Definition</span>`;
+    generateDefinitionMenuItem.addEventListener("click", async () => {
+      newDefinitionMenu.hidden = true;
+      newDefinitionButton?.setAttribute("aria-expanded", "false");
+      await generateDefinitionFromDescription();
     });
   }
   
