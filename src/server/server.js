@@ -10,6 +10,7 @@ import definitionsRouter from "./routes/definitions.js";
 import lifecycleRouter from "./routes/lifecycle.js";
 import validationRouter from "./routes/validation.js";
 import versionsRouter from "./routes/versions.js";
+import { loadAiLogConfigFromSettings } from "./utils/aiLogging.js";
 
 const __dirname = import.meta.dirname;
 const app = express();
@@ -44,6 +45,8 @@ app.get("/swagger", (req, res) => {
 app.get("/settings", (req, res) => {
   res.redirect("/?tab=settings");
 });
+
+await loadAiLogConfigFromSettings();
 
 app.listen(PORT, () => {
   console.log(`DCC server listening on http://localhost:${PORT}`);

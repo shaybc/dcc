@@ -1,5 +1,6 @@
 // src/services/ai/geminiConnectorClient.js
 import { logInfo } from "../../utils/logger.js";
+import { getAiLogConfigSync, truncateAiLogPayload } from "../../utils/aiLogging.js";
 
 export class GeminiConnectorClient {
   constructor({ apiKey, model, connectorId, baseUrl, embedConnectorId, textParam = "text", filesParam = "files" }) {
@@ -30,11 +31,13 @@ export class GeminiConnectorClient {
 
     if (!r.ok) {
       const t = await r.text();
+      logConnectorHttpResponse({ method: "POST", url, status: r.status, body: t });
       throw new Error(`GeminiConnectorClient generateText failed: ${r.status} ${t}`);
     }
 
-    const json = await r.json();
-    logInfo(`[CONNECTOR] generateText response=${JSON.stringify(json).slice(0, 200)}`);
+    const responsePayload = await r.text();
+    logConnectorHttpResponse({ method: "POST", url, status: r.status, body: responsePayload });
+    const json = JSON.parse(responsePayload || "{}");
 
     return this._normalizeToGeminiResponse(json);
   }
@@ -60,11 +63,13 @@ export class GeminiConnectorClient {
 
     if (!r.ok) {
       const t = await r.text();
+      logConnectorHttpResponse({ method: "POST", url, status: r.status, body: t });
       throw new Error(`GeminiConnectorClient embedText failed: ${r.status} ${t}`);
     }
 
-    const json = await r.json();
-    logInfo(`[CONNECTOR] embedText response=${JSON.stringify(json).slice(0, 200)}`);
+    const responsePayload = await r.text();
+    logConnectorHttpResponse({ method: "POST", url, status: r.status, body: responsePayload });
+    const json = JSON.parse(responsePayload || "{}");
 
     const raw = json?.response;
     let values = [];
@@ -208,9 +213,25 @@ function extractGeminiParts(content) {
 }
 
 function logConnectorHttpRequest({ method, url, body }) {
+  const aiLogConfig = getAiLogConfigSync();
+  if (!aiLogConfig.aiClientTrafficEnabled) {
+    return;
+  }
   const safeUrl = url.replace(/([?&]key=)[^&]+/g, "$1***redacted***");
-  logInfo(`[CONNECTOR] ${method} ${safeUrl}`);
+  logInfo(`[CONNECTOR] request ${method} ${safeUrl}`);
   if (body !== undefined) {
-    logInfo(`[CONNECTOR] body=${JSON.stringify(body).slice(0, 400)}`);
+    logInfo(`[CONNECTOR] request_body=${truncateAiLogPayload(body, aiLogConfig.responseMaxLength)}`);
+  }
+}
+
+function logConnectorHttpResponse({ method, url, status, body }) {
+  const aiLogConfig = getAiLogConfigSync();
+  if (!aiLogConfig.aiClientTrafficEnabled) {
+    return;
+  }
+  const safeUrl = url.replace(/([?&]key=)[^&]+/g, "$1***redacted***");
+  logInfo(`[CONNECTOR] response ${method} ${safeUrl} status=${status}`);
+  if (body !== undefined) {
+    logInfo(`[CONNECTOR] response_body=${truncateAiLogPayload(body, aiLogConfig.responseMaxLength)}`);
   }
 }

@@ -24,6 +24,10 @@ const loadingTimeoutInput = document.getElementById("loadingTimeoutInput");
 const saveLoadingTimeoutButton = document.getElementById("saveLoadingTimeoutBtn");
 const maxRecommendedDefinitionsInput = document.getElementById("maxRecommendedDefinitionsInput");
 const saveMaxRecommendedDefinitionsButton = document.getElementById("saveMaxRecommendedDefinitionsBtn");
+const openAiResponseLogEnabledInput = document.getElementById("openAiResponseLogEnabledInput");
+const aiClientTrafficLogEnabledInput = document.getElementById("aiClientTrafficLogEnabledInput");
+const aiResponseLogMaxLengthInput = document.getElementById("aiResponseLogMaxLengthInput");
+const saveAiLoggingSettingsButton = document.getElementById("saveAiLoggingSettingsBtn");
 const geminiClientSelect = document.getElementById("geminiClientSelect");
 const geminiAiStudioSection = document.getElementById("geminiAiStudioSection");
 const geminiConnectorSection = document.getElementById("geminiConnectorSection");
@@ -334,6 +338,17 @@ async function loadRecommendationSettings() {
   }
   if (geminiConnectorModelInput) {
     geminiConnectorModelInput.value = String(data?.geminiConnectorModel || "gemini-2.5-pro");
+  }
+  if (openAiResponseLogEnabledInput) {
+    openAiResponseLogEnabledInput.checked = Boolean(data?.openAiResponseLogEnabled);
+  }
+  if (aiClientTrafficLogEnabledInput) {
+    aiClientTrafficLogEnabledInput.checked = Boolean(data?.aiClientTrafficLogEnabled);
+  }
+  if (aiResponseLogMaxLengthInput) {
+    const rawLogLength = Number(data?.aiResponseLogMaxLength);
+    const normalizedLogLength = Number.isFinite(rawLogLength) ? Math.max(50, Math.min(5000, Math.round(rawLogLength))) : 300;
+    aiResponseLogMaxLengthInput.value = String(normalizedLogLength);
   }
   toggleGeminiSettingsSections();
 }
@@ -791,6 +806,35 @@ saveMaxRecommendedDefinitionsButton?.addEventListener("click", async () => {
     maxRecommendedDefinitionsInput.value = String(maxRecommendedDefinitions);
   }
   setNotice("Recommendation limit updated.");
+});
+
+saveAiLoggingSettingsButton?.addEventListener("click", async () => {
+  const aiResponseLogMaxLength = Number(aiResponseLogMaxLengthInput?.value || 0);
+  if (!Number.isFinite(aiResponseLogMaxLength) || aiResponseLogMaxLength < 50 || aiResponseLogMaxLength > 5000) {
+    setNotice("Log max response length must be between 50 and 5000.", true);
+    return;
+  }
+
+  const response = await fetch("/api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      openAiResponseLogEnabled: Boolean(openAiResponseLogEnabledInput?.checked),
+      aiClientTrafficLogEnabled: Boolean(aiClientTrafficLogEnabledInput?.checked),
+      aiResponseLogMaxLength: Math.round(aiResponseLogMaxLength)
+    })
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    setNotice(data.error || "Failed to save logging settings.", true);
+    return;
+  }
+
+  if (aiResponseLogMaxLengthInput) {
+    aiResponseLogMaxLengthInput.value = String(Math.round(aiResponseLogMaxLength));
+  }
+  setNotice("AI logging settings updated.");
 });
 
 saveGeminiSettingsButton?.addEventListener("click", async () => {

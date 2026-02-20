@@ -12,6 +12,7 @@ import {
   updateAssetRepo,
   upsertLegacyAssetRepo,
 } from "../utils/assetRepos.js";
+import { getAiLogConfigSync, saveAiLogConfigToSettings } from "../utils/aiLogging.js";
 
 const router = express.Router();
 
@@ -29,8 +30,12 @@ router.get("/api/settings", async (req, res) => {
     const maxRecommendedDefinitions = normalizeMaxRecommendedDefinitions(await getSetting("maxRecommendedDefinitions"), 8);
     const gemini = await getGeminiSettings();
     await setSetting("maxRecommendedDefinitions", String(maxRecommendedDefinitions));
+    const aiLogConfig = getAiLogConfigSync();
     res.json({
       maxRecommendedDefinitions,
+      openAiResponseLogEnabled: aiLogConfig.openAiResponseEnabled,
+      aiClientTrafficLogEnabled: aiLogConfig.aiClientTrafficEnabled,
+      aiResponseLogMaxLength: aiLogConfig.responseMaxLength,
       geminiClient: normalizeGeminiClient(gemini.client),
       geminiApiKey: gemini.apiKey,
       geminiModel: normalizeGeminiModel(gemini.model),
@@ -56,6 +61,9 @@ router.post("/api/settings", async (req, res) => {
     geminiConnectorBaseUrl,
     geminiConnectorApiKey,
     geminiConnectorModel,
+    openAiResponseLogEnabled,
+    aiClientTrafficLogEnabled,
+    aiResponseLogMaxLength,
   } = req.body || {};
   try {
     if (repoUrl !== undefined || repoPath !== undefined) {
@@ -73,6 +81,11 @@ router.post("/api/settings", async (req, res) => {
       connectorBaseUrl: geminiConnectorBaseUrl,
       connectorApiKey: geminiConnectorApiKey,
       connectorModel: geminiConnectorModel,
+    });
+    await saveAiLogConfigToSettings({
+      openAiResponseEnabled: openAiResponseLogEnabled,
+      aiClientTrafficEnabled: aiClientTrafficLogEnabled,
+      responseMaxLength: aiResponseLogMaxLength,
     });
     res.json({ ok: true });
   } catch (error) {
