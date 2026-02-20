@@ -112,13 +112,15 @@ openaiRouter.post("/completions", async (req, res) => {
     }
 
     const parsed = CompletionSchema.parse(req.body);
+    logInfo(`[OPENAI] id=${reqId} incoming max_tokens=${parsed.max_tokens} temperature=${parsed.temperature}`);
 
     const client = await getClientForModel(parsed.model);
     logInfo(`[OPENAI] id=${reqId} completions stream=${Boolean(parsed.stream)} model=${parsed.model || client.model}`);
 
     const generationConfig = cleanUndefined({
       temperature: parsed.temperature,
-      maxOutputTokens: parsed.max_tokens
+      maxOutputTokens: parsed.max_tokens,
+      thinkingConfig: { thinkingBudget: parsed.max_thinking_tokens || 0 }
     });
 
     const raw = await client.generateText({
@@ -227,6 +229,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
   try {
     const parsed = ChatSchema.parse(req.body);
+    logInfo(`[OPENAI] id=${reqId} incoming max_tokens=${parsed.max_tokens} temperature=${parsed.temperature}`);
 
     const system = parsed.messages.find(m => m.role === "system")?.content;
     const systemText = typeof system === "string" ? system : "";

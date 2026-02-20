@@ -1483,7 +1483,8 @@ async function suggestDefinitionsByIntent(intent = "") {
           }
         ],
         temperature: 0.2,
-        max_tokens: 900
+        max_tokens: 2048,
+        max_thinking_tokens: 500
       })
     }, "Unable to generate AI suggestions.", {
       title: "Generating semantic suggestions...",
