@@ -14,6 +14,15 @@
         <p>Configure your AI assets repository and sync definitions.</p>
       </div>
       <div class="actions">
+        <div class="menu" id="importExportMenu">
+          <button class="btn" id="importExportMenuButton" type="button" aria-haspopup="true" aria-expanded="false">Import / Export ...</button>
+          <div class="menu-list" id="importExportMenuList" role="menu" hidden>
+            <button class="menu-item" id="importSettingsButton" type="button" role="menuitem">Import Settings...</button>
+            <button class="menu-item" id="exportSettingsButton" type="button" role="menuitem">Export Settings...</button>
+            <button class="menu-item" id="backupDatabaseButton" type="button" role="menuitem">Backup Database...</button>
+            <button class="menu-item" id="restoreDatabaseButton" type="button" role="menuitem">Restore Database...</button>
+          </div>
+        </div>
         <a class="btn" href="/">← Back to Hub</a>
       </div>
     </header>
@@ -197,6 +206,29 @@
         </div>
         <p class="helper-text">Loaded from <code>/v1/models</code>.</p>
         <div class="settings-models-content" id="modelsDialogContent"></div>
+      </div>
+    </div>
+
+    <div class="settings-models-overlay" id="settingsImportExportOverlay" hidden>
+      <div class="settings-models-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsImportExportTitle">
+        <div class="modal-topbar">
+          <div>
+            <p class="modal-kicker">Settings Transfer</p>
+            <h3 id="settingsImportExportTitle">Export Settings</h3>
+          </div>
+          <button class="btn" type="button" id="closeSettingsImportExportDialogBtn">Close</button>
+        </div>
+        <p class="helper-text" id="settingsImportExportDescription">Choose a local path and file name for the exported JSON settings file.</p>
+        <div class="settings-table-form">
+          <div class="settings-table-form-row">
+            <label for="settingsTransferPathInput">Path and file</label>
+            <input id="settingsTransferPathInput" type="text" placeholder="/tmp/dcc-settings.json" />
+          </div>
+        </div>
+        <p class="notice" id="settingsImportExportNotice"></p>
+        <div class="table-actions">
+          <button class="btn btn-primary" id="confirmSettingsImportExportBtn" type="button">Export Settings</button>
+        </div>
       </div>
     </div>
 

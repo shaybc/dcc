@@ -38,6 +38,22 @@ const getModelsButton = document.getElementById("getModelsBtn");
 const modelsDialogOverlay = document.getElementById("modelsDialogOverlay");
 const closeModelsDialogButton = document.getElementById("closeModelsDialogBtn");
 const modelsDialogContent = document.getElementById("modelsDialogContent");
+const importExportMenu = document.getElementById("importExportMenu");
+const importExportMenuButton = document.getElementById("importExportMenuButton");
+const importExportMenuList = document.getElementById("importExportMenuList");
+const importSettingsButton = document.getElementById("importSettingsButton");
+const exportSettingsButton = document.getElementById("exportSettingsButton");
+const backupDatabaseButton = document.getElementById("backupDatabaseButton");
+const restoreDatabaseButton = document.getElementById("restoreDatabaseButton");
+const settingsImportExportOverlay = document.getElementById("settingsImportExportOverlay");
+const settingsImportExportTitle = document.getElementById("settingsImportExportTitle");
+const settingsImportExportDescription = document.getElementById("settingsImportExportDescription");
+const settingsTransferPathInput = document.getElementById("settingsTransferPathInput");
+const settingsImportExportNotice = document.getElementById("settingsImportExportNotice");
+const confirmSettingsImportExportButton = document.getElementById("confirmSettingsImportExportBtn");
+const closeSettingsImportExportDialogButton = document.getElementById("closeSettingsImportExportDialogBtn");
+let settingsTransferMode = "settings-export";
+
 function normalizeLocalPath(localPath = "") {
   return String(localPath || "").trim();
 }
@@ -197,6 +213,81 @@ function renderRepoSyncResults(results = []) {
 
 function updateThemeToggleLabel(isLightMode) {
   themeToggleLabel.textContent = isLightMode ? "Light mode" : "Dark mode";
+}
+
+function setSettingsTransferNotice(message, isError = false) {
+  if (!settingsImportExportNotice) return;
+  settingsImportExportNotice.textContent = message;
+  settingsImportExportNotice.style.color = isError ? "#dc2626" : "#6b7280";
+}
+
+function setImportExportMenuOpen(isOpen) {
+  if (!importExportMenuList || !importExportMenuButton) return;
+  importExportMenuList.hidden = !isOpen;
+  importExportMenuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+
+function closeImportExportDialog() {
+  if (!settingsImportExportOverlay) return;
+  settingsImportExportOverlay.hidden = true;
+  setSettingsTransferNotice("");
+}
+
+function getTransferModeConfig(mode) {
+  const configByMode = {
+    "settings-import": {
+      title: "Import Settings",
+      description: "Choose the JSON file path to import settings from.",
+      buttonText: "Import Settings",
+      endpoint: "/api/settings/import",
+      placeholder: "/tmp/dcc-settings.json",
+      reloadOnSuccess: true,
+      successMessage: "Settings imported."
+    },
+    "settings-export": {
+      title: "Export Settings",
+      description: "Choose a local path and file name for the exported JSON settings file.",
+      buttonText: "Export Settings",
+      endpoint: "/api/settings/export",
+      placeholder: "/tmp/dcc-settings.json",
+      reloadOnSuccess: false,
+      successMessage: "Settings exported."
+    },
+    "db-backup": {
+      title: "Backup Database",
+      description: "Choose a local path and file name for the database backup file.",
+      buttonText: "Backup Database",
+      endpoint: "/api/database/backup",
+      placeholder: "/tmp/dcc.sqlite",
+      reloadOnSuccess: false,
+      successMessage: "Database backup created."
+    },
+    "db-restore": {
+      title: "Restore Database",
+      description: "Choose the database backup file path to restore from.",
+      buttonText: "Restore Database",
+      endpoint: "/api/database/restore",
+      placeholder: "/tmp/dcc.sqlite",
+      reloadOnSuccess: true,
+      successMessage: "Database restored."
+    }
+  };
+  return configByMode[mode] || configByMode["settings-export"];
+}
+
+function openImportExportDialog(mode) {
+  if (!settingsImportExportOverlay || !settingsTransferPathInput || !settingsImportExportTitle || !settingsImportExportDescription || !confirmSettingsImportExportButton) {
+    return;
+  }
+  settingsTransferMode = mode;
+  const modeConfig = getTransferModeConfig(mode);
+  settingsImportExportTitle.textContent = modeConfig.title;
+  settingsImportExportDescription.textContent = modeConfig.description;
+  confirmSettingsImportExportButton.textContent = modeConfig.buttonText;
+  settingsTransferPathInput.placeholder = modeConfig.placeholder;
+  setSettingsTransferNotice("");
+  settingsImportExportOverlay.hidden = false;
+  setTimeout(() => settingsTransferPathInput.focus(), 0);
 }
 
 
@@ -813,6 +904,68 @@ getModelsButton?.addEventListener("click", () => {
 
 closeModelsDialogButton?.addEventListener("click", closeModelsDialog);
 
+importExportMenuButton?.addEventListener("click", () => {
+  if (!importExportMenuList) return;
+  setImportExportMenuOpen(importExportMenuList.hidden);
+});
+
+importSettingsButton?.addEventListener("click", () => {
+  setImportExportMenuOpen(false);
+  openImportExportDialog("settings-import");
+});
+
+exportSettingsButton?.addEventListener("click", () => {
+  setImportExportMenuOpen(false);
+  openImportExportDialog("settings-export");
+});
+
+backupDatabaseButton?.addEventListener("click", () => {
+  setImportExportMenuOpen(false);
+  openImportExportDialog("db-backup");
+});
+
+restoreDatabaseButton?.addEventListener("click", () => {
+  setImportExportMenuOpen(false);
+  openImportExportDialog("db-restore");
+});
+
+closeSettingsImportExportDialogButton?.addEventListener("click", closeImportExportDialog);
+
+settingsImportExportOverlay?.addEventListener("click", (event) => {
+  if (event.target === settingsImportExportOverlay) {
+    closeImportExportDialog();
+  }
+});
+
+confirmSettingsImportExportButton?.addEventListener("click", async () => {
+  const filePath = String(settingsTransferPathInput?.value || "").trim();
+  if (!filePath) {
+    setSettingsTransferNotice("Please provide a file path.", true);
+    return;
+  }
+
+  const modeConfig = getTransferModeConfig(settingsTransferMode);
+  const response = await fetch(modeConfig.endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filePath })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    setSettingsTransferNotice(payload.error || "Operation failed.", true);
+    return;
+  }
+
+  if (modeConfig.reloadOnSuccess) {
+    closeImportExportDialog();
+    window.location.reload();
+    return;
+  }
+
+  setSettingsTransferNotice(`${modeConfig.successMessage} Saved to ${filePath}.`);
+});
+
 modelsDialogOverlay?.addEventListener("click", (event) => {
   if (event.target === modelsDialogOverlay) {
     closeModelsDialog();
@@ -820,8 +973,20 @@ modelsDialogOverlay?.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && settingsImportExportOverlay && !settingsImportExportOverlay.hidden) {
+    closeImportExportDialog();
+    return;
+  }
   if (event.key === "Escape" && modelsDialogOverlay && !modelsDialogOverlay.hidden) {
     closeModelsDialog();
+  }
+});
+
+document.addEventListener("click", (event) => {
+  if (!importExportMenu || !importExportMenuList || importExportMenuList.hidden) return;
+  if (!(event.target instanceof Node)) return;
+  if (!importExportMenu.contains(event.target)) {
+    setImportExportMenuOpen(false);
   }
 });
 
