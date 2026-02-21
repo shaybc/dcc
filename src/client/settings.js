@@ -58,6 +58,16 @@ const confirmSettingsImportExportButton = document.getElementById("confirmSettin
 const closeSettingsImportExportDialogButton = document.getElementById("closeSettingsImportExportDialogBtn");
 let settingsTransferMode = "settings-export";
 
+
+function escapeHtml(value = "") {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function normalizeLocalPath(localPath = "") {
   return String(localPath || "").trim();
 }
@@ -213,6 +223,61 @@ function renderRepoSyncResults(results = []) {
     row.append(repoCell, statusCell, detailsCell);
     assetRepoSyncTable.appendChild(row);
   });
+}
+
+function showSkippedDefinitionsModal(skippedDefinitions = []) {
+  const entries = Array.isArray(skippedDefinitions) ? skippedDefinitions.filter((item) => item?.filePath && item?.reason) : [];
+  if (entries.length === 0) return;
+
+  const existing = document.getElementById("skippedDefinitionsOverlay");
+  existing?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "skippedDefinitionsOverlay";
+  overlay.className = "settings-models-overlay";
+
+  const rowsHtml = entries
+    .map((item) => {
+      const source = String(item.source || "").trim();
+      const sourceLabel = source ? ` (${source})` : "";
+      return `<tr><td><code>${escapeHtml(String(item.filePath))}</code>${escapeHtml(sourceLabel)}</td><td>${escapeHtml(String(item.reason))}</td></tr>`;
+    })
+    .join("");
+
+  overlay.innerHTML = `
+    <div class="settings-models-dialog" role="dialog" aria-modal="true" aria-labelledby="skippedDefinitionsTitle">
+      <div class="modal-topbar">
+        <div>
+          <p class="modal-kicker">Definition load report</p>
+          <h3 id="skippedDefinitionsTitle">Some definitions could not be loaded</h3>
+        </div>
+        <button class="btn" type="button" data-role="close-skipped-definitions">Close</button>
+      </div>
+      <p class="helper-text">The files below were skipped while loading definitions.</p>
+      <div class="settings-models-content">
+        <table class="settings-table" aria-label="Skipped definitions">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  function closeModal() {
+    overlay.remove();
+  }
+
+  overlay.querySelector('[data-role="close-skipped-definitions"]')?.addEventListener("click", closeModal);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) closeModal();
+  });
+
+  document.body.appendChild(overlay);
 }
 
 function updateThemeToggleLabel(isLightMode) {
@@ -758,12 +823,18 @@ loadDefinitionsButton.addEventListener("click", async () => {
   );
 
   if (!response) return;
+  const data = await response.json().catch(() => ({}));
   if (response.ok) {
-    setNotice("Definitions loaded.");
+    const skippedCount = Array.isArray(data?.result?.skippedDefinitions) ? data.result.skippedDefinitions.length : 0;
+    if (skippedCount > 0) {
+      setNotice(`Definitions loaded with ${skippedCount} skipped file(s).`, true);
+      showSkippedDefinitionsModal(data.result.skippedDefinitions);
+    } else {
+      setNotice("Definitions loaded.");
+    }
     return;
   }
 
-  const data = await response.json();
   setNotice(data.error || "Load failed.", true);
 });
 
