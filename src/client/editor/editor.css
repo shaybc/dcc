@@ -291,3 +291,46 @@ select:focus-visible {
   z-index: 2000;
   box-shadow: var(--shadow);
 }
+
+.editor-description-hidden-input {
+  display: none;
+}
+
+.editor-description-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+}
+
+.editor-help-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.editor-help-icon-button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.editor-description-help-modal {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-description-help-content {
+  overflow: auto;
+  padding: 4px 2px;
+}
