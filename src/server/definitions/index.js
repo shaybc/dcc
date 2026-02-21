@@ -26,20 +26,27 @@ function getRawNameField(filePath, content = "") {
 }
 
 function buildSkippedReason(definition, rawName) {
+  const parseError = String(definition?.parseError || "").trim();
   if (!definition?.dccUri && !definition?.dccDefinitionType) {
-    return "not a definition file";
+    if (parseError) {
+      return `not a definition file: metadata could not be parsed (${parseError})`;
+    }
+    return "not a definition file: missing both dcc_uri and dcc_definition_type metadata fields";
   }
   if (!definition?.dccDefinitionType) {
-    return "dcc_definition_type missing";
+    return "dcc_definition_type missing (expected in definition metadata)";
   }
   if (!definition?.type) {
     return `unsupported dcc_definition_type: ${definition.dccDefinitionType}`;
   }
   if (!rawName) {
-    return `dcc_definition_type is ${definition.dccDefinitionType} but required field: name is missing`;
+    return `dcc_definition_type is ${definition.dccDefinitionType} but required field 'name' is missing`;
   }
   if (!definition?.dccUri) {
-    return "required field dcc_uri is missing";
+    return "required field dcc_uri is missing (expected in definition metadata)";
+  }
+  if (parseError) {
+    return `definition could not be loaded cleanly: ${parseError}`;
   }
   return "definition could not be loaded";
 }

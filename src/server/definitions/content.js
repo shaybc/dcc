@@ -69,9 +69,29 @@ export function sanitizeYamlHeaderScalars(raw) {
 export function readDefinitionYamlData(rawContent, filePath = "") {
   const ext = path.extname(String(filePath || "")).toLowerCase();
   if ([".md", ".markdown", ".mdx"].includes(ext)) {
-    const parsed = matter(String(rawContent || ""));
-    const body = String(parsed.content || "").trim();
-    return { data: parsed.data || {}, body };
+    const raw = String(rawContent || "");
+    const frontmatterMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+
+    const parseFrontmatterFallback = () => {
+      if (!frontmatterMatch) return null;
+      const data = YAML.parse(sanitizeYamlHeaderScalars(frontmatterMatch[1])) || {};
+      const body = raw.slice(frontmatterMatch[0].length).trim();
+      return { data: (data && typeof data === "object") ? data : {}, body };
+    };
+
+    try {
+      const parsed = matter(raw);
+      const body = String(parsed.content || "").trim();
+      if (frontmatterMatch && (!parsed.data || Object.keys(parsed.data).length === 0)) {
+        const fallbackResult = parseFrontmatterFallback();
+        if (fallbackResult) return fallbackResult;
+      }
+      return { data: parsed.data || {}, body };
+    } catch (_error) {
+      const fallbackResult = parseFrontmatterFallback();
+      if (fallbackResult) return fallbackResult;
+      return { data: {}, body: raw.trim() };
+    }
   }
   const data = YAML.parse(sanitizeYamlHeaderScalars(rawContent || "")) || {};
   return { data: (data && typeof data === "object") ? data : {}, body: "" };
