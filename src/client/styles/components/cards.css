@@ -229,7 +229,7 @@
 
 .recommendations-install-all-button {
   position: absolute;
-  right: calc(15% - 20px);
+  right: 18%;
   top: 50%;
   transform: translateY(-50%);
   width: 44px;
