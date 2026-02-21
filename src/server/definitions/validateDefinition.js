@@ -31,6 +31,7 @@ function schemaForType(type, strict) {
   const base = {
     name: z.string().min(1, "name is required"),
     dcc_uri: z.string().min(1, "dcc_uri is required"),
+    dcc_definition_type: z.enum(["prompt", "agent", "config", "model", "mcp_server", "rule", "doc", "context", "workflow"]),
     description: z.string().min(1, "description is required"),
   };
   const commonMetadata = {

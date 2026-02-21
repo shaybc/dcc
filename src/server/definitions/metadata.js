@@ -43,7 +43,7 @@ export function stripDccMetadataDeep(value) {
 export function stripDccProjectMetadata(content, filePath) {
   const raw = String(content || "");
   const ext = path.extname(String(filePath || "")).toLowerCase();
-  const keysToStrip = ["tags", "dcc_tags", "dcc_uri", "dcc_config_type"];
+  const keysToStrip = ["tags", "dcc_tags", "dcc_uri", "dcc_config_type", "dcc_definition_type"];
   if ([".yml", ".yaml"].includes(ext)) {
     try {
       const parsedYaml = YAML.parse(raw);

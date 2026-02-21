@@ -20,8 +20,9 @@ test("loadDefinitions only loads files that contain dcc_uri", async () => {
 
   const repoRoot = path.join(tempRoot, "assets-repo");
   await fs.mkdir(repoRoot, { recursive: true });
-  await fs.writeFile(path.join(repoRoot, "valid.yaml"), "name: Valid\ndcc_uri: prompts/valid\n", "utf8");
+  await fs.writeFile(path.join(repoRoot, "valid.yaml"), "name: Valid\ndcc_uri: prompts/valid\ndcc_definition_type: prompt\n", "utf8");
   await fs.writeFile(path.join(repoRoot, "README.md"), "# Readme without metadata\n", "utf8");
+  await fs.writeFile(path.join(repoRoot, "missing-type.yaml"), "name: Missing Type\ndcc_uri: prompts/missing-type\n", "utf8");
 
   await runDb(
     `INSERT INTO asset_repos (name, remoteUrl, localPath, enabled, createdAt, updatedAt)

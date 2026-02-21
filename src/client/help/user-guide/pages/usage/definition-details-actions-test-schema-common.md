@@ -14,6 +14,13 @@ These fields appear in many definition schemas. Use this as a practical guide fo
   - **Tips:** Keep it globally unique and avoid changing it after publication, because installs and references depend on it.
   - **Example:** `"dev/agents/code-review-assistant"`.
 
+
+`dcc_definition_type` (**required**)
+  - **What it is:** The canonical DCC type marker used by the loader to identify what this definition is.
+  - **What to fill in:** One exact value from: `prompt`, `agent`, `config`, `model`, `mcp_server`, `rule`, `doc`, `context`, `workflow`.
+  - **Tips:** Match this value to the actual definition kind (`prompt` for prompt definitions, `rule` for rule definitions, etc.).
+  - **Example:** `"prompt"`.
+
 `description` (**required**)
   - **What it is:** A short summary of what the definition does.
   - **What to fill in:** 1–2 sentences focused on behavior and use case.

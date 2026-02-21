@@ -152,7 +152,7 @@ function enhanceDescriptionField(formContainer) {
   syncTextareaFromInput();
   return syncTextareaFromInput;
 }
-const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags"];
+const YAML_HEADER_KEYS = ["name", "dcc_uri", "dcc_definition_type", "version", "schema", "description", "dcc_tags"];
 
 initLoadingService();
 initNotificationService();
@@ -658,7 +658,7 @@ function isCertainYamlPaste(text = "") {
     const keys = Object.keys(parsed);
     if (keys.length === 0) return false;
 
-    const knownPromptKeys = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags", "prompts", "prompt"];
+    const knownPromptKeys = ["name", "dcc_uri", "dcc_definition_type", "version", "schema", "description", "dcc_tags", "prompts", "prompt"];
     return keys.some((key) => knownPromptKeys.includes(key));
   } catch (_error) {
     return false;
@@ -677,7 +677,7 @@ function isCertainMarkdownPaste(text = "") {
     const keys = Object.keys(frontmatter);
     if (keys.length === 0) return false;
 
-    const knownPromptKeys = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags", "prompts", "prompt", "invokable"];
+    const knownPromptKeys = ["name", "dcc_uri", "dcc_definition_type", "version", "schema", "description", "dcc_tags", "prompts", "prompt", "invokable"];
     return keys.some((key) => knownPromptKeys.includes(key));
   } catch (_error) {
     return false;
@@ -698,7 +698,7 @@ function isCertainRuleYamlPaste(text = "") {
     const keys = Object.keys(parsed);
     if (keys.length === 0) return false;
 
-    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rules", "rule", "body"];
+    const knownRuleKeys = ["name", "dcc_uri", "dcc_definition_type", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rules", "rule", "body"];
     return keys.some((key) => knownRuleKeys.includes(key));
   } catch (_error) {
     return false;
@@ -717,7 +717,7 @@ function isCertainRuleMarkdownPaste(text = "") {
     const keys = Object.keys(frontmatter);
     if (keys.length === 0) return false;
 
-    const knownRuleKeys = ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags"];
+    const knownRuleKeys = ["name", "dcc_uri", "dcc_definition_type", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags"];
     return keys.some((key) => knownRuleKeys.includes(key));
   } catch (_error) {
     return false;
@@ -740,6 +740,23 @@ function detectRuleFormat(text = "") {
   return detectRuleFormatFromRawInput(text);
 }
 
+
+
+function dccDefinitionTypeForEditorType(type) {
+  const normalized = String(type || "").trim();
+  const mapping = {
+    prompt: "prompt",
+    agent: "agent",
+    config: "config",
+    model: "model",
+    mcpServer: "mcp_server",
+    rule: "rule",
+    doc: "doc",
+    context: "context",
+    workflow: "workflow"
+  };
+  return mapping[normalized] || "";
+}
 function formatDisplayName(contentFormat) {
   return contentFormat === "markdown" ? "Markdown" : "YAML";
 }
@@ -894,6 +911,7 @@ const handlers = {
         return matter.stringify("", {
           ...unknown,
           ...frontmatterFields,
+          dcc_definition_type: dccDefinitionTypeForEditorType("prompt"),
           dcc_tags: normalizeStringArray(tags),
           invokable,
           prompt: primaryPrompt.prompt || ""
@@ -903,6 +921,7 @@ const handlers = {
       return stringifyYamlDefinition({
         ...unknown,
         ...rest,
+        dcc_definition_type: dccDefinitionTypeForEditorType("prompt"),
         invokable,
         dcc_tags: normalizeStringArray(tags),
         prompts: Array.isArray(state.prompts) ? state.prompts : []
@@ -917,6 +936,7 @@ const handlers = {
       return stringifyYamlDefinition({
         ...unknown,
         ...rest,
+        dcc_definition_type: dccDefinitionTypeForEditorType("mcpServer"),
         dcc_tags: normalizeStringArray(tags),
         mcpServers: normalizeMcpServers(state.mcpServers)
       });
@@ -949,6 +969,7 @@ const handlers = {
       return stringifyYamlDefinition({
         ...unknown,
         ...rest,
+        dcc_definition_type: dccDefinitionTypeForEditorType("model"),
         dcc_tags: normalizeStringArray(tags),
         models: normalizedModels
       });
@@ -962,6 +983,7 @@ const handlers = {
       return stringifyYamlDefinition({
         ...unknown,
         ...rest,
+        dcc_definition_type: dccDefinitionTypeForEditorType("workflow"),
         dcc_tags: normalizeStringArray(tags),
         models: serializeWorkflowModels(state.models),
         context: normalizeUsesArray(state.context),
@@ -978,6 +1000,7 @@ const handlers = {
       return stringifyYamlDefinition({
         ...unknown,
         ...rest,
+        dcc_definition_type: dccDefinitionTypeForEditorType("context"),
         dcc_tags: normalizeStringArray(tags),
         context: serializeContextEntries(state.context)
       });
@@ -991,6 +1014,7 @@ const handlers = {
       return stringifyYamlDefinition({
         ...unknown,
         ...rest,
+        dcc_definition_type: dccDefinitionTypeForEditorType("doc"),
         dcc_tags: normalizeStringArray(tags),
         docs: Array.isArray(state.docs) ? state.docs : []
       });
@@ -1004,6 +1028,7 @@ const handlers = {
       return stringifyYamlDefinition({
         ...unknown,
         ...rest,
+        dcc_definition_type: dccDefinitionTypeForEditorType("config"),
         dcc_tags: normalizeStringArray(tags),
         models: normalizeUsesArray(state.models).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
         context: normalizeUsesArray(state.context).map((entry) => ({ dcc_use: entry.uses || entry.dcc_use || "" })),
@@ -1020,7 +1045,7 @@ const handlers = {
     parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
     serialize: (state) => {
       const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
-      return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags) }));
+      return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_definition_type: dccDefinitionTypeForEditorType("agent"), dcc_tags: normalizeStringArray(tags) }));
     }
   },
   rule: {
@@ -1048,7 +1073,7 @@ const handlers = {
     serialize: (state) => {
       const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
       if (ruleContentFormat === "markdown") {
-        return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags) }));
+        return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_definition_type: dccDefinitionTypeForEditorType("rule"), dcc_tags: normalizeStringArray(tags) }));
       }
 
       const normalizedGlobs = Array.isArray(frontmatter.globs)
@@ -1069,6 +1094,7 @@ const handlers = {
       const { globs, regex, alwaysApply, rule, ...topLevel } = frontmatter;
       return stringifyYamlDefinition(omitUndefinedValues({
         ...topLevel,
+        dcc_definition_type: dccDefinitionTypeForEditorType("rule"),
         dcc_tags: normalizeStringArray(tags),
         rules: [ruleEntry]
       }));
@@ -1089,9 +1115,10 @@ function normalizeState(type, parsed) {
     schema: data.schema || "",
     description: data.description || "",
     tags: normalizeStringArray(data.dcc_tags),
+    dcc_definition_type: data.dcc_definition_type || dccDefinitionTypeForEditorType("prompt"),
     prompts: Array.isArray(data.prompts) ? data.prompts : (data.prompt ? [{ name: data.name || "", description: data.description || "", prompt: data.prompt }] : [])
   };
-  if (type === "mcpServer") return {
+  if (type === "mcpServer") return { dcc_definition_type: data.dcc_definition_type || dccDefinitionTypeForEditorType("mcpServer"),
     name: data.name || "",
     dcc_uri: data.dcc_uri || "",
     version: data.version || "",
@@ -1100,8 +1127,8 @@ function normalizeState(type, parsed) {
     tags: normalizeStringArray(data.dcc_tags),
     mcpServers: normalizeMcpServers(data.mcpServers)
   };
-  if (type === "agent") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", schema: data.schema || "", tags: data.dcc_tags || [], body: data.body || "" };
-  if (type === "rule") return {
+  if (type === "agent") return { dcc_definition_type: data.dcc_definition_type || dccDefinitionTypeForEditorType("agent"), name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", schema: data.schema || "", tags: data.dcc_tags || [], body: data.body || "" };
+  if (type === "rule") return { dcc_definition_type: data.dcc_definition_type || dccDefinitionTypeForEditorType("rule"),
     name: data.name || "",
     dcc_uri: data.dcc_uri || "",
     description: data.description || "",
@@ -1113,7 +1140,7 @@ function normalizeState(type, parsed) {
     tags: data.dcc_tags || [],
     body: data.rule || data.body || ""
   };
-  if (type === "model") return {
+  if (type === "model") return { dcc_definition_type: data.dcc_definition_type || dccDefinitionTypeForEditorType("model"),
     name: data.name || "",
     description: data.description || "",
     dcc_uri: data.dcc_uri || "",
@@ -1122,7 +1149,7 @@ function normalizeState(type, parsed) {
     tags: normalizeStringArray(data.dcc_tags),
     models: normalizeModelEntries(data.models)
   };
-  if (type === "workflow") return {
+  if (type === "workflow") return { dcc_definition_type: data.dcc_definition_type || dccDefinitionTypeForEditorType("workflow"),
     name: data.name || "",
     dcc_uri: data.dcc_uri || "",
     version: data.version || "",
@@ -1134,7 +1161,7 @@ function normalizeState(type, parsed) {
     mcpServers: normalizeUsesArray(data.mcpServers),
       rules: normalizeUsesArray(data.rules)
   };
-  if (type === "doc") return {
+  if (type === "doc") return { dcc_definition_type: data.dcc_definition_type || dccDefinitionTypeForEditorType("doc"),
     name: data.name || "",
     dcc_uri: data.dcc_uri || "",
     version: data.version || "",
@@ -1143,7 +1170,7 @@ function normalizeState(type, parsed) {
     tags: normalizeStringArray(data.dcc_tags),
     docs: Array.isArray(data.docs) ? data.docs : []
   };
-  if (type === "config") return {
+  if (type === "config") return { dcc_definition_type: data.dcc_definition_type || dccDefinitionTypeForEditorType("config"),
     name: data.name || "",
     dcc_uri: data.dcc_uri || "",
     version: data.version || "",
@@ -1159,6 +1186,7 @@ function normalizeState(type, parsed) {
     mcpServers: normalizeUsesArray(data.mcpServers).map((entry) => ({ dcc_use: entry?.dcc_use || entry?.uses || "" }))
   };
   return {
+    dcc_definition_type: data.dcc_definition_type || dccDefinitionTypeForEditorType(type),
     name: data.name || "",
     dcc_uri: data.dcc_uri || "",
     version: data.version || "",
@@ -1175,15 +1203,15 @@ function shouldShowPromptFormatControl(type) {
 
 function captureUnknownFields(type, parsed) {
   const knownByType = {
-    prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts", "prompt", "invokable", "__contentFormat"],
-    mcpServer: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "mcpServers"],
-    agent: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "body"],
-    rule: ["name", "dcc_uri", "description", "version", "schema", "globs", "regex", "alwaysApply", "dcc_tags", "rules", "rule", "body"],
-    model: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models"],
-    workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
-    context: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "context"],
-    doc: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "docs"],
-    config: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "dcc_config_type", "models", "context", "rules", "prompts", "docs", "mcpServers"]
+    prompt: ["name", "dcc_uri", "dcc_definition_type", "description", "version", "schema", "dcc_tags", "prompts", "prompt", "invokable", "__contentFormat"],
+    mcpServer: ["name", "dcc_uri", "dcc_definition_type", "description", "version", "schema", "dcc_tags", "mcpServers"],
+    agent: ["name", "dcc_uri", "dcc_definition_type", "description", "version", "schema", "dcc_tags", "body"],
+    rule: ["name", "dcc_uri", "dcc_definition_type", "description", "version", "schema", "globs", "regex", "alwaysApply", "dcc_tags", "rules", "rule", "body"],
+    model: ["name", "dcc_uri", "dcc_definition_type", "description", "version", "schema", "dcc_tags", "models"],
+    workflow: ["name", "dcc_uri", "dcc_definition_type", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
+    context: ["name", "dcc_uri", "dcc_definition_type", "description", "version", "schema", "dcc_tags", "context"],
+    doc: ["name", "dcc_uri", "dcc_definition_type", "description", "version", "schema", "dcc_tags", "docs"],
+    config: ["name", "dcc_uri", "dcc_definition_type", "description", "version", "schema", "dcc_tags", "dcc_config_type", "models", "context", "rules", "prompts", "docs", "mcpServers"]
   };
   const known = new Set(knownByType[type] || []);
   unknown = Object.fromEntries(Object.entries(parsed || {}).filter(([key]) => !known.has(key)));
@@ -1487,6 +1515,7 @@ document.getElementById("saveButton").addEventListener("click", async () => {
         filename,
         targetPath,
         destinationRepoId,
+        definitionType,
       })
     }),
     {

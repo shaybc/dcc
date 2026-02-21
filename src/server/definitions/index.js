@@ -60,9 +60,9 @@ export async function loadDefinitions() {
       repoName: repoFile.repoName,
     };
   })));
-  const repoDefinitions = parsedRepoDefinitions.filter((definition) => definition.dccUri);
+  const repoDefinitions = parsedRepoDefinitions.filter((definition) => definition.dccUri && definition.type);
   const parsedTeamDefinitions = await Promise.all(teamFiles.map((filePath) => parseDefinition(filePath)));
-  const teamDefinitions = parsedTeamDefinitions.filter((definition) => definition.dccUri);
+  const teamDefinitions = parsedTeamDefinitions.filter((definition) => definition.dccUri && definition.type);
   const repoKeyMap = new Map(repoDefinitions.map((definition) => [definition.key, definition.filePath]));
   const teamKeyMap = new Set(teamDefinitions.map((definition) => definition.key));
   const now = new Date().toISOString();
@@ -98,7 +98,7 @@ export async function loadDefinitions() {
 
   for (const definition of teamDefinitions) {
     if (repoKeyMap.has(definition.key)) continue;
-    const type = path.basename(path.dirname(definition.filePath)).toLowerCase();
+    const type = definition.type;
     await new Promise((resolve, reject) => {
       db.run(`INSERT INTO definitions
           (key, name, description, tags, schema, version, content, type, filePath, source, inTeam, status, updatedAt, repoId, repoName)
