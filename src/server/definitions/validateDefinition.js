@@ -30,8 +30,11 @@ function addCheck(checks, check) {
 function schemaForType(type, strict) {
   const base = {
     name: z.string().min(1, "name is required"),
-    dcc_uri: z.string().min(1, "dcc_uri is required"),
     description: z.string().min(1, "description is required"),
+  };
+  const dccBase = {
+    ...base,
+    dcc_uri: z.string().min(1, "dcc_uri is required"),
   };
   const commonMetadata = {
     version: z.string().min(1).optional(),
@@ -45,11 +48,11 @@ function schemaForType(type, strict) {
   const applyMode = (schema) => (passthrough === "strict" ? schema.strict() : schema.passthrough());
 
   if (type === "prompts") {
-    return applyMode(z.object({ ...base, ...commonMetadata, prompt: z.string().optional(), messages: z.array(z.any()).optional() }));
+    return applyMode(z.object({ ...dccBase, ...commonMetadata, prompt: z.string().optional(), messages: z.array(z.any()).optional() }));
   }
   if (type === "rules") {
     return applyMode(z.object({
-      ...base,
+      ...dccBase,
       ...commonMetadata,
       globs: z.union([z.array(z.string()), z.string()]).optional(),
       regex: z.string().optional(),
@@ -57,23 +60,36 @@ function schemaForType(type, strict) {
     }));
   }
   if (type === "workflows") {
-    return applyMode(z.object({ ...base, ...commonMetadata, steps: z.array(z.object({ id: z.string().min(1).optional() })).min(1) }));
+    return applyMode(z.object({ ...dccBase, ...commonMetadata, steps: z.array(z.object({ id: z.string().min(1).optional() })).min(1) }));
   }
   if (type === "agents") {
-    return applyMode(z.object({ ...base, ...commonMetadata }));
+    return applyMode(z.object({
+      ...base,
+      ...commonMetadata,
+      model: z.string().min(1).optional(),
+      rules: z.union([z.array(z.string()), z.string()]).optional(),
+      mcpServers: z.array(z.union([
+        z.string().min(1),
+        z.object({
+          dcc_use: z.string().min(1).optional(),
+          name: z.string().min(1).optional()
+        }).passthrough()
+      ])).optional(),
+      tools: z.array(z.any()).optional()
+    }));
   }
   if (type === "models") {
-    return applyMode(z.object({ ...base, ...commonMetadata, provider: z.string().optional(), model: z.string().optional() }));
+    return applyMode(z.object({ ...dccBase, ...commonMetadata, provider: z.string().optional(), model: z.string().optional() }));
   }
   if (type === "context") {
-    return applyMode(z.object({ ...base, ...commonMetadata, provider: z.string().optional() }));
+    return applyMode(z.object({ ...dccBase, ...commonMetadata, provider: z.string().optional() }));
   }
   if (type === "mcpservers") {
-    return applyMode(z.object({ ...base, ...commonMetadata, transport: z.string().optional(), tools: z.array(z.any()).optional() }));
+    return applyMode(z.object({ ...dccBase, ...commonMetadata, transport: z.string().optional(), tools: z.array(z.any()).optional() }));
   }
   if (type === "configs") {
     return applyMode(z.object({
-      ...base,
+      ...dccBase,
       ...commonMetadata,
       dcc_config_type: z.enum(["agents", "ide"]),
       models: z.array(z.object({ dcc_use: z.string().min(1) })).optional(),
@@ -88,6 +104,7 @@ function schemaForType(type, strict) {
   if (type === "docs") {
     return applyMode(z.object({
       ...base,
+      dcc_uri: z.string().min(1, "dcc_uri is required"),
       ...commonMetadata,
       docs: z.array(z.object({
         name: z.string().min(1),
@@ -96,7 +113,7 @@ function schemaForType(type, strict) {
       })).min(1)
     }));
   }
-  return applyMode(z.object({ ...base, ...commonMetadata }));
+  return applyMode(z.object({ ...dccBase, ...commonMetadata }));
 }
 
 function lintCommon(rawSource, checks) {
@@ -218,6 +235,14 @@ function checkReferenceExists(reference, knownDefinitions, expectedTypes) {
 
 function runReferenceChecks(definitionType, normalized, knownDefinitions, checks) {
   const type = normalizeDefinitionType(definitionType);
+  const normalizeRefValue = (value) => {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object") {
+      if (typeof value.dcc_use === "string") return value.dcc_use;
+      if (typeof value.name === "string") return value.name;
+    }
+    return "";
+  };
 
   const addRefFailure = (id, message, path) => {
     addCheck(checks, {
@@ -261,8 +286,9 @@ function runReferenceChecks(definitionType, normalized, knownDefinitions, checks
     ];
 
     refs.forEach((ref, index) => {
-      if (!checkReferenceExists(ref.value, knownDefinitions, ref.types)) {
-        addRefFailure("reference.agent.missing", `Agent references unknown ${ref.key} value '${ref.value}'.`, `${ref.key}[${index}]`);
+      const normalizedRef = normalizeRefValue(ref.value);
+      if (!checkReferenceExists(normalizedRef, knownDefinitions, ref.types)) {
+        addRefFailure("reference.agent.missing", `Agent references unknown ${ref.key} value '${normalizedRef}'.`, `${ref.key}[${index}]`);
       }
     });
   }

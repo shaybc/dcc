@@ -8,9 +8,9 @@ These fields appear in many definition schemas. Use this as a practical guide fo
   - **Tips:** Prefer specific names over generic ones.
   - **Example:** `"Code Review Assistant"`, `"Java API Docs Pack"`.
 
-- `dcc_uri` (**required**)
+- `dcc_uri` (**required for YAML definition types; optional for Markdown local agents**)
   - **What it is:** The unique, stable identifier for the definition.
-  - **What to fill in:** A URI-style string that should remain constant even when the definition is updated.
+  - **What to fill in:** A URI-style string that should remain constant even when the definition is updated. Local markdown agents can omit this field.
   - **Tips:** Keep it globally unique and avoid changing it after publication, because installs and references depend on it.
   - **Example:** `"dev/agents/code-review-assistant"`.
 
