@@ -2942,21 +2942,30 @@ function openConfirmationDialog({
 
     const overlay = document.createElement("div");
     overlay.id = "confirmationDialogOverlay";
-    overlay.className = "duplicate-definition-overlay";
-    overlay.innerHTML = `
-      <div class="duplicate-definition-modal" role="dialog" aria-modal="true" aria-labelledby="confirmationDialogTitle">
-        <div class="modal-topbar">
-          <div class="modal-kicker">Confirmation</div>
-          <button class="modal-close" type="button" aria-label="Close">✕</button>
-        </div>
-        <h3 id="confirmationDialogTitle">${escapeHtml(title)}</h3>
-        <p style="margin: 0; color: var(--muted);">${escapeHtml(message)}</p>
-        <div class="generate-definition-modal-actions">
-          <button class="btn" type="button" data-action="cancel">${escapeHtml(cancelText)}</button>
-          <button class="btn btn-primary" type="button" data-action="confirm">${escapeHtml(confirmText)}</button>
-        </div>
-      </div>
-    `;
+    overlay.className = "editor-modal-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "editor-modal";
+
+    const titleElement = document.createElement("h3");
+    titleElement.textContent = title;
+
+    const messageElement = document.createElement("p");
+    messageElement.textContent = message;
+    messageElement.style.margin = "0";
+
+    const actions = document.createElement("div");
+    actions.className = "editor-modal-actions";
+
+    const cancelButton = document.createElement("button");
+    cancelButton.className = "btn";
+    cancelButton.type = "button";
+    cancelButton.textContent = cancelText;
+
+    const confirmButton = document.createElement("button");
+    confirmButton.className = "btn primary";
+    confirmButton.type = "button";
+    confirmButton.textContent = confirmText;
 
     const cleanUpAndResolve = (result) => {
       document.removeEventListener("keydown", onKeydown);
@@ -2971,18 +2980,21 @@ function openConfirmationDialog({
       }
     };
 
-    overlay.querySelector('[data-action="cancel"]')?.addEventListener("click", () => cleanUpAndResolve(false));
-    overlay.querySelector('[data-action="confirm"]')?.addEventListener("click", () => cleanUpAndResolve(true));
-    overlay.querySelector('.modal-close')?.addEventListener("click", () => cleanUpAndResolve(false));
+    cancelButton.addEventListener("click", () => cleanUpAndResolve(false));
+    confirmButton.addEventListener("click", () => cleanUpAndResolve(true));
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) {
         cleanUpAndResolve(false);
       }
     });
 
+    actions.append(cancelButton, confirmButton);
+    modal.append(titleElement, messageElement, actions);
+    overlay.append(modal);
+
     document.addEventListener("keydown", onKeydown);
     document.body.append(overlay);
-    overlay.querySelector('[data-action="confirm"]')?.focus();
+    confirmButton.focus();
   });
 }
 
