@@ -2696,6 +2696,7 @@ async function showDetails(id) {
   currentDefinitionVersion = String(def.version || "");
   currentDefinitionVersions = [];
   activeHistoricalVersion = "";
+  updateFavoriteDefinitionButton();
   detailTitle.textContent = def.name;
   renderVersionMeta(currentDefinitionVersion, "");
   detailDescription.innerHTML = renderDescriptionMarkdown(def.description);
