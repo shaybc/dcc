@@ -1382,9 +1382,11 @@ function updateRecommendationsToggleLabel() {
 }
 
 function renderRecommendationSection() {
+  const isDiscoveryPage = activeTopPage === "discover";
+  recommendationsSection.hidden = !isDiscoveryPage;
   updateRecommendationsToggleLabel();
-  recommendationsSection.classList.toggle("is-collapsed", !recommendationsVisible);
-  recommendationsContent.classList.toggle("is-collapsed", !recommendationsVisible);
+  recommendationsSection.classList.toggle("is-collapsed", !recommendationsVisible || !isDiscoveryPage);
+  recommendationsContent.classList.toggle("is-collapsed", !recommendationsVisible || !isDiscoveryPage);
   const selectedProjectPath = String(devProjectInput.value || "").trim();
   const projectType = String(suggestionsMeta.projectType || "").trim().toLowerCase();
   const corePlatform = String(suggestionsMeta.corePlatform || "").trim().toLowerCase();
@@ -1395,7 +1397,7 @@ function renderRecommendationSection() {
   recommendationsInstallAllButton.hidden = true;
   recommendationsInstallAllButton.disabled = true;
 
-  if (!recommendationsVisible || activeTopPage !== "discover") {
+  if (!recommendationsVisible || !isDiscoveryPage) {
     return;
   }
 
