@@ -318,3 +318,16 @@
 .semantic-search-empty-state-button {
   margin-top: 10px;
 }
+
+.card-favorite {
+  border-color: rgba(248, 210, 100, 0.45);
+}
+
+.card .icon-btn.is-favorite {
+  color: #f8d264;
+  border-color: rgba(248, 210, 100, 0.45);
+}
+
+.card .icon-btn.is-favorite svg {
+  fill: currentColor;
+}

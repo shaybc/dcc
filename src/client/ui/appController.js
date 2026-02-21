@@ -46,6 +46,13 @@ const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefini
 const versionHistoryButton = document.getElementById("versionHistoryButton");
 const deleteDefinitionButton = document.getElementById("deleteDefinition");
 const installDefinitionButton = document.getElementById("installDefinition");
+const favoriteDefinitionButton = document.getElementById("favoriteDefinition");
+const topNav = document.getElementById("topNav");
+const activityPage = document.getElementById("activityPage");
+const agentsPage = document.getElementById("agentsPage");
+const discoverTabBadge = document.getElementById("discoverTabBadge");
+const installedTabBadge = document.getElementById("installedTabBadge");
+const favoritesTabBadge = document.getElementById("favoritesTabBadge");
 const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
@@ -182,6 +189,126 @@ const MAX_CARD_TAG_PILLS = 3;
 const CARDS_PER_PAGE = 25;
 let currentCardsPage = 1;
 let onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
+let activeTopPage = "discover";
+const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
+let favoriteDefinitionIds = getStoredFavoriteDefinitionIds();
+
+
+function getStoredFavoriteDefinitionIds() {
+  try {
+    const raw = localStorage.getItem(FAVORITE_DEFINITION_IDS_STORAGE_KEY);
+    if (!raw) {
+      return new Set();
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return new Set();
+    }
+    return new Set(parsed.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value > 0));
+  } catch (_error) {
+    return new Set();
+  }
+}
+
+function persistFavoriteDefinitionIds() {
+  try {
+    localStorage.setItem(FAVORITE_DEFINITION_IDS_STORAGE_KEY, JSON.stringify(Array.from(favoriteDefinitionIds)));
+  } catch (_error) {
+    // Ignore localStorage errors.
+  }
+}
+
+function isFavoriteDefinition(definitionId) {
+  return favoriteDefinitionIds.has(Number(definitionId));
+}
+
+function toggleFavoriteDefinition(definitionId) {
+  const normalizedId = Number(definitionId);
+  if (!Number.isFinite(normalizedId) || normalizedId <= 0) {
+    return false;
+  }
+
+  if (favoriteDefinitionIds.has(normalizedId)) {
+    favoriteDefinitionIds.delete(normalizedId);
+  } else {
+    favoriteDefinitionIds.add(normalizedId);
+  }
+
+  persistFavoriteDefinitionIds();
+  return favoriteDefinitionIds.has(normalizedId);
+}
+
+function updatePageTabBadges() {
+  if (!discoverTabBadge || !installedTabBadge || !favoritesTabBadge) {
+    return;
+  }
+
+  const hasSelectedProject = Boolean(String(devProjectInput?.value || "").trim());
+  const installedCount = definitions.filter((definition) => definition.status === "saved" && hasSelectedProject).length;
+  const favoritesCount = definitions.filter((definition) => isFavoriteDefinition(definition.id)).length;
+
+  const applyBadgeValue = (element, value) => {
+    if (!element) return;
+    if (value > 0) {
+      element.textContent = String(value);
+      element.classList.add("has-value");
+      return;
+    }
+    element.textContent = "";
+    element.classList.remove("has-value");
+  };
+
+  applyBadgeValue(discoverTabBadge, definitions.length);
+  applyBadgeValue(installedTabBadge, installedCount);
+  applyBadgeValue(favoritesTabBadge, favoritesCount);
+}
+
+function renderTopNavigation() {
+  if (!topNav) {
+    return;
+  }
+
+  topNav.querySelectorAll("[data-top-nav-tab]").forEach((tab) => {
+    const tabPage = tab.getAttribute("data-top-nav-tab") || "discover";
+    tab.classList.toggle("active", tabPage === activeTopPage);
+  });
+
+  const hubVisible = activeTopPage === "discover" || activeTopPage === "installed" || activeTopPage === "favorites";
+  hubHeader.hidden = !hubVisible;
+  hubMain.hidden = !hubVisible;
+  if (activityPage) {
+    activityPage.hidden = activeTopPage !== "activity";
+  }
+  if (agentsPage) {
+    agentsPage.hidden = activeTopPage !== "agents";
+  }
+
+  updatePageTabBadges();
+}
+
+function setActiveTopPage(page) {
+  activeTopPage = page || "discover";
+  if (activeTopPage === "installed") {
+    activeFilter = "installed";
+  } else if (activeTopPage === "discover" || activeTopPage === "favorites") {
+    activeFilter = "all";
+  }
+  currentCardsPage = 1;
+  renderTopNavigation();
+  renderFilters();
+  renderCards();
+}
+
+function updateFavoriteDefinitionButton() {
+  if (!favoriteDefinitionButton) {
+    return;
+  }
+
+  const isFavorite = isFavoriteDefinition(currentDetailDefinitionId);
+  favoriteDefinitionButton.classList.toggle("is-favorite", isFavorite);
+  favoriteDefinitionButton.setAttribute("aria-label", isFavorite ? "Remove from favorites" : "Add to favorites");
+  favoriteDefinitionButton.title = isFavorite ? "Remove from favorites" : "Add to favorites";
+}
 
 function getStoredRecommendationsVisibility() {
   try {
@@ -1093,6 +1220,15 @@ function handleDefinitionCardClick(definition, event) {
     return;
   }
 
+  const favoriteAction = event.target.closest("[data-action-favorite]");
+  if (favoriteAction) {
+    event.stopPropagation();
+    toggleFavoriteDefinition(definition.id);
+    updateFavoriteDefinitionButton();
+    renderCards();
+    return;
+  }
+
   const saveAction = event.target.closest("[data-action-save]");
   if (saveAction) {
     event.stopPropagation();
@@ -1136,6 +1272,9 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
   if (definition.status === "saved" && devProjectInput.value.trim()) {
     card.classList.add("card-in-project");
   }
+  if (isFavoriteDefinition(definition.id)) {
+    card.classList.add("card-favorite");
+  }
 
   const showPushAction = !isRecommended && String(definition.source || "").toLowerCase() === "untracked";
   const recommendationMeta = recommendationRank !== null && !isRecommended
@@ -1156,6 +1295,11 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
           <path d="M5 9l5-5 5 5" />
         </svg>
       </div>` : ""}
+      <div class="icon-btn ${isFavoriteDefinition(definition.id) ? "is-favorite" : ""}" data-action-favorite title="${isFavoriteDefinition(definition.id) ? "Remove from favorites" : "Add to favorites"}" aria-label="${isFavoriteDefinition(definition.id) ? "Remove from favorites" : "Add to favorites"}">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="m10 2.3 2.34 4.95 5.4.82-3.9 3.99.92 5.65L10 15.05l-4.76 2.62.92-5.65-3.9-3.99 5.4-.82L10 2.3z" />
+        </svg>
+      </div>
       <div class="icon-btn" data-action-save>
         ${iconSvg(definition.status)}
       </div>
@@ -1252,7 +1396,7 @@ function renderRecommendationSection() {
   recommendationsInstallAllButton.hidden = true;
   recommendationsInstallAllButton.disabled = true;
 
-  if (!recommendationsVisible) {
+  if (!recommendationsVisible || activeTopPage !== "discover") {
     return;
   }
 
@@ -1372,6 +1516,7 @@ function renderCards() {
     if (hideInstalledDefinitions && activeFilter !== "installed" && isInstalledInCurrentProject) {
       return false;
     }
+    const matchesPage = activeTopPage !== "favorites" || isFavoriteDefinition(def.id);
     const matchesFilter = activeFilter === "all"
       || (activeFilter === "installed" && isInstalledInCurrentProject)
       || def.type === activeFilter;
@@ -1379,7 +1524,7 @@ function renderCards() {
     const matchesTagSearch = queryTags.every((tag) => def.tagsNormalized.includes(tag));
     const matchesSearch = tagOnlyMode ? matchesTagSearch : text.includes(searchTerm);
     const matchesTagFilters = matchesSelectedTagFilters(def);
-    return matchesFilter && matchesSearch && matchesTagFilters;
+    return matchesPage && matchesFilter && matchesSearch && matchesTagFilters;
   });
 
   let semanticRankedResults = [];
@@ -1400,17 +1545,18 @@ function renderCards() {
         if (hideInstalledDefinitions && activeFilter !== "installed" && isInstalledInCurrentProject) {
           return false;
         }
+        const matchesPage = activeTopPage !== "favorites" || isFavoriteDefinition(def.id);
         const matchesFilter = activeFilter === "all"
           || (activeFilter === "installed" && isInstalledInCurrentProject)
           || def.type === activeFilter;
-        return matchesFilter && matchesSelectedTagFilters(def);
+        return matchesPage && matchesFilter && matchesSelectedTagFilters(def);
       });
   }
 
   const visibleDefinitions = semanticRankedResults.length ? semanticRankedResults : filtered;
   const totalPages = Math.max(Math.ceil(visibleDefinitions.length / CARDS_PER_PAGE), 1);
   if (definitionsCountLabel) {
-    const labelPrefix = semanticRankedResults.length ? "Showing semantic matches" : "Showing";
+    const labelPrefix = semanticRankedResults.length ? "Showing semantic matches" : (activeTopPage === "favorites" ? "Showing favorites" : "Showing");
     definitionsCountLabel.textContent = `${labelPrefix}: ${visibleDefinitions.length}/${definitions.length} Definitions.`;
   }
   currentCardsPage = Math.min(Math.max(currentCardsPage, 1), totalPages);
@@ -1429,6 +1575,7 @@ function renderCards() {
   renderPagination({ totalItems: visibleDefinitions.length, totalPages });
 
   renderRecommendationSection();
+  updatePageTabBadges();
 }
 
 
@@ -1591,6 +1738,7 @@ function setupRecommendationsSection() {
     recommendationsVisible = !recommendationsVisible;
     persistRecommendationsVisibility(recommendationsVisible);
     renderRecommendationSection();
+    updatePageTabBadges();
   });
 
   recommendationsCardsContainer.append(recommendationsCards, recommendationsInstallAllButton);
@@ -1771,6 +1919,7 @@ async function suggestDefinitionsByIntent(intent = "") {
     if (!suggestions.length) {
       await fetchDefinitionSuggestions();
       renderRecommendationSection();
+      updatePageTabBadges();
       return;
     }
 
@@ -1778,9 +1927,11 @@ async function suggestDefinitionsByIntent(intent = "") {
     applyIntentSuggestions(selectedProjectPath, normalizedIntent, suggestions);
     persistIntentRecommendations(selectedProjectPath, normalizedIntent, suggestions);
     renderRecommendationSection();
+    updatePageTabBadges();
   } catch (_error) {
     await fetchDefinitionSuggestions();
     renderRecommendationSection();
+    updatePageTabBadges();
   }
 }
 
@@ -1865,6 +2016,12 @@ async function fetchDefinitions() {
       tagsNormalized: tags.map((tag) => normalizeTagValue(tag))
     };
   });
+
+  favoriteDefinitionIds = new Set(
+    Array.from(favoriteDefinitionIds).filter((definitionId) => definitions.some((definition) => Number(definition.id) === definitionId))
+  );
+  persistFavoriteDefinitionIds();
+
   renderFilters();
   renderCards();
 }
@@ -2986,9 +3143,9 @@ function showHubPage() {
     installDefinitionButton.hidden = true;
     installDefinitionButton.disabled = true;
   }
-  hubHeader.hidden = false;
-  hubMain.hidden = false;
+  updateFavoriteDefinitionButton();
   document.body.classList.remove("detail-page-open");
+  renderTopNavigation();
 }
 
 function updateRouteForDetails(id) {
@@ -3838,6 +3995,17 @@ function setupEventListeners() {
     openInstallDestinationMenu(installDefinitionButton, currentDefinition);
   });
   
+
+  favoriteDefinitionButton?.addEventListener("click", () => {
+    if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
+      return;
+    }
+
+    toggleFavoriteDefinition(currentDetailDefinitionId);
+    updateFavoriteDefinitionButton();
+    renderCards();
+  });
+
   autoTagDefinitionButton?.addEventListener("click", async () => {
     if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
       return;
@@ -4025,6 +4193,16 @@ function setupEventListeners() {
     });
   }
 
+  if (topNav) {
+    topNav.querySelectorAll("[data-top-nav-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const selectedPage = button.getAttribute("data-top-nav-tab") || "discover";
+        setActiveTopPage(selectedPage);
+      });
+    });
+  }
+
+
   if (localDefinitionsToggle) {
     updateLocalDefinitionsToggleState();
     localDefinitionsToggle.addEventListener("click", () => {
@@ -4089,6 +4267,7 @@ function setupEventListeners() {
 }
 
 export function initializeApp() {
+  renderTopNavigation();
   setupRecommendationsSection();
   setupEventListeners();
   loadDevProjects();

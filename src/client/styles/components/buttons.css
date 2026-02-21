@@ -74,3 +74,13 @@
   border-color: #60a5fa;
   background: rgba(59, 130, 246, 0.15);
 }
+
+.copy-btn.is-favorite {
+  color: #f8d264;
+  border-color: rgba(248, 210, 100, 0.5);
+  background: rgba(248, 210, 100, 0.12);
+}
+
+.copy-btn.is-favorite svg {
+  fill: currentColor;
+}
