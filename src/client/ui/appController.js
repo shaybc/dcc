@@ -3520,13 +3520,20 @@ function setupEventListeners() {
       return;
     }
 
+    const existingTags = parseDefinitionTags(definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId))?.tags || "");
+    if (existingTags.length > 0) {
+      const shouldContinue = window.confirm("This definition already has tags. Auto-tagging may replace the current tag selection. Continue?");
+      if (!shouldContinue) {
+        return;
+      }
+    }
+
     const originalLabel = autoTagDefinitionButton.getAttribute("title") || "Auto-tag definition with AI";
     autoTagDefinitionButton.disabled = true;
     autoTagDefinitionButton.setAttribute("title", "Auto-tagging...");
 
     try {
       const availableTags = await loadAvailableDefinitionTags();
-      const existingTags = parseDefinitionTags(definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId))?.tags || "");
       const suggestedTags = await suggestTagsForDefinitionContent({
         definitionContent: currentDetailDefinitionContent,
         existingTags,
