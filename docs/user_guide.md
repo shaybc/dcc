@@ -39,9 +39,12 @@ In Settings:
 
 In the Hub you can:
 - Search definitions by text.
+- Use semantic intent-search fallback when text search returns no matches ("Search with AI").
 - Filter by type.
 - Filter using tags.
 - Inspect full definition details.
+
+When text search returns zero results, DCC offers an AI prompt in the cards area. Selecting **Search with AI** sends your query plus definition metadata for ranking and shows results in the normal cards/pagination flow. Those AI-ranked results remain active until the search text changes.
 
 ## 6. Save/remove definitions in your local project
 
