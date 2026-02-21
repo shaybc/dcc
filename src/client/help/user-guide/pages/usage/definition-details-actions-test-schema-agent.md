@@ -76,9 +76,6 @@ Agent definitions use the common DCC metadata fields plus the markdown body (age
 - `dcc_tags` (optional)
   - Search/filter tags for discoverability.
 
-- `invokable`, `key`, `type` (optional)
-  - Additional metadata used by tooling/integration flows.
-
 - `body` / markdown content (recommended)
   - Main agent instructions (persona, constraints, workflow preferences, quality bar, tool-use policy).
 

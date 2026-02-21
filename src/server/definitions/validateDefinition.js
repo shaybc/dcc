@@ -39,6 +39,9 @@ function schemaForType(type, strict) {
     version: z.string().min(1).optional(),
     schema: z.string().min(1).optional(),
     dcc_tags: z.union([z.array(z.string()), z.string()]).optional(),
+  };
+  const promptMetadata = {
+    ...commonMetadata,
     invokable: z.boolean().optional(),
     key: z.string().optional(),
     type: z.string().optional(),
@@ -47,7 +50,7 @@ function schemaForType(type, strict) {
   const applyMode = (schema) => (passthrough === "strict" ? schema.strict() : schema.passthrough());
 
   if (type === "prompts") {
-    return applyMode(z.object({ ...base, ...commonMetadata, prompt: z.string().optional(), messages: z.array(z.any()).optional() }));
+    return applyMode(z.object({ ...base, ...promptMetadata, prompt: z.string().optional(), messages: z.array(z.any()).optional() }));
   }
   if (type === "rules") {
     return applyMode(z.object({
