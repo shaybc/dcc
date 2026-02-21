@@ -29,29 +29,11 @@ These fields appear in many definition schemas. Use this as a practical guide fo
 `schema` (optional)
   - **What it is:** The schema contract this definition follows.
   - **What to fill in:** The schema identifier expected by your tooling/workflow.
-  - **Tips:** Keep this aligned with the definition type and validation rules in your environment.
-  - **Example:** `"dcc.schema.agent.v1"`.
+  - **Tips:** Keep this aligned with the definition type and validation rules of Continue.dev schema version.
+  - **Example:** `"v1"`.
 
 `dcc_tags` (optional)
   - **What it is:** Search/filter tags that categorize the definition.
   - **What to fill in:** A list of short keywords (or a single tag string if supported).
   - **Tips:** Use consistent vocabulary across your team (for example `frontend`, `security`, `docs`).
   - **Example:** `["assistant", "review", "quality"]`.
-
-`invokable` (optional)
-  - **What it is:** Whether the definition is directly runnable/callable.
-  - **What to fill in:** `true` if users/systems should execute it directly; otherwise `false` or omit.
-  - **Tips:** Set to `true` only when required runtime inputs and behavior are fully defined.
-  - **Example:** `true`.
-
-`key` (optional)
-  - **What it is:** A short internal identifier used by some definition types.
-  - **What to fill in:** A stable, machine-friendly token (lowercase with separators like `-` or `_`).
-  - **Tips:** Treat this as an internal handle; avoid spaces and frequent renames.
-  - **Example:** `"code_review_assistant"`.
-
-`type` (optional)
-  - **What it is:** The subtype/category label of the definition.
-  - **What to fill in:** The exact type value expected by your schema (for example `agent`, `rule`, `workflow`).
-  - **Tips:** Match the schema/type pair so validation and UI behavior are correct.
-  - **Example:** `"agent"`.
