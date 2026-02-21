@@ -852,13 +852,14 @@ function filterIconSvg(type) {
 }
 
 function renderFilters() {
+  const isInstalledPage = activeTopPage === "installed";
   const definitionTypes = definitions.map((def) => normalizeFilterType(def.type));
   const uniqueTypes = new Set(
     [...FILTER_TYPES, ...definitionTypes]
       .filter((type) => Boolean(type) && String(type).toLowerCase() !== "unknown")
       .map((type) => String(type).toLowerCase())
   );
-  const types = ["all", ...SPECIAL_FILTERS, ...uniqueTypes];
+  const types = isInstalledPage ? ["installed"] : ["all", ...SPECIAL_FILTERS, ...uniqueTypes];
   filtersContainer.innerHTML = "";
   filterMenu.innerHTML = "";
   types.forEach((type) => {
@@ -880,6 +881,9 @@ function renderFilters() {
         ${chipClearMarkup}
       `;
       chip.addEventListener("click", (event) => {
+        if (isInstalledPage && type === "installed") {
+          return;
+        }
         if (event.target.closest(".chip-clear")) {
           activeFilter = "all";
         } else {
