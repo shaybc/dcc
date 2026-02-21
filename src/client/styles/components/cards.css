@@ -299,3 +299,22 @@
   margin: 14px 0 20px;
   background: linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.3) 20%, rgba(34, 197, 94, 0.35) 50%, rgba(139, 92, 246, 0.3) 80%, transparent 100%);
 }
+
+.semantic-search-empty-state {
+  width: min(620px, 100%);
+  margin: 40px auto;
+  padding: 22px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  text-align: center;
+  background: var(--card);
+}
+
+.semantic-search-empty-state-title {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.semantic-search-empty-state-button {
+  margin-top: 10px;
+}
