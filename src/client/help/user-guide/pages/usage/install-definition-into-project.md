@@ -54,10 +54,11 @@ When destination is set to **GitHub Copilot** or **Gemini CLI**, v1 currently ex
 
 ### Output locations
 
-- **Copilot**
+#### Copilot
   - Rules: `.github/copilot-instructions.md`
   - Prompts: `.github/prompts/<dcc-uri-slug>.prompt.md`
-- **Gemini CLI**
+
+#### Gemini CLI
   - Rules: `.gemini/instructions.md`
   - Prompts: `.gemini/commands/<dcc-uri-slug>.md`
 
