@@ -106,6 +106,7 @@ const ONLY_LOCAL_DEFINITIONS_STORAGE_KEY = "dcc.hub.onlyLocalDefinitions";
 let recommendationsVisible = getStoredRecommendationsVisibility();
 let activeFilter = "all";
 let searchTerm = "";
+let semanticSearchState = { query: "", suggestions: [], error: "" };
 let tagFilterMode = "or";
 let showUntaggedDefinitions = false;
 let tagFilterSearchTerm = "";
@@ -442,7 +443,11 @@ function isTagOnlyQuery(queryTags) {
 }
 
 function setSearchValue(value) {
-  searchTerm = String(value || "").toLowerCase();
+  const nextSearchTerm = String(value || "").toLowerCase();
+  if (nextSearchTerm !== searchTerm) {
+    semanticSearchState = { query: "", suggestions: [], error: "" };
+  }
+  searchTerm = nextSearchTerm;
   searchInput.value = value || "";
   searchField.classList.toggle("has-value", searchTerm.length > 0);
   currentCardsPage = 1;
@@ -1260,6 +1265,46 @@ function renderRecommendationSection() {
   recommendationsInstallAllButton.disabled = !hasSelectedProject;
 }
 
+function createSemanticSearchPrompt() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "semantic-search-empty-state";
+  const statusText = semanticSearchState.error
+    ? `<p>${escapeHtml(semanticSearchState.error)}</p>`
+    : "";
+  wrapper.innerHTML = `
+    <p class="semantic-search-empty-state-title">No results found for this search.</p>
+    <p>Would you like the AI to search ?</p>
+    ${statusText}
+    <button class="btn primary semantic-search-empty-state-button" type="button">Search with AI</button>
+  `;
+
+  const button = wrapper.querySelector("button");
+  button?.addEventListener("click", async () => {
+    const query = String(searchInput.value || "").trim();
+    if (!query) {
+      return;
+    }
+    semanticSearchState.error = "";
+    try {
+      const suggestions = await requestIntentSuggestions(query);
+      semanticSearchState = {
+        query,
+        suggestions,
+        error: suggestions.length ? "" : "AI search did not find similar definitions."
+      };
+    } catch (error) {
+      semanticSearchState = {
+        query,
+        suggestions: [],
+        error: String(error?.message || "Unable to search with AI.")
+      };
+    }
+    renderCards();
+  });
+
+  return wrapper;
+}
+
 function renderCards() {
   const queryTags = parseTagSearchQuery(searchTerm);
   const tagOnlyMode = isTagOnlyQuery(queryTags);
@@ -1285,23 +1330,55 @@ function renderCards() {
     return matchesFilter && matchesSearch && matchesTagFilters;
   });
 
-  const totalPages = Math.max(Math.ceil(filtered.length / CARDS_PER_PAGE), 1);
+  let semanticRankedResults = [];
+  const hasSemanticResults = searchTerm.length > 0
+    && semanticSearchState.query.toLowerCase() === searchTerm
+    && semanticSearchState.suggestions.length > 0;
+
+  if (filtered.length === 0 && hasSemanticResults) {
+    semanticRankedResults = semanticSearchState.suggestions
+      .map((entry) => definitions.find((def) => Number(def.id) === Number(entry.definitionId)))
+      .filter(Boolean)
+      .filter((def) => {
+        const isInstalledInCurrentProject = def.status === "saved" && hasSelectedProject;
+        const isLocalUntrackedDefinition = String(def.source || "").toLowerCase() === "untracked";
+        if (onlyLocalDefinitions && !isLocalUntrackedDefinition) {
+          return false;
+        }
+        if (hideInstalledDefinitions && activeFilter !== "installed" && isInstalledInCurrentProject) {
+          return false;
+        }
+        const matchesFilter = activeFilter === "all"
+          || (activeFilter === "installed" && isInstalledInCurrentProject)
+          || def.type === activeFilter;
+        return matchesFilter && matchesSelectedTagFilters(def);
+      });
+  }
+
+  const visibleDefinitions = semanticRankedResults.length ? semanticRankedResults : filtered;
+  const totalPages = Math.max(Math.ceil(visibleDefinitions.length / CARDS_PER_PAGE), 1);
   if (definitionsCountLabel) {
-    definitionsCountLabel.textContent = `Showing: ${filtered.length}/${definitions.length} Definitions.`;
+    const labelPrefix = semanticRankedResults.length ? "Showing semantic matches" : "Showing";
+    definitionsCountLabel.textContent = `${labelPrefix}: ${visibleDefinitions.length}/${definitions.length} Definitions.`;
   }
   currentCardsPage = Math.min(Math.max(currentCardsPage, 1), totalPages);
   const pageStartIndex = (currentCardsPage - 1) * CARDS_PER_PAGE;
-  const pageDefinitions = filtered.slice(pageStartIndex, pageStartIndex + CARDS_PER_PAGE);
+  const pageDefinitions = visibleDefinitions.slice(pageStartIndex, pageStartIndex + CARDS_PER_PAGE);
 
   cardsContainer.innerHTML = "";
-  pageDefinitions.forEach((def) => {
-    cardsContainer.appendChild(createDefinitionCard(def));
-  });
+  if (pageDefinitions.length === 0 && searchTerm.length > 0) {
+    cardsContainer.appendChild(createSemanticSearchPrompt());
+  } else {
+    pageDefinitions.forEach((def) => {
+      cardsContainer.appendChild(createDefinitionCard(def));
+    });
+  }
 
-  renderPagination({ totalItems: filtered.length, totalPages });
+  renderPagination({ totalItems: visibleDefinitions.length, totalPages });
 
   renderRecommendationSection();
 }
+
 
 function createPaginationButton({ label, page, disabled = false, active = false, ariaLabel = "" }) {
   const button = document.createElement("button");
@@ -1575,7 +1652,7 @@ function truncateForIntentSearchLog(value, maxLength = 300) {
   return `${normalized.slice(0, maxLength)}...`;
 }
 
-async function suggestDefinitionsByIntent(intent = "") {
+async function requestIntentSuggestions(intent = "") {
   const normalizedIntent = String(intent || "").trim();
   if (!normalizedIntent) {
     throw new Error("Please describe your task before requesting AI suggestions.");
@@ -1616,9 +1693,7 @@ async function suggestDefinitionsByIntent(intent = "") {
     const completionText = String(response?.choices?.[0]?.message?.content || "");
     if (!completionText.trim()) {
       console.info("[INTENT_SEARCH] ai_result=empty text_preview=\"\"");
-      await fetchDefinitionSuggestions();
-      renderRecommendationSection();
-      return;
+      return [];
     }
 
     console.info(`[INTENT_SEARCH] ai_result=response text_preview=${JSON.stringify(truncateForIntentSearchLog(completionText, 300))}`);
@@ -1627,6 +1702,21 @@ async function suggestDefinitionsByIntent(intent = "") {
 
     if (!suggestions.length) {
       console.info("[INTENT_SEARCH] ai_result=invalid_json_or_no_suggestions fallback=project-suggestions");
+      return [];
+    }
+
+    return suggestions;
+  } catch (error) {
+    console.info(`[INTENT_SEARCH] ai_result=error error_preview=${JSON.stringify(truncateForIntentSearchLog(error?.message || error, 300))}`);
+    throw error;
+  }
+}
+
+async function suggestDefinitionsByIntent(intent = "") {
+  const normalizedIntent = String(intent || "").trim();
+  try {
+    const suggestions = await requestIntentSuggestions(normalizedIntent);
+    if (!suggestions.length) {
       await fetchDefinitionSuggestions();
       renderRecommendationSection();
       return;
@@ -1636,12 +1726,12 @@ async function suggestDefinitionsByIntent(intent = "") {
     applyIntentSuggestions(selectedProjectPath, normalizedIntent, suggestions);
     persistIntentRecommendations(selectedProjectPath, normalizedIntent, suggestions);
     renderRecommendationSection();
-  } catch (error) {
-    console.info(`[INTENT_SEARCH] ai_result=error error_preview=${JSON.stringify(truncateForIntentSearchLog(error?.message || error, 300))}`);
+  } catch (_error) {
     await fetchDefinitionSuggestions();
     renderRecommendationSection();
   }
 }
+
 
 function openIntentSuggestionModal() {
   const overlay = document.createElement("div");
