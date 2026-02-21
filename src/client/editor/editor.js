@@ -22,6 +22,18 @@ const definitionIdParam = params.get("id") || "";
 const destinationRepoIdParam = params.get("repoId") || "";
 
 const GENERATED_DEFINITION_STORAGE_KEY = "dcc.generated.definition";
+const EDITOR_HELP_STATE_STORAGE_KEY = "dcc.editor.helpState";
+const TYPE_HELP_PAGE_ID = {
+  prompt: "definition-details-actions-test-schema-prompt",
+  mcpServer: "definition-details-actions-test-schema-mcpserver",
+  agent: "definition-details-actions-test-schema-agent",
+  rule: "definition-details-actions-test-schema-rule",
+  model: "definition-details-actions-test-schema-model",
+  workflow: "definition-details-actions-test-schema-workflow",
+  context: "definition-details-actions-test-schema-context",
+  doc: "definition-details-actions-test-schema-docs",
+  config: "definition-details-actions-test-schema-config"
+};
 
 const formMount = document.getElementById("formMount");
 const rawText = document.getElementById("rawText");
@@ -195,11 +207,68 @@ function typeIconSvg(type) {
 
 function renderEditorTitle(type) {
   const label = typeDisplayLabel(type);
-  if (mode === "create") {
-    editorTitle.innerHTML = `<span class="editor-title-icon">${typeIconSvg(type)}</span><span>Create new ${label} Definition</span>`;
-    return;
+  const titleText = mode === "create" ? `Create new ${label} Definition` : `Edit ${label}`;
+  editorTitle.innerHTML = "";
+
+  const icon = document.createElement("span");
+  icon.className = "editor-title-icon";
+  icon.innerHTML = typeIconSvg(type);
+
+  const text = document.createElement("span");
+  text.textContent = titleText;
+
+  const helpButton = document.createElement("button");
+  helpButton.type = "button";
+  helpButton.className = "editor-help-icon-button editor-title-help-icon";
+  helpButton.setAttribute("aria-label", "Open guide for this definition type");
+  helpButton.title = "Open guide for this definition type";
+  helpButton.textContent = "?";
+  helpButton.addEventListener("click", () => {
+    openDefinitionGuide();
+  });
+
+  editorTitle.append(icon, text, helpButton);
+}
+
+function saveEditorStateForGuide() {
+  const snapshot = {
+    mode,
+    type: definitionType,
+    path: pathParam,
+    id: definitionIdParam,
+    raw: rawText.value,
+    savedAt: Date.now()
+  };
+  window.sessionStorage.setItem(EDITOR_HELP_STATE_STORAGE_KEY, JSON.stringify(snapshot));
+}
+
+function consumeEditorStateFromGuide() {
+  try {
+    const rawSnapshot = window.sessionStorage.getItem(EDITOR_HELP_STATE_STORAGE_KEY);
+    if (!rawSnapshot) return "";
+    const snapshot = JSON.parse(rawSnapshot);
+    const sameEditor = snapshot
+      && snapshot.mode === mode
+      && snapshot.type === definitionType
+      && String(snapshot.path || "") === String(pathParam || "")
+      && String(snapshot.id || "") === String(definitionIdParam || "");
+    if (!sameEditor) return "";
+    return String(snapshot.raw || "");
+  } catch (_error) {
+    return "";
+  } finally {
+    window.sessionStorage.removeItem(EDITOR_HELP_STATE_STORAGE_KEY);
   }
-  editorTitle.innerHTML = `<span class="editor-title-icon">${typeIconSvg(type)}</span><span>Edit ${label}</span>`;
+}
+
+function openDefinitionGuide() {
+  saveEditorStateForGuide();
+  const page = TYPE_HELP_PAGE_ID[definitionType] || "definitions-schema";
+  const returnTo = `${window.location.pathname}${window.location.search}`;
+  const url = new URL("/user-guide.html", window.location.origin);
+  url.searchParams.set("page", page);
+  url.searchParams.set("returnTo", returnTo);
+  window.location.assign(url.toString());
 }
 
 function getDefaultExtensionForFormat(selectedFormat) {
@@ -1457,6 +1526,7 @@ async function boot() {
     definitionType = payload.type;
     raw = payload.content || "";
   }
+  raw = consumeEditorStateFromGuide() || raw;
   setupForType(definitionType, raw);
 }
 
