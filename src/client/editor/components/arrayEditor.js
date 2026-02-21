@@ -256,6 +256,49 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
     onChange(items);
   }));
 
+  function openAutoTagConfirmationDialog() {
+    return new Promise((resolve) => {
+      const overlay = createElement("div", "editor-modal-overlay");
+      const modal = createElement("div", "editor-modal");
+      const title = createElement("h3", null, "Replace existing tags?");
+      const message = createElement("p", null, "This definition already has tags. Auto-tagging may replace the current tag selection.");
+      message.style.margin = "0";
+      const actions = createElement("div", "editor-modal-actions");
+      const cancelButton = createElement("button", "btn", "Cancel");
+      cancelButton.type = "button";
+      const continueButton = createElement("button", "btn primary", "Continue");
+      continueButton.type = "button";
+
+      const close = (result) => {
+        document.removeEventListener("keydown", onKeydown);
+        overlay.remove();
+        resolve(Boolean(result));
+      };
+
+      const onKeydown = (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          close(false);
+        }
+      };
+
+      cancelButton.addEventListener("click", () => close(false));
+      continueButton.addEventListener("click", () => close(true));
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+          close(false);
+        }
+      });
+
+      actions.append(cancelButton, continueButton);
+      modal.append(title, message, actions);
+      overlay.append(modal);
+      document.body.append(overlay);
+      document.addEventListener("keydown", onKeydown);
+      continueButton.focus();
+    });
+  }
+
   if (autoTagButton) {
     autoTagButton.addEventListener("click", async () => {
       const rawEditor = document.getElementById("rawText");
@@ -263,6 +306,13 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
       if (!definitionContent) {
         window.alert("Please enter definition content before auto-tagging.");
         return;
+      }
+
+      if (items.length > 0) {
+        const shouldContinue = await openAutoTagConfirmationDialog();
+        if (!shouldContinue) {
+          return;
+        }
       }
 
       const originalLabel = autoTagButton.textContent;
