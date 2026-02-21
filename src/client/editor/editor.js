@@ -109,7 +109,7 @@ function enhanceDescriptionField(formContainer) {
 
   if (!descriptionRow || descriptionRow.dataset.descriptionEnhanced === "true") return null;
 
-  const input = descriptionRow.querySelector('input[type="text"]');
+  const input = descriptionRow.querySelector('input[type="text"], textarea');
   if (!input) return null;
 
   const labelSpan = descriptionRow.querySelector("span");
@@ -124,6 +124,12 @@ function enhanceDescriptionField(formContainer) {
       openDescriptionHelpModal();
     });
     labelSpan.append(" ", helpButton);
+  }
+
+  if (input.tagName.toLowerCase() === "textarea") {
+    input.classList.add("editor-description-textarea");
+    descriptionRow.dataset.descriptionEnhanced = "true";
+    return null;
   }
 
   const textarea = document.createElement("textarea");

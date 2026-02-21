@@ -1,11 +1,13 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
-function createTextInput({ mount, label, state, key, placeholder, onChange }) {
+function createTextInput({ mount, label, state, key, placeholder, onChange, multiline = false }) {
   const row = document.createElement("label");
   row.className = "editor-field";
   row.innerHTML = `<span>${label}</span>`;
-  const input = document.createElement("input");
-  input.type = "text";
+  const input = multiline ? document.createElement("textarea") : document.createElement("input");
+  if (!multiline) {
+    input.type = "text";
+  }
   input.placeholder = placeholder || "";
   input.addEventListener("input", () => {
     state[key] = input.value;
@@ -51,7 +53,7 @@ export function createConfigForm({ mount, onChange, availableTags = [], definiti
   const dccUri = createTextInput({ mount, label: "DCC URI", state, key: "dcc_uri", placeholder: "e.g., 'configs/my_team_config'", onChange });
   const version = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '1.0.0'", onChange });
   const schema = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
-  const description = createTextInput({ mount, label: "description", state, key: "description", placeholder: "Describe this config", onChange });
+  const description = createTextInput({ mount, label: "description", state, key: "description", multiline: true, placeholder: "Describe this config", onChange });
 
   const configTypeRow = document.createElement("label");
   configTypeRow.className = "editor-field";

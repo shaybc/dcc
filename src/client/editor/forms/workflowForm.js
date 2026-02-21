@@ -1,11 +1,13 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
-function createTextInput({ mount, label, state, key, placeholder, onChange }) {
+function createTextInput({ mount, label, state, key, placeholder, onChange, multiline = false }) {
   const row = document.createElement("label");
   row.className = "editor-field";
   row.innerHTML = `<span>${label}</span>`;
-  const input = document.createElement("input");
-  input.type = "text";
+  const input = multiline ? document.createElement("textarea") : document.createElement("input");
+  if (!multiline) {
+    input.type = "text";
+  }
   input.placeholder = placeholder || "";
   input.addEventListener("input", () => {
     state[key] = input.value;
@@ -34,7 +36,7 @@ export function createWorkflowForm({ mount, onChange, availableTags = [] }) {
   const dccUri = createTextInput({ mount, label: "DCC URI", state, key: "dcc_uri", placeholder: "e.g., 'workflows/docs_update'", onChange });
   const version = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '1.0.0'", onChange });
   const schema = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
-  const description = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'the description of this workflow'", onChange });
+  const description = createTextInput({ mount, label: "description", state, key: "description", multiline: true, placeholder: "e.g., 'the description of this workflow'", onChange });
 
   const tags = createArrayEditor({
     mount,

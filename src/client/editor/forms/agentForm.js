@@ -3,10 +3,13 @@ import { attachEnhancePromptBehavior } from "./promptEnhancer.js";
 
 export function createAgentForm({ mount, onChange, availableTags = [] }) {
   const state = { name: "", dcc_uri: "", description: "", version: "", schema: "", tags: [], body: "" };
-  const makeInput = (label, key, placeholder = "") => {
+  const makeInput = (label, key, placeholder = "", multiline = false) => {
     const row = document.createElement("label"); row.className = "editor-field";
     row.innerHTML = `<span>${label}</span>`;
-    const input = document.createElement("input"); input.type = "text";
+    const input = multiline ? document.createElement("textarea") : document.createElement("input");
+    if (!multiline) {
+      input.type = "text";
+    }
     input.placeholder = placeholder;
     input.addEventListener("input", () => { state[key] = input.value; onChange(); });
     row.append(input); mount.append(row); return input;
@@ -16,7 +19,8 @@ export function createAgentForm({ mount, onChange, availableTags = [] }) {
   const desc = makeInput(
     "description",
     "description",
-    'e.g., "Triage Assistant (Jira) helps you create high-quality Jira issues with minimal input. It transforms a short request into a structured ticket, adds context from the repo or related issues, and ensures consistent formatting. It\'s designed to speed up triage, reduce noisy tickets, and make issues easier to understand and act on."'
+    'e.g., "Triage Assistant (Jira) helps you create high-quality Jira issues with minimal input. It transforms a short request into a structured ticket, adds context from the repo or related issues, and ensures consistent formatting. It\'s designed to speed up triage, reduce noisy tickets, and make issues easier to understand and act on."',
+    true
   );
   const version = makeInput("version", "version", "e.g., '1.0.0'");
   const schema = makeInput("schema", "schema", "e.g., 'v1'");
