@@ -10,5 +10,4 @@ they are explicitly chosen to run (IDE agent mode / cn CLI run). It defines what
 name: Senior Engineer Agent
 dcc_uri: dev/agents/senior-engineer
 description: Agent persona for implementation and review
-invokable: true
 ```

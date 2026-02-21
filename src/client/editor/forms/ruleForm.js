@@ -51,8 +51,8 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
 
   const name = row("name", "name", 'e.g., "Java Rules"');
   const dccUri = row("DCC URI", "dcc_uri", 'e.g., "rules/java_rules"');
-  const description = row("description", "description", 'e.g., "this are the java rules"');
-  const version = row("version", "version");
+  const description = row("description", "description", 'e.g., "this definition contains rules for Java code quality, standards, and best practices."');
+  const version = row("version", "version", "e.g., '1.0.0'");
   const globsEditor = createArrayEditor({
     mount,
     label: "globs",

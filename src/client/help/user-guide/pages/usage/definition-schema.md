@@ -9,7 +9,7 @@ all files are saved to the repo folder under .continue subfoder, each definition
 There are several type of definitions that continue.dev inject into the ai prompt, here are the schema/structure, explanation and guidance for each definition:
 
 - [Common fields (all definition types)](/user-guide.html?page=definition-details-actions-test-schema-common)
-- [Description field markdown help](/user-guide.html?page=definition-details-actions-test-schema-description-markdown-help)
+- [Description field](/user-guide.html?page=definition-details-actions-test-schema-description-markdown-help)
 - [Rule structure (`rules`)](/user-guide.html?page=definition-details-actions-test-schema-rule)
 - [Prompt structure (`prompts`)](/user-guide.html?page=definition-details-actions-test-schema-prompt)
 - [Workflow structure (`workflows`)](/user-guide.html?page=definition-details-actions-test-schema-workflow)

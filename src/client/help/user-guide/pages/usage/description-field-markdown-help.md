@@ -1,4 +1,4 @@
-## Description field markdown help
+## Description field
 
 Use the **description** field to explain what the definition does, why it exists, and when to use it.
 
@@ -12,12 +12,14 @@ Use the **description** field to explain what the definition does, why it exists
 
 - `**bold**` for emphasis.
 - `` `inline code` `` for short code, commands, or identifiers.
-- Triple backticks for code blocks, for example:
+- `` ` ` `Triple backticks` ` ` `` for code blocks __(without the space between each quote)__, for example:
 
-    ```yaml
+```
+    ` ` `yaml
     name: Example definition
     version: 1.0.0
-    ```
+    ` ` `
+```
 
 ### Writing tips
 

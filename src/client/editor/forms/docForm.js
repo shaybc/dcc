@@ -29,7 +29,7 @@ export function createDocForm({ mount, onChange, availableTags = [] }) {
 
   const name = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., 'Continue Documentation'", onChange });
   const dccUri = createTextInput({ mount, label: "DCC URI", state, key: "dcc_uri", placeholder: "e.g., 'docs/continueDocs'", onChange });
-  const version = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '0.0.1'", onChange });
+  const version = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '1.0.0'", onChange });
   const schema = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
   const description = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'Documentation links for Continue'", onChange });
 

@@ -297,7 +297,7 @@ select:focus-visible {
 }
 
 .editor-description-textarea {
-  width: 100%;
+  width: 98%;
   min-height: 120px;
   resize: vertical;
 }

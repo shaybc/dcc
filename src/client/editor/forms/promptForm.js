@@ -29,7 +29,7 @@ export function createPromptForm({ mount, onChange, availableTags = [] }) {
 
   const nameInput = createTextInput({ mount, label: "name", state, key: "name", placeholder: "e.g., 'New Angular Component'", onChange });
   const dccUriInput = createTextInput({ mount, label: "DCC URI", state, key: "dcc_uri", placeholder: "e.g., 'prompts/new_component'", onChange });
-  const versionInput = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '0.0.3'", onChange });
+  const versionInput = createTextInput({ mount, label: "version", state, key: "version", placeholder: "e.g., '1.0.0'", onChange });
   const schemaInput = createTextInput({ mount, label: "schema", state, key: "schema", placeholder: "e.g., 'v1'", onChange });
   const descriptionInput = createTextInput({ mount, label: "description", state, key: "description", placeholder: "e.g., 'the angular component description'", onChange });
 

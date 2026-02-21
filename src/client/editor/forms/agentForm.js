@@ -18,7 +18,7 @@ export function createAgentForm({ mount, onChange, availableTags = [] }) {
     "description",
     'e.g., "Triage Assistant (Jira) helps you create high-quality Jira issues with minimal input. It transforms a short request into a structured ticket, adds context from the repo or related issues, and ensures consistent formatting. It\'s designed to speed up triage, reduce noisy tickets, and make issues easier to understand and act on."'
   );
-  const version = makeInput("version", "version");
+  const version = makeInput("version", "version", "e.g., '1.0.0'");
   const tags = createArrayEditor({ mount, label: "dcc_tags", fields: [{ name: "value", label: "dcc_tags", placeholder: 'e.g., "tag1, tag2, tag3"', autocompleteOptions: availableTags }], onChange: (v) => { state.tags = v; onChange(); } });
   const bodyRow = document.createElement("label"); bodyRow.className = "editor-field"; bodyRow.innerHTML = "<span>agent instructions</span>";
   const body = document.createElement("textarea");
