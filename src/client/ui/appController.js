@@ -137,7 +137,7 @@ let diffService = null;
 let currentDefinitionVersions = [];
 
 const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
-const SPECIAL_FILTERS = ["installed"];
+const SPECIAL_FILTERS = [];
 const GENERATED_DEFINITION_STORAGE_KEY = "dcc.generated.definition";
 const GENERATABLE_DEFINITION_TYPES = ["prompt", "mcpServer", "agent", "rule", "model", "workflow", "context", "doc", "config"];
 const COMMON_DEFINITION_HELP_PAGE_PATH = "/help/user-guide/pages/usage/definition-details-actions-test-schema-common.md";
@@ -288,9 +288,7 @@ function renderTopNavigation() {
 
 function setActiveTopPage(page) {
   activeTopPage = page || "discover";
-  if (activeTopPage === "installed") {
-    activeFilter = "installed";
-  } else if (activeTopPage === "discover" || activeTopPage === "favorites") {
+  if (activeTopPage === "discover" || activeTopPage === "installed" || activeTopPage === "favorites") {
     activeFilter = "all";
   }
   currentCardsPage = 1;
@@ -860,7 +858,11 @@ function renderFilters() {
       .filter((type) => Boolean(type) && String(type).toLowerCase() !== "unknown")
       .map((type) => String(type).toLowerCase())
   );
-  const types = ["all", ...SPECIAL_FILTERS, ...uniqueTypes];
+  const types = ["all", ...SPECIAL_FILTERS, ...uniqueTypes]
+    .filter((type, index, arr) => type !== "installed" && arr.indexOf(type) === index);
+  if (!types.includes(activeFilter)) {
+    activeFilter = "all";
+  }
   filtersContainer.innerHTML = "";
   filterMenu.innerHTML = "";
   types.forEach((type) => {
@@ -868,15 +870,18 @@ function renderFilters() {
     if (type === activeFilter && type !== "all") {
       const chip = document.createElement("button");
       chip.className = "chip active";
-      chip.innerHTML = `
-        <span class="chip-icon">${filterIconSvg(type)}</span>
-        <span class="chip-label">${label}</span>
+      const chipClearMarkup = `
         <span class="chip-clear" role="button" aria-label="Clear filter">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 6 6 18"></path>
             <path d="m6 6 12 12"></path>
           </svg>
         </span>
+      `;
+      chip.innerHTML = `
+        <span class="chip-icon">${filterIconSvg(type)}</span>
+        <span class="chip-label">${label}</span>
+        ${chipClearMarkup}
       `;
       chip.addEventListener("click", (event) => {
         if (event.target.closest(".chip-clear")) {
@@ -1488,6 +1493,7 @@ function createSemanticSearchPrompt() {
 }
 
 function renderCards() {
+  const isInstalledPage = activeTopPage === "installed";
   const queryTags = parseTagSearchQuery(searchTerm);
   const tagOnlyMode = isTagOnlyQuery(queryTags);
   const hasSelectedProject = Boolean(String(devProjectInput.value || "").trim());
@@ -1499,12 +1505,13 @@ function renderCards() {
     if (onlyLocalDefinitions && !isLocalUntrackedDefinition) {
       return false;
     }
-    if (hideInstalledDefinitions && activeFilter !== "installed" && isInstalledInCurrentProject) {
+    if (!isInstalledPage && hideInstalledDefinitions && isInstalledInCurrentProject) {
       return false;
     }
     const matchesPage = activeTopPage !== "favorites" || isFavoriteDefinition(def.id);
-    const matchesFilter = activeFilter === "all"
-      || (activeFilter === "installed" && isInstalledInCurrentProject)
+    const matchesFilter = isInstalledPage
+      ? isInstalledInCurrentProject && (activeFilter === "all" || def.type === activeFilter)
+      : activeFilter === "all"
       || def.type === activeFilter;
     const text = `${def.name} ${def.description}`.toLowerCase();
     const matchesTagSearch = queryTags.every((tag) => def.tagsNormalized.includes(tag));
@@ -1528,12 +1535,13 @@ function renderCards() {
         if (onlyLocalDefinitions && !isLocalUntrackedDefinition) {
           return false;
         }
-        if (hideInstalledDefinitions && activeFilter !== "installed" && isInstalledInCurrentProject) {
+        if (!isInstalledPage && hideInstalledDefinitions && isInstalledInCurrentProject) {
           return false;
         }
         const matchesPage = activeTopPage !== "favorites" || isFavoriteDefinition(def.id);
-        const matchesFilter = activeFilter === "all"
-          || (activeFilter === "installed" && isInstalledInCurrentProject)
+        const matchesFilter = isInstalledPage
+          ? isInstalledInCurrentProject && (activeFilter === "all" || def.type === activeFilter)
+          : activeFilter === "all"
           || def.type === activeFilter;
         return matchesPage && matchesFilter && matchesSelectedTagFilters(def);
       });
