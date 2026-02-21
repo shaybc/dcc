@@ -33,12 +33,14 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
     }
     return String(value || "");
   };
-  const row = (label, key, placeholder = "") => {
+  const row = (label, key, placeholder = "", multiline = false) => {
     const l = document.createElement("label");
     l.className = "editor-field";
     l.innerHTML = `<span>${label}</span>`;
-    const i = document.createElement("input");
-    i.type = "text";
+    const i = multiline ? document.createElement("textarea") : document.createElement("input");
+    if (!multiline) {
+      i.type = "text";
+    }
     i.placeholder = placeholder;
     i.addEventListener("input", () => {
       state[key] = i.value;
@@ -51,7 +53,7 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
 
   const name = row("name", "name", 'e.g., "Java Rules"');
   const dccUri = row("DCC URI", "dcc_uri", 'e.g., "rules/java_rules"');
-  const description = row("description", "description", 'e.g., "this definition contains rules for Java code quality, standards, and best practices."');
+  const description = row("description", "description", 'e.g., "this definition contains rules for Java code quality, standards, and best practices."', true);
   const version = row("version", "version", "e.g., '1.0.0'");
   const schema = row("schema", "schema", "e.g., 'v1'");
   const globsEditor = createArrayEditor({
