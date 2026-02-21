@@ -90,6 +90,8 @@ const recommendationsAiButton = document.createElement("button");
 const recommendationsMeta = document.createElement("p");
 const recommendationsState = document.createElement("p");
 const recommendationsCards = document.createElement("div");
+const recommendationsCardsContainer = document.createElement("div");
+const recommendationsInstallAllButton = document.createElement("button");
 const recommendationsDivider = document.createElement("div");
 const recommendationsContent = document.createElement("div");
 
@@ -1190,6 +1192,8 @@ function renderRecommendationSection() {
   recommendationsState.textContent = "";
   recommendationsState.hidden = true;
   recommendationsCards.innerHTML = "";
+  recommendationsInstallAllButton.hidden = true;
+  recommendationsInstallAllButton.disabled = true;
 
   if (!recommendationsVisible) {
     return;
@@ -1248,7 +1252,12 @@ function renderRecommendationSection() {
   if (!recommendationsCards.childElementCount) {
     recommendationsState.hidden = false;
     recommendationsState.textContent = "No matching suggestions for available definitions.";
+    return;
   }
+
+  const hasSelectedProject = Boolean(selectedProjectPath);
+  recommendationsInstallAllButton.hidden = false;
+  recommendationsInstallAllButton.disabled = !hasSelectedProject;
 }
 
 function renderCards() {
@@ -1407,7 +1416,18 @@ function setupRecommendationsSection() {
   recommendationsAiButton.innerHTML = `<span aria-hidden="true">✨</span><span>AI</span>`;
   recommendationsMeta.className = "recommendations-meta";
   recommendationsState.className = "recommendations-state";
+  recommendationsCardsContainer.className = "recommendations-cards-container";
   recommendationsCards.className = "grid recommendations-grid";
+  recommendationsInstallAllButton.className = "recommendations-install-all-button";
+  recommendationsInstallAllButton.type = "button";
+  recommendationsInstallAllButton.setAttribute("aria-label", "Add all recommended definitions to current selected project");
+  recommendationsInstallAllButton.title = "Add all recommended definitions to current selected project";
+  recommendationsInstallAllButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 5v14"></path>
+      <path d="M5 12h14"></path>
+    </svg>
+  `;
   recommendationsContent.id = "recommendations-content";
   recommendationsToggleButton.setAttribute("aria-controls", recommendationsContent.id);
   recommendationsDivider.className = "recommendations-divider";
@@ -1416,6 +1436,21 @@ function setupRecommendationsSection() {
   recommendationsTitle.textContent = "Recommended for current project";
   recommendationsAiButton.addEventListener("click", () => {
     openIntentSuggestionModal();
+  });
+  recommendationsInstallAllButton.addEventListener("click", (event) => {
+    const selectedProjectPath = String(devProjectInput.value || "").trim();
+    if (!selectedProjectPath) {
+      window.alert("Please select a project first.");
+      return;
+    }
+
+    const recommendationDefinition = {
+      type: "prompt",
+      installedDestinations: []
+    };
+    openInstallDestinationMenu(event.currentTarget, recommendationDefinition, {
+      onDestinationSelected: (destination) => installAllRecommendedDefinitions(destination)
+    });
   });
   const recommendationsTitlediv = document.createElement("div");
   recommendationsTitlediv.className = "recommendations-title-div";
@@ -1429,7 +1464,8 @@ function setupRecommendationsSection() {
     renderRecommendationSection();
   });
 
-  recommendationsContent.append(recommendationsActions, recommendationsState, recommendationsCards, recommendationsDivider);
+  recommendationsCardsContainer.append(recommendationsCards, recommendationsInstallAllButton);
+  recommendationsContent.append(recommendationsActions, recommendationsState, recommendationsCardsContainer, recommendationsDivider);
   recommendationsSection.append(recommendationsContent);
 
   cardsContainer.parentNode?.insertBefore(recommendationsSection, cardsContainer);
@@ -2546,7 +2582,79 @@ async function toggleDefinitionDestinationInstall(definition, destination) {
   }
 }
 
-function openInstallDestinationMenu(anchorEl, definition) {
+
+async function installAllRecommendedDefinitions(destination) {
+  const selectedProjectPath = String(devProjectInput.value || "").trim();
+  if (!selectedProjectPath) {
+    window.alert("Please select a project first.");
+    return;
+  }
+
+  const normalizedDestination = String(destination || "").trim().toLowerCase();
+  if (!normalizedDestination) {
+    return;
+  }
+
+  const suggestionIdSet = new Set(suggestionDefinitionIds);
+  const suggestionDefinitions = (Array.isArray(suggestionsMeta.suggestions) ? suggestionsMeta.suggestions : [])
+    .filter((entry) => suggestionIdSet.has(Number(entry.definitionId)))
+    .map((entry) => definitions.find((item) => Number(item.id) === Number(entry.definitionId)))
+    .filter(Boolean);
+
+  const installableDefinitions = suggestionDefinitions.filter((definition) => {
+    if (definition.status === "local-only") {
+      return false;
+    }
+    const supportsDestination = getSupportedDestinationOptions(definition)
+      .some((option) => option.key === normalizedDestination);
+    if (!supportsDestination) {
+      return false;
+    }
+    return !getInstalledDestinationSet(definition).has(normalizedDestination);
+  });
+
+  if (installableDefinitions.length === 0) {
+    window.alert("All recommended definitions are already installed for this destination.");
+    return;
+  }
+
+  const destinationLabel = getDestinationLabel(normalizedDestination);
+  const summary = await runWithLoading(async () => {
+    const failedDefinitions = [];
+    let installedCount = 0;
+
+    for (const definition of installableDefinitions) {
+      try {
+        await saveDefinition(definition.id, normalizedDestination, { showLoading: false });
+        installedCount += 1;
+      } catch (error) {
+        failedDefinitions.push({
+          name: definition.name || `Definition ${definition.id}`,
+          message: error.message || "Unable to install definition."
+        });
+      }
+    }
+
+    await fetchDefinitions();
+    return { installedCount, failedDefinitions };
+  }, {
+    title: "Installing recommended definitions...",
+    description: `Installing ${installableDefinitions.length} recommended definitions to ${destinationLabel}.`
+  });
+
+  const lines = [
+    `Installed ${summary.installedCount}/${installableDefinitions.length} recommended definitions to ${destinationLabel}.`
+  ];
+  if (summary.failedDefinitions.length > 0) {
+    lines.push("Failed installs:");
+    summary.failedDefinitions.forEach((entry) => {
+      lines.push(`- ${entry.name}: ${entry.message}`);
+    });
+  }
+  window.alert(lines.join("\n"));
+}
+
+function openInstallDestinationMenu(anchorEl, definition, { onDestinationSelected = null } = {}) {
   closeInstallDestinationMenu();
   if (!anchorEl) return;
 
@@ -2607,7 +2715,11 @@ function openInstallDestinationMenu(anchorEl, definition) {
     closeInstallDestinationMenu();
     if (!destination) return;
     try {
-      await toggleDefinitionDestinationInstall(definition, destination);
+      if (typeof onDestinationSelected === "function") {
+        await onDestinationSelected(destination);
+      } else {
+        await toggleDefinitionDestinationInstall(definition, destination);
+      }
     } catch (error) {
       window.alert(error.message || "Unable to update definition destination.");
     }
@@ -2804,7 +2916,7 @@ async function copyDefinitionToClipboard() {
   fallbackTextArea.remove();
 }
 
-async function saveDefinition(id, destination = "continue") {
+async function saveDefinition(id, destination = "continue", { showLoading = true } = {}) {
   if (!devProjectInput.value.trim()) {
     window.alert("Please select a project first.");
     return null;
@@ -2813,12 +2925,12 @@ async function saveDefinition(id, destination = "continue") {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ destination })
-  }, "Unable to save definition.", {
+  }, "Unable to save definition.", showLoading ? {
     title: destination === "continue" ? "Saving definition..." : "Exporting definition...",
     description: destination === "continue"
       ? "Installing definition in selected project."
       : "Installing/Exporting definition for selected destination.",
-  });
+  } : null);
 }
 
 async function publishDefinition(id) {
