@@ -9,5 +9,6 @@ they are explicitly chosen to run (IDE agent mode / cn CLI run). It defines what
 ```yaml
 name: Senior Engineer Agent
 dcc_uri: dev/agents/senior-engineer
+schema: v1
 description: Agent persona for implementation and review
 ```

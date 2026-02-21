@@ -19,6 +19,9 @@ Rules are a component that gets included in context based on alwaysApply, or glo
 - `description` (optional, but strongly recommended)  
   Plain-language explanation of what the rule is for and when it should apply. This helps users quickly understand intent before opening full content.
 
+- `schema` (recommended)  
+  Schema contract version for this definition. Use `v1` unless your workflow requires another value.
+
 - `globs` (optional)  
   File path pattern(s) used to include the rule when matching files are present in context.
   - Accepts a single glob string or a list of glob strings.
@@ -58,6 +61,7 @@ This keeps rules focused and avoids polluting unrelated prompts.
 ```yaml
 name: JS Style Rule
 dcc_uri: dev/rules/js-style
+schema: v1
 description: Enforce JavaScript style and discourage debug logging in production code
 globs:
   - "**/*.js"

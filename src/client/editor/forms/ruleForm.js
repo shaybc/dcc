@@ -13,7 +13,7 @@ function normalizeListValue(value) {
 }
 
 export function createRuleForm({ mount, onChange, availableTags = [] }) {
-  const state = { name: "", dcc_uri: "", description: "", version: "", globs: [], regex: "", alwaysApply: undefined, tags: [], body: "" };
+  const state = { name: "", dcc_uri: "", description: "", version: "", schema: "", globs: [], regex: "", alwaysApply: undefined, tags: [], body: "" };
   const parsePatternInput = (value) => {
     const parts = String(value || "")
       .split(",")
@@ -53,6 +53,7 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
   const dccUri = row("DCC URI", "dcc_uri", 'e.g., "rules/java_rules"');
   const description = row("description", "description", 'e.g., "this definition contains rules for Java code quality, standards, and best practices."');
   const version = row("version", "version", "e.g., '1.0.0'");
+  const schema = row("schema", "schema", "e.g., 'v1'");
   const globsEditor = createArrayEditor({
     mount,
     label: "globs",
@@ -149,6 +150,7 @@ export function createRuleForm({ mount, onChange, availableTags = [] }) {
       dccUri.value = state.dcc_uri || "";
       description.value = state.description || "";
       version.value = state.version || "";
+      schema.value = state.schema || "";
       globsEditor.setItems(normalizeListValue(state.globs));
       regex.value = formatPatternInput(state.regex);
       alwaysApply.value = state.alwaysApply === true ? "true" : state.alwaysApply === false ? "false" : "";
