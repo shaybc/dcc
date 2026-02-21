@@ -366,7 +366,7 @@
   <body>
     <main class="help-guide-page">
       <div class="help-guide-topbar">
-        <a class="btn" href="/">← Back to Hub</a>
+        <a class="btn" id="helpGuideBackLink" href="/">← Back to Hub</a>
         <span class="sr-only" aria-live="polite" id="helpGuideStatus"></span>
       </div>
 
@@ -382,9 +382,22 @@
     <script>
       const HELP_PAGES_BASE = "/help/user-guide/pages";
       const helpGuideStatus = document.getElementById("helpGuideStatus");
+      const helpGuideBackLink = document.getElementById("helpGuideBackLink");
       const helpGuideToc = document.getElementById("helpGuideToc");
       const helpGuidePageLabel = document.getElementById("helpGuidePageLabel");
       const helpGuideArticle = document.getElementById("helpGuideArticle");
+
+      const pageParams = new URLSearchParams(window.location.search);
+      const returnTo = pageParams.get("returnTo") || "";
+      const safeReturnTo = returnTo.startsWith("/") ? returnTo : "/";
+      const encodedSafeReturnTo = encodeURIComponent(safeReturnTo);
+      if (helpGuideBackLink) {
+        helpGuideBackLink.href = safeReturnTo;
+      }
+
+      function helpPageHref(pageId) {
+        return `/user-guide.html?page=${encodeURIComponent(pageId)}&returnTo=${encodedSafeReturnTo}`;
+      }
 
       const tocSections = [
         {
@@ -945,10 +958,10 @@
                   const childLinks = Array.isArray(page.children) && page.children.length
                     ? `<div class="toc-sub-links">${page.children.map((child) => {
                       const childActiveClass = child.id === activePageId ? "is-active" : "";
-                      return `<a class="toc-link toc-sub-link ${childActiveClass}" href="/user-guide.html?page=${child.id}">${child.title}</a>`;
+                      return `<a class="toc-link toc-sub-link ${childActiveClass}" href="${helpPageHref(child.id)}">${child.title}</a>`;
                     }).join("")}</div>`
                     : "";
-                  return `<a class="toc-link ${activeClass}" href="/user-guide.html?page=${page.id}">${page.title}</a>${childLinks}`;
+                  return `<a class="toc-link ${activeClass}" href="${helpPageHref(page.id)}">${page.title}</a>${childLinks}`;
                 }).join("")}
                 </div>
               </div>
