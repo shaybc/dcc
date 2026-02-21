@@ -61,7 +61,9 @@ export function applyVersionToContent(content, filePath, version) {
 }
 
 export function sanitizeYamlHeaderScalars(raw) {
-  return String(raw || "").replace(/^(\s*)(name|version|schema|description)\s*:\s*(@[^#\r\n]*)(\s*(?:#.*)?)$/gim, (_, indent, key, value, suffix) => `${indent}${key}: "${String(value).trim()}"${suffix || ""}`);
+  return String(raw || "")
+    .replace(/^(\s*)(name|version|schema|description)\s*:\s*(@[^#\r\n]*)(\s*(?:#.*)?)$/gim, (_, indent, key, value, suffix) => `${indent}${key}: "${String(value).trim()}"${suffix || ""}`)
+    .replace(/^(\s*)(name|version|schema|description)\s*:\s*([^\r\n#"'|>][^\r\n#]*?:\s[^\r\n#]*)(\s*(?:#.*)?)$/gim, (_, indent, key, value, suffix) => `${indent}${key}: "${String(value).trim()}"${suffix || ""}`);
 }
 
 export function readDefinitionYamlData(rawContent, filePath = "") {
