@@ -1674,7 +1674,7 @@ async function requestIntentSuggestions(intent = "") {
         messages: [
           {
             role: "system",
-            content: "You rank software definitions by user intent. Return JSON only with shape {\"suggestions\":[{\"definitionId\":number,\"score\":number,\"reasons\":[string]}]}. Keep top 8 suggestions ordered best-first."
+            content: "You rank software definitions by user intent. Return JSON only with shape {\"suggestions\":[{\"definitionId\":number,\"score\":number,\"reasons\":[string]}]}. Return all relevant suggestions ordered best-first."
           },
           {
             role: "user",
