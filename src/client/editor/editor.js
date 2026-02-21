@@ -912,8 +912,12 @@ const handlers = {
     createForm: createAgentForm,
     parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
     serialize: (state) => {
-      const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
-      return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_tags: normalizeStringArray(tags) }));
+      const { body = "", rules, mcpServers, ...frontmatter } = { ...unknown, ...state };
+      return matter.stringify(body, omitUndefinedValues({
+        ...frontmatter,
+        rules: normalizeStringArray(rules),
+        mcpServers: normalizeUsesArray(mcpServers).map((entry) => (entry?.dcc_use || entry?.uses || entry?.name || "")).filter(Boolean)
+      }));
     }
   },
   rule: {
@@ -993,7 +997,14 @@ function normalizeState(type, parsed) {
     tags: normalizeStringArray(data.dcc_tags),
     mcpServers: normalizeMcpServers(data.mcpServers)
   };
-  if (type === "agent") return { name: data.name || "", dcc_uri: data.dcc_uri || "", description: data.description || "", version: data.version || "", tags: data.dcc_tags || [], body: data.body || "" };
+  if (type === "agent") return {
+    name: data.name || "",
+    description: data.description || "",
+    model: data.model || "",
+    rules: normalizeStringArray(data.rules),
+    mcpServers: normalizeUsesArray(data.mcpServers).map((entry) => (entry?.dcc_use || entry?.uses || entry?.name || "")).filter(Boolean),
+    body: data.body || ""
+  };
   if (type === "rule") return {
     name: data.name || "",
     dcc_uri: data.dcc_uri || "",
@@ -1069,7 +1080,7 @@ function captureUnknownFields(type, parsed) {
   const knownByType = {
     prompt: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "prompts", "prompt", "invokable", "__contentFormat"],
     mcpServer: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "mcpServers"],
-    agent: ["name", "dcc_uri", "description", "version", "dcc_tags", "body"],
+    agent: ["name", "description", "model", "rules", "mcpServers", "tools", "body"],
     rule: ["name", "dcc_uri", "description", "version", "globs", "regex", "alwaysApply", "dcc_tags", "rules", "rule", "body"],
     model: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models"],
     workflow: ["name", "dcc_uri", "description", "version", "schema", "dcc_tags", "models", "context", "mcpServers", "rules"],
