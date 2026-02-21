@@ -9,6 +9,31 @@
     <script src="/theme.js"></script>
   </head>
   <body>
+    <nav class="top-nav" id="topNav" aria-label="Hub pages">
+      <button class="top-nav-tab active" type="button" data-top-nav-tab="discover">
+        <span class="top-nav-tab-icon">◈</span>
+        <span>Discover</span>
+        <span class="top-nav-tab-badge" id="discoverTabBadge"></span>
+      </button>
+      <button class="top-nav-tab" type="button" data-top-nav-tab="activity">
+        <span class="top-nav-tab-icon">◷</span>
+        <span>Activity</span>
+      </button>
+      <button class="top-nav-tab" type="button" data-top-nav-tab="agents">
+        <span class="top-nav-tab-icon">🤖︎</span>
+        <span>Agents</span>
+      </button>
+      <button class="top-nav-tab" type="button" data-top-nav-tab="installed">
+        <span class="top-nav-tab-icon">↓</span>
+        <span>Installed</span>
+        <span class="top-nav-tab-badge" id="installedTabBadge"></span>
+      </button>
+      <button class="top-nav-tab" type="button" data-top-nav-tab="favorites">
+        <span class="top-nav-tab-icon">⚑</span>
+        <span>Favorites</span>
+        <span class="top-nav-tab-badge" id="favoritesTabBadge"></span>
+      </button>
+    </nav>
     <header id="hubHeader">
       <div class="header-left">
         <div class="dev-project-picker">
@@ -197,6 +222,14 @@
       <div class="grid" id="cards"></div>
       <nav class="pagination" id="pagination" role="navigation" aria-label="pagination" hidden></nav>
     </main>
+    <main class="future-page" id="activityPage" hidden>
+      <h2>Activity dashboard is coming soon</h2>
+      <p>This page will show running agents, live status, results, and let you launch additional agents.</p>
+    </main>
+    <main class="future-page" id="agentsPage" hidden>
+      <h2>Agents builder is coming soon</h2>
+      <p>This page will let you create bundles of agents and configs with a predefined prompt input.</p>
+    </main>
 
     <main class="detail-page" id="detailPage" aria-labelledby="detailTitle" hidden>
       <div class="detail-page-shell">
@@ -265,6 +298,11 @@
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
                     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="favoriteDefinition" type="button" aria-label="Add to favorites" title="Add to favorites">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m12 2.6 2.81 5.95 6.49.99-4.69 4.81 1.11 6.79L12 17.99l-5.72 3.15 1.1-6.79-4.68-4.81 6.49-.99L12 2.6z"></path>
                   </svg>
                 </button>
                 <button class="copy-btn" id="pushUpstreamDefinition" type="button" aria-label="Push definition to upstream" title="Push definition to upstream" hidden>
