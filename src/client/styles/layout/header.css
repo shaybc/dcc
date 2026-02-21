@@ -454,6 +454,10 @@ header .actions .btn {
   justify-content: center;
 }
 
+.recommendations-header-toggle[hidden] {
+  display: none !important;
+}
+
 .recommendations-header-toggle .recommendations-star {
   width: 18px;
   height: 18px;
