@@ -46,11 +46,47 @@ test("loadDefinitions only loads files that contain dcc_uri", async () => {
   await runGit(["init"]);
   await runGit(["add", "."]);
 
-  await loadDefinitions();
+  const result = await loadDefinitions();
 
   const rows = await allDb("SELECT key, filePath, source FROM definitions ORDER BY filePath ASC");
   assert.equal(rows.length, 1);
   assert.equal(rows[0].filePath, path.join(repoRoot, "valid.yaml"));
   assert.equal(rows[0].key, "prompts::prompts/valid");
   assert.equal(rows[0].source, "repo");
+
+  const skippedByFile = new Map((result.skippedDefinitions || []).map((entry) => [path.basename(entry.filePath), entry.reason]));
+  assert.equal(skippedByFile.get("README.md"), "not a definition file");
+  assert.equal(skippedByFile.get("missing-type.yaml"), "dcc_definition_type missing");
+});
+
+test("loadDefinitions reports missing name for typed definition", async () => {
+  await resetTables();
+
+  const repoRoot = path.join(tempRoot, "assets-repo-missing-name");
+  await fs.mkdir(repoRoot, { recursive: true });
+  await fs.writeFile(path.join(repoRoot, "missing-name.yaml"), "dcc_uri: configs/team\ndcc_definition_type: config\n", "utf8");
+
+  await runDb(
+    `INSERT INTO asset_repos (name, remoteUrl, localPath, enabled, createdAt, updatedAt)
+     VALUES (?, ?, ?, 1, ?, ?)`,
+    ["assets-missing-name", "https://example.com/repo.git", repoRoot, new Date().toISOString(), new Date().toISOString()]
+  );
+
+  const { execFile } = await import("node:child_process");
+  const runGit = (args) => new Promise((resolve, reject) => {
+    execFile("git", args, { cwd: repoRoot }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(stderr || error.message));
+        return;
+      }
+      resolve(stdout);
+    });
+  });
+
+  await runGit(["init"]);
+  await runGit(["add", "."]);
+
+  const result = await loadDefinitions();
+  const skipped = (result.skippedDefinitions || []).find((entry) => path.basename(entry.filePath) === "missing-name.yaml");
+  assert.equal(skipped?.reason, "dcc_definition_type is config but required field: name is missing");
 });
