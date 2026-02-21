@@ -1,6 +1,7 @@
 import matter from "gray-matter";
 import YAML from "yaml";
 import { dccDefinitionTypeToInternal } from "./definitionType.js";
+import { sanitizeYamlHeaderScalars } from "./content.js";
 
 export function detectDefinitionType(content = "", filePath = "") {
   const extension = String(filePath || "").toLowerCase();
@@ -11,6 +12,11 @@ export function detectDefinitionType(content = "", filePath = "") {
     return dccDefinitionTypeToInternal(parsed?.data?.dcc_definition_type);
   }
 
-  const data = YAML.parse(String(content || "")) || {};
+  let data = {};
+  try {
+    data = YAML.parse(sanitizeYamlHeaderScalars(String(content || ""))) || {};
+  } catch (_error) {
+    data = {};
+  }
   return dccDefinitionTypeToInternal(data?.dcc_definition_type);
 }
