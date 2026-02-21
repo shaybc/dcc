@@ -265,6 +265,13 @@ export function createArrayEditor({ mount, label, fields, onChange }) {
         return;
       }
 
+      if (items.length > 0) {
+        const shouldContinue = window.confirm("This definition already has tags. Auto-tagging may replace the current tag selection. Continue?");
+        if (!shouldContinue) {
+          return;
+        }
+      }
+
       const originalLabel = autoTagButton.textContent;
       autoTagButton.disabled = true;
       autoTagButton.textContent = "Tagging...";
