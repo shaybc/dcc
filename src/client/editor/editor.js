@@ -780,6 +780,7 @@ const handlers = {
     },
     serialize: (state) => {
       const { tags, ...rest } = state;
+      const invokable = typeof rest.invokable === "boolean" ? rest.invokable : true;
       if (promptContentFormat === "markdown") {
         const prompts = Array.isArray(state.prompts) ? state.prompts : [];
         const primaryPrompt = prompts[0] || {};
@@ -789,7 +790,7 @@ const handlers = {
           ...unknown,
           ...frontmatterFields,
           dcc_tags: normalizeStringArray(tags),
-          invokable: true,
+          invokable,
           prompt: primaryPrompt.prompt || ""
         });
       }
@@ -797,6 +798,7 @@ const handlers = {
       return stringifyYamlDefinition({
         ...unknown,
         ...rest,
+        invokable,
         dcc_tags: normalizeStringArray(tags),
         prompts: Array.isArray(state.prompts) ? state.prompts : []
       });
