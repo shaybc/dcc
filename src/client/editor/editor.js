@@ -232,12 +232,15 @@ function renderEditorTitle(type) {
 }
 
 function saveEditorStateForGuide() {
+  sync?.updateTextFromForm?.();
+  const formState = formController?.getState?.();
   const snapshot = {
     mode,
     type: definitionType,
     path: pathParam,
     id: definitionIdParam,
     raw: rawText.value,
+    formState: formState && typeof formState === "object" ? formState : null,
     savedAt: Date.now()
   };
   window.sessionStorage.setItem(EDITOR_HELP_STATE_STORAGE_KEY, JSON.stringify(snapshot));
@@ -246,17 +249,20 @@ function saveEditorStateForGuide() {
 function consumeEditorStateFromGuide() {
   try {
     const rawSnapshot = window.sessionStorage.getItem(EDITOR_HELP_STATE_STORAGE_KEY);
-    if (!rawSnapshot) return "";
+    if (!rawSnapshot) return null;
     const snapshot = JSON.parse(rawSnapshot);
     const sameEditor = snapshot
       && snapshot.mode === mode
       && snapshot.type === definitionType
       && String(snapshot.path || "") === String(pathParam || "")
       && String(snapshot.id || "") === String(definitionIdParam || "");
-    if (!sameEditor) return "";
-    return String(snapshot.raw || "");
+    if (!sameEditor) return null;
+    return {
+      raw: String(snapshot.raw || ""),
+      formState: snapshot.formState && typeof snapshot.formState === "object" ? snapshot.formState : null
+    };
   } catch (_error) {
-    return "";
+    return null;
   } finally {
     window.sessionStorage.removeItem(EDITOR_HELP_STATE_STORAGE_KEY);
   }
@@ -1529,8 +1535,10 @@ async function boot() {
     definitionType = payload.type;
     raw = payload.content || "";
   }
+  let restoredSnapshot = null;
   if (returnFromGuideParam === "1") {
-    raw = consumeEditorStateFromGuide() || raw;
+    restoredSnapshot = consumeEditorStateFromGuide();
+    raw = restoredSnapshot?.raw || raw;
     const cleanedUrl = new URL(window.location.href);
     cleanedUrl.searchParams.delete("returnFromGuide");
     window.history.replaceState({}, "", `${cleanedUrl.pathname}${cleanedUrl.search}`);
@@ -1538,6 +1546,10 @@ async function boot() {
     window.sessionStorage.removeItem(EDITOR_HELP_STATE_STORAGE_KEY);
   }
   setupForType(definitionType, raw);
+  if (restoredSnapshot?.formState) {
+    formController.setState(restoredSnapshot.formState);
+    sync.updateTextFromForm();
+  }
 }
 
 document.getElementById("cancelButton").addEventListener("click", () => window.location.assign("/"));
