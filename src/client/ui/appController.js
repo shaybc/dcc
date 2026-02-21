@@ -852,6 +852,7 @@ function filterIconSvg(type) {
 }
 
 function renderFilters() {
+  const isInstalledPage = activeTopPage === "installed";
   const definitionTypes = definitions.map((def) => normalizeFilterType(def.type));
   const uniqueTypes = new Set(
     [...FILTER_TYPES, ...definitionTypes]
@@ -884,6 +885,9 @@ function renderFilters() {
         ${chipClearMarkup}
       `;
       chip.addEventListener("click", (event) => {
+        if (isInstalledPage && type === "installed") {
+          return;
+        }
         if (event.target.closest(".chip-clear")) {
           activeFilter = "all";
         } else {
