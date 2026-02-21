@@ -786,6 +786,34 @@ function renderFilters() {
     filtersContainer.appendChild(tagsChip);
   }
 
+  if (onlyLocalDefinitions) {
+    const onlyLocalChip = document.createElement("button");
+    onlyLocalChip.className = "chip active";
+    onlyLocalChip.type = "button";
+    onlyLocalChip.innerHTML = `
+      <span class="chip-label">Only Local</span>
+      <span class="chip-clear" role="button" aria-label="Clear Only Local filter">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6 6 18"></path>
+          <path d="m6 6 12 12"></path>
+        </svg>
+      </span>
+    `;
+    onlyLocalChip.addEventListener("click", (event) => {
+      if (!event.target.closest(".chip-clear")) {
+        return;
+      }
+
+      onlyLocalDefinitions = false;
+      persistOnlyLocalDefinitions(false);
+      updateLocalDefinitionsToggleState();
+      currentCardsPage = 1;
+      renderFilters();
+      renderCards();
+    });
+    filtersContainer.appendChild(onlyLocalChip);
+  }
+
   renderHubTagFilterSection();
 }
 
@@ -3697,12 +3725,7 @@ function setupEventListeners() {
     if (event.key === ONLY_LOCAL_DEFINITIONS_STORAGE_KEY) {
       onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
       updateLocalDefinitionsToggleState();
-      renderCards();
-      return;
-    }
-    if (event.key === ONLY_LOCAL_DEFINITIONS_STORAGE_KEY) {
-      onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
-      updateLocalDefinitionsToggleState();
+      renderFilters();
       renderCards();
     }
   });
@@ -3981,6 +4004,7 @@ function setupEventListeners() {
       persistOnlyLocalDefinitions(onlyLocalDefinitions);
       updateLocalDefinitionsToggleState();
       currentCardsPage = 1;
+      renderFilters();
       renderCards();
     });
   }
