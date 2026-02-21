@@ -38,4 +38,10 @@
   --chip-active-shadow: 0 6px 16px rgba(139, 92, 246, 0.3);
   --chip-hover-border-color: rgba(139, 92, 246, 0.6);
   --chip-hover-text: #fff;
+  --md-h1-color: #6292e8;
+  --md-h2-color: #6292e8;
+  --md-h3-color: #6292e8;
+  --md-h4-color: #6292e8;
+  --md-h5-color: #6292e8;
+  --md-h6-color: #6292e8;
 }
