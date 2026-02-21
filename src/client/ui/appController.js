@@ -116,6 +116,7 @@ let currentDetailDefinitionPath = "";
 let currentDetailDefinitionContent = "";
 let currentDetailDefinitionDccUri = "";
 let currentDetailDefinitionStatus = "";
+let currentDetailDefinitionTags = [];
 let currentDetailInstalledDestinations = [];
 let currentDefinitionVersion = "";
 let activeHistoricalVersion = "";
@@ -2389,6 +2390,7 @@ async function showDetails(id) {
   }
 
   const tags = parseDefinitionTags(def.tags);
+  currentDetailDefinitionTags = [...tags];
   detailTags.innerHTML = tags.length > 0 ? `<div class="tag-pills">${renderTagPills(tags)}</div>` : "";
   detailTags.querySelectorAll("[data-tag]").forEach((element) => {
     element.addEventListener("click", () => {
@@ -3588,7 +3590,7 @@ function setupEventListeners() {
       return;
     }
 
-    const existingTags = parseDefinitionTags(definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId))?.tags || "");
+    const existingTags = Array.isArray(currentDetailDefinitionTags) ? [...currentDetailDefinitionTags] : [];
     if (existingTags.length > 0) {
       const shouldContinue = await openConfirmationDialog({
         title: "Replace existing tags?",
