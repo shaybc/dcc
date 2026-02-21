@@ -1612,9 +1612,9 @@ function openIntentSuggestionModal() {
   overlay.className = "duplicate-definition-overlay";
   overlay.innerHTML = `
     <div class="duplicate-definition-modal" role="dialog" aria-modal="true" aria-labelledby="intentSuggestionTitle">
-      <h3 id="intentSuggestionTitle">AI Intent Search</h3>
+      <h3 id="intentSuggestionTitle">AI Suggest Definitions</h3>
       <label class="duplicate-definition-field">Tell me about your task, and i will suggests the definitions to use
-        <textarea data-role="intent-task" rows="8" placeholder="Example: I need API design review prompts for TypeScript backend">${escapeHtml(latestSuggestionIntent)}</textarea>
+        <textarea data-role="intent-task" rows="8" placeholder="Example: I need to migrate native Java API to Spring microservices">${escapeHtml(latestSuggestionIntent)}</textarea>
       </label>
       <div class="duplicate-definition-actions">
         <button class="btn" type="button" data-role="intent-cancel">Cancel</button>
