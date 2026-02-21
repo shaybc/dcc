@@ -1220,15 +1220,6 @@ function handleDefinitionCardClick(definition, event) {
     return;
   }
 
-  const favoriteAction = event.target.closest("[data-action-favorite]");
-  if (favoriteAction) {
-    event.stopPropagation();
-    toggleFavoriteDefinition(definition.id);
-    updateFavoriteDefinitionButton();
-    renderCards();
-    return;
-  }
-
   const saveAction = event.target.closest("[data-action-save]");
   if (saveAction) {
     event.stopPropagation();
@@ -1295,11 +1286,6 @@ function createDefinitionCard(definition, { recommendationRank = null, recommend
           <path d="M5 9l5-5 5 5" />
         </svg>
       </div>` : ""}
-      <div class="icon-btn ${isFavoriteDefinition(definition.id) ? "is-favorite" : ""}" data-action-favorite title="${isFavoriteDefinition(definition.id) ? "Remove from favorites" : "Add to favorites"}" aria-label="${isFavoriteDefinition(definition.id) ? "Remove from favorites" : "Add to favorites"}">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="m10 2.3 2.34 4.95 5.4.82-3.9 3.99.92 5.65L10 15.05l-4.76 2.62.92-5.65-3.9-3.99 5.4-.82L10 2.3z" />
-        </svg>
-      </div>
       <div class="icon-btn" data-action-save>
         ${iconSvg(definition.status)}
       </div>
