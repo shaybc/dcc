@@ -38,6 +38,12 @@
   --chip-active-shadow: 0 6px 16px rgba(124, 58, 237, 0.2);
   --chip-hover-border-color: var(--accent);
   --chip-hover-text: #261645;
+  --md-h1-color: #6292e8;
+  --md-h2-color: #6292e8;
+  --md-h3-color: #6292e8;
+  --md-h4-color: #6292e8;
+  --md-h5-color: #6292e8;
+  --md-h6-color: #6292e8;
 }
 
 :root[data-theme="light"] header > .title-block > .main-title img {

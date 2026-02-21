@@ -4,6 +4,10 @@ A `rule` definition tells the assistant **what instruction text should be inject
 
 In practice, rules are how you enforce coding standards, documentation conventions, architecture constraints, or team preferences across Agent/Chat/Edit interactions.
 
+Rules file are guardrails / standards. Small-ish instruction blocks that constrain behavior (“always use TypeScript types”, “never change API contracts”, “prefer small PRs”).
+
+Rules are a component that gets included in context based on alwaysApply, or globs, or regex.
+
 ### Field-by-field reference
 
 - `name` (**recommended**)  

@@ -8,7 +8,7 @@ Use prompt definitions when you want consistent behavior for repeated work (for 
 
 At least one of these should be present:
 
-- `prompt` (string, optional)
+`prompt` (string, optional)
   - A single block of text instructions.
   - Best for straightforward templates where one instruction block is enough.
   - Supports multiline content with YAML `|` syntax.
@@ -19,21 +19,21 @@ At least one of these should be present:
 
 Prompt definitions also use common fields shared across schema types:
 
-- `name` (required)
+`name` (required)
   - Human-friendly display name shown in DCC and Continue prompt pickers.
 
-- `dcc_uri` (required)
+`dcc_uri` (required)
   - Stable unique identifier (for example: `dev/prompts/bug-fix`).
   - Used for tracking, versioning, and installs.
 
-- `description` (required)
+`description` (required)
   - Short summary of what the prompt helps accomplish.
 
-- `invokable` (optional, boolean)
+`invokable` (optional, boolean)
   - When `true`, the prompt is exposed as a slash command in Continue (type `/` to find it).
   - This is what turns the definition into an easy-to-run reusable command across Chat/Plan/Agent.
 
-- `version`, `schema`, `dcc_tags`, `key`, `type` (optional)
+`version`, `schema`, `dcc_tags`, `key`, `type` (optional)
   - Additional metadata for compatibility, categorization, and tooling.
 
 ### Example: simple prompt text
