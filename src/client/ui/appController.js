@@ -854,13 +854,14 @@ function filterIconSvg(type) {
 }
 
 function renderFilters() {
+  const isInstalledPage = activeTopPage === "installed";
   const definitionTypes = definitions.map((def) => normalizeFilterType(def.type));
   const uniqueTypes = new Set(
     [...FILTER_TYPES, ...definitionTypes]
       .filter((type) => Boolean(type) && String(type).toLowerCase() !== "unknown")
       .map((type) => String(type).toLowerCase())
   );
-  const types = ["all", ...SPECIAL_FILTERS, ...uniqueTypes];
+  const types = isInstalledPage ? ["installed"] : ["all", ...SPECIAL_FILTERS, ...uniqueTypes];
   filtersContainer.innerHTML = "";
   filterMenu.innerHTML = "";
   types.forEach((type) => {
@@ -868,9 +869,9 @@ function renderFilters() {
     if (type === activeFilter && type !== "all") {
       const chip = document.createElement("button");
       chip.className = "chip active";
-      chip.innerHTML = `
-        <span class="chip-icon">${filterIconSvg(type)}</span>
-        <span class="chip-label">${label}</span>
+      const chipClearMarkup = type === "installed" && isInstalledPage
+        ? ""
+        : `
         <span class="chip-clear" role="button" aria-label="Clear filter">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 6 6 18"></path>
@@ -878,7 +879,15 @@ function renderFilters() {
           </svg>
         </span>
       `;
+      chip.innerHTML = `
+        <span class="chip-icon">${filterIconSvg(type)}</span>
+        <span class="chip-label">${label}</span>
+        ${chipClearMarkup}
+      `;
       chip.addEventListener("click", (event) => {
+        if (isInstalledPage && type === "installed") {
+          return;
+        }
         if (event.target.closest(".chip-clear")) {
           activeFilter = "all";
         } else {
@@ -1488,6 +1497,10 @@ function createSemanticSearchPrompt() {
 }
 
 function renderCards() {
+  const isInstalledPage = activeTopPage === "installed";
+  if (isInstalledPage && activeFilter !== "installed") {
+    activeFilter = "installed";
+  }
   const queryTags = parseTagSearchQuery(searchTerm);
   const tagOnlyMode = isTagOnlyQuery(queryTags);
   const hasSelectedProject = Boolean(String(devProjectInput.value || "").trim());
@@ -1503,7 +1516,9 @@ function renderCards() {
       return false;
     }
     const matchesPage = activeTopPage !== "favorites" || isFavoriteDefinition(def.id);
-    const matchesFilter = activeFilter === "all"
+    const matchesFilter = isInstalledPage
+      ? isInstalledInCurrentProject
+      : activeFilter === "all"
       || (activeFilter === "installed" && isInstalledInCurrentProject)
       || def.type === activeFilter;
     const text = `${def.name} ${def.description}`.toLowerCase();
@@ -1532,7 +1547,9 @@ function renderCards() {
           return false;
         }
         const matchesPage = activeTopPage !== "favorites" || isFavoriteDefinition(def.id);
-        const matchesFilter = activeFilter === "all"
+        const matchesFilter = isInstalledPage
+          ? isInstalledInCurrentProject
+          : activeFilter === "all"
           || (activeFilter === "installed" && isInstalledInCurrentProject)
           || def.type === activeFilter;
         return matchesPage && matchesFilter && matchesSelectedTagFilters(def);
