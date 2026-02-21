@@ -2930,6 +2930,74 @@ function closeDuplicateDefinitionModal() {
   }
 }
 
+function openConfirmationDialog({
+  title = "Confirm action",
+  message = "Are you sure you want to continue?",
+  confirmText = "Confirm",
+  cancelText = "Cancel"
+} = {}) {
+  return new Promise((resolve) => {
+    const existingOverlay = document.getElementById("confirmationDialogOverlay");
+    existingOverlay?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "confirmationDialogOverlay";
+    overlay.className = "editor-modal-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "editor-modal";
+
+    const titleElement = document.createElement("h3");
+    titleElement.textContent = title;
+
+    const messageElement = document.createElement("p");
+    messageElement.textContent = message;
+    messageElement.style.margin = "0";
+
+    const actions = document.createElement("div");
+    actions.className = "editor-modal-actions";
+
+    const cancelButton = document.createElement("button");
+    cancelButton.className = "btn";
+    cancelButton.type = "button";
+    cancelButton.textContent = cancelText;
+
+    const confirmButton = document.createElement("button");
+    confirmButton.className = "btn primary";
+    confirmButton.type = "button";
+    confirmButton.textContent = confirmText;
+
+    const cleanUpAndResolve = (result) => {
+      document.removeEventListener("keydown", onKeydown);
+      overlay.remove();
+      resolve(Boolean(result));
+    };
+
+    const onKeydown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        cleanUpAndResolve(false);
+      }
+    };
+
+    cancelButton.addEventListener("click", () => cleanUpAndResolve(false));
+    confirmButton.addEventListener("click", () => cleanUpAndResolve(true));
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        cleanUpAndResolve(false);
+      }
+    });
+
+    actions.append(cancelButton, confirmButton);
+    modal.append(titleElement, messageElement, actions);
+    overlay.append(modal);
+
+    document.addEventListener("keydown", onKeydown);
+    document.body.append(overlay);
+    confirmButton.focus();
+  });
+}
+
 function openDuplicateDefinitionModal({ defaultName, defaultDccUri, defaultContent }) {
   closeDuplicateDefinitionModal();
   return new Promise((resolve) => {
@@ -3520,13 +3588,25 @@ function setupEventListeners() {
       return;
     }
 
+    const existingTags = parseDefinitionTags(definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId))?.tags || "");
+    if (existingTags.length > 0) {
+      const shouldContinue = await openConfirmationDialog({
+        title: "Replace existing tags?",
+        message: "This definition already has tags. Auto-tagging may replace the current tag selection.",
+        confirmText: "Continue",
+        cancelText: "Cancel"
+      });
+      if (!shouldContinue) {
+        return;
+      }
+    }
+
     const originalLabel = autoTagDefinitionButton.getAttribute("title") || "Auto-tag definition with AI";
     autoTagDefinitionButton.disabled = true;
     autoTagDefinitionButton.setAttribute("title", "Auto-tagging...");
 
     try {
       const availableTags = await loadAvailableDefinitionTags();
-      const existingTags = parseDefinitionTags(definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId))?.tags || "");
       const suggestedTags = await suggestTagsForDefinitionContent({
         definitionContent: currentDetailDefinitionContent,
         existingTags,
