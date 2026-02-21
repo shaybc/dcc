@@ -2930,6 +2930,62 @@ function closeDuplicateDefinitionModal() {
   }
 }
 
+function openConfirmationDialog({
+  title = "Confirm action",
+  message = "Are you sure you want to continue?",
+  confirmText = "Confirm",
+  cancelText = "Cancel"
+} = {}) {
+  return new Promise((resolve) => {
+    const existingOverlay = document.getElementById("confirmationDialogOverlay");
+    existingOverlay?.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "confirmationDialogOverlay";
+    overlay.className = "duplicate-definition-overlay";
+    overlay.innerHTML = `
+      <div class="duplicate-definition-modal" role="dialog" aria-modal="true" aria-labelledby="confirmationDialogTitle">
+        <div class="modal-topbar">
+          <div class="modal-kicker">Confirmation</div>
+          <button class="modal-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <h3 id="confirmationDialogTitle">${escapeHtml(title)}</h3>
+        <p style="margin: 0; color: var(--muted);">${escapeHtml(message)}</p>
+        <div class="generate-definition-modal-actions">
+          <button class="btn" type="button" data-action="cancel">${escapeHtml(cancelText)}</button>
+          <button class="btn btn-primary" type="button" data-action="confirm">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+
+    const cleanUpAndResolve = (result) => {
+      document.removeEventListener("keydown", onKeydown);
+      overlay.remove();
+      resolve(Boolean(result));
+    };
+
+    const onKeydown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        cleanUpAndResolve(false);
+      }
+    };
+
+    overlay.querySelector('[data-action="cancel"]')?.addEventListener("click", () => cleanUpAndResolve(false));
+    overlay.querySelector('[data-action="confirm"]')?.addEventListener("click", () => cleanUpAndResolve(true));
+    overlay.querySelector('.modal-close')?.addEventListener("click", () => cleanUpAndResolve(false));
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        cleanUpAndResolve(false);
+      }
+    });
+
+    document.addEventListener("keydown", onKeydown);
+    document.body.append(overlay);
+    overlay.querySelector('[data-action="confirm"]')?.focus();
+  });
+}
+
 function openDuplicateDefinitionModal({ defaultName, defaultDccUri, defaultContent }) {
   closeDuplicateDefinitionModal();
   return new Promise((resolve) => {
@@ -3522,7 +3578,12 @@ function setupEventListeners() {
 
     const existingTags = parseDefinitionTags(definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId))?.tags || "");
     if (existingTags.length > 0) {
-      const shouldContinue = window.confirm("This definition already has tags. Auto-tagging may replace the current tag selection. Continue?");
+      const shouldContinue = await openConfirmationDialog({
+        title: "Replace existing tags?",
+        message: "This definition already has tags. Auto-tagging may replace the current tag selection.",
+        confirmText: "Continue",
+        cancelText: "Cancel"
+      });
       if (!shouldContinue) {
         return;
       }
