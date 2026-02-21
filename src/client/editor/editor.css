@@ -25,6 +25,10 @@ body {
   margin: 0;
 }
 
+.editor-title-help-icon {
+  margin-left: 2px;
+}
+
 .editor-title-icon {
   width: 20px;
   height: 20px;
