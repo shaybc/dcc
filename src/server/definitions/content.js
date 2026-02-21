@@ -62,8 +62,13 @@ export function applyVersionToContent(content, filePath, version) {
 
 export function sanitizeYamlHeaderScalars(raw) {
   return String(raw || "")
-    .replace(/^(\s*)(name|version|schema|description)\s*:\s*(@[^#\r\n]*)(\s*(?:#.*)?)$/gim, (_, indent, key, value, suffix) => `${indent}${key}: "${String(value).trim()}"${suffix || ""}`)
-    .replace(/^(\s*)(name|version|schema|description)\s*:\s*([^\r\n#"'|>][^\r\n#]*?:\s[^\r\n#]*)(\s*(?:#.*)?)$/gim, (_, indent, key, value, suffix) => `${indent}${key}: "${String(value).trim()}"${suffix || ""}`);
+    .replace(/^(\s*)(name|version|schema|description)\s*:\s*([^#\r\n]*?)(\s*(?:#.*)?)$/gim, (fullMatch, indent, key, value, suffix) => {
+      const trimmedValue = String(value || "").trim();
+      if (!trimmedValue) return fullMatch;
+      if (["|", ">", "|-", ">-", "|+", ">+"].includes(trimmedValue)) return fullMatch;
+      if (/^("[\s\S]*"|'[\s\S]*')$/.test(trimmedValue)) return fullMatch;
+      return `${indent}${key}: "${trimmedValue}"${suffix || ""}`;
+    });
 }
 
 export function readDefinitionYamlData(rawContent, filePath = "") {
