@@ -7,6 +7,52 @@ import { walkFiles } from "../utils/files.js";
 import { ensureAssetRepoMigration, getEnabledAssetRepos } from "../utils/assetRepos.js";
 import { getTeamRoot } from "./install.js";
 import { parseDefinition } from "./parse.js";
+import { readDefinitionYamlData } from "./content.js";
+
+function isDefinitionCandidate(filePath, content = "") {
+  const ext = path.extname(String(filePath || "")).toLowerCase();
+  if ([".yaml", ".yml", ".md", ".markdown", ".mdx"].includes(ext)) return true;
+  const raw = String(content || "");
+  return raw.includes("dcc_uri:") || raw.includes("dcc_definition_type:");
+}
+
+function getRawNameField(filePath, content = "") {
+  try {
+    const { data } = readDefinitionYamlData(content, filePath);
+    return String(data?.name || "").trim();
+  } catch (_error) {
+    return "";
+  }
+}
+
+function buildSkippedReason(definition, rawName) {
+  const parseError = String(definition?.parseError || "").trim();
+  if (!definition?.dccUri && !definition?.dccDefinitionType) {
+    if (parseError) {
+      return `not a definition file: metadata could not be parsed (${parseError})`;
+    }
+    return "not a definition file: missing both dcc_uri and dcc_definition_type metadata fields";
+  }
+  if (!definition?.dccDefinitionType) {
+    return "dcc_definition_type missing (expected in definition metadata)";
+  }
+  if (!definition?.type) {
+    const details = parseError
+      ? ` type detection failed after parsing metadata (${parseError})`
+      : " type detection failed after parsing metadata";
+    return `unsupported dcc_definition_type: ${definition.dccDefinitionType}.${details}. Supported values: prompt, agent, config, model, mcp_server, rule, doc, context, workflow.`;
+  }
+  if (!rawName) {
+    return `dcc_definition_type is ${definition.dccDefinitionType} but required field 'name' is missing`;
+  }
+  if (!definition?.dccUri) {
+    return "required field dcc_uri is missing (expected in definition metadata)";
+  }
+  if (parseError) {
+    return `definition could not be loaded cleanly: ${parseError}`;
+  }
+  return "definition could not be loaded";
+}
 
 export async function collectTeamFiles() {
   const teamRoot = getTeamRoot();
@@ -52,17 +98,62 @@ export async function loadDefinitions() {
   }
 
   const teamFiles = await collectTeamFiles();
-  const parsedRepoDefinitions = (await Promise.all(repoFiles.map(async (repoFile) => {
-    const definition = await parseDefinition(repoFile.filePath);
-    return {
-      ...definition,
-      repoId: repoFile.repoId,
-      repoName: repoFile.repoName,
-    };
-  })));
-  const repoDefinitions = parsedRepoDefinitions.filter((definition) => definition.dccUri && definition.type);
-  const parsedTeamDefinitions = await Promise.all(teamFiles.map((filePath) => parseDefinition(filePath)));
-  const teamDefinitions = parsedTeamDefinitions.filter((definition) => definition.dccUri && definition.type);
+  const skippedDefinitions = [];
+
+  const parsedRepoDefinitions = [];
+  for (const repoFile of repoFiles) {
+    try {
+      const definition = await parseDefinition(repoFile.filePath);
+      const rawName = getRawNameField(repoFile.filePath, definition.content);
+      if (definition.dccUri && definition.type && rawName) {
+        parsedRepoDefinitions.push({
+          ...definition,
+          repoId: repoFile.repoId,
+          repoName: repoFile.repoName,
+        });
+      } else if (isDefinitionCandidate(repoFile.filePath, definition.content)) {
+        skippedDefinitions.push({
+          filePath: repoFile.filePath,
+          reason: buildSkippedReason(definition, rawName),
+          source: "repo",
+        });
+      }
+    } catch (error) {
+      if (isDefinitionCandidate(repoFile.filePath)) {
+        skippedDefinitions.push({
+          filePath: repoFile.filePath,
+          reason: error?.message || "Unable to parse file",
+          source: "repo",
+        });
+      }
+    }
+  }
+
+  const teamDefinitions = [];
+  for (const filePath of teamFiles) {
+    try {
+      const definition = await parseDefinition(filePath);
+      const rawName = getRawNameField(filePath, definition.content);
+      if (definition.dccUri && definition.type && rawName) {
+        teamDefinitions.push(definition);
+      } else if (isDefinitionCandidate(filePath, definition.content)) {
+        skippedDefinitions.push({
+          filePath,
+          reason: buildSkippedReason(definition, rawName),
+          source: "team",
+        });
+      }
+    } catch (error) {
+      if (isDefinitionCandidate(filePath)) {
+        skippedDefinitions.push({
+          filePath,
+          reason: error?.message || "Unable to parse file",
+          source: "team",
+        });
+      }
+    }
+  }
+  const repoDefinitions = parsedRepoDefinitions;
   const repoKeyMap = new Map(repoDefinitions.map((definition) => [definition.key, definition.filePath]));
   const teamKeyMap = new Set(teamDefinitions.map((definition) => definition.key));
   const now = new Date().toISOString();
@@ -134,5 +225,10 @@ export async function loadDefinitions() {
   await runDb("DELETE FROM project_definition_copies WHERE definitionKey NOT IN (SELECT key FROM definitions)");
   await runDb("DELETE FROM project_definition_destinations WHERE definitionKey NOT IN (SELECT key FROM definitions)");
 
-  return { repoCount: repoFiles.length, teamCount: teamFiles.length, repoRoots: availableRepos.map((repo) => repo.localPath) };
+  return {
+    repoCount: repoFiles.length,
+    teamCount: teamFiles.length,
+    repoRoots: availableRepos.map((repo) => repo.localPath),
+    skippedDefinitions,
+  };
 }

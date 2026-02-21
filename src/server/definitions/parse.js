@@ -3,7 +3,8 @@ import fs from "fs";
 import matter from "gray-matter";
 import YAML from "yaml";
 import { detectDefinitionType } from "./detectDefinitionType.js";
-import { normalizeDccDefinitionType } from "./definitionType.js";
+import { dccDefinitionTypeToInternal, normalizeDccDefinitionType } from "./definitionType.js";
+import { sanitizeYamlHeaderScalars } from "./content.js";
 
 const fsp = fs.promises;
 
@@ -11,7 +12,9 @@ export function deriveType(filePath, data, rawContent = "") {
   const dccDefinitionType = normalizeDccDefinitionType(data?.dcc_definition_type);
   if (dccDefinitionType) {
     const detected = detectDefinitionType(rawContent || "", filePath || "");
-    return String(detected || "").toLowerCase();
+    const normalizedDetected = String(detected || "").toLowerCase();
+    if (normalizedDetected) return normalizedDetected;
+    return String(dccDefinitionTypeToInternal(dccDefinitionType) || "").toLowerCase();
   }
 
   return "";
@@ -110,18 +113,40 @@ export async function parseDefinition(filePath) {
 
 export function parseDefinitionContent(raw, filePath) {
   let parsed = { data: {}, content: raw };
+  let parseError = "";
   const ext = path.extname(filePath).toLowerCase();
   if ([".yml", ".yaml"].includes(ext)) {
     let yamlData = {};
     try {
-      const parsedYaml = YAML.parse(raw);
+      const parsedYaml = YAML.parse(sanitizeYamlHeaderScalars(raw));
       if (parsedYaml && typeof parsedYaml === "object" && !Array.isArray(parsedYaml)) yamlData = parsedYaml;
-    } catch (_error) {
+    } catch (error) {
       yamlData = {};
+      parseError = error?.message || "Unable to parse YAML definition.";
     }
     parsed = { data: { ...parseYamlHeaderFields(raw), ...yamlData }, content: raw };
   } else {
-    try { parsed = matter(raw); } catch (_error) { parsed = { data: {}, content: raw }; }
+    try {
+      parsed = matter(raw);
+    } catch (error) {
+      const frontmatterMatch = String(raw || "").match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+      if (frontmatterMatch) {
+        try {
+          const fallbackData = YAML.parse(sanitizeYamlHeaderScalars(frontmatterMatch[1])) || {};
+          parsed = {
+            data: (fallbackData && typeof fallbackData === "object" && !Array.isArray(fallbackData)) ? fallbackData : {},
+            content: raw,
+          };
+          parseError = `Frontmatter parsing required fallback: ${error?.message || "unknown parser error"}`;
+        } catch (frontmatterError) {
+          parsed = { data: {}, content: raw };
+          parseError = frontmatterError?.message || error?.message || "Unable to parse markdown frontmatter.";
+        }
+      } else {
+        parsed = { data: {}, content: raw };
+        parseError = error?.message || "Unable to parse markdown definition.";
+      }
+    }
   }
   const type = deriveType(filePath, parsed.data, raw);
   const tags = normalizeTags(parsed.data.dcc_tags);
@@ -142,6 +167,7 @@ export function parseDefinitionContent(raw, filePath) {
     content: raw,
     type,
     filePath,
-    key: buildKey(type, filePath, { dccUri })
+    key: buildKey(type, filePath, { dccUri }),
+    parseError,
   };
 }

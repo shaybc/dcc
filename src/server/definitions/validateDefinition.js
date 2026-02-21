@@ -1,5 +1,6 @@
 import matter from "gray-matter";
 import YAML from "yaml";
+import { sanitizeYamlHeaderScalars } from "./content.js";
 import { z } from "zod";
 import { normalizeDefinitionType } from "./parse.js";
 
@@ -326,7 +327,7 @@ export function validateDefinition({ definition, options = {}, knownDefinitions 
     } else if (format === "json") {
       normalized = JSON.parse(rawContent || "{}");
     } else {
-      normalized = YAML.parse(rawContent || "") || {};
+      normalized = YAML.parse(sanitizeYamlHeaderScalars(rawContent || "")) || {};
     }
   } catch (error) {
     addCheck(checks, {

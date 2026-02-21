@@ -30,3 +30,13 @@ Always verify risky commands.
 
   assert.equal(detectDefinitionType(content, "definitions/safety.md"), "");
 });
+
+
+test("detectDefinitionType tolerates unquoted description values with colons", () => {
+  const content = `name: MongoDB MCP Server
+description: A Model Context Protocol server for interacting with MongoDB Databases and MongoDB Atlas. Learn more: https://github.com/mongodb-js/mongodb-mcp-server
+dcc_definition_type: mcp_server
+`;
+
+  assert.equal(detectDefinitionType(content, "mcpservers/mongodb.yaml"), "mcpServer");
+});
