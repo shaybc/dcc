@@ -267,7 +267,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     const generationConfig = cleanUndefined({
       temperature: parsed.temperature,
       maxOutputTokens: parsed.max_tokens,
-      maxThinkingTokens: parsed.max_thinking_tokens
+      thinkingConfig: { thinkingBudget: parsed.max_thinking_tokens || 0 }
     });
 
     const requestPayload = {
