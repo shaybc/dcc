@@ -98,6 +98,7 @@ let suggestionDefinitionIds = [];
 let suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
 let latestSuggestionIntent = "";
 const RECOMMENDATIONS_VISIBILITY_STORAGE_KEY = "dcc.recommendations.visible";
+const INTENT_RECOMMENDATIONS_STORAGE_KEY = "dcc.recommendations.intent";
 const HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY = "dcc.hub.hideInstalledDefinitions";
 const ONLY_LOCAL_DEFINITIONS_STORAGE_KEY = "dcc.hub.onlyLocalDefinitions";
 let recommendationsVisible = getStoredRecommendationsVisibility();
@@ -192,6 +193,86 @@ function persistRecommendationsVisibility(value) {
   } catch (_error) {
     // Ignore local storage access errors and keep the in-memory state.
   }
+}
+
+function getStoredIntentRecommendations() {
+  try {
+    const raw = localStorage.getItem(INTENT_RECOMMENDATIONS_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    const projectPath = String(parsed?.projectPath || "").trim();
+    const intent = String(parsed?.intent || "").trim();
+    const suggestions = normalizeAiSuggestedEntries(parsed?.suggestions || []);
+    if (!projectPath || !intent || !suggestions.length) {
+      return null;
+    }
+    return { projectPath, intent, suggestions };
+  } catch (_error) {
+    return null;
+  }
+}
+
+function persistIntentRecommendations(projectPath, intent, suggestions = []) {
+  try {
+    const normalizedProjectPath = String(projectPath || "").trim();
+    const normalizedIntent = String(intent || "").trim();
+    const normalizedSuggestions = normalizeAiSuggestedEntries(suggestions);
+    if (!normalizedProjectPath || !normalizedIntent || !normalizedSuggestions.length) {
+      localStorage.removeItem(INTENT_RECOMMENDATIONS_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(INTENT_RECOMMENDATIONS_STORAGE_KEY, JSON.stringify({
+      projectPath: normalizedProjectPath,
+      intent: normalizedIntent,
+      suggestions: normalizedSuggestions
+    }));
+  } catch (_error) {
+    // Ignore local storage access errors and keep in-memory state.
+  }
+}
+
+function clearPersistedIntentRecommendations() {
+  try {
+    localStorage.removeItem(INTENT_RECOMMENDATIONS_STORAGE_KEY);
+  } catch (_error) {
+    // Ignore local storage access errors and keep in-memory state.
+  }
+}
+
+function applyIntentSuggestions(projectPath, intent, suggestions = []) {
+  const normalizedProjectPath = String(projectPath || "").trim();
+  const normalizedIntent = String(intent || "").trim();
+  const normalizedSuggestions = normalizeAiSuggestedEntries(suggestions);
+  if (!normalizedProjectPath || !normalizedIntent || !normalizedSuggestions.length) {
+    return false;
+  }
+
+  suggestionDefinitionIds = normalizedSuggestions.map((entry) => entry.definitionId);
+  suggestionsMeta = {
+    projectPath: normalizedProjectPath,
+    projectType: "intent",
+    corePlatform: "",
+    suggestions: normalizedSuggestions
+  };
+  latestSuggestionIntent = normalizedIntent;
+  return true;
+}
+
+async function loadSuggestionsForCurrentProject() {
+  const selectedProjectPath = String(devProjectInput.value || "").trim();
+  const persistedIntentSuggestions = getStoredIntentRecommendations();
+  if (persistedIntentSuggestions && persistedIntentSuggestions.projectPath === selectedProjectPath) {
+    if (applyIntentSuggestions(
+      persistedIntentSuggestions.projectPath,
+      persistedIntentSuggestions.intent,
+      persistedIntentSuggestions.suggestions
+    )) {
+      return;
+    }
+  }
+  await fetchDefinitionSuggestions();
 }
 
 function getStoredHideInstalledDefinitions() {
@@ -1514,14 +1595,9 @@ async function suggestDefinitionsByIntent(intent = "") {
       return;
     }
 
-    suggestionDefinitionIds = suggestions.map((entry) => entry.definitionId);
-    suggestionsMeta = {
-      projectPath: String(devProjectInput.value || "").trim(),
-      projectType: "intent",
-      corePlatform: "",
-      suggestions
-    };
-    latestSuggestionIntent = normalizedIntent;
+    const selectedProjectPath = String(devProjectInput.value || "").trim();
+    applyIntentSuggestions(selectedProjectPath, normalizedIntent, suggestions);
+    persistIntentRecommendations(selectedProjectPath, normalizedIntent, suggestions);
     renderRecommendationSection();
   } catch (error) {
     console.info(`[INTENT_SEARCH] ai_result=error error_preview=${JSON.stringify(truncateForIntentSearchLog(error?.message || error, 300))}`);
@@ -2970,9 +3046,13 @@ searchInput.addEventListener("input", (event) => {
 
 devProjectInput.addEventListener("change", async (event) => {
   const selected = event.target.value.trim();
+  const persistedIntentSuggestions = getStoredIntentRecommendations();
+  if (persistedIntentSuggestions && persistedIntentSuggestions.projectPath !== selected) {
+    clearPersistedIntentRecommendations();
+  }
   if (!selected) {
     await setCurrentDevProject("");
-    await fetchDefinitionSuggestions();
+    await loadSuggestionsForCurrentProject();
     await fetchDefinitions();
     updateInstallDefinitionButtonState();
     return;
@@ -2981,7 +3061,7 @@ devProjectInput.addEventListener("change", async (event) => {
     return;
   }
   await setCurrentDevProject(selected);
-  await fetchDefinitionSuggestions();
+  await loadSuggestionsForCurrentProject();
   await fetchDefinitions();
   updateInstallDefinitionButtonState();
 });
@@ -3677,7 +3757,7 @@ export function initializeApp() {
   setupEventListeners();
   loadDevProjects();
   loadCurrentDevProject()
-    .then(fetchDefinitionSuggestions)
+    .then(loadSuggestionsForCurrentProject)
     .then(fetchDefinitions)
     .then(handleRoute);
 }
