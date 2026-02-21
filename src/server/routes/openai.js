@@ -112,7 +112,7 @@ openaiRouter.post("/completions", async (req, res) => {
     }
 
     const parsed = CompletionSchema.parse(req.body);
-    logInfo(`[OPENAI] id=${reqId} incoming max_tokens=${parsed.max_tokens} temperature=${parsed.temperature}`);
+    logInfo(`[OPENAI] id=${reqId} incoming max_tokens=${parsed.max_tokens} parsed.max_thinking_tokens=${parsed.max_thinking_tokens || 0} temperature=${parsed.temperature}`);
 
     const client = await getClientForModel(parsed.model);
     logInfo(`[OPENAI] id=${reqId} completions stream=${Boolean(parsed.stream)} model=${parsed.model || client.model}`);
@@ -244,7 +244,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
   try {
     const parsed = ChatSchema.parse(req.body);
-    logInfo(`[OPENAI] id=${reqId} incoming max_tokens=${parsed.max_tokens} temperature=${parsed.temperature}`);
+    logInfo(`[OPENAI] id=${reqId} incoming max_tokens=${parsed.max_tokens} parsed.max_thinking_tokens=${parsed.max_thinking_tokens || 0} temperature=${parsed.temperature}`);
 
     const system = parsed.messages.find(m => m.role === "system")?.content;
     const systemText = typeof system === "string" ? system : "";
@@ -266,7 +266,8 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
     const generationConfig = cleanUndefined({
       temperature: parsed.temperature,
-      maxOutputTokens: parsed.max_tokens
+      maxOutputTokens: parsed.max_tokens,
+      maxThinkingTokens: parsed.max_thinking_tokens
     });
 
     const requestPayload = {
