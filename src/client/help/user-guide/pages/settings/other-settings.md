@@ -1,6 +1,6 @@
-# Theme, Recommendations, and Timeout
+# Theme, Recommendations, Timeout, and AI Logging
 
-This page covers the remaining settings controls that are not documented in the other Settings help pages.
+This page covers the remaining controls in **Settings** that are not documented in the other Settings help pages.
 
 ## Theme
 
@@ -10,7 +10,7 @@ Use **Theme** to switch between dark and light mode.
 
 1. Open **Settings**.
 2. In the **Theme** card, toggle the switch.
-3. The UI updates immediately and persists your preference.
+3. The UI updates immediately and keeps your preference for future sessions.
 
 ---
 
@@ -43,6 +43,29 @@ Use **Loading Timeout** to define how long async operations can run before timeo
 1. Enter a timeout value.
 2. Click **Save timeout**.
 3. The new timeout applies to long-running operations (for example sync, scans, or load actions).
+
+---
+
+## AI Logging
+
+Use **AI Logging** to control whether DCC records AI request/response logs for troubleshooting.
+
+### Fields
+
+- **Log OpenAI response**: enables response logging for OpenAI-compatible facade calls.
+- **Log Gemini client**: enables request/response logging for Gemini client traffic.
+- **Max response length**: limits how many characters are stored for each logged response (**50** to **5000**).
+
+### How to use
+
+1. Check or uncheck the logging toggles as needed.
+2. Set **Max response length**.
+3. Click **Save logging settings**.
+
+### Notes
+
+- Keeping logs enabled can help with debugging integrations.
+- Lower max response length values reduce stored log volume.
 
 ---
 
