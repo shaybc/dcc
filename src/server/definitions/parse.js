@@ -3,7 +3,7 @@ import fs from "fs";
 import matter from "gray-matter";
 import YAML from "yaml";
 import { detectDefinitionType } from "./detectDefinitionType.js";
-import { normalizeDccDefinitionType } from "./definitionType.js";
+import { dccDefinitionTypeToInternal, normalizeDccDefinitionType } from "./definitionType.js";
 import { sanitizeYamlHeaderScalars } from "./content.js";
 
 const fsp = fs.promises;
@@ -12,7 +12,9 @@ export function deriveType(filePath, data, rawContent = "") {
   const dccDefinitionType = normalizeDccDefinitionType(data?.dcc_definition_type);
   if (dccDefinitionType) {
     const detected = detectDefinitionType(rawContent || "", filePath || "");
-    return String(detected || "").toLowerCase();
+    const normalizedDetected = String(detected || "").toLowerCase();
+    if (normalizedDetected) return normalizedDetected;
+    return String(dccDefinitionTypeToInternal(dccDefinitionType) || "").toLowerCase();
   }
 
   return "";

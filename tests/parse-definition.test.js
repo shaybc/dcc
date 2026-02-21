@@ -26,6 +26,30 @@ test("parseDefinitionContent sets empty type when dcc_definition_type is missing
   assert.equal(parsed.type, "");
 });
 
+test("parseDefinitionContent maps doc dcc_definition_type to internal type even if parser fallback is needed", () => {
+  const content = `name: C# Docs
+dcc_uri: dev/docs/csharp_docs
+version: "1.0"
+schema: v1
+description: Official C# language documentation and .NET API reference
+dcc_definition_type: doc
+dcc_tags:
+  - backend
+  - csharp
+  - dotnet
+docs:
+  - name: C# Language Reference
+    startUrl: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/
+  - name: .NET API Browser
+    startUrl: https://learn.microsoft.com/en-us/dotnet/api/
+`;
+
+  const parsed = parseDefinitionContent(content, "docs/csharp-docs.yaml");
+  assert.equal(parsed.dccDefinitionType, "doc");
+  assert.equal(parsed.type, "doc");
+  assert.equal(parsed.key, "docs::dev/docs/csharp_docs");
+});
+
 test("parseDefinitionContent parses markdown frontmatter with unquoted colon in description", () => {
   const content = `---
 name: Debugging rules
@@ -56,6 +80,14 @@ test("sanitizeYamlHeaderScalars quotes one-line allowlisted metadata values", ()
   assert.match(sanitized, /^version:\s+"1.0.0"/m);
   assert.match(sanitized, /^schema:\s+"v1"/m);
   assert.match(sanitized, /^description:\s+"Minimal rules"/m);
+});
+
+test("sanitizeYamlHeaderScalars preserves inline hash in unquoted values", () => {
+  const raw = "name: C# Docs\ndescription: Official C# language docs\n";
+  const sanitized = sanitizeYamlHeaderScalars(raw);
+
+  assert.match(sanitized, /^name:\s+"C# Docs"/m);
+  assert.match(sanitized, /^description:\s+"Official C# language docs"/m);
 });
 
 test("sanitizeYamlHeaderScalars preserves multiline block style metadata", () => {

@@ -37,7 +37,10 @@ function buildSkippedReason(definition, rawName) {
     return "dcc_definition_type missing (expected in definition metadata)";
   }
   if (!definition?.type) {
-    return `unsupported dcc_definition_type: ${definition.dccDefinitionType}`;
+    const details = parseError
+      ? ` type detection failed after parsing metadata (${parseError})`
+      : " type detection failed after parsing metadata";
+    return `unsupported dcc_definition_type: ${definition.dccDefinitionType}.${details}. Supported values: prompt, agent, config, model, mcp_server, rule, doc, context, workflow.`;
   }
   if (!rawName) {
     return `dcc_definition_type is ${definition.dccDefinitionType} but required field 'name' is missing`;
