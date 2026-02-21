@@ -1510,7 +1510,7 @@ function renderCards() {
     }
     const matchesPage = activeTopPage !== "favorites" || isFavoriteDefinition(def.id);
     const matchesFilter = isInstalledPage
-      ? isInstalledInCurrentProject
+      ? isInstalledInCurrentProject && (activeFilter === "all" || def.type === activeFilter)
       : activeFilter === "all"
       || def.type === activeFilter;
     const text = `${def.name} ${def.description}`.toLowerCase();
@@ -1540,7 +1540,7 @@ function renderCards() {
         }
         const matchesPage = activeTopPage !== "favorites" || isFavoriteDefinition(def.id);
         const matchesFilter = isInstalledPage
-          ? isInstalledInCurrentProject
+          ? isInstalledInCurrentProject && (activeFilter === "all" || def.type === activeFilter)
           : activeFilter === "all"
           || def.type === activeFilter;
         return matchesPage && matchesFilter && matchesSelectedTagFilters(def);
