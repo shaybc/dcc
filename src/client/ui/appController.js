@@ -859,7 +859,11 @@ function renderFilters() {
       .filter((type) => Boolean(type) && String(type).toLowerCase() !== "unknown")
       .map((type) => String(type).toLowerCase())
   );
-  const types = isInstalledPage ? ["installed"] : ["all", ...SPECIAL_FILTERS, ...uniqueTypes];
+  const types = ["all", ...SPECIAL_FILTERS, ...uniqueTypes]
+    .filter((type, index, arr) => type !== "installed" && arr.indexOf(type) === index);
+  if (!types.includes(activeFilter)) {
+    activeFilter = "all";
+  }
   filtersContainer.innerHTML = "";
   filterMenu.innerHTML = "";
   types.forEach((type) => {
