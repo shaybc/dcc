@@ -12,6 +12,7 @@ import { createDocForm } from "./forms/docForm.js";
 import { createConfigForm } from "./forms/configForm.js";
 import { initLoadingService, runWithLoading } from "../services/loadingService.js";
 import { initNotificationService, queueNotification } from "../services/notificationService.js";
+import { renderDescriptionMarkdown } from "../utils/stringUtils.js";
 
 const params = new URLSearchParams(window.location.search);
 const mode = params.get("mode") || "create";
@@ -47,6 +48,104 @@ let dismissedPromptFormatConflict = "";
 let promptContentFormat = "yaml";
 let ruleContentFormat = "markdown";
 const TAG_DEBUG_PREFIX = "[tag-autocomplete]";
+
+const DESCRIPTION_HELP_PAGE_PATH = "/help/user-guide/pages/usage/description-field-markdown-help.md";
+let descriptionHelpContentPromise;
+
+async function loadDescriptionHelpContent() {
+  if (!descriptionHelpContentPromise) {
+    descriptionHelpContentPromise = fetch(DESCRIPTION_HELP_PAGE_PATH)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Failed to load help content (${response.status}).`);
+        return response.text();
+      })
+      .then((markdown) => renderDescriptionMarkdown(markdown))
+      .catch((error) => `<p>Unable to load help content right now.</p><p><code>${error.message}</code></p>`);
+  }
+  return descriptionHelpContentPromise;
+}
+
+async function openDescriptionHelpModal() {
+  const overlay = document.createElement("div");
+  overlay.className = "editor-modal-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "editor-modal editor-description-help-modal";
+
+  const title = document.createElement("h3");
+  title.textContent = "Description field help";
+
+  const content = document.createElement("div");
+  content.className = "editor-description-help-content";
+  content.innerHTML = "<p>Loading help content…</p>";
+
+  const actions = document.createElement("div");
+  actions.className = "editor-modal-actions";
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "btn btn-primary";
+  closeButton.textContent = "Close";
+  closeButton.addEventListener("click", () => overlay.remove());
+
+  actions.append(closeButton);
+  modal.append(title, content, actions);
+  overlay.append(modal);
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) overlay.remove();
+  });
+  document.body.append(overlay);
+
+  const html = await loadDescriptionHelpContent();
+  content.innerHTML = html;
+}
+
+function enhanceDescriptionField(formContainer) {
+  const rows = Array.from(formContainer.querySelectorAll("label.editor-field"));
+  const descriptionRow = rows.find((row) => {
+    const labelText = row.querySelector("span")?.textContent?.trim()?.toLowerCase();
+    return labelText === "description";
+  });
+
+  if (!descriptionRow || descriptionRow.dataset.descriptionEnhanced === "true") return null;
+
+  const input = descriptionRow.querySelector('input[type="text"]');
+  if (!input) return null;
+
+  const labelSpan = descriptionRow.querySelector("span");
+  if (labelSpan) {
+    const helpButton = document.createElement("button");
+    helpButton.type = "button";
+    helpButton.className = "editor-help-icon-button";
+    helpButton.setAttribute("aria-label", "Description help");
+    helpButton.title = "Description help";
+    helpButton.textContent = "?";
+    helpButton.addEventListener("click", () => {
+      openDescriptionHelpModal();
+    });
+    labelSpan.append(" ", helpButton);
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "editor-description-textarea";
+  textarea.rows = 5;
+  textarea.placeholder = input.placeholder || "Add a detailed description";
+
+  const syncTextareaFromInput = () => {
+    textarea.value = input.value || "";
+  };
+
+  textarea.addEventListener("input", () => {
+    input.value = textarea.value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  descriptionRow.append(textarea);
+  input.classList.add("editor-description-hidden-input");
+  descriptionRow.dataset.descriptionEnhanced = "true";
+  syncTextareaFromInput();
+  return syncTextareaFromInput;
+}
 const YAML_HEADER_KEYS = ["name", "dcc_uri", "version", "schema", "description", "dcc_tags"];
 
 initLoadingService();
@@ -1087,6 +1186,14 @@ function setupForType(type, initialRaw) {
   formMount.innerHTML = "";
   const handler = handlers[type];
   formController = handler.createForm({ mount: formMount, onChange: () => sync.updateTextFromForm(), availableTags, definitionReferences });
+  const syncDescriptionField = enhanceDescriptionField(formMount);
+  if (syncDescriptionField) {
+    const previousSetState = formController.setState.bind(formController);
+    formController.setState = (nextState) => {
+      previousSetState(nextState);
+      syncDescriptionField();
+    };
+  }
   sync = createTextFormSync({
     textArea: rawText,
     errorNode: parseError,
