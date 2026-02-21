@@ -283,6 +283,10 @@ function renderTopNavigation() {
     agentsPage.hidden = activeTopPage !== "agents";
   }
 
+  if (recommendationsToggleButton) {
+    recommendationsToggleButton.hidden = activeTopPage !== "discover";
+  }
+
   updatePageTabBadges();
 }
 
