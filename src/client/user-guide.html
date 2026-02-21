@@ -390,8 +390,13 @@
       const pageParams = new URLSearchParams(window.location.search);
       const returnTo = pageParams.get("returnTo") || "";
       const safeReturnTo = returnTo.startsWith("/") ? returnTo : "/";
+      const encodedSafeReturnTo = encodeURIComponent(safeReturnTo);
       if (helpGuideBackLink) {
         helpGuideBackLink.href = safeReturnTo;
+      }
+
+      function helpPageHref(pageId) {
+        return `/user-guide.html?page=${encodeURIComponent(pageId)}&returnTo=${encodedSafeReturnTo}`;
       }
 
       const tocSections = [
@@ -953,10 +958,10 @@
                   const childLinks = Array.isArray(page.children) && page.children.length
                     ? `<div class="toc-sub-links">${page.children.map((child) => {
                       const childActiveClass = child.id === activePageId ? "is-active" : "";
-                      return `<a class="toc-link toc-sub-link ${childActiveClass}" href="/user-guide.html?page=${child.id}">${child.title}</a>`;
+                      return `<a class="toc-link toc-sub-link ${childActiveClass}" href="${helpPageHref(child.id)}">${child.title}</a>`;
                     }).join("")}</div>`
                     : "";
-                  return `<a class="toc-link ${activeClass}" href="/user-guide.html?page=${page.id}">${page.title}</a>${childLinks}`;
+                  return `<a class="toc-link ${activeClass}" href="${helpPageHref(page.id)}">${page.title}</a>${childLinks}`;
                 }).join("")}
                 </div>
               </div>

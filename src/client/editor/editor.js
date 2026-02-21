@@ -20,6 +20,7 @@ const typeParam = params.get("type") || "prompt";
 const pathParam = params.get("path") || "";
 const definitionIdParam = params.get("id") || "";
 const destinationRepoIdParam = params.get("repoId") || "";
+const returnFromGuideParam = params.get("returnFromGuide") || "";
 
 const GENERATED_DEFINITION_STORAGE_KEY = "dcc.generated.definition";
 const EDITOR_HELP_STATE_STORAGE_KEY = "dcc.editor.helpState";
@@ -264,7 +265,9 @@ function consumeEditorStateFromGuide() {
 function openDefinitionGuide() {
   saveEditorStateForGuide();
   const page = TYPE_HELP_PAGE_ID[definitionType] || "definitions-schema";
-  const returnTo = `${window.location.pathname}${window.location.search}`;
+  const returnUrl = new URL(`${window.location.pathname}${window.location.search}`, window.location.origin);
+  returnUrl.searchParams.set("returnFromGuide", "1");
+  const returnTo = `${returnUrl.pathname}${returnUrl.search}`;
   const url = new URL("/user-guide.html", window.location.origin);
   url.searchParams.set("page", page);
   url.searchParams.set("returnTo", returnTo);
@@ -1526,7 +1529,14 @@ async function boot() {
     definitionType = payload.type;
     raw = payload.content || "";
   }
-  raw = consumeEditorStateFromGuide() || raw;
+  if (returnFromGuideParam === "1") {
+    raw = consumeEditorStateFromGuide() || raw;
+    const cleanedUrl = new URL(window.location.href);
+    cleanedUrl.searchParams.delete("returnFromGuide");
+    window.history.replaceState({}, "", `${cleanedUrl.pathname}${cleanedUrl.search}`);
+  } else {
+    window.sessionStorage.removeItem(EDITOR_HELP_STATE_STORAGE_KEY);
+  }
   setupForType(definitionType, raw);
 }
 
