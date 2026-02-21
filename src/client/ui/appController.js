@@ -349,6 +349,30 @@ function extractDccUriFromDefinitionContent(content, filePath = "") {
   return yamlValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
 }
 
+
+
+function extractDccDefinitionTypeFromDefinitionContent(content, filePath = "") {
+  const raw = String(content || "");
+  const ext = String(filePath || "").toLowerCase();
+  const frontmatterMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (frontmatterMatch) {
+    const frontmatterValue = frontmatterMatch[1].match(/^\s*dcc_definition_type\s*:\s*(.+?)\s*$/m);
+    if (frontmatterValue?.[1]) {
+      return frontmatterValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
+    }
+  }
+
+  if (ext.endsWith(".md") || ext.endsWith(".markdown")) {
+    return "";
+  }
+
+  const yamlValue = raw.match(/^\s*dcc_definition_type\s*:\s*(.+?)\s*$/m);
+  if (!yamlValue?.[1]) {
+    return "";
+  }
+  return yamlValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
+}
+
 function renderRepoOrigin(definition) {
   const repoDisplayName = String(definition?.repoDisplayName || definition?.repoName || "").trim();
   const repoRelativePath = String(definition?.repoRelativePath || "").trim();
@@ -2534,10 +2558,14 @@ async function showDetails(id) {
   detailRepoOrigin.title = String(def.repoRemoteUrl || "").trim();
 
   const dccUri = extractDccUriFromDefinitionContent(definitionContent, def.filePath);
+  const dccDefinitionType = extractDccDefinitionTypeFromDefinitionContent(definitionContent, def.filePath);
   currentDetailDefinitionDccUri = String(dccUri || "").trim();
-  if (dccUri) {
+  const detailMetaLines = [];
+  if (dccUri) detailMetaLines.push(`DCC URI: ${dccUri}`);
+  if (dccDefinitionType) detailMetaLines.push(`DCC Definition Type: ${dccDefinitionType}`);
+  if (detailMetaLines.length > 0) {
     detailDccUri.hidden = false;
-    detailDccUri.textContent = `DCC URI: ${dccUri}`;
+    detailDccUri.textContent = detailMetaLines.join(" • ");
   } else {
     detailDccUri.hidden = true;
     detailDccUri.textContent = "";

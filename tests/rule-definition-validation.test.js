@@ -6,6 +6,7 @@ import { validateDefinition } from "../src/server/definitions/validateDefinition
 const ruleMarkdown = `---
 name: XSS Protection
 dcc_uri: sec/rules/xss-protection
+dcc_definition_type: rule
 description: Prevent XSS by relying on React escaping and enforcing CSP.
 version: "1.2"
 globs:
@@ -38,6 +39,7 @@ test("validateDefinition rejects legacy tags field in strict mode", () => {
   const legacyTagsRule = `---
 name: Legacy Tags Rule
 dcc_uri: sec/rules/legacy-tags
+dcc_definition_type: rule
 description: Rule using unsupported legacy tags field.
 tags: legacy
 ---

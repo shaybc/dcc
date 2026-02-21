@@ -1,84 +1,16 @@
 import matter from "gray-matter";
 import YAML from "yaml";
-
-function hasArrayWithValues(value) {
-  return Array.isArray(value) && value.length > 0;
-}
-
-function hasMarkdownList(body = "") {
-  return /^\s*[-*]\s+.+/m.test(String(body || ""));
-}
-
-function isInvokablePrompt(frontmatter = {}) {
-  if (!frontmatter || typeof frontmatter !== "object") return false;
-  const value = frontmatter.invokable;
-  if (value === true) return true;
-  if (typeof value === "string") return value.trim().toLowerCase() === "true";
-  return false;
-}
+import { dccDefinitionTypeToInternal } from "./definitionType.js";
 
 export function detectDefinitionType(content = "", filePath = "") {
   const extension = String(filePath || "").toLowerCase();
-  const isMarkdown = extension.endsWith(".md") || extension.endsWith(".markdown") || /^---\s*\n/.test(content);
+  const isMarkdown = extension.endsWith(".md") || extension.endsWith(".markdown") || /^---\s*\n/.test(String(content || ""));
 
   if (isMarkdown) {
-    const parsed = matter(content || "");
-    const frontmatter = parsed.data || {};
-
-    if (hasArrayWithValues(frontmatter.tools)) {
-      return "agent";
-    }
-
-    if (isInvokablePrompt(frontmatter)) {
-      return "prompt";
-    }
-
-    if (Object.keys(frontmatter).length > 0 && hasMarkdownList(parsed.content)) {
-      return "rule";
-    }
-
-    if (Object.keys(frontmatter).length > 0) {
-      return "rule";
-    }
+    const parsed = matter(String(content || ""));
+    return dccDefinitionTypeToInternal(parsed?.data?.dcc_definition_type);
   }
 
-  const data = YAML.parse(content || "") || {};
-
-  const hasModels = hasArrayWithValues(data.models);
-  const hasContext = hasArrayWithValues(data.context);
-  const hasRules = hasArrayWithValues(data.rules);
-
-  const hasConfigRefs = ["models", "context", "rules", "prompts", "docs", "mcpServers"].some((key) =>
-    Array.isArray(data[key]) && data[key].some((entry) => entry && typeof entry === "object" && entry.dcc_use)
-  );
-  const configType = String(data?.dcc_config_type || "").toLowerCase();
-  if (hasConfigRefs || ["agents", "ide"].includes(configType) || String(data?.dcc_uri || "").toLowerCase().startsWith("configs/")) {
-    return "config";
-  }
-
-  if (hasArrayWithValues(data.prompts)) {
-    return "prompt";
-  }
-
-  if (hasArrayWithValues(data.mcpServers)) {
-    return "mcpServer";
-  }
-
-  if (hasArrayWithValues(data.docs)) {
-    return "doc";
-  }
-
-  if (hasModels && hasContext && hasRules) {
-    return "workflow";
-  }
-
-  if (hasModels) {
-    return "model";
-  }
-
-  if (hasContext) {
-    return "context";
-  }
-
-  return "prompt";
+  const data = YAML.parse(String(content || "")) || {};
+  return dccDefinitionTypeToInternal(data?.dcc_definition_type);
 }

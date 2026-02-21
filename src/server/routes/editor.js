@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import express from "express";
+import matter from "gray-matter";
+import YAML from "yaml";
 import { detectDefinitionType } from "../definitions/detectDefinitionType.js";
 import { loadDefinition } from "../definitions/loadDefinition.js";
 import { saveDefinition } from "../definitions/saveDefinition.js";
@@ -9,6 +11,7 @@ import { extractDccUriFromDefinitionContent } from "../definitions/metadata.js";
 import { allDb, getDb } from "../db/helpers.js";
 import { getAssetRepo, listAssetRepos } from "../utils/assetRepos.js";
 import { runCommand } from "../utils/git.js";
+import { internalDefinitionTypeToDcc } from "../definitions/definitionType.js";
 
 const fsp = fs.promises;
 const router = express.Router();
@@ -30,9 +33,9 @@ async function resolveDefinitionRepoContext({ definitionPath, definitionId }) {
 
   let definition = null;
   if (Number.isInteger(normalizedId) && normalizedId > 0) {
-    definition = await getDb("SELECT id, filePath, repoId, source FROM definitions WHERE id = ?", [normalizedId]);
+    definition = await getDb("SELECT id, filePath, repoId, source, type FROM definitions WHERE id = ?", [normalizedId]);
   } else if (normalizedPath) {
-    definition = await getDb("SELECT id, filePath, repoId, source FROM definitions WHERE filePath = ?", [normalizedPath]);
+    definition = await getDb("SELECT id, filePath, repoId, source, type FROM definitions WHERE filePath = ?", [normalizedPath]);
   }
 
   if (!definition) {
@@ -95,6 +98,32 @@ async function validateDccUriForEditorSave({ mode, definitionPath, content, form
   return dccUri;
 }
 
+
+
+function ensureDccDefinitionTypeInContent(content, { format = "yaml", filePath = "", definitionType = "" } = {}) {
+  const dccDefinitionType = internalDefinitionTypeToDcc(definitionType);
+  if (!dccDefinitionType) {
+    throw new Error("Definition type is required.");
+  }
+
+  const normalizedFormat = String(format || "").toLowerCase();
+  const ext = path.extname(String(filePath || "")).toLowerCase();
+  const treatAsMarkdown = normalizedFormat === "markdown" || [".md", ".markdown", ".mdx"].includes(ext);
+
+  if (treatAsMarkdown) {
+    const parsed = matter(String(content || ""));
+    parsed.data = parsed.data || {};
+    parsed.data.dcc_definition_type = dccDefinitionType;
+    return matter.stringify(parsed.content || "", parsed.data);
+  }
+
+  const parsedYaml = YAML.parse(String(content || "")) || {};
+  if (!parsedYaml || typeof parsedYaml !== "object" || Array.isArray(parsedYaml)) {
+    throw new Error("Definition content must be a YAML object.");
+  }
+  parsedYaml.dcc_definition_type = dccDefinitionType;
+  return YAML.stringify(parsedYaml);
+}
 router.get("/api/editor/definition", async (req, res) => {
   try {
     const definitionPath = String(req.query.path || "").trim();
@@ -127,8 +156,9 @@ router.post("/api/editor/save", async (req, res) => {
     let repoPath = "";
     let definitionPath = String(req.body?.path || "").trim();
 
+    let context = null;
     if (mode === "edit") {
-      const context = await resolveDefinitionRepoContext({
+      context = await resolveDefinitionRepoContext({
         definitionPath,
         definitionId: req.body?.definitionId
       });
@@ -152,10 +182,20 @@ router.post("/api/editor/save", async (req, res) => {
       return;
     }
 
+    const definitionType = mode === "edit"
+      ? context.definition.type
+      : String(req.body?.definitionType || "").trim();
+
+    const contentWithType = ensureDccDefinitionTypeInContent(req.body?.content || "", {
+      format: req.body?.format || "yaml",
+      filePath: definitionPath || req.body?.filename || "",
+      definitionType
+    });
+
     await validateDccUriForEditorSave({
       mode,
       definitionPath,
-      content: req.body?.content || "",
+      content: contentWithType,
       format: req.body?.format || "yaml"
     });
 
@@ -163,7 +203,7 @@ router.post("/api/editor/save", async (req, res) => {
       mode,
       repoPath,
       definitionPath,
-      content: req.body?.content || "",
+      content: contentWithType,
       format: req.body?.format || "yaml",
       filename: req.body?.filename,
       targetPath: req.body?.targetPath,

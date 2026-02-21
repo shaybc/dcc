@@ -3,34 +3,18 @@ import fs from "fs";
 import matter from "gray-matter";
 import YAML from "yaml";
 import { detectDefinitionType } from "./detectDefinitionType.js";
+import { normalizeDccDefinitionType } from "./definitionType.js";
 
 const fsp = fs.promises;
 
 export function deriveType(filePath, data, rawContent = "") {
-  if (data && data.type) {
-    return String(data.type).toLowerCase();
-  }
-
-  const dccUri = String(data?.dcc_uri || "").trim().toLowerCase();
-  if (dccUri) {
-    const [prefix] = dccUri.split("/");
-    if (["rules", "prompts", "workflows", "models", "agents", "mcpservers", "mcpserver", "context", "docs", "configs", "config"].includes(prefix)) {
-      return prefix;
-    }
-  }
-
-  try {
+  const dccDefinitionType = normalizeDccDefinitionType(data?.dcc_definition_type);
+  if (dccDefinitionType) {
     const detected = detectDefinitionType(rawContent || "", filePath || "");
-    if (detected) {
-      return String(detected).toLowerCase();
-    }
-  } catch (_error) {
-    // Best-effort only; fallback to folder inference below.
+    return String(detected || "").toLowerCase();
   }
 
-  const parts = filePath.split(path.sep);
-  const folder = parts[parts.length - 2] || "unknown";
-  return folder.toLowerCase();
+  return "";
 }
 
 export function normalizeDefinitionType(type) {
@@ -56,7 +40,7 @@ export function buildKey(type, filePath, { dccUri = "" } = {}) {
   return `${normalizedType}/${path.basename(filePath)}`;
 }
 
-export const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "dcc_tags", "dcc_uri"]);
+export const YAML_HEADER_FIELDS = new Set(["name", "version", "schema", "description", "dcc_tags", "dcc_uri", "dcc_definition_type"]);
 
 export function parseYamlHeaderFields(raw) {
   const headers = {};
@@ -146,6 +130,7 @@ export function parseDefinitionContent(raw, filePath) {
   const schema = parsed.data.schema || "";
   const version = parsed.data.version || "";
   const dccUri = String(parsed.data?.dcc_uri || "").trim();
+  const dccDefinitionType = normalizeDccDefinitionType(parsed.data?.dcc_definition_type);
   return {
     name,
     description,
@@ -153,6 +138,7 @@ export function parseDefinitionContent(raw, filePath) {
     schema,
     version,
     dccUri,
+    dccDefinitionType,
     content: raw,
     type,
     filePath,

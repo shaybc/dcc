@@ -8,6 +8,7 @@ const docYaml = `name: Continue Documentation
 version: 0.0.1
 schema: v1
 dcc_uri: docs/continueDocs
+dcc_definition_type: doc
 description: this is a playwrite mcp server description
 dcc_tags: tag1, tag2, tag3
 

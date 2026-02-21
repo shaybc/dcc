@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 
 import { detectDefinitionType } from "../src/server/definitions/detectDefinitionType.js";
 
-test("detectDefinitionType classifies markdown with invokable true as prompt", () => {
+test("detectDefinitionType reads dcc_definition_type from markdown frontmatter", () => {
   const content = `---
 name: Rephrase request
-invokable: true
+dcc_definition_type: prompt
 ---
 Please rewrite the user request in concise language.
 `;
@@ -14,23 +14,19 @@ Please rewrite the user request in concise language.
   assert.equal(detectDefinitionType(content, "prompts/rephrase.md"), "prompt");
 });
 
-test("detectDefinitionType classifies markdown without invokable true as rule", () => {
-  const content = `---
-name: Keep answers concise
-invokable: false
----
-- Keep responses short and direct.
-`;
+test("detectDefinitionType reads dcc_definition_type from yaml", () => {
+  const content = `name: Keep answers concise
+dcc_definition_type: rule\ndcc_uri: rules/concise\n`;
 
-  assert.equal(detectDefinitionType(content, "rules/concise.md"), "rule");
+  assert.equal(detectDefinitionType(content, "rules/concise.yaml"), "rule");
 });
 
-test("detectDefinitionType treats markdown frontmatter as rule when invokable is missing", () => {
+test("detectDefinitionType returns empty when dcc_definition_type is missing", () => {
   const content = `---
 name: Safety guidance
 ---
 Always verify risky commands.
 `;
 
-  assert.equal(detectDefinitionType(content, "definitions/safety.md"), "rule");
+  assert.equal(detectDefinitionType(content, "definitions/safety.md"), "");
 });

@@ -14,7 +14,7 @@ test("getExportability normalizes type before compatibility lookup", () => {
 });
 
 test("getExportability returns a machine-readable reason for unsupported types", () => {
-  const result = getExportability("rules", DESTINATIONS.GEMINI);
+  const result = getExportability("workflows", DESTINATIONS.GEMINI);
   assert.deepEqual(result, { supported: false, reason: "unsupported_type_for_destination" });
 });
 
@@ -34,11 +34,10 @@ test("validateExportRequest splits selected definitions into exportable and skip
 
   assert.equal(result.destinationSupported, true);
   assert.equal(result.totals.selected, 3);
-  assert.equal(result.totals.exportable, 1);
-  assert.equal(result.totals.skipped, 2);
+  assert.equal(result.totals.exportable, 2);
+  assert.equal(result.totals.skipped, 1);
   assert.equal(result.exportable[0].normalizedType, "prompts");
   assert.deepEqual(result.reasonCounts, {
-    unsupported_type_for_destination: 1,
     invalid_definition_row: 1
   });
 });
