@@ -1335,7 +1335,11 @@ function setupRecommendationsSection() {
   recommendationsAiButton.addEventListener("click", () => {
     openIntentSuggestionModal();
   });
-  recommendationsActions.append(recommendationsTitle, recommendationsAiButton);
+  const recommendationsTitlediv = document.createElement("div");
+  recommendationsTitlediv.className = "recommendations-title-div";
+  recommendationsTitlediv.appendChild(recommendationsTitle);
+  recommendationsTitlediv.appendChild(recommendationsMeta);
+  recommendationsActions.append(recommendationsAiButton, recommendationsTitlediv);
   updateRecommendationsToggleLabel();
   recommendationsToggleButton.addEventListener("click", () => {
     recommendationsVisible = !recommendationsVisible;
@@ -1343,7 +1347,7 @@ function setupRecommendationsSection() {
     renderRecommendationSection();
   });
 
-  recommendationsContent.append(recommendationsActions, recommendationsMeta, recommendationsState, recommendationsCards, recommendationsDivider);
+  recommendationsContent.append(recommendationsActions, recommendationsState, recommendationsCards, recommendationsDivider);
   recommendationsSection.append(recommendationsContent);
 
   cardsContainer.parentNode?.insertBefore(recommendationsSection, cardsContainer);
