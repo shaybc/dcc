@@ -17,8 +17,3 @@ Use the editor to modify existing definitions safely and quickly.
 4. Save and validate the updated definition.
 
 ![Definition edit form with autocomplete and raw source options](../images/usage-edit-definition-form-and-raw.png)
-
-## Editing agent definitions
-
-For **Agent** definitions, the editor keeps frontmatter fields (`name`, `description`, optional `model`, `rules`, `mcpServers`) in the form and the system prompt in the Markdown body.
-

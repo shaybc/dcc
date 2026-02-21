@@ -19,12 +19,3 @@ Creating a new definition follows the same editing experience used for existing 
 ![Create new definition](../images/usage-create-new-definition.png)
 
 ![Create new definition dialog and editor](../images/usage-create-definition-dialog-and-editor.png)
-
-## Agent format notes
-
-When creating an **Agent** definition, use **Markdown** format:
-
-- Put `name` and `description` in YAML frontmatter.
-- Write the agent instructions in the Markdown body.
-- Optionally set `model`, `rules`, and `mcpServers` in frontmatter.
-
