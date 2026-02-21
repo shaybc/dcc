@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { parseDefinitionContent } from "../src/server/definitions/parse.js";
-import { sanitizeYamlHeaderScalars } from "../src/server/definitions/content.js";
+import { sanitizeYamlHeaderScalars, sanitizeMarkdownFrontmatterHeaderScalars } from "../src/server/definitions/content.js";
 
 test("parseDefinitionContent exposes dccUri when provided", () => {
   const parsed = parseDefinitionContent("name: Test\ndcc_uri: prompts/my-prompt\ndcc_definition_type: prompt\n", "prompts/test.yaml");
@@ -56,4 +56,20 @@ test("sanitizeYamlHeaderScalars quotes one-line allowlisted metadata values", ()
   assert.match(sanitized, /^version:\s+"1.0.0"/m);
   assert.match(sanitized, /^schema:\s+"v1"/m);
   assert.match(sanitized, /^description:\s+"Minimal rules"/m);
+});
+
+test("sanitizeYamlHeaderScalars preserves multiline block style metadata", () => {
+  const raw = `description: |\n  line one\n  line two\nname: Debugging rules\n`;
+  const sanitized = sanitizeYamlHeaderScalars(raw);
+
+  assert.match(sanitized, /^description:\s+\|/m);
+  assert.match(sanitized, /^name:\s+"Debugging rules"/m);
+});
+
+test("sanitizeMarkdownFrontmatterHeaderScalars only sanitizes frontmatter header", () => {
+  const raw = `---\nname: Debugging rules\ndescription: A description: with colon\n---\n\n# Title\nBody: should stay untouched\n`;
+  const sanitized = sanitizeMarkdownFrontmatterHeaderScalars(raw);
+
+  assert.match(sanitized, /^---\nname:\s+"Debugging rules"\ndescription:\s+"A description: with colon"\n---/m);
+  assert.match(sanitized, /Body: should stay untouched/);
 });

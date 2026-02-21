@@ -71,6 +71,16 @@ export function sanitizeYamlHeaderScalars(raw) {
     });
 }
 
+export function sanitizeMarkdownFrontmatterHeaderScalars(raw) {
+  const source = String(raw || "");
+  const frontmatterMatch = source.match(/^(---\r?\n)([\s\S]*?)(\r?\n---)(\r?\n|$)/);
+  if (!frontmatterMatch) return source;
+
+  const [, opening, frontmatterBody, closing, trailingNewline] = frontmatterMatch;
+  const sanitizedFrontmatter = sanitizeYamlHeaderScalars(frontmatterBody);
+  return `${opening}${sanitizedFrontmatter}${closing}${trailingNewline}${source.slice(frontmatterMatch[0].length)}`;
+}
+
 export function readDefinitionYamlData(rawContent, filePath = "") {
   const ext = path.extname(String(filePath || "")).toLowerCase();
   if ([".md", ".markdown", ".mdx"].includes(ext)) {

@@ -12,6 +12,7 @@ import { allDb, getDb } from "../db/helpers.js";
 import { getAssetRepo, listAssetRepos } from "../utils/assetRepos.js";
 import { runCommand } from "../utils/git.js";
 import { internalDefinitionTypeToDcc } from "../definitions/definitionType.js";
+import { sanitizeYamlHeaderScalars, sanitizeMarkdownFrontmatterHeaderScalars } from "../definitions/content.js";
 
 const fsp = fs.promises;
 const router = express.Router();
@@ -111,18 +112,18 @@ function ensureDccDefinitionTypeInContent(content, { format = "yaml", filePath =
   const treatAsMarkdown = normalizedFormat === "markdown" || [".md", ".markdown", ".mdx"].includes(ext);
 
   if (treatAsMarkdown) {
-    const parsed = matter(String(content || ""));
+    const parsed = matter(sanitizeMarkdownFrontmatterHeaderScalars(String(content || "")));
     parsed.data = parsed.data || {};
     parsed.data.dcc_definition_type = dccDefinitionType;
-    return matter.stringify(parsed.content || "", parsed.data);
+    return sanitizeMarkdownFrontmatterHeaderScalars(matter.stringify(parsed.content || "", parsed.data));
   }
 
-  const parsedYaml = YAML.parse(String(content || "")) || {};
+  const parsedYaml = YAML.parse(sanitizeYamlHeaderScalars(String(content || ""))) || {};
   if (!parsedYaml || typeof parsedYaml !== "object" || Array.isArray(parsedYaml)) {
     throw new Error("Definition content must be a YAML object.");
   }
   parsedYaml.dcc_definition_type = dccDefinitionType;
-  return YAML.stringify(parsedYaml);
+  return sanitizeYamlHeaderScalars(YAML.stringify(parsedYaml));
 }
 router.get("/api/editor/definition", async (req, res) => {
   try {
