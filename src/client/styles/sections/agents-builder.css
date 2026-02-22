@@ -82,7 +82,8 @@
   padding-top: 14px;
 }
 .run-stage-num { width: 22px; height: 22px; border: 1px solid var(--border); border-radius: 999px; display:flex; align-items:center; justify-content:center; font-size:12px; color: var(--muted); }
-.run-stage-type { color: var(--muted); font-size: 14px; }
+.run-stage-type { color: var(--muted); font-size: 14px; display: inline-flex; align-items: center; justify-content: center; }
+.run-stage-type svg { width: 14px; height: 14px; }
 .run-stage-body { padding: 12px 14px; }
 .run-stage-meta { display:flex; gap:8px; align-items:center; margin-bottom: 8px; }
 .run-stage-label { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; color: var(--muted); }
@@ -96,6 +97,7 @@
   display: none !important;
 }
 .run-stage-icon { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); display:flex; align-items:center; justify-content:center; }
+.run-stage-icon svg { width: 18px; height: 18px; }
 .run-stage-name { font-weight: 600; }
 .run-stage-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .run-stage-tags { display:flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
