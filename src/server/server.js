@@ -10,6 +10,7 @@ import definitionsRouter from "./routes/definitions.js";
 import lifecycleRouter from "./routes/lifecycle.js";
 import validationRouter from "./routes/validation.js";
 import versionsRouter from "./routes/versions.js";
+import agentRunPacksRouter from "./routes/agentRunPacks.js";
 import { loadAiLogConfigFromSettings } from "./utils/aiLogging.js";
 
 const __dirname = import.meta.dirname;
@@ -37,6 +38,7 @@ app.use(definitionsRouter);
 app.use(lifecycleRouter);
 app.use(validationRouter);
 app.use(versionsRouter);
+app.use(agentRunPacksRouter);
 
 app.get("/swagger", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/swagger.html"));

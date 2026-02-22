@@ -130,6 +130,19 @@ db.serialize(() => {
   db.run("CREATE INDEX IF NOT EXISTS idx_validation_results_def_key ON validation_results(definition_key)");
   db.run("CREATE INDEX IF NOT EXISTS idx_validation_results_created ON validation_results(created_at)");
 
+  db.run(
+    `CREATE TABLE IF NOT EXISTS agent_run_packs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agentId TEXT NOT NULL,
+      configId TEXT NOT NULL,
+      prompt TEXT NOT NULL DEFAULT '',
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      UNIQUE(agentId, configId)
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_agent_run_packs_updated_at ON agent_run_packs(updatedAt DESC)");
+
   db.all("PRAGMA table_info(definitions)", (err, rows = []) => {
     if (err) {
       return;
