@@ -1,0 +1,1195 @@
+name: Composer Converter
+version: "1.1"
+schema: v1
+description: Config that supports converting composer wsbcc xml files into clean
+  native java code.
+models:
+  - name: Gemini 2.5 Flash
+    provider: openai
+    model: gemini-2.5-flash
+    apiBase: http://localhost:7331/v1
+    roles:
+      - chat
+      - edit
+      - apply
+      - summarize
+context:
+  - provider: code
+  - provider: currentFile
+  - provider: file
+  - provider: open
+    params:
+      - key: onlyPinned
+        value: "true"
+  - provider: terminal
+  - provider: debugger
+    params:
+      - key: stackDepth
+        value: "3"
+  - provider: problems
+rules:
+  - name: Dev Core Rules
+    alwaysApply: true
+    rule: >-
+      # Core development Rules
+
+      These rules apply to all projects (web/mobile/backend/devops etc).
+
+
+      ## 1) Small, Focused Changes
+
+      - Prefer small, correct, maintainable changes.
+
+      - MUST keep PRs/changesets focused on one goal.
+
+      - MUST avoid unrelated refactors in the same change.
+
+      - MUST delete dead code and unused exports touched by the change.
+
+
+      ## 2) Readability & Maintainability
+
+      - MUST use clear names; avoid cleverness.
+
+      - MUST keep functions/modules small and single-purpose.
+
+      - MUST avoid magic numbers/strings (use constants/enums).
+
+      - MUST add comments only for “why”, not “what”.
+
+
+      ## 3) Error Handling
+
+      - MUST not swallow errors silently.
+
+      - MUST return/throw consistent error types within a module.
+
+      - MUST keep public APIs stable; breaking changes require migration notes.
+
+
+      ## 4) Testing Discipline
+
+      - MUST add/update tests for new behavior.
+
+      - MUST add a regression test for every bug fix (when feasible).
+
+
+      ## 5) Determinism & Reproducibility
+
+      - MUST ensure builds are reproducible (lockfiles committed where
+      relevant).
+
+      - MUST avoid reliance on local machine state.
+
+      - MUST document required env/config in README or docs.
+
+
+      ## 6) Performance Hygiene
+
+      - MUST avoid obvious O(n²) or unbounded loops on user-sized inputs.
+
+      - MUST avoid expensive work in hot paths without caching/limits.
+
+      - MUST measure before “optimizing” (add a benchmark or profiling note when
+      relevant).
+
+
+      ## 7) Dependency Hygiene
+
+      - MUST remove unused dependencies.
+
+      - MUST not introduce large dependencies without justification.
+
+      - MUST pin/lock dependency versions per ecosystem norms.
+
+
+      ## 8) Logging & Debuggability
+
+      - SHOULD add basic metrics/tracing hooks for critical paths (latency,
+      errors, queue depth, retries).
+
+      - MUST keep logs actionable (what happened + context).
+
+      - SHOULD include correlation/request IDs where applicable.
+
+      - MUST not spam logs in tight loops.
+
+
+      ## 9) Documentation & Developer Experience
+
+      - MUST update docs when behavior/config changes.
+
+      - MUST keep examples and scripts runnable.
+
+      - MUST include a clear “how to run/test locally” path.
+
+      - Optional document changes in changelog or release notes.
+
+      - SHOULD include rollback notes when change is risky.
+
+
+      ## 10) Configuration
+
+      - MUST keep config keys centralized (single source of truth).
+
+      - MUST include defaults only when safe; otherwise fail fast.
+
+      - MUST document config schema (names, types, examples).
+
+
+      ## 11) Migrations and Backwards Compatibility
+
+      - MUST treat schema/config/protocol changes as migrations (forward +
+      rollback/compat plan).
+
+      - MUST avoid breaking changes without a migration path.
+
+
+      ## 12) Stability & Contracts
+
+      - MUST define and keep stable contracts between components (API schemas,
+      events, interfaces).
+
+      - MUST treat contract changes as breaking unless explicitly versioned or
+      migrated.
+
+      - MUST update all consumers when modifying shared interfaces.
+
+      - MUST keep backward compatibility during transitions (deprecate before
+      removal).
+
+      - MUST document contract expectations (inputs, outputs, invariants).
+
+      - MUST avoid implicit behavior changes in shared modules.
+
+
+      ## 13) Output Expectation
+
+      - Prefer minimal diffs.
+
+      - If multiple approaches exist: pick one, state tradeoffs briefly.
+
+      - Provide a short test plan (commands + what to verify).
+  - name: Backend Core Rules
+    alwaysApply: false
+    rule: >-
+      # Backend Core Rules
+
+
+      These rules apply to all backend projects regardless of language or
+      framework. Technology-specific rules are defined separately and extend
+      these.
+
+
+      ---
+
+
+      ## API Design
+
+
+      - Design APIs around resources and intentions, not internal implementation
+      or database shape.
+
+      - Be consistent: same naming conventions, same error envelope, same
+      pagination shape across all endpoints in a service.
+
+      - Never leak internal details in responses: no stack traces, no internal
+      IDs or table names, no raw ORM objects.
+
+      - Version APIs from day one. Adding a version prefix costs nothing;
+      removing a broken unversioned API costs a lot.
+
+      - Treat every public API as a contract. Breaking changes require a
+      migration path, deprecation notice, and a timeline.
+
+      - Validate all input at the boundary. Never trust caller-supplied data
+      deeper than the entry point.
+
+
+      ---
+
+
+      ## Data & Persistence
+
+
+      - Keep business logic out of the database. Stored procedures and triggers
+      are hard to version, test, and migrate.
+
+      - Write every schema change as a versioned, incremental migration. Never
+      mutate a schema manually in any environment.
+
+      - Prefer additive migrations (add column, add table); avoid destructive
+      changes in the same migration that runs alongside a deployment.
+
+      - Design for the read pattern, not just the write pattern. Know your query
+      access patterns before choosing a data model.
+
+      - Never store secrets, PII, or sensitive data in plaintext. Encrypt at
+      rest or delegate to a dedicated vault.
+
+
+      ---
+
+
+      ## Error Handling & Resilience
+
+
+      - Every external call (database, HTTP, queue, cache) can fail. Handle it
+      explicitly — timeouts, retries with backoff, and circuit breakers where
+      appropriate.
+
+      - Distinguish between retryable errors (transient network, rate limit) and
+      non-retryable errors (validation, not found). Don't retry blindly.
+
+      - Fail fast on startup if required config or dependencies are missing. A
+      service that starts silently broken is harder to debug than one that
+      refuses to start.
+
+      - Design for partial failure: a downstream service being unavailable
+      should degrade gracefully, not take down the whole system.
+
+
+      ---
+
+
+      ## Security
+
+
+      - Authenticate every request that touches non-public data. Never rely on
+      network topology alone ("it's internal") as a security boundary.
+
+      - Apply least-privilege to every service account, DB user, and API token.
+
+      - Sanitize and parameterize all external inputs used in queries, commands,
+      or templates. No string concatenation for SQL, shell, or HTML.
+
+      - Do not log secrets, tokens, passwords, or raw PII. Mask or omit
+      sensitive fields before they reach any log sink.
+
+      - Set explicit timeouts on all inbound and outbound connections.
+
+
+      ---
+
+
+      ## Observability
+
+
+      - Every service must expose: a health/readiness endpoint, structured logs
+      with a correlation/request ID, and basic error rate and latency metrics.
+
+      - Log at boundaries: incoming requests, outgoing calls, and significant
+      state transitions. Not inside loops.
+
+      - Distinguish log levels deliberately: `ERROR` means human action
+      required, `WARN` means degraded but continuing, `INFO` means normal
+      significant events, `DEBUG` for development only.
+
+      - Trace IDs must flow through the entire call chain — from the inbound
+      request through every downstream call, queue message, and async job.
+
+
+      ---
+
+
+      ## Async & Background Work
+
+
+      - Treat background jobs and queue consumers as first-class code: they need
+      the same error handling, logging, and tests as synchronous paths.
+
+      - Make background jobs idempotent wherever possible. Queues deliver
+      at-least-once; your consumer must handle duplicates safely.
+
+      - Never do unbounded work in a single job run. Paginate, batch, or
+      checkpoint so that a large dataset doesn't cause timeouts or memory
+      exhaustion.
+
+      - Dead-letter queues are not optional. Every queue consumer must have a
+      defined failure path.
+  - name: Backend Java Rules
+    alwaysApply: false
+    rule: >-
+      # Backend Java Rules (Java 21+)
+
+
+      These rules apply to all Java backend projects and extend the core and
+      backend-core rules.
+
+
+      ---
+
+
+      ## Language & Style
+
+
+      - Prefer `record` for immutable data carriers. Avoid writing POJOs with
+      manual getters/setters/equals/hashCode for new code.
+
+      - Use sealed classes/interfaces to model closed, mutually exclusive
+      domains (e.g. command types, result types). Pair with exhaustive `switch`
+      expressions.
+
+      - Prefer `switch` expressions over `switch` statements and chains of
+      `if/else if`. Use exhaustive pattern matching — the compiler is your
+      safety net.
+
+      - Use `var` for local variables only when the type is obvious from the
+      right-hand side. Never use `var` for fields or method signatures.
+
+      - Prefer immutable collections (`List.of()`, `Map.of()`, `Set.of()`). Only
+      reach for mutable collections when you explicitly need mutation.
+
+      - Never return `null` from a method that might reasonably have no value —
+      return `Optional<T>`. Never pass `null` as a method argument; use
+      overloads or `Optional` at boundaries.
+
+      - Use `Optional` only as a return type. Do not use it as a field type,
+      constructor parameter, or collection element.
+
+      - Avoid checked exceptions for conditions the caller cannot meaningfully
+      recover from. Prefer unchecked exceptions, and document them in Javadoc.
+
+
+      ---
+
+
+      ## Concurrency
+
+
+      - Prefer `java.util.concurrent` abstractions (`ExecutorService`,
+      `CompletableFuture`, structured concurrency via `StructuredTaskScope`)
+      over raw `Thread` creation.
+
+      - Use virtual threads (Project Loom) for I/O-bound work. Do not block
+      virtual threads with `synchronized` on contended monitors — use
+      `ReentrantLock` or redesign to avoid shared mutable state.
+
+      - Treat `CompletableFuture` chains as pipelines: use `thenApply` for
+      transforms, `thenCompose` for dependent async calls,
+      `exceptionally`/`handle` for error recovery. Never call `.get()` on a
+      `CompletableFuture` inside another async context without understanding the
+      blocking implications.
+
+      - Any class accessed from multiple threads must be explicitly documented
+      as thread-safe or not. Do not leave it implicit.
+
+      - Prefer immutability and message-passing over shared mutable state. If
+      shared state is unavoidable, keep the critical section as small as
+      possible.
+
+
+      ---
+
+
+      ## Streams & Functional Style
+
+
+      - Use the Stream API for data transformations and aggregations. Prefer a
+      clear chain of `filter → map → collect` over imperative loops when it
+      improves readability.
+
+      - Do not use parallel streams without a measured justification. The
+      overhead and thread-safety implications are rarely worth it for typical
+      service workloads.
+
+      - Keep lambdas short. If a lambda body exceeds 2–3 lines, extract it as a
+      named private method and use a method reference.
+
+      - Avoid stateful lambdas and side effects inside stream operations.
+      Streams should be pure transformations.
+
+
+      ---
+
+
+      ## Error Handling
+
+
+      - Define a small, consistent exception hierarchy per module. Don't throw
+      `RuntimeException` or `Exception` directly — give callers something
+      meaningful to catch or log.
+
+      - Always include the causing exception when wrapping: `new
+      ServiceException("context", cause)`. Never swallow the original cause.
+
+      - Use `try-with-resources` for anything that implements `AutoCloseable`.
+      Never close resources manually in a `finally` block.
+
+      - Do not use exceptions for flow control. Exceptions are for exceptional
+      conditions, not expected branching.
+
+
+      ---
+
+
+      ## Code Organisation
+
+
+      - One top-level public type per file.
+
+      - Order class members consistently: constants → fields → constructors →
+      public methods → package/protected methods → private methods. Use `//
+      region` or well-placed blank lines for visual separation in longer
+      classes.
+
+      - Keep classes small. A class that needs more than one screen to read
+      probably has more than one responsibility.
+
+      - Favour composition over inheritance. Extend only when there is a genuine
+      "is-a" relationship; otherwise delegate.
+
+      - Write Javadoc on every public API type and method. Document the contract
+      (preconditions, postconditions, what exceptions mean), not the
+      implementation.
+
+
+      ---
+
+
+      ## Testing
+
+
+      - Write unit tests for all logic that can be tested without I/O. Pure
+      functions and domain objects should have near-complete coverage.
+
+      - Use integration tests to verify persistence, serialisation, and external
+      protocol boundaries. Keep them separate from unit tests so fast feedback
+      is always available.
+
+      - Avoid `static` state and singletons in test code — they cause test
+      ordering dependencies. Each test must be able to run in isolation.
+
+      - Name tests to describe behaviour, not implementation:
+      `shouldReturnEmptyListWhenNoResultsFound` over `testGetResults`.
+  - name: Composer Migration
+    rule: >-
+      # Composer Convert Rules
+
+
+      These rules govern the conversion of WSBCC XML operation definitions into
+      plain, framework-free Java. The output must have zero dependency on IBM
+      WebSphere, WSBCC, or any reflection-driven tag execution infrastructure.
+      Every concept from the XML definition has a direct Java equivalent — the
+      rules below define those mappings precisely.
+
+
+      ---
+
+
+      ## Guiding Principle
+
+
+      The WSBCC XML definition is a declarative description of a service. The
+      conversion produces an equivalent imperative Java implementation. Every
+      structural element of the XML maps to a specific Java construct. Do not
+      produce generic utilities that mimic the WSBCC runtime — produce readable,
+      maintainable business code.
+
+
+      ---
+
+
+      ## CCDSEServerOperation → Service Class
+
+
+      Each `CCDSEServerOperation` becomes a single Java service class.
+
+
+      - Class name: the value of the `id` attribute, suffixed with `Service`
+      (e.g. `id="GetLinksOp"` → `GetLinksOpService`).
+
+      - The class has a single public method: `execute(OperationContext
+      context)` where `OperationContext` is the converted context class (see
+      below).
+
+      - The class is annotated with nothing framework-specific — it is a plain
+      Java class with constructor-injected dependencies.
+
+      - All `opStep` implementing classes referenced via `implClass` become
+      constructor-injected dependencies of this service class. Never instantiate
+      them inline.
+
+      - The class must not use reflection, XML parsing, or any WSBCC
+      infrastructure at runtime.
+
+
+      ```java
+
+      // CCDSEServerOperation id="GetLinksOp" → 
+
+      public class GetLinksOpService {
+          private final GetClientLinksSP getClientLinks;
+          private final MapErrorByValueAlways mapError;
+
+          public GetLinksOpService(GetClientLinksSP getClientLinks,
+                                   MapErrorByValueAlways mapError) {
+              this.getClientLinks = getClientLinks;
+              this.mapError = mapError;
+          }
+
+          public GetLinksRsDto execute(GetLinksContext context) { ... }
+      }
+
+      ```
+
+
+      ---
+
+
+      ## opStep Chain → Step Routing Methods
+
+
+      The `opStep` sequence with `on{X}Do` / `onOtherDo` routing is a state
+      machine. Convert it to a private routing method within the service class
+      using explicit `switch` expressions.
+
+
+      - Each `opStep` with an `implClass` becomes a call to the injected
+      dependency's `execute()` method.
+
+      - The `on{X}Do` attributes become `case` branches in a `switch` expression
+      on the returned `int`.
+
+      - `onOtherDo` becomes the `default` branch.
+
+      - `onOtherDo="end"` and `on0Do="end"` mean the step terminates the chain —
+      return the result from the method.
+
+      - `opStep` entries with no `implClass` that only route to `end` (e.g.
+      `OperationFailed`) become a thrown exception or an error result record —
+      never a no-op.
+
+      - Custom attributes on an `opStep` (e.g. `ErrorCategory="10"`) that were
+      previously injected via reflection must be passed as constructor arguments
+      or factory method parameters to the step class — not set via setters.
+
+
+      ```java
+
+      // opStep chain →
+
+      private GetLinksRsDto runSteps(GetLinksContext context) {
+          return switch (getClientLinks.execute(context)) {
+              case 0  -> buildResponse(context);
+              case 4  -> mapError.execute(context, 10, 0);  // ErrorDataNotFound
+              case 5  -> mapError.execute(context, 20, 0);  // ErrorInvalidLinks
+              default -> throw new OperationFailedException("GetLinksOp failed");
+          };
+      }
+
+      ```
+
+
+      ---
+
+
+      ## fmtDef → Request and Response Records
+
+
+      Each `fmtDef` becomes a Java `record` (Java 16+). The `id` attribute is
+      the record name.
+
+
+      - Request formats (referenced as `csRequestFormat`) → input record,
+      suffixed `RqDto`.
+
+      - Response formats (referenced as `csReplyFormat`) → output record,
+      suffixed `RsDto`.
+
+      - Each child format tag maps to a field in the record according to the
+      type mapping table below.
+
+      - `CCXML` wrapper tags with `transparent="true"` do not produce a wrapper
+      record — their children are flattened into the parent record.
+
+      - `CCXML` tags with `transparent="false"` or no `transparent` attribute
+      produce a nested record.
+
+      - `CCTcoll` with `times="*"` maps to `List<T>` where `T` is the record
+      type of the child `CCXML`.
+
+
+      ```java
+
+      // fmtDef id="GetLinksRQFmt" →
+
+      public record GetLinksRqDto(String clientId, String clientName) {}
+
+
+      // fmtDef id="GetLinksRSFmt" →
+
+      public record GetLinksRsDto(
+          String clientId,
+          String clientName,
+          List<DocDataDto> linksBlock
+      ) {}
+
+
+      public record DocDataDto(
+          String docId,
+          String flag,
+          String linkDescription,   // CCTableFormat → String (resolved value)
+          String storeDate,
+          BigDecimal maxAccess,     // NumberFormat → BigDecimal
+          LocalDate writtenAt       // CCDate → LocalDate
+      ) {}
+
+      ```
+
+
+      ---
+
+
+      ## Format Tag Type Mapping
+
+
+      Convert each format tag to the most appropriate native Java type. Do not
+      use `String` for everything — model the type the field actually
+      represents.
+
+
+      | WSBCC Tag | Java Type | Notes |
+
+      |---|---|---|
+
+      | `CCString` | `String` | Direct mapping |
+
+      | `CCDate` | `LocalDate` / `LocalDateTime` | Use `pattern` attribute to
+      select the correct `DateTimeFormatter`; `times="*"` means the format
+      handles a collection |
+
+      | `CCBoolean` | `boolean` / `Boolean` | Map `"yes"`/`"no"` strings to
+      `true`/`false` |
+
+      | `CCInteger` | `int` / `Integer` | Direct mapping |
+
+      | `NumberFormat` | `BigDecimal` | Ignore `showThousandsSep` /
+      `showDecimalsSep` — those are presentation concerns handled at the
+      serialisation layer |
+
+      | `CCTableFormat` | `String` | The resolved lookup value; document
+      `fromTable`, `fromColumn`, `keyValue` as a comment on the field for
+      traceability |
+
+      | `CCTcoll` with `times="*"` | `List<T>` | `T` is the record type of the
+      child element |
+
+      | `CCXML` transparent | _(flatten)_ | No wrapper type; promote children to
+      parent record |
+
+      | `CCXML` non-transparent | Nested record | Create a named nested record |
+
+      | `nilDecorator` | _(omit)_ | Null-decoration is a WSBCC rendering
+      concern; make the preceding field `Optional<T>` if nullability is
+      meaningful |
+
+
+      ---
+
+
+      ## context → Context Class
+
+
+      Each `context` tag becomes a plain Java class (not a record — it is
+      mutable shared state passed between steps).
+
+
+      - Class name: the `id` attribute value (e.g. `id="GetLinksCtxt"` →
+      `GetLinksContext`).
+
+      - The context holds the parsed request DTO and accumulates results as
+      steps execute.
+
+      - Fields are package-private or have explicit getters/setters — no public
+      mutable fields.
+
+      - If `parent` is not `"nil"`, the converted context class extends the
+      parent context class.
+
+      - The context class must not hold any WSBCC or WebSphere types.
+
+
+      ```java
+
+      // context id="GetLinksCtxt" parent="nil" →
+
+      public class GetLinksContext {
+          private GetLinksRqDto request;
+          private GetLinksRsDto response;
+
+          // getters and setters
+      }
+
+      ```
+
+
+      ---
+
+
+      ## refFormat → DTO Reuse
+
+
+      `refFormat` is a reference to an existing `fmtDef`. In the converted Java
+      code:
+
+
+      - Do not duplicate the record definition. Reference the same record class.
+
+      - The `name` attribute (e.g. `csRequestFormat`, `csReplyFormat`) becomes a
+      local variable name or method parameter name in the service class where it
+      is used.
+
+
+      ---
+
+
+      ## opStep implClass → Step Interface and Implementation
+
+
+      Each unique `implClass` value referenced in an `opStep` must become a Java
+      class that implements a common step interface.
+
+
+      - Define a shared interface: `OperationStep<C>` with a single method `int
+      execute(C context)`.
+
+      - Each `implClass` (e.g. `db.GetClientLinksSP`,
+      `operations.MapErrorByValueAlways`) becomes a concrete class implementing
+      this interface.
+
+      - Custom attributes that were previously set via reflection (e.g.
+      `ErrorCategory`, `ErrorNumber`) become constructor parameters of the
+      concrete class — never setter methods.
+
+      - The step class must only depend on the context and its
+      constructor-injected collaborators (data sources, external clients, etc.).
+      No static access, no service locators.
+
+
+      ```java
+
+      public interface OperationStep<C> {
+          int execute(C context);
+      }
+
+
+      // implClass="operations.MapErrorByValueAlways" ErrorCategory="10"
+      ErrorNumber="0" →
+
+      public class MapErrorByValueAlways implements
+      OperationStep<GetLinksContext> {
+          private final int errorCategory;
+          private final int errorNumber;
+
+          public MapErrorByValueAlways(int errorCategory, int errorNumber) {
+              this.errorCategory = errorCategory;
+              this.errorNumber = errorNumber;
+          }
+
+          @Override
+          public int execute(GetLinksContext context) { ... }
+      }
+
+      ```
+
+
+      ---
+
+
+      ## XML Serialisation / Deserialisation
+
+
+      The WSBCC framework handled XML parsing and formatting transparently. In
+      the converted code this must be explicit, but it must be kept at the
+      boundary — not inside business logic.
+
+
+      - Parse the inbound XML request into the request DTO at the entry point of
+      the service (e.g. in a controller or adapter layer). Do not pass raw XML
+      strings into the service class or step classes.
+
+      - Serialise the response DTO to XML at the exit point. Do not build XML
+      strings inside step classes.
+
+      - Use a standard Java XML library (JAXB, Jackson with XML module, or
+      similar) for serialisation. Document the choice with a brief comment. Do
+      not write manual XML string concatenation.
+
+      - `CCDate` parsing: translate the `pattern` attribute directly to a
+      `DateTimeFormatter` constant. The formatter is a concern of the
+      serialisation layer, not the domain record.
+
+
+      ---
+
+
+      ## What Must Not Appear in Generated Code
+
+
+      - No imports from `com.ibm.*`, `com.websphere.*`, or any WSBCC package.
+
+      - No use of `Class.forName()`, `Method.invoke()`, or any reflection-based
+      attribute setting.
+
+      - No XML parsing inside step classes or the service class — only in the
+      entry/exit serialisation layer.
+
+      - No `dse.ini` lookups or runtime tag-to-class resolution.
+
+      - No setter methods named to match XML attribute names (the reflection
+      contract is gone — use constructors).
+
+      - No `String` fields for values that have a clear Java type (`boolean`,
+      `LocalDate`, `BigDecimal`, etc.).
+prompts:
+  - name: Composer Converter
+    description: Converts a WSBCC XML operation definition into a standalone Java program
+    prompt: |-
+      You are a senior Java developer and an expert in IBM WebSphere Business
+      Component Composer (WSBCC). You have deep knowledge of how WSBCC XML
+      operation files work: the CCDSEServerOperation structure, opStep routing,
+      fmtDef format definitions, context definitions, refFormat references, the
+      dse.ini tag-to-class mapping file, and how the WSBCC runtime uses
+      reflection to instantiate tag classes and invoke their execute() methods.
+
+
+      You will be given one or more of the following as input:
+
+      - A WSBCC XML operation definition file (CCDSEServerOperation)
+
+      - A dse.ini tag-to-class mapping file
+
+      - Existing Java implementation classes for opStep implClass references
+
+
+      Your task is to convert the supplied WSBCC operation into a complete,
+      standalone Java program that has zero dependency on IBM WebSphere, WSBCC,
+      or any IBM runtime library. The output must be plain, framework-free Java
+      that any standard JVM can run.
+
+
+      Follow these conversion rules precisely:
+
+
+      OPERATION: Convert each CCDSEServerOperation into a single Java service
+      class named after the operation id suffixed with "Service". All opStep
+      implementing classes become constructor-injected dependencies — never
+      instantiated inline.
+
+
+      STEP ROUTING: Convert the opStep chain and its on{X}Do / onOtherDo
+      routing into a private method using a switch expression on the integer
+      result returned by each step. on{X}Do becomes a case branch. onOtherDo
+      becomes the default branch. A step that routes to "end" terminates the
+      chain. An opStep with no implClass that leads to failure throws a named
+      exception — never a silent no-op.
+
+
+      STEP CLASSES: Each unique implClass becomes a concrete Java class
+      implementing a shared OperationStep<C> interface with a single method
+      int execute(C context). Custom attributes that were previously injected
+      via reflection (e.g. ErrorCategory, ErrorNumber) become constructor
+      parameters — never setter methods.
+
+
+      FORMATS: Convert each fmtDef into a Java record named after the fmtDef
+      id. Request formats are suffixed RqDto, response formats are suffixed
+      RsDto. Apply this type mapping: CCString to String, CCDate to LocalDate
+      or LocalDateTime (use the pattern attribute to select the correct
+      DateTimeFormatter), CCBoolean to boolean, CCInteger to int, NumberFormat
+      to BigDecimal, CCTableFormat to String with a comment documenting the
+      source table and column, CCTcoll with times="*" to List<T>. CCXML with
+      transparent="true" is flattened into the parent record — no wrapper type.
+      nilDecorator makes the preceding field Optional<T>.
+
+
+      CONTEXT: Convert each context tag into a plain mutable Java class named
+      after the context id. It holds the parsed request DTO and accumulates
+      results as steps execute. If parent is not "nil" the class extends the
+      parent context class.
+
+
+      XML BOUNDARY: XML parsing of the inbound request and XML serialisation
+      of the outbound response are handled only at the entry and exit points of
+      the service. Step classes and the service class receive and return typed
+      Java objects — never raw XML strings or DOM objects.
+
+
+      PROHIBITED: Do not import or reference com.ibm.*, com.websphere.*, or
+      any WSBCC package. Do not use Class.forName(), Method.invoke(), or any
+      reflection-based attribute setting. Do not write setter methods named to
+      match XML attributes — use constructors. Do not use String for fields
+      that have a clear Java type.
+
+
+      Output for each conversion:
+
+      1. The service class
+
+      2. The OperationStep interface
+
+      3. All step implementation classes (stub with TODO if source class is not
+      provided, preserving the original class name and package)
+
+      4. All request and response DTO records
+
+      5. The context class
+
+      6. A brief conversion notes section listing any assumptions made,
+      ambiguous mappings, and any opStep implClass for which no source was
+      provided
+
+
+      Input:
+
+      {{{ input }}}
+  - name: Java Code Review
+    description: Review Java code against project-specific rules
+    prompt: >-
+      Review the selected Java code. Apply our core, backend-core, and
+      Java-specific rules.
+
+
+      Check specifically for:
+
+
+      **Modern Java correctness**
+
+      - POJOs with manual getters/setters/equals/hashCode that should be
+      `record`
+
+      - `class` used to model closed domains that should be `sealed interface` +
+      `record` implementations
+
+      - Force-unwrapped nulls or missing null checks where `Optional` is the
+      right return type
+
+      - `Optional` misused as a field type, collection element, or method
+      parameter
+
+      - Checked exceptions thrown for conditions the caller cannot recover from
+
+      - `switch` statements / `if-else if` chains that should be `switch`
+      expressions
+
+
+      **Concurrency**
+
+      - Raw `Thread` creation instead of `ExecutorService` or virtual threads
+
+      - `synchronized` blocks on virtual threads (contention risk with Loom)
+
+      - `.get()` called on a `CompletableFuture` inside an async context
+
+      - Missing error recovery in `CompletableFuture` chains (`exceptionally` /
+      `handle`)
+
+      - Wrong flattening operator for the async intent
+
+
+      **Code quality**
+
+      - Mutable collections returned from public APIs where immutable is correct
+
+      - Null returned where `Optional` is appropriate
+
+      - Exception wrapping without preserving the original cause
+
+      - Resources not closed via `try-with-resources`
+
+      - Stateful lambdas or side effects inside Stream operations
+
+
+      **Testing**
+
+      - Static state or singletons that create test ordering dependencies
+
+      - Tests named after implementation rather than behaviour
+
+
+      Format: Critical → Important → Minor. Be direct.
+  - name: Fix a Bug
+    description: Fix an error or bug and explain the root cause
+    prompt: >-
+      Fix the issue described below (or paste the error/stacktrace).
+
+
+      {{{ input }}}
+
+
+      Rules:
+
+      - Fix the root cause, not just the symptom
+
+      - Do not change unrelated code
+
+      - If the fix requires a behaviour change that affects callers, say so
+      explicitly
+
+      - After the fix, provide a 2-line explanation: what was wrong and why this
+      fix is correct
+
+      - If a regression test should be added, show it
+  - name: Explain Code
+    description: Explain code as if you are handing it over to a new owner
+    prompt: >-
+      Explain the selected code as if you are handing it to a developer who
+      needs to own and modify it.
+
+
+      Cover:
+
+      - What it does and why it exists (not a line-by-line walkthrough)
+
+      - Non-obvious assumptions or preconditions the caller must satisfy
+
+      - Side effects, mutations, or external dependencies
+
+      - Known limitations, edge cases, or TODOs worth flagging
+
+      - Anything that would surprise a competent developer reading it for the
+      first time
+
+
+      Be concise. If the code is straightforward, say so briefly rather than
+      padding the explanation.
+  - name: Java to Microservice
+    description: Convert a Java class into a production-ready Spring Boot
+      microservice with Docker and Kubernetes Helm charts
+    prompt: >-
+      You are a senior Java architect with deep expertise in Spring Boot 3.x,
+      Docker, and Kubernetes. You will receive one or more plain Java classes
+      and convert them into a complete, production-ready Spring Boot
+      microservice packaged as a Docker container and deployable to Kubernetes
+      via Helm charts.
+
+      {{{ input }}}
+
+      ---
+
+      ## Conversion Rules
+
+      ### Spring Boot Service
+
+      - Use Spring Boot 3.x with Java 21 - Use constructor injection exclusively
+      — no `@Autowired` on fields - Expose the class logic as a REST API using
+      `@RestController` - Keep the controller thin: validate input, delegate to
+      a `@Service`, return a response - Use `@ConfigurationProperties` for all
+      configuration — no scattered `@Value` annotations - Validate all request
+      bodies with Bean Validation (`@NotNull`, `@NotBlank`, etc.) - Return
+      consistent error responses using `ProblemDetail` (RFC 7807) from a
+      `@RestControllerAdvice` - Use `async/await` patterns via
+      `CompletableFuture` only if the original class has async intent; otherwise
+      keep it synchronous - Expose `/actuator/health`, `/actuator/info`, and
+      `/actuator/prometheus` endpoints - All configuration values (ports,
+      timeouts, external URLs) must come from `application.yml` with safe
+      defaults - Structure packages by feature, not by layer
+
+      ### Project Structure
+
+      Generate the following files:
+
+      ``` {service-name}/ ├── src/main/java/com/{org}/{service}/ │   ├──
+      {ServiceName}Application.java │   ├── controller/ │   │   └──
+      {ServiceName}Controller.java │   ├── service/ │   │   └──
+      {ServiceName}Service.java │   ├── model/ │   │   ├──
+      {ServiceName}Request.java   (record) │   │   └──
+      {ServiceName}Response.java  (record) │   ├── config/ │   │   └──
+      {ServiceName}Properties.java │   └── exception/ │       └──
+      GlobalExceptionHandler.java ├── src/main/resources/ │   └──
+      application.yml ├── src/test/java/com/{org}/{service}/ │   └──
+      {ServiceName}ControllerTest.java  (@WebMvcTest) ├── Dockerfile ├──
+      build.gradle (or pom.xml — match the original project if detectable) └──
+      helm/
+          └── {service-name}/
+              ├── Chart.yaml
+              ├── values.yaml
+              └── templates/
+                  ├── deployment.yaml
+                  ├── service.yaml
+                  ├── configmap.yaml
+                  ├── hpa.yaml
+                  └── ingress.yaml
+      ```
+
+      ### Dockerfile
+
+      - Use a multi-stage build - Stage 1: build with
+      `eclipse-temurin:21-jdk-alpine` - Stage 2: run with
+      `eclipse-temurin:21-jre-alpine` - Run as a non-root user - Copy only the
+      built jar — no source code in the final image - Expose the correct port -
+      Set `JAVA_OPTS` as an environment variable for JVM tuning
+
+      ```dockerfile # Example structure — adapt to the actual service FROM
+      eclipse-temurin:21-jdk-alpine AS builder WORKDIR /app COPY . . RUN
+      ./gradlew bootJar --no-daemon FROM eclipse-temurin:21-jre-alpine RUN
+      addgroup -S app && adduser -S app -G app WORKDIR /app COPY --from=builder
+      /app/build/libs/*.jar app.jar USER app ENV JAVA_OPTS="" EXPOSE 8080
+      ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"] ```
+
+      ### Helm Charts
+
+      Generate a complete Helm chart with the following:
+
+      **Chart.yaml** - `apiVersion: v2` - `type: application` - Correct `name`,
+      `description`, and `version: 0.1.0`
+
+      **values.yaml** — must include: - `replicaCount: 1` - `image.repository`,
+      `image.tag: latest`, `image.pullPolicy: IfNotPresent` - `service.type:
+      ClusterIP`, `service.port: 80`, `service.targetPort: 8080` -
+      `resources.requests` and `resources.limits` for CPU and memory -
+      `autoscaling.enabled: false`, `autoscaling.minReplicas`,
+      `autoscaling.maxReplicas`, `autoscaling.targetCPUUtilizationPercentage` -
+      `ingress.enabled: false`, `ingress.className`, `ingress.host` -
+      `livenessProbe` and `readinessProbe` pointing to
+      `/actuator/health/liveness` and `/actuator/health/readiness` - `configmap`
+      section for all externalised application properties
+
+      **deployment.yaml** — must include: - `RollingUpdate` strategy -
+      Environment variables sourced from the ConfigMap - Liveness and readiness
+      probes - Resource requests and limits - `terminationGracePeriodSeconds:
+      60` - Security context: `runAsNonRoot: true`, `readOnlyRootFilesystem:
+      true`, `allowPrivilegeEscalation: false`
+
+      **hpa.yaml** — HorizontalPodAutoscaler gated by `autoscaling.enabled`
+
+      **service.yaml** — ClusterIP service wiring container port to service port
+
+      **ingress.yaml** — gated by `ingress.enabled`, with TLS block ready to be
+      filled in
+
+      ### Output Order
+
+      Produce files in this order, each clearly labelled with its path as a
+      comment or heading:
+
+      1. `Application.java` 2. `Controller.java` 3. `Service.java` 4. Request
+      and Response records 5. `ConfigurationProperties` class 6.
+      `GlobalExceptionHandler.java` 7. `application.yml` 8. `build.gradle` or
+      `pom.xml` 9. `ControllerTest.java` 10. `Dockerfile` 11. `helm/Chart.yaml`
+      12. `helm/values.yaml` 13. `helm/templates/deployment.yaml` 14.
+      `helm/templates/service.yaml` 15. `helm/templates/configmap.yaml` 16.
+      `helm/templates/hpa.yaml` 17. `helm/templates/ingress.yaml`
+
+      At the end include a **Deployment Notes** section covering: - How to build
+      the Docker image - How to install/upgrade the Helm chart - Any assumptions
+      made about the original class - Any TODO items where the original class
+      logic was ambiguous
+docs:
+  - name: Java 21 API
+    startUrl: https://docs.oracle.com/en/java/javase/21/docs/api/index.html
+  - name: Java Language Guide
+    startUrl: https://docs.oracle.com/en/java/javase/21/language/index.html
+mcpServers:
+  - name: Memory
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-memory"
+  - name: DOCKER
+    command: docker
+    args:
+      - mcp
+      - gateway
+      - run
