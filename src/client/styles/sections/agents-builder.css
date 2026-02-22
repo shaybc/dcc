@@ -7,7 +7,7 @@
   border-radius: 16px;
   background: rgba(20, 22, 27, 0.78);
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 30%;
   min-height: calc(100vh - 220px);
   overflow: hidden;
 }
@@ -146,7 +146,7 @@
 .run-picker-item.selected { border-color: rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.12); }
 .run-picker-item-icon { width: 34px; height:34px; border-radius:8px; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
 .run-picker-item-name { font-weight: 600; }
-.run-picker-item-desc { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.run-picker-item-desc { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
 .run-picker-item-tags { display:flex; flex-wrap: wrap; gap:5px; margin-top: 5px; }
 .run-picker-item-tag { font-size: 10px; border:1px solid var(--border); color: var(--muted); border-radius: 999px; padding: 1px 6px; }
 .run-picker-item-check { color: transparent; align-self: start; }
