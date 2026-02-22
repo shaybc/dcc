@@ -283,9 +283,11 @@ function persistRecentAgentRunIds() {
 }
 
 function toRunBuilderItem(definition, fallbackIcon) {
+  const normalizedType = normalizeFilterType(definition.type);
   return {
     id: String(definition.id),
     icon: fallbackIcon,
+    type: normalizedType,
     name: prettifyName(definition.name || definition.slug || definition.fileName || definition.id),
     desc: String(definition.description || definition.summary || definition.filePath || "No description available."),
     tags: Array.isArray(definition.tags) ? definition.tags.slice(0, 5) : [],
@@ -343,15 +345,17 @@ function renderRunBuilderPicker() {
   rows.forEach((item) => {
     const row = document.createElement("button");
     row.type = "button";
-    row.className = `run-picker-item${runBuilderPendingSelection?.id === item.id ? " selected" : ""}`;
+    row.className = `run-picker-item card${runBuilderPendingSelection?.id === item.id ? " selected" : ""}`;
     row.innerHTML = `
-      <span class="run-picker-item-icon">${escapeHtml(item.icon)}</span>
-      <span>
-        <span class="run-picker-item-name">${escapeHtml(item.name)}</span>
-        <span class="run-picker-item-desc">${escapeHtml(item.desc)}</span>
-        <span class="run-picker-item-tags">${item.tags.map((tag) => `<span class="run-picker-item-tag">${escapeHtml(tag)}</span>`).join("")}</span>
-      </span>
-      <span class="run-picker-item-check">✓</span>
+      <div class="run-picker-item-top">
+        <div class="type-pill ${typeClassName(item.type)}">
+          <span class="type-pill-icon">${filterIconSvg(item.type)}</span>
+          <span>${formatTypePillLabel(item.type)}</span>
+        </div>
+      </div>
+      <h3 class="run-picker-item-name">${escapeHtml(item.name)}</h3>
+      <p class="run-picker-item-desc">${escapeHtml(item.desc)}</p>
+      ${item.tags.length > 0 ? `<div class="tag-pills card-tag-pills run-picker-item-tags">${renderTagPills(item.tags, { truncate: true })}</div>` : ""}
     `;
     row.addEventListener("click", () => {
       runBuilderPendingSelection = item;
