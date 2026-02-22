@@ -209,6 +209,7 @@ let currentCardsPage = 1;
 let onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
 let activeTopPage = "discover";
 const RECENT_AGENT_RUNS_STORAGE_KEY = "dcc.agent.builder.recent-runs";
+const RECENT_AGENT_RUN_PACKS_ENDPOINT = "/api/agent-run-packs";
 let runBuilderMode = "agent";
 let runBuilderPickerFilter = "all";
 let runBuilderSearchQuery = "";
@@ -296,6 +297,42 @@ function persistRecentAgentRunPacks() {
     localStorage.setItem(RECENT_AGENT_RUNS_STORAGE_KEY, JSON.stringify(recentAgentRunPacks.slice(0, 30)));
   } catch (_error) {
     // Ignore localStorage failures.
+  }
+}
+
+
+async function loadRecentAgentRunPacksFromDatabase() {
+  try {
+    const response = await fetch(RECENT_AGENT_RUN_PACKS_ENDPOINT);
+    if (!response.ok) {
+      throw new Error(`Failed to load recent agent packs (${response.status})`);
+    }
+    const payload = await response.json();
+    if (!Array.isArray(payload?.packs)) {
+      return;
+    }
+    recentAgentRunPacks = payload.packs
+      .map((entry) => normalizeRecentAgentRunPack(entry))
+      .filter(Boolean)
+      .slice(0, 30);
+    persistRecentAgentRunPacks();
+    renderRunBuilder();
+  } catch (_error) {
+    // Fall back to localStorage-backed recent packs.
+  }
+}
+
+async function persistRecentAgentRunPackToDatabase(pack) {
+  try {
+    await fetch(RECENT_AGENT_RUN_PACKS_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(pack)
+    });
+  } catch (_error) {
+    // Ignore persistence failures and keep local state.
   }
 }
 
@@ -478,6 +515,11 @@ function renderRunBuilder() {
   updateRunBuilderStatus();
 }
 
+function updateRunPickerApplyButtonVisibility() {
+  if (!runPickerApplyButton) return;
+  runPickerApplyButton.hidden = runBuilderPickerFilter === "recent";
+}
+
 function openRunBuilderPicker(mode) {
   runBuilderMode = mode;
   runBuilderPendingSelection = runBuilderSelection[mode];
@@ -494,6 +536,7 @@ function openRunBuilderPicker(mode) {
 
   runAgentStage?.classList.toggle("picking", mode === "agent");
   runConfigStage?.classList.toggle("picking", mode === "config");
+  updateRunPickerApplyButtonVisibility();
   renderRunBuilderPicker();
 }
 
@@ -553,6 +596,7 @@ function handleRunAgentClick() {
     ...recentAgentRunPacks.filter((pack) => pack.agentId !== idsToPromote[0] || pack.configId !== idsToPromote[1])
   ].slice(0, 30);
   persistRecentAgentRunPacks();
+  void persistRecentAgentRunPackToDatabase(recentAgentRunPacks[0]);
 
   window.setTimeout(() => {
     window.alert(runSummary);
@@ -566,8 +610,10 @@ function setupRunBuilder() {
   if (!agentsPage) return;
 
   openRunBuilderPicker("agent");
+  updateRunPickerApplyButtonVisibility();
   renderRunBuilder();
   handleRunBuilderPromptInput();
+  void loadRecentAgentRunPacksFromDatabase();
 
   [runAgentStage, runConfigStage].forEach((stage) => {
     stage?.addEventListener("click", () => {
@@ -623,6 +669,7 @@ function setupRunBuilder() {
       runPickerTabs.querySelectorAll("[data-run-picker-filter]").forEach((tabButton) => {
         tabButton.classList.toggle("active", tabButton === tab);
       });
+      updateRunPickerApplyButtonVisibility();
       renderRunBuilderPicker();
     });
   });
