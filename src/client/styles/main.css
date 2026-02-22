@@ -39,6 +39,7 @@
 @import "./sections/detail-page.css";
 @import "./sections/version-banner.css";
 @import "./sections/settings.css";
+@import "./sections/agents-builder.css";
 
 /* Responsive */
 @import "./responsive/breakpoints.css";

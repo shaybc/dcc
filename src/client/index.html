@@ -226,9 +226,127 @@
       <h2>Activity dashboard is coming soon</h2>
       <p>This page will show running agents, live status, results, and let you launch additional agents.</p>
     </main>
-    <main class="future-page" id="agentsPage" hidden>
-      <h2>Agents builder is coming soon</h2>
-      <p>This page will let you create bundles of agents and configs with a predefined prompt input.</p>
+    <main class="agents-builder-page" id="agentsPage" hidden>
+      <section class="agents-builder-shell">
+        <div class="agents-builder-canvas">
+          <div class="agents-builder-header">
+            <div>
+              <h2>Run Agent</h2>
+              <p>Assemble a pipeline: select agent + config, then launch.</p>
+            </div>
+            <button type="button" class="run-agent-btn" id="runAgentButton" disabled>
+              <span class="run-agent-dot" aria-hidden="true"></span>
+              Launch Agent
+            </button>
+          </div>
+
+          <div class="run-stage-list">
+            <article class="run-stage" data-run-stage="agent" id="runAgentStage" tabindex="0">
+              <div class="run-stage-gutter">
+                <span class="run-stage-num">1</span>
+                <span class="run-stage-type" aria-hidden="true">◈</span>
+              </div>
+              <div class="run-stage-body">
+                <div class="run-stage-meta">
+                  <span class="run-stage-label">Agent</span>
+                  <span class="run-stage-required">Required</span>
+                </div>
+                <div class="run-stage-empty" id="runAgentStageEmpty">Select an agent to run…</div>
+                <div class="run-stage-selected" id="runAgentStageSelected" hidden>
+                  <div class="run-stage-icon" id="runAgentIcon">◈</div>
+                  <div>
+                    <div class="run-stage-name" id="runAgentName">—</div>
+                    <div class="run-stage-desc" id="runAgentDesc">—</div>
+                    <div class="run-stage-tags" id="runAgentTags"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="run-stage-actions">
+                <button type="button" class="run-stage-change" data-run-stage-open="agent">change</button>
+                <button type="button" class="run-stage-clear" data-run-stage-clear="agent" aria-label="Clear agent">✕</button>
+              </div>
+            </article>
+
+            <div class="run-stage-connector">feeds into</div>
+
+            <article class="run-stage" data-run-stage="config" id="runConfigStage" tabindex="0">
+              <div class="run-stage-gutter">
+                <span class="run-stage-num">2</span>
+                <span class="run-stage-type" aria-hidden="true">⚙</span>
+              </div>
+              <div class="run-stage-body">
+                <div class="run-stage-meta">
+                  <span class="run-stage-label">Config</span>
+                  <span class="run-stage-required">Required</span>
+                </div>
+                <div class="run-stage-empty" id="runConfigStageEmpty">Select a config…</div>
+                <div class="run-stage-selected" id="runConfigStageSelected" hidden>
+                  <div class="run-stage-icon" id="runConfigIcon">⚙</div>
+                  <div>
+                    <div class="run-stage-name" id="runConfigName">—</div>
+                    <div class="run-stage-desc" id="runConfigDesc">—</div>
+                    <div class="run-stage-tags" id="runConfigTags"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="run-stage-actions">
+                <button type="button" class="run-stage-change" data-run-stage-open="config">change</button>
+                <button type="button" class="run-stage-clear" data-run-stage-clear="config" aria-label="Clear config">✕</button>
+              </div>
+            </article>
+
+            <div class="run-stage-connector">with prompt (optional)</div>
+
+            <article class="run-stage run-stage-optional" id="runPromptStage">
+              <div class="run-stage-gutter">
+                <span class="run-stage-num">3</span>
+                <span class="run-stage-type" aria-hidden="true">✎</span>
+              </div>
+              <div class="run-stage-body">
+                <div class="run-stage-meta">
+                  <span class="run-stage-label">Prompt</span>
+                  <span class="run-stage-optional-badge">Optional</span>
+                </div>
+                <textarea id="runPromptInput" class="run-prompt-input" placeholder="Enter an initial prompt for the agent (optional)"></textarea>
+                <div class="run-prompt-footer">
+                  <span>Use this to steer the initial run context.</span>
+                  <span id="runPromptCharCount">0 chars</span>
+                </div>
+              </div>
+              <div class="run-stage-actions">
+                <button type="button" class="run-stage-clear" id="runPromptClearButton" aria-label="Clear prompt">✕</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="run-agent-status" id="runAgentStatusBar">
+            <span class="run-agent-status-dot" aria-hidden="true"></span>
+            <span id="runAgentStatusText">Select an agent and config to continue.</span>
+            <div class="run-agent-status-checks">
+              <span class="run-agent-status-check" id="runAgentCheckAgent">agent</span>
+              <span class="run-agent-status-check" id="runAgentCheckConfig">config</span>
+              <span class="run-agent-status-check" id="runAgentCheckReady">ready</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="run-picker-panel">
+          <div class="run-picker-header">
+            <h3 id="runPickerTitle">Select Agent</h3>
+            <p id="runPickerSubtitle">Choose which agent will run.</p>
+            <input type="search" id="runPickerSearch" placeholder="Filter…" />
+          </div>
+          <div class="run-picker-tabs" id="runPickerTabs" role="tablist" aria-label="Picker source tabs">
+            <button type="button" role="tab" class="run-picker-tab active" data-run-picker-filter="all">All</button>
+            <button type="button" role="tab" class="run-picker-tab" data-run-picker-filter="recent">Recent</button>
+            <button type="button" role="tab" class="run-picker-tab" data-run-picker-filter="installed">Installed</button>
+          </div>
+          <div class="run-picker-list" id="runPickerList" aria-live="polite"></div>
+          <div class="run-picker-footer">
+            <button type="button" class="run-picker-apply" id="runPickerApplyButton">Select Agent</button>
+          </div>
+        </aside>
+      </section>
     </main>
 
     <main class="detail-page" id="detailPage" aria-labelledby="detailTitle" hidden>
