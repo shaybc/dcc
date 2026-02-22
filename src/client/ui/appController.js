@@ -50,6 +50,24 @@ const favoriteDefinitionButton = document.getElementById("favoriteDefinition");
 const topNav = document.getElementById("topNav");
 const activityPage = document.getElementById("activityPage");
 const agentsPage = document.getElementById("agentsPage");
+const runAgentButton = document.getElementById("runAgentButton");
+const runAgentStage = document.getElementById("runAgentStage");
+const runConfigStage = document.getElementById("runConfigStage");
+const runPromptStage = document.getElementById("runPromptStage");
+const runPromptInput = document.getElementById("runPromptInput");
+const runPromptCharCount = document.getElementById("runPromptCharCount");
+const runPromptClearButton = document.getElementById("runPromptClearButton");
+const runAgentStatusBar = document.getElementById("runAgentStatusBar");
+const runAgentStatusText = document.getElementById("runAgentStatusText");
+const runAgentCheckAgent = document.getElementById("runAgentCheckAgent");
+const runAgentCheckConfig = document.getElementById("runAgentCheckConfig");
+const runAgentCheckReady = document.getElementById("runAgentCheckReady");
+const runPickerTitle = document.getElementById("runPickerTitle");
+const runPickerSubtitle = document.getElementById("runPickerSubtitle");
+const runPickerSearch = document.getElementById("runPickerSearch");
+const runPickerTabs = document.getElementById("runPickerTabs");
+const runPickerList = document.getElementById("runPickerList");
+const runPickerApplyButton = document.getElementById("runPickerApplyButton");
 const discoverTabBadge = document.getElementById("discoverTabBadge");
 const installedTabBadge = document.getElementById("installedTabBadge");
 const favoritesTabBadge = document.getElementById("favoritesTabBadge");
@@ -190,6 +208,13 @@ const CARDS_PER_PAGE = 25;
 let currentCardsPage = 1;
 let onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
 let activeTopPage = "discover";
+const RECENT_AGENT_RUNS_STORAGE_KEY = "dcc.agent.builder.recent-runs";
+let runBuilderMode = "agent";
+let runBuilderPickerFilter = "all";
+let runBuilderSearchQuery = "";
+let runBuilderPendingSelection = null;
+let runBuilderSelection = { agent: null, config: null };
+let recentAgentRunIds = getStoredRecentAgentRunIds();
 const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
 let favoriteDefinitionIds = getStoredFavoriteDefinitionIds();
 
@@ -236,6 +261,300 @@ function toggleFavoriteDefinition(definitionId) {
 
   persistFavoriteDefinitionIds();
   return favoriteDefinitionIds.has(normalizedId);
+}
+
+function getStoredRecentAgentRunIds() {
+  try {
+    const raw = localStorage.getItem(RECENT_AGENT_RUNS_STORAGE_KEY);
+    const parsed = JSON.parse(raw || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((value) => String(value || "").trim()).filter(Boolean).slice(0, 30);
+  } catch (_error) {
+    return [];
+  }
+}
+
+function persistRecentAgentRunIds() {
+  try {
+    localStorage.setItem(RECENT_AGENT_RUNS_STORAGE_KEY, JSON.stringify(recentAgentRunIds.slice(0, 30)));
+  } catch (_error) {
+    // Ignore localStorage failures.
+  }
+}
+
+function toRunBuilderItem(definition, fallbackIcon) {
+  const normalizedType = normalizeFilterType(definition.type);
+  return {
+    id: String(definition.id),
+    icon: fallbackIcon,
+    type: normalizedType,
+    name: prettifyName(definition.name || definition.slug || definition.fileName || definition.id),
+    desc: String(definition.description || definition.summary || definition.filePath || "No description available."),
+    tags: Array.isArray(definition.tags) ? definition.tags.slice(0, 5) : [],
+    status: String(definition.status || "")
+  };
+}
+
+function getRunBuilderData(mode) {
+  const type = mode === "agent" ? "agents" : "configs";
+  const fallbackIcon = mode === "agent" ? "◈" : "⚙";
+  return definitions
+    .filter((definition) => normalizeFilterType(definition.type) === type)
+    .map((definition) => toRunBuilderItem(definition, fallbackIcon));
+}
+
+function getRunBuilderPickerData() {
+  const data = getRunBuilderData(runBuilderMode);
+  const lowerQuery = runBuilderSearchQuery.toLowerCase();
+  let filtered = data;
+
+  if (runBuilderPickerFilter === "installed") {
+    filtered = filtered.filter((item) => item.status === "saved");
+  } else if (runBuilderPickerFilter === "recent") {
+    const ordered = [];
+    recentAgentRunIds.forEach((id) => {
+      const found = data.find((item) => item.id === id);
+      if (found) ordered.push(found);
+    });
+    filtered = ordered;
+  }
+
+  if (lowerQuery) {
+    filtered = filtered.filter((item) => {
+      const tags = item.tags.join(" ").toLowerCase();
+      return item.name.toLowerCase().includes(lowerQuery)
+        || item.desc.toLowerCase().includes(lowerQuery)
+        || tags.includes(lowerQuery);
+    });
+  }
+
+  return filtered;
+}
+
+function renderRunBuilderPicker() {
+  if (!runPickerList) return;
+
+  runPickerList.innerHTML = "";
+  const rows = getRunBuilderPickerData();
+
+  if (!rows.length) {
+    runPickerList.innerHTML = `<div class="run-picker-empty">No ${escapeHtml(runBuilderMode)} entries match this filter.</div>`;
+    return;
+  }
+
+  rows.forEach((item) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = `run-picker-item card${runBuilderPendingSelection?.id === item.id ? " selected" : ""}`;
+    row.innerHTML = `
+      <div class="run-picker-item-top">
+        <div class="type-pill ${typeClassName(item.type)}">
+          <span class="type-pill-icon">${filterIconSvg(item.type)}</span>
+          <span>${formatTypePillLabel(item.type)}</span>
+        </div>
+      </div>
+      <h3 class="run-picker-item-name">${escapeHtml(item.name)}</h3>
+      <p class="run-picker-item-desc">${escapeHtml(item.desc)}</p>
+      ${item.tags.length > 0 ? `<div class="tag-pills card-tag-pills run-picker-item-tags">${renderTagPills(item.tags, { truncate: true })}</div>` : ""}
+    `;
+    row.addEventListener("click", () => {
+      runBuilderPendingSelection = item;
+      renderRunBuilderPicker();
+    });
+    runPickerList.appendChild(row);
+  });
+}
+
+function renderRunBuilderStage(mode) {
+  const selected = runBuilderSelection[mode];
+  const isAgent = mode === "agent";
+  const stage = isAgent ? runAgentStage : runConfigStage;
+  const empty = document.getElementById(isAgent ? "runAgentStageEmpty" : "runConfigStageEmpty");
+  const selectedContainer = document.getElementById(isAgent ? "runAgentStageSelected" : "runConfigStageSelected");
+
+  if (!stage || !empty || !selectedContainer) return;
+
+  stage.classList.toggle("filled", Boolean(selected));
+  if (!selected) {
+    empty.hidden = false;
+    selectedContainer.hidden = true;
+    return;
+  }
+
+  empty.hidden = true;
+  selectedContainer.hidden = false;
+  document.getElementById(isAgent ? "runAgentIcon" : "runConfigIcon").textContent = selected.icon;
+  document.getElementById(isAgent ? "runAgentName" : "runConfigName").textContent = selected.name;
+  document.getElementById(isAgent ? "runAgentDesc" : "runConfigDesc").textContent = selected.desc;
+  const tagsContainer = document.getElementById(isAgent ? "runAgentTags" : "runConfigTags");
+  tagsContainer.innerHTML = selected.tags.map((tag) => `<span class="run-stage-tag">${escapeHtml(tag)}</span>`).join("");
+}
+
+function updateRunBuilderStatus() {
+  if (!runAgentStatusBar || !runAgentStatusText || !runAgentButton) return;
+
+  const hasAgent = Boolean(runBuilderSelection.agent);
+  const hasConfig = Boolean(runBuilderSelection.config);
+  const ready = hasAgent && hasConfig;
+
+  runAgentStatusBar.className = "run-agent-status";
+  if (ready) {
+    runAgentStatusBar.classList.add("ready");
+    runAgentStatusText.textContent = `Ready — ${runBuilderSelection.agent.name} × ${runBuilderSelection.config.name}`;
+  } else if (hasAgent || hasConfig) {
+    runAgentStatusBar.classList.add("partial");
+    runAgentStatusText.textContent = hasAgent ? "Select a config to continue." : "Select an agent to continue.";
+  } else {
+    runAgentStatusText.textContent = "Select an agent and config to continue.";
+  }
+
+  runAgentCheckAgent?.classList.toggle("done", hasAgent);
+  runAgentCheckConfig?.classList.toggle("done", hasConfig);
+  runAgentCheckReady?.classList.toggle("done", ready);
+  runAgentButton.disabled = !ready;
+}
+
+function renderRunBuilder() {
+  if (!agentsPage) return;
+  renderRunBuilderStage("agent");
+  renderRunBuilderStage("config");
+  renderRunBuilderPicker();
+  updateRunBuilderStatus();
+}
+
+function openRunBuilderPicker(mode) {
+  runBuilderMode = mode;
+  runBuilderPendingSelection = runBuilderSelection[mode];
+
+  if (runPickerTitle) {
+    runPickerTitle.textContent = mode === "agent" ? "Select Agent" : "Select Config";
+  }
+  if (runPickerSubtitle) {
+    runPickerSubtitle.textContent = mode === "agent" ? "Choose which agent will run." : "Choose the runtime config for this launch.";
+  }
+  if (runPickerApplyButton) {
+    runPickerApplyButton.textContent = mode === "agent" ? "Select Agent" : "Select Config";
+  }
+
+  runAgentStage?.classList.toggle("picking", mode === "agent");
+  runConfigStage?.classList.toggle("picking", mode === "config");
+  renderRunBuilderPicker();
+}
+
+function applyRunBuilderPendingSelection() {
+  if (!runBuilderPendingSelection) return;
+
+  runBuilderSelection[runBuilderMode] = runBuilderPendingSelection;
+  renderRunBuilder();
+
+  if (runBuilderMode === "agent" && !runBuilderSelection.config) {
+    openRunBuilderPicker("config");
+  }
+}
+
+function clearRunBuilderStage(mode) {
+  runBuilderSelection[mode] = null;
+  if (runBuilderMode === mode) {
+    runBuilderPendingSelection = null;
+  }
+  openRunBuilderPicker(mode);
+  updateRunBuilderStatus();
+  renderRunBuilderStage(mode);
+}
+
+function handleRunBuilderPromptInput() {
+  if (!runPromptInput || !runPromptCharCount || !runPromptStage) return;
+  const length = runPromptInput.value.length;
+  runPromptCharCount.textContent = `${length} chars`;
+  runPromptStage.classList.toggle("filled", length > 0);
+}
+
+function handleRunAgentClick() {
+  if (!runBuilderSelection.agent || !runBuilderSelection.config || !runAgentButton) return;
+
+  const runSummary = `Launching ${runBuilderSelection.agent.name} with ${runBuilderSelection.config.name}${runPromptInput?.value ? " and custom prompt" : ""}.`;
+  runAgentButton.textContent = "Launching…";
+  runAgentButton.disabled = true;
+
+  const idsToPromote = [runBuilderSelection.agent.id, runBuilderSelection.config.id];
+  recentAgentRunIds = idsToPromote.concat(recentAgentRunIds.filter((id) => !idsToPromote.includes(id))).slice(0, 30);
+  persistRecentAgentRunIds();
+
+  window.setTimeout(() => {
+    window.alert(runSummary);
+    runAgentButton.innerHTML = '<span class="run-agent-dot" aria-hidden="true"></span> Launch Agent';
+    updateRunBuilderStatus();
+    renderRunBuilderPicker();
+  }, 300);
+}
+
+function setupRunBuilder() {
+  if (!agentsPage) return;
+
+  openRunBuilderPicker("agent");
+  renderRunBuilder();
+  handleRunBuilderPromptInput();
+
+  [runAgentStage, runConfigStage].forEach((stage) => {
+    stage?.addEventListener("click", () => {
+      const mode = stage.getAttribute("data-run-stage");
+      if (!mode) return;
+      openRunBuilderPicker(mode);
+    });
+    stage?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      const mode = stage.getAttribute("data-run-stage");
+      if (!mode) return;
+      openRunBuilderPicker(mode);
+    });
+  });
+
+  document.querySelectorAll("[data-run-stage-open]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const mode = button.getAttribute("data-run-stage-open");
+      if (mode === "agent" || mode === "config") {
+        openRunBuilderPicker(mode);
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-run-stage-clear]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const mode = button.getAttribute("data-run-stage-clear");
+      if (mode === "agent" || mode === "config") {
+        clearRunBuilderStage(mode);
+      }
+    });
+  });
+
+  runPromptInput?.addEventListener("input", handleRunBuilderPromptInput);
+  runPromptClearButton?.addEventListener("click", () => {
+    if (!runPromptInput) return;
+    runPromptInput.value = "";
+    handleRunBuilderPromptInput();
+  });
+
+  runPickerSearch?.addEventListener("input", () => {
+    runBuilderSearchQuery = String(runPickerSearch.value || "").trim();
+    renderRunBuilderPicker();
+  });
+
+  runPickerTabs?.querySelectorAll("[data-run-picker-filter]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const nextFilter = tab.getAttribute("data-run-picker-filter") || "all";
+      runBuilderPickerFilter = nextFilter;
+      runPickerTabs.querySelectorAll("[data-run-picker-filter]").forEach((tabButton) => {
+        tabButton.classList.toggle("active", tabButton === tab);
+      });
+      renderRunBuilderPicker();
+    });
+  });
+
+  runPickerApplyButton?.addEventListener("click", applyRunBuilderPendingSelection);
+  runAgentButton?.addEventListener("click", handleRunAgentClick);
 }
 
 function updatePageTabBadges() {
@@ -301,6 +620,7 @@ function setActiveTopPage(page) {
   renderTopNavigation();
   renderFilters();
   renderCards();
+  renderRunBuilder();
 }
 
 function updateFavoriteDefinitionButton() {
@@ -4277,6 +4597,7 @@ export function initializeApp() {
   renderTopNavigation();
   setupRecommendationsSection();
   setupEventListeners();
+  setupRunBuilder();
   loadDevProjects();
   loadCurrentDevProject()
     .then(loadSuggestionsForCurrentProject)
