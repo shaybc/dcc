@@ -158,7 +158,7 @@
 }
 .run-picker-item:hover { transform: translateY(-1px); border-color: color-mix(in oklab, var(--accent) 45%, var(--border)); }
 .run-picker-item.selected { border-color: rgba(139, 92, 246, 0.5); box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.22); }
-.run-picker-item-top { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.run-picker-item-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
 .run-picker-item-name { margin: 0 0 6px; font-size: 16px; line-height: 1.25; }
 .run-picker-item-desc {
   margin: 0;

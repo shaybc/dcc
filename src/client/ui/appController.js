@@ -348,12 +348,12 @@ function renderRunBuilderPicker() {
     row.className = `run-picker-item card${runBuilderPendingSelection?.id === item.id ? " selected" : ""}`;
     row.innerHTML = `
       <div class="run-picker-item-top">
+        <h3 class="run-picker-item-name">${escapeHtml(item.name)}</h3>
         <div class="type-pill ${typeClassName(item.type)}">
           <span class="type-pill-icon">${filterIconSvg(item.type)}</span>
           <span>${formatTypePillLabel(item.type)}</span>
         </div>
       </div>
-      <h3 class="run-picker-item-name">${escapeHtml(item.name)}</h3>
       <p class="run-picker-item-desc">${escapeHtml(item.desc)}</p>
       ${item.tags.length > 0 ? `<div class="tag-pills card-tag-pills run-picker-item-tags">${renderTagPills(item.tags, { truncate: true })}</div>` : ""}
     `;
