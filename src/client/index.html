@@ -20,8 +20,8 @@
         <span>Activity</span>
       </button>
       <button class="top-nav-tab" type="button" data-top-nav-tab="agents">
-        <span class="top-nav-tab-icon">🤖︎</span>
-        <span>Agents</span>
+        <span class="top-nav-tab-icon">▷</span>
+        <span>Run Agent</span>
       </button>
       <button class="top-nav-tab" type="button" data-top-nav-tab="installed">
         <span class="top-nav-tab-icon">↓</span>
@@ -251,7 +251,7 @@
                   <span class="run-stage-label">Agent</span>
                   <span class="run-stage-required">Required</span>
                 </div>
-                <div class="run-stage-empty" id="runAgentStageEmpty">Select an agent to run…</div>
+                <div class="run-stage-empty" id="runAgentStageEmpty"> + Select an agent to run…</div>
                 <div class="run-stage-selected" id="runAgentStageSelected" hidden>
                   <div class="run-stage-icon" id="runAgentIcon"></div>
                   <div>
@@ -262,12 +262,15 @@
                 </div>
               </div>
               <div class="run-stage-actions">
-                <button type="button" class="run-stage-change" data-run-stage-open="agent">change</button>
                 <button type="button" class="run-stage-clear" data-run-stage-clear="agent" aria-label="Clear agent">✕</button>
+                <button type="button" class="run-stage-change" data-run-stage-open="agent">change</button>
               </div>
             </article>
 
-            <div class="run-stage-connector">feeds into</div>
+            <div class="run-stage-connector">
+              <span class="run-stage-connector-arrow">↓</span>
+              <span class="run-stage-connector-label">feeds into</span>
+            </div>
 
             <article class="run-stage" data-run-stage="config" id="runConfigStage" tabindex="0">
               <div class="run-stage-gutter">
@@ -279,7 +282,7 @@
                   <span class="run-stage-label">Config</span>
                   <span class="run-stage-required">Required</span>
                 </div>
-                <div class="run-stage-empty" id="runConfigStageEmpty">Select a config…</div>
+                <div class="run-stage-empty" id="runConfigStageEmpty"> + Select a config…</div>
                 <div class="run-stage-selected" id="runConfigStageSelected" hidden>
                   <div class="run-stage-icon" id="runConfigIcon"></div>
                   <div>
@@ -290,13 +293,15 @@
                 </div>
               </div>
               <div class="run-stage-actions">
-                <button type="button" class="run-stage-change" data-run-stage-open="config">change</button>
                 <button type="button" class="run-stage-clear" data-run-stage-clear="config" aria-label="Clear config">✕</button>
+                <button type="button" class="run-stage-change" data-run-stage-open="config">change</button>
               </div>
             </article>
 
-            <div class="run-stage-connector">with prompt (optional)</div>
-
+            <div class="run-stage-connector">
+              <span class="run-stage-connector-arrow">↓</span>
+              <span class="run-stage-connector-label">with prompt (optional)</span>
+            </div>
             <article class="run-stage run-stage-optional" id="runPromptStage">
               <div class="run-stage-gutter">
                 <span class="run-stage-num">3</span>
@@ -307,7 +312,7 @@
                   <span class="run-stage-label">Prompt</span>
                   <span class="run-stage-optional-badge">Optional</span>
                 </div>
-                <textarea id="runPromptInput" class="run-prompt-input" placeholder="Enter an initial prompt for the agent (optional)"></textarea>
+                <textarea id="runPromptInput" class="run-prompt-input" placeholder="Enter an initial prompt or instruction for the agent… (leave blank to use agent defaults)"></textarea>
                 <div class="run-prompt-footer">
                   <span>Use this to steer the initial run context.</span>
                   <span id="runPromptCharCount">0 chars</span>
