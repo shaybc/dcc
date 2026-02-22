@@ -368,11 +368,17 @@ function renderRunBuilderPicker() {
 function renderRunBuilderStage(mode) {
   const selected = runBuilderSelection[mode];
   const isAgent = mode === "agent";
+  const typeIcon = filterIconSvg(isAgent ? "agents" : "configs");
   const stage = isAgent ? runAgentStage : runConfigStage;
   const empty = document.getElementById(isAgent ? "runAgentStageEmpty" : "runConfigStageEmpty");
   const selectedContainer = document.getElementById(isAgent ? "runAgentStageSelected" : "runConfigStageSelected");
+  const stageTypeIcon = document.getElementById(isAgent ? "runAgentStageType" : "runConfigStageType");
 
   if (!stage || !empty || !selectedContainer) return;
+
+  if (stageTypeIcon) {
+    stageTypeIcon.innerHTML = typeIcon;
+  }
 
   stage.classList.toggle("filled", Boolean(selected));
   if (!selected) {
@@ -383,7 +389,7 @@ function renderRunBuilderStage(mode) {
 
   empty.hidden = true;
   selectedContainer.hidden = false;
-  document.getElementById(isAgent ? "runAgentIcon" : "runConfigIcon").textContent = selected.icon;
+  document.getElementById(isAgent ? "runAgentIcon" : "runConfigIcon").innerHTML = typeIcon;
   document.getElementById(isAgent ? "runAgentName" : "runConfigName").textContent = selected.name;
   document.getElementById(isAgent ? "runAgentDesc" : "runConfigDesc").textContent = selected.desc;
   const tagsContainer = document.getElementById(isAgent ? "runAgentTags" : "runConfigTags");
