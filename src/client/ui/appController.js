@@ -67,6 +67,7 @@ const runPickerSubtitle = document.getElementById("runPickerSubtitle");
 const runPickerSearch = document.getElementById("runPickerSearch");
 const runPickerTabs = document.getElementById("runPickerTabs");
 const runPickerList = document.getElementById("runPickerList");
+const runPickerFooter = document.getElementById("runPickerFooter");
 const runPickerApplyButton = document.getElementById("runPickerApplyButton");
 const discoverTabBadge = document.getElementById("discoverTabBadge");
 const installedTabBadge = document.getElementById("installedTabBadge");
@@ -516,8 +517,14 @@ function renderRunBuilder() {
 }
 
 function updateRunPickerApplyButtonVisibility() {
-  if (!runPickerApplyButton) return;
-  runPickerApplyButton.hidden = runBuilderPickerFilter === "recent";
+  const shouldHide = runBuilderPickerFilter === "recent";
+  if (runPickerApplyButton) {
+    runPickerApplyButton.hidden = shouldHide;
+    runPickerApplyButton.style.display = shouldHide ? "none" : "";
+  }
+  if (runPickerFooter) {
+    runPickerFooter.classList.toggle("is-hidden", shouldHide);
+  }
 }
 
 function openRunBuilderPicker(mode) {
