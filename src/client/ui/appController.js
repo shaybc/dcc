@@ -214,7 +214,7 @@ let runBuilderPickerFilter = "all";
 let runBuilderSearchQuery = "";
 let runBuilderPendingSelection = null;
 let runBuilderSelection = { agent: null, config: null };
-let recentAgentRunIds = getStoredRecentAgentRunIds();
+let recentAgentRunPacks = getStoredRecentAgentRunPacks();
 const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
 let favoriteDefinitionIds = getStoredFavoriteDefinitionIds();
 
@@ -263,20 +263,37 @@ function toggleFavoriteDefinition(definitionId) {
   return favoriteDefinitionIds.has(normalizedId);
 }
 
-function getStoredRecentAgentRunIds() {
+function normalizeRecentAgentRunPack(entry) {
+  if (!entry || typeof entry !== "object") return null;
+
+  const agentId = String(entry.agentId || "").trim();
+  const configId = String(entry.configId || "").trim();
+  if (!agentId || !configId) return null;
+
+  return {
+    agentId,
+    configId,
+    prompt: String(entry.prompt || "")
+  };
+}
+
+function getStoredRecentAgentRunPacks() {
   try {
     const raw = localStorage.getItem(RECENT_AGENT_RUNS_STORAGE_KEY);
     const parsed = JSON.parse(raw || "[]");
     if (!Array.isArray(parsed)) return [];
-    return parsed.map((value) => String(value || "").trim()).filter(Boolean).slice(0, 30);
+    return parsed
+      .map((value) => normalizeRecentAgentRunPack(value))
+      .filter(Boolean)
+      .slice(0, 30);
   } catch (_error) {
     return [];
   }
 }
 
-function persistRecentAgentRunIds() {
+function persistRecentAgentRunPacks() {
   try {
-    localStorage.setItem(RECENT_AGENT_RUNS_STORAGE_KEY, JSON.stringify(recentAgentRunIds.slice(0, 30)));
+    localStorage.setItem(RECENT_AGENT_RUNS_STORAGE_KEY, JSON.stringify(recentAgentRunPacks.slice(0, 30)));
   } catch (_error) {
     // Ignore localStorage failures.
   }
@@ -304,19 +321,43 @@ function getRunBuilderData(mode) {
 }
 
 function getRunBuilderPickerData() {
+  if (runBuilderPickerFilter === "recent") {
+    const agentsById = new Map(getRunBuilderData("agent").map((item) => [item.id, item]));
+    const configsById = new Map(getRunBuilderData("config").map((item) => [item.id, item]));
+    const lowerQuery = runBuilderSearchQuery.toLowerCase();
+    return recentAgentRunPacks
+      .map((pack, index) => {
+        const agent = agentsById.get(pack.agentId);
+        const config = configsById.get(pack.configId);
+        if (!agent || !config) return null;
+
+        return {
+          id: `${agent.id}:${config.id}:${index}`,
+          type: "pack",
+          name: `${agent.name} × ${config.name}`,
+          desc: pack.prompt ? `Prompt: ${pack.prompt}` : "No prompt",
+          tags: [],
+          agent,
+          config,
+          prompt: pack.prompt
+        };
+      })
+      .filter(Boolean)
+      .filter((item) => {
+        if (!lowerQuery) return true;
+        return item.name.toLowerCase().includes(lowerQuery)
+          || item.desc.toLowerCase().includes(lowerQuery)
+          || item.agent.desc.toLowerCase().includes(lowerQuery)
+          || item.config.desc.toLowerCase().includes(lowerQuery);
+      });
+  }
+
   const data = getRunBuilderData(runBuilderMode);
   const lowerQuery = runBuilderSearchQuery.toLowerCase();
   let filtered = data;
 
   if (runBuilderPickerFilter === "installed") {
     filtered = filtered.filter((item) => item.status === "saved");
-  } else if (runBuilderPickerFilter === "recent") {
-    const ordered = [];
-    recentAgentRunIds.forEach((id) => {
-      const found = data.find((item) => item.id === id);
-      if (found) ordered.push(found);
-    });
-    filtered = ordered;
   }
 
   if (lowerQuery) {
@@ -346,19 +387,28 @@ function renderRunBuilderPicker() {
     const row = document.createElement("button");
     row.type = "button";
     row.className = `run-picker-item card${runBuilderPendingSelection?.id === item.id ? " selected" : ""}`;
+    const typePillLabel = item.type === "pack" ? "Agent Pack" : formatTypePillLabel(item.type);
+    const typePillIcon = item.type === "pack" ? filterIconSvg("agents") : filterIconSvg(item.type);
+    const meta = item.type === "pack"
+      ? `<p class="run-picker-item-desc"><strong>Agent:</strong> ${escapeHtml(item.agent.name)}<br><strong>Config:</strong> ${escapeHtml(item.config.name)}<br>${escapeHtml(item.prompt ? `Prompt: ${item.prompt}` : "Prompt: none")}</p>`
+      : `<p class="run-picker-item-desc">${escapeHtml(item.desc)}</p>`;
     row.innerHTML = `
       <div class="run-picker-item-top">
         <h3 class="run-picker-item-name">${escapeHtml(item.name)}</h3>
-        <div class="type-pill ${typeClassName(item.type)}">
-          <span class="type-pill-icon">${filterIconSvg(item.type)}</span>
-          <span>${formatTypePillLabel(item.type)}</span>
+        <div class="type-pill ${item.type === "pack" ? "type-pill-agents" : typeClassName(item.type)}">
+          <span class="type-pill-icon">${typePillIcon}</span>
+          <span>${typePillLabel}</span>
         </div>
       </div>
-      <p class="run-picker-item-desc">${escapeHtml(item.desc)}</p>
+      ${meta}
       ${item.tags.length > 0 ? `<div class="tag-pills card-tag-pills run-picker-item-tags">${renderTagPills(item.tags, { truncate: true })}</div>` : ""}
     `;
     row.addEventListener("click", () => {
       runBuilderPendingSelection = item;
+      if (item.type === "pack") {
+        applyRunBuilderPendingSelection();
+        return;
+      }
       renderRunBuilderPicker();
     });
     runPickerList.appendChild(row);
@@ -450,6 +500,17 @@ function openRunBuilderPicker(mode) {
 function applyRunBuilderPendingSelection() {
   if (!runBuilderPendingSelection) return;
 
+  if (runBuilderPendingSelection.type === "pack") {
+    runBuilderSelection.agent = runBuilderPendingSelection.agent;
+    runBuilderSelection.config = runBuilderPendingSelection.config;
+    if (runPromptInput) {
+      runPromptInput.value = runBuilderPendingSelection.prompt || "";
+      handleRunBuilderPromptInput();
+    }
+    renderRunBuilder();
+    return;
+  }
+
   runBuilderSelection[runBuilderMode] = runBuilderPendingSelection;
   renderRunBuilder();
 
@@ -483,8 +544,15 @@ function handleRunAgentClick() {
   runAgentButton.disabled = true;
 
   const idsToPromote = [runBuilderSelection.agent.id, runBuilderSelection.config.id];
-  recentAgentRunIds = idsToPromote.concat(recentAgentRunIds.filter((id) => !idsToPromote.includes(id))).slice(0, 30);
-  persistRecentAgentRunIds();
+  recentAgentRunPacks = [
+    {
+      agentId: runBuilderSelection.agent.id,
+      configId: runBuilderSelection.config.id,
+      prompt: String(runPromptInput?.value || "")
+    },
+    ...recentAgentRunPacks.filter((pack) => pack.agentId !== idsToPromote[0] || pack.configId !== idsToPromote[1])
+  ].slice(0, 30);
+  persistRecentAgentRunPacks();
 
   window.setTimeout(() => {
     window.alert(runSummary);
