@@ -693,6 +693,8 @@ function appendRunOutputLine(stream, text) {
 async function pollActiveRun() {
   if (!activeRunId) return;
 
+  let shouldScheduleNextPoll = true;
+
   try {
     const [runResponse, logsResponse] = await Promise.all([
       fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activeRunId)}`),
@@ -715,6 +717,7 @@ async function pollActiveRun() {
 
       if (run && ["terminated", "failed", "killed"].includes(run.status)) {
         clearActiveRunPolling();
+        shouldScheduleNextPoll = false;
       }
     }
 
@@ -732,7 +735,7 @@ async function pollActiveRun() {
     }
   }
 
-  if (activeRunId) {
+  if (activeRunId && shouldScheduleNextPoll) {
     activeRunPollTimer = setTimeout(pollActiveRun, 1500);
   }
 }
