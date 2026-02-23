@@ -54,9 +54,20 @@ function quoteWindowsArg(value) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-function createSpawnSpec(commandPath, args) {
+function createSpawnSpec(commandPath, args, dccRootPath) {
   const isWindowsCmd = process.platform === "win32" && /\.cmd$/i.test(commandPath);
   if (isWindowsCmd) {
+    const nodeEntrypointPath = path.join(dccRootPath, "node_modules", "@continuedev", "cli", "dist", "cn.js");
+    if (fs.existsSync(nodeEntrypointPath)) {
+      return {
+        command: process.execPath,
+        args: [nodeEntrypointPath, ...args],
+        shell: false,
+        launchMode: "windows_node_entrypoint",
+        launchedCommand: `${process.execPath} ${JSON.stringify(nodeEntrypointPath)} ${args.map((arg) => JSON.stringify(arg)).join(" ")}`
+      };
+    }
+
     const cmdExe = process.env.comspec || "cmd.exe";
     const commandLine = `${quoteWindowsArg(commandPath)} ${args.map((arg) => quoteWindowsArg(arg)).join(" ")}`.trim();
     return {
@@ -89,7 +100,7 @@ class AgentRunManager {
     const createdAt = nowIso();
     const commandPath = detectCnExecutable(process.cwd());
     const args = buildArgs({ configPath, prompt, agentPath });
-    const spawnSpec = createSpawnSpec(commandPath, args);
+    const spawnSpec = createSpawnSpec(commandPath, args, process.cwd());
 
     const run = {
       runId,
