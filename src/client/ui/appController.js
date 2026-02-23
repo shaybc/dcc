@@ -213,7 +213,7 @@ let activeTopPage = "discover";
 const RECENT_AGENT_RUNS_STORAGE_KEY = "dcc.agent.builder.recent-runs";
 const RECENT_AGENT_RUN_PACKS_ENDPOINT = "/api/agent-run-packs";
 let runBuilderMode = "agent";
-let runBuilderPickerFilter = "all";
+let runBuilderPickerFilter = "installed";
 let runBuilderSearchQuery = "";
 let runBuilderPendingSelection = null;
 let runBuilderSelection = { agent: null, config: null };
@@ -393,10 +393,13 @@ function getRunBuilderPickerData() {
 
   const data = getRunBuilderData(runBuilderMode);
   const lowerQuery = runBuilderSearchQuery.toLowerCase();
+  const hasSelectedProject = Boolean(String(devProjectInput?.value || "").trim());
   let filtered = data;
 
   if (runBuilderPickerFilter === "installed") {
-    filtered = filtered.filter((item) => item.status === "saved");
+    filtered = filtered.filter((item) => hasSelectedProject && item.status === "saved");
+  } else if (runBuilderPickerFilter === "all" && hasSelectedProject) {
+    filtered = filtered.filter((item) => item.status !== "saved");
   }
 
   if (lowerQuery) {
