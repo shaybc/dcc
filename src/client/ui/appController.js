@@ -590,31 +590,76 @@ function handleRunBuilderPromptInput() {
   runPromptStage.classList.toggle("filled", length > 0);
 }
 
-function handleRunAgentClick() {
+function isDefinitionInstalledInCurrentProject(definitionId) {
+  const normalizedId = String(definitionId || "").trim();
+  if (!normalizedId) return false;
+  const definition = definitions.find((item) => String(item.id) === normalizedId);
+  if (!definition) return false;
+
+  const installedDestinations = Array.isArray(definition.installedDestinations)
+    ? definition.installedDestinations.map((entry) => String(entry || "").trim().toLowerCase())
+    : [];
+  return installedDestinations.includes("continue");
+}
+
+async function ensureRunBuilderDefinitionsInstalled(selection) {
+  const pendingInstallIds = [selection?.agent?.id, selection?.config?.id]
+    .filter(Boolean)
+    .filter((id, index, source) => source.indexOf(id) === index)
+    .filter((id) => !isDefinitionInstalledInCurrentProject(id));
+
+  if (!pendingInstallIds.length) {
+    return;
+  }
+
+  await runWithLoading(async () => {
+    for (const definitionId of pendingInstallIds) {
+      await saveDefinition(definitionId, "continue", { showLoading: false });
+    }
+  }, {
+    title: "Installing missing definitions...",
+    description: "Installing selected agent/config in the current project before launch."
+  });
+
+  await fetchDefinitions();
+  renderRunBuilder();
+}
+
+async function handleRunAgentClick() {
   if (!runBuilderSelection.agent || !runBuilderSelection.config || !runAgentButton) return;
+
+  if (!devProjectInput.value.trim()) {
+    window.alert("Please select a project first.");
+    return;
+  }
 
   const runSummary = `Launching ${runBuilderSelection.agent.name} with ${runBuilderSelection.config.name}${runPromptInput?.value ? " and custom prompt" : ""}.`;
   runAgentButton.textContent = "Launching…";
   runAgentButton.disabled = true;
 
-  const idsToPromote = [runBuilderSelection.agent.id, runBuilderSelection.config.id];
-  recentAgentRunPacks = [
-    {
-      agentId: runBuilderSelection.agent.id,
-      configId: runBuilderSelection.config.id,
-      prompt: String(runPromptInput?.value || "")
-    },
-    ...recentAgentRunPacks.filter((pack) => pack.agentId !== idsToPromote[0] || pack.configId !== idsToPromote[1])
-  ].slice(0, 30);
-  persistRecentAgentRunPacks();
-  void persistRecentAgentRunPackToDatabase(recentAgentRunPacks[0]);
+  try {
+    await ensureRunBuilderDefinitionsInstalled(runBuilderSelection);
 
-  window.setTimeout(() => {
+    const idsToPromote = [runBuilderSelection.agent.id, runBuilderSelection.config.id];
+    recentAgentRunPacks = [
+      {
+        agentId: runBuilderSelection.agent.id,
+        configId: runBuilderSelection.config.id,
+        prompt: String(runPromptInput?.value || "")
+      },
+      ...recentAgentRunPacks.filter((pack) => pack.agentId !== idsToPromote[0] || pack.configId !== idsToPromote[1])
+    ].slice(0, 30);
+    persistRecentAgentRunPacks();
+    void persistRecentAgentRunPackToDatabase(recentAgentRunPacks[0]);
+
     window.alert(runSummary);
+  } catch (error) {
+    window.alert(error?.message || "Failed to prepare agent launch.");
+  } finally {
     runAgentButton.innerHTML = '<span class="run-agent-dot" aria-hidden="true"></span> Launch Agent';
     updateRunBuilderStatus();
     renderRunBuilderPicker();
-  }, 300);
+  }
 }
 
 function setupRunBuilder() {
