@@ -63,6 +63,9 @@ const runAgentStatusText = document.getElementById("runAgentStatusText");
 const runAgentCheckAgent = document.getElementById("runAgentCheckAgent");
 const runAgentCheckConfig = document.getElementById("runAgentCheckConfig");
 const runAgentCheckReady = document.getElementById("runAgentCheckReady");
+const runAgentOutputPanel = document.getElementById("runAgentOutputPanel");
+const runAgentOutputMeta = document.getElementById("runAgentOutputMeta");
+const runAgentOutputText = document.getElementById("runAgentOutputText");
 const runPickerTitle = document.getElementById("runPickerTitle");
 const runPickerSubtitle = document.getElementById("runPickerSubtitle");
 const runPickerSearch = document.getElementById("runPickerSearch");
@@ -219,6 +222,9 @@ let runBuilderSearchQuery = "";
 let runBuilderPendingSelection = null;
 let runBuilderSelection = { agent: null, config: null };
 let recentAgentRunPacks = getStoredRecentAgentRunPacks();
+let activeRunId = "";
+let activeRunLogSince = 0;
+let activeRunPollTimer = null;
 const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
 let favoriteDefinitionIds = getStoredFavoriteDefinitionIds();
 
@@ -626,6 +632,67 @@ async function ensureRunBuilderDefinitionsInstalled(selection) {
   renderRunBuilder();
 }
 
+function clearActiveRunPolling() {
+  if (activeRunPollTimer) {
+    clearTimeout(activeRunPollTimer);
+    activeRunPollTimer = null;
+  }
+}
+
+function appendRunOutputLine(stream, text) {
+  if (!runAgentOutputText) return;
+  const prefix = stream === "stderr" ? "[stderr]" : "[stdout]";
+  runAgentOutputText.textContent += `${prefix} ${text}`;
+  runAgentOutputText.scrollTop = runAgentOutputText.scrollHeight;
+}
+
+async function pollActiveRun() {
+  if (!activeRunId) return;
+
+  try {
+    const [runResponse, logsResponse] = await Promise.all([
+      fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activeRunId)}`),
+      fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activeRunId)}/logs?since=${activeRunLogSince}`)
+    ]);
+
+    if (runResponse.ok) {
+      const payload = await runResponse.json();
+      const run = payload?.run;
+      if (run && runAgentStatusText) {
+        const exitSuffix = run.status === "terminated" || run.status === "failed" || run.status === "killed"
+          ? ` (exit=${run.exitCode ?? "n/a"}${run.signal ? `, signal=${run.signal}` : ""})`
+          : "";
+        runAgentStatusText.textContent = `Run ${run.runId}: ${run.status}${exitSuffix}`;
+      }
+
+      if (run && runAgentOutputMeta) {
+        runAgentOutputMeta.textContent = `runId=${run.runId} pid=${run.pid ?? "n/a"} status=${run.status}`;
+      }
+
+      if (run && ["terminated", "failed", "killed"].includes(run.status)) {
+        clearActiveRunPolling();
+      }
+    }
+
+    if (logsResponse.ok) {
+      const payload = await logsResponse.json();
+      const entries = Array.isArray(payload?.entries) ? payload.entries : [];
+      entries.forEach((entry) => {
+        appendRunOutputLine(entry?.stream, String(entry?.text || ""));
+      });
+      activeRunLogSince = Number(payload?.nextSince || activeRunLogSince);
+    }
+  } catch (_error) {
+    if (runAgentStatusText) {
+      runAgentStatusText.textContent = `Run ${activeRunId}: unable to fetch updates.`;
+    }
+  }
+
+  if (activeRunId) {
+    activeRunPollTimer = setTimeout(pollActiveRun, 1500);
+  }
+}
+
 async function handleRunAgentClick() {
   if (!runBuilderSelection.agent || !runBuilderSelection.config || !runAgentButton) return;
 
@@ -674,8 +741,27 @@ async function handleRunAgentClick() {
     }
 
     const payload = await response.json();
-    const runId = payload?.run?.runId ? `\nRun ID: ${payload.run.runId}` : "";
-    window.alert(`${runSummary}${runId}`);
+    const runId = String(payload?.run?.runId || "").trim();
+    activeRunId = runId;
+    activeRunLogSince = 0;
+    clearActiveRunPolling();
+
+    if (runAgentOutputPanel) runAgentOutputPanel.hidden = !runId;
+    if (runAgentOutputText) runAgentOutputText.textContent = "";
+    if (runAgentOutputMeta) {
+      runAgentOutputMeta.textContent = runId
+        ? `runId=${runId} pid=${payload?.run?.pid ?? "n/a"} status=${payload?.run?.status || "launched"}`
+        : "No active run";
+    }
+
+    if (runId) {
+      if (runAgentStatusText) {
+        runAgentStatusText.textContent = `Run ${runId}: ${payload?.run?.status || "launched"}`;
+      }
+      void pollActiveRun();
+    }
+
+    window.alert(`${runSummary}${runId ? `\nRun ID: ${runId}` : ""}`);
   } catch (error) {
     window.alert(error?.message || "Failed to prepare agent launch.");
   } finally {

@@ -123,7 +123,7 @@ class AgentRunManager {
     let child;
     try {
       child = spawn(spawnSpec.command, spawnSpec.args, {
-        cwd: process.cwd(),
+        cwd: projectPath,
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
         shell: spawnSpec.shell
@@ -192,6 +192,9 @@ class AgentRunManager {
         signal: run.signal,
         endedAt: run.endedAt
       });
+      if (run.exitCode !== 0 || run.signal) {
+        this.pushLog(runId, "stderr", `Process ended with status=${run.status} exitCode=${run.exitCode} signal=${run.signal || "none"}.\n`);
+      }
       logInfo("Agent process closed", { runId, pid: run.pid, status: run.status, exitCode: run.exitCode, signal: run.signal });
     });
 

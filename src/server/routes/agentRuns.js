@@ -64,6 +64,17 @@ router.post("/api/agent-runs", async (req, res) => {
       prompt: payload.prompt
     });
 
+    if (!run || run.status === "failed") {
+      logError("Agent run launch returned failed snapshot", {
+        runId: run?.runId,
+        projectPath: payload.projectPath,
+        command: run?.command,
+        status: run?.status
+      });
+      res.status(500).json({ error: "Failed to launch agent process.", run });
+      return;
+    }
+
     logInfo("Agent run launch request succeeded", {
       runId: run?.runId,
       projectPath: payload.projectPath,
