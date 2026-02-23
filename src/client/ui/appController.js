@@ -1,6 +1,7 @@
 import { runWithLoading } from "../services/loadingService.js";
 import { createDiffService } from "../services/diffService.js";
 import { loadAvailableDefinitionTags, suggestTagsForDefinitionContent } from "../services/autoTagService.js";
+import { definitionIconSvg } from "../utils/definitionIcons.js";
 
 const cardsContainer = document.getElementById("cards");
 const definitionsCountLabel = document.getElementById("definitionsCountLabel");
@@ -1207,102 +1208,7 @@ function renderDescriptionMarkdown(description) {
 }
 
 function filterIconSvg(type) {
-  if (type === "tags" || type === "tag") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 13 11 22l-9-9V4h9z"></path>
-        <circle cx="7" cy="9" r="1.5"></circle>
-      </svg>
-    `;
-  }
-  if (type === "prompt" || type === "prompts") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15a4 4 0 0 1-4 4H7l-4 3 1.2-4.6A6 6 0 0 1 3 15a6 6 0 0 1 6-6h8a4 4 0 0 1 4 4z"></path>
-      </svg>
-    `;
-  }
-  if (type === "model" || type === "models") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .66.26 1.3.73 1.77.47.47 1.1.73 1.77.73H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-      </svg>
-    `;
-  }
-  if (type === "mcp servers" || type === "mcp server") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="6" rx="2"></rect>
-        <rect x="3" y="9" width="18" height="6" rx="2"></rect>
-        <rect x="3" y="15" width="18" height="6" rx="2"></rect>
-      </svg>
-    `;
-  }
-  if (type === "rules" || type === "rule") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M8 3h8"></path>
-        <path d="M6 7h12"></path>
-        <path d="M8 11h8"></path>
-        <path d="M10 15h4"></path>
-        <path d="M12 19h0"></path>
-      </svg>
-    `;
-  }
-  if (type === "agents" || type === "agent") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="8" r="4"></circle>
-        <path d="M6 20a6 6 0 0 1 12 0"></path>
-      </svg>
-    `;
-  }
-  if (type === "docs" || type === "doc") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 4h9l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"></path>
-        <path d="M15 4v4h4"></path>
-        <path d="M9 13h6"></path>
-        <path d="M9 17h4"></path>
-      </svg>
-    `;
-  }
-  if (type === "configs" || type === "config") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M7 3.5h8l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5a1.5 1.5 0 0 1 1-1.5z"></path>
-        <path d="M15 3.5v4h4"></path>
-        <path d="M9 11h6"></path>
-        <path d="M9 15h6"></path>
-        <path d="M9 19h4"></path>
-      </svg>
-    `;
-  }
-  if (type === "users" || type === "user") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="7" r="4"></circle>
-        <path d="M4 21a8 8 0 0 1 16 0"></path>
-      </svg>
-    `;
-  }
-  if (type === "orgs" || type === "org") {
-    return `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 21h18"></path>
-        <path d="M5 21V7l7-4 7 4v14"></path>
-        <path d="M9 21v-6h6v6"></path>
-      </svg>
-    `;
-  }
-  return `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="8"></circle>
-      <path d="M8 12h8"></path>
-      <path d="M12 8v8"></path>
-    </svg>
-  `;
+  return definitionIconSvg(type, { fallback: "filter" });
 }
 
 function renderFilters() {
