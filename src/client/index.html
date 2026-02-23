@@ -18,6 +18,7 @@
       <button class="top-nav-tab" type="button" data-top-nav-tab="activity">
         <span class="top-nav-tab-icon">◷</span>
         <span>Activity</span>
+        <span class="top-nav-tab-badge" id="activityTabBadge"></span>
       </button>
       <button class="top-nav-tab" type="button" data-top-nav-tab="agents">
         <span class="top-nav-tab-icon">▷</span>
@@ -222,9 +223,103 @@
       <div class="grid" id="cards"></div>
       <nav class="pagination" id="pagination" role="navigation" aria-label="pagination" hidden></nav>
     </main>
-    <main class="future-page" id="activityPage" hidden>
-      <h2>Activity dashboard is coming soon</h2>
-      <p>This page will show running agents, live status, results, and let you launch additional agents.</p>
+    <main class="activity-page" id="activityPage" hidden>
+      <section class="activity-shell">
+        <header class="activity-header">
+          <div>
+            <h2>Agent Activity</h2>
+            <p id="activityLastUpdated">Track, monitor, and control launched, running, finished, and cancelled runs.</p>
+          </div>
+          <div class="activity-header-actions">
+            <button type="button" class="activity-btn" id="activityRefreshButton">↻ Refresh</button>
+            <button type="button" class="activity-btn activity-btn-primary" id="activityNewRunButton">▷ New Run</button>
+          </div>
+        </header>
+
+        <div class="activity-dashboard">
+          <section class="activity-main-panel">
+            <div class="activity-controls-row">
+              <div class="activity-filter-tabs" id="activityFilters" role="tablist" aria-label="Activity status filter">
+                <button type="button" class="activity-filter active" data-activity-filter="all">All</button>
+                <button type="button" class="activity-filter" data-activity-filter="running">Running</button>
+                <button type="button" class="activity-filter" data-activity-filter="launched">Launched</button>
+                <button type="button" class="activity-filter" data-activity-filter="finished">Finished</button>
+                <button type="button" class="activity-filter" data-activity-filter="cancelled">Cancelled</button>
+              </div>
+            </div>
+
+            <div class="activity-stats-strip" id="activityStats">
+              <article class="activity-stat-pill" data-status="running">
+                <span class="activity-stat-dot"></span>
+                <div><p id="activityStatRunning">0</p><h3>Running</h3></div>
+              </article>
+              <article class="activity-stat-pill" data-status="launched">
+                <span class="activity-stat-dot"></span>
+                <div><p id="activityStatLaunched">0</p><h3>Launched</h3></div>
+              </article>
+              <article class="activity-stat-pill" data-status="finished">
+                <span class="activity-stat-dot"></span>
+                <div><p id="activityStatFinished">0</p><h3>Finished</h3></div>
+              </article>
+              <article class="activity-stat-pill" data-status="cancelled">
+                <span class="activity-stat-dot"></span>
+                <div><p id="activityStatCancelled">0</p><h3>Cancelled</h3></div>
+              </article>
+            </div>
+
+            <section class="activity-list" id="activityList" aria-live="polite"></section>
+          </section>
+
+          <aside class="activity-detail" id="activityDetail">
+            <div class="activity-detail-empty" id="activityDetailEmpty">
+              <div class="activity-detail-empty-icon">◷</div>
+              <p>Select a run to inspect logs and control actions.</p>
+            </div>
+
+            <div class="activity-detail-card" id="activityDetailCard" hidden>
+              <header class="activity-detail-header">
+                <h3 id="activityDetailName">—</h3>
+                <div class="activity-detail-badges">
+                  <span class="activity-status-badge" id="activityDetailStatus">—</span>
+                  <span class="activity-detail-badge" id="activityDetailRunId">—</span>
+                </div>
+              </header>
+
+              <dl class="activity-meta">
+                <div><dt>Agent</dt><dd id="activityDetailAgent">—</dd></div>
+                <div><dt>Config</dt><dd id="activityDetailConfig">—</dd></div>
+                <div><dt>PID</dt><dd id="activityDetailPid">—</dd></div>
+                <div><dt>Started</dt><dd id="activityDetailStarted">—</dd></div>
+                <div><dt>Duration</dt><dd id="activityDetailDuration">—</dd></div>
+                <div><dt>Exit code</dt><dd id="activityDetailExit">—</dd></div>
+              </dl>
+
+              <div class="activity-detail-actions">
+                <button type="button" class="activity-btn" id="activityOpenStreamButton">≡ Stream</button>
+                <button type="button" class="activity-btn" id="activityRerunButton">↺ Re-run</button>
+                <button type="button" class="activity-btn activity-btn-danger" id="activityCancelButton">✕ Cancel</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="activity-stream-backdrop" id="activityStreamBackdrop" hidden></div>
+        <aside class="activity-stream-panel" id="activityStreamPanel" aria-label="Streaming stdout panel" hidden>
+          <div class="activity-log-head">
+            <div class="activity-log-title"><span class="activity-live-dot" id="activityLiveDot" hidden></span>stdout stream</div>
+            <div class="activity-log-controls">
+              <button type="button" class="activity-log-btn active" id="activityWrapButton">wrap</button>
+              <button type="button" class="activity-log-btn" id="activityClearLogsButton">clear</button>
+              <button type="button" class="activity-log-btn" id="activityCopyLogsButton">copy</button>
+              <button type="button" class="activity-log-btn active" id="activityScrollLockButton">↓ lock</button>
+              <button type="button" class="activity-log-btn" id="activityExportLogsButton">↓ export</button>
+              <button type="button" class="activity-log-btn" id="activityCloseStreamButton">✕ close</button>
+            </div>
+          </div>
+          <div class="activity-log" id="activityLog"></div>
+        </aside>
+
+      </section>
     </main>
     <main class="agents-builder-page" id="agentsPage" hidden>
       <section class="agents-builder-shell">

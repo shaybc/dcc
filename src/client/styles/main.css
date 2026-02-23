@@ -40,6 +40,7 @@
 @import "./sections/version-banner.css";
 @import "./sections/settings.css";
 @import "./sections/agents-builder.css";
+@import "./sections/activity.css";
 
 /* Responsive */
 @import "./responsive/breakpoints.css";

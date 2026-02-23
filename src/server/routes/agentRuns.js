@@ -89,6 +89,12 @@ router.post("/api/agent-runs", async (req, res) => {
   }
 });
 
+router.get("/api/agent-runs", (req, res) => {
+  const limit = Number(req.query?.limit || 200);
+  const runs = agentRunManager.listRunSnapshots({ limit });
+  res.json({ runs });
+});
+
 router.get("/api/agent-runs/:runId", (req, res) => {
   const run = agentRunManager.getRunSnapshot(String(req.params.runId || ""));
   if (!run) {
