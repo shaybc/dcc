@@ -818,6 +818,34 @@ function detectRuleFormat(text = "") {
   return detectRuleFormatFromRawInput(text);
 }
 
+function addMissingOpeningFrontmatterFence(rawTextValue) {
+  const source = String(rawTextValue || "");
+  if (!source.trim()) return source;
+  if (source.trimStart().startsWith("---")) return source;
+
+  const separatorRegex = /^---\s*$/m;
+  const match = separatorRegex.exec(source);
+  if (!match || match.index <= 0) return source;
+
+  const headerCandidate = source.slice(0, match.index).trim();
+  if (!headerCandidate) return source;
+
+  try {
+    const parsedHeader = YAML.parse(headerCandidate);
+    if (!parsedHeader || typeof parsedHeader !== "object" || Array.isArray(parsedHeader)) {
+      return source;
+    }
+
+    const hasLikelyDefinitionKeys = YAML_HEADER_KEYS.some((key) => Object.prototype.hasOwnProperty.call(parsedHeader, key));
+    if (!hasLikelyDefinitionKeys) {
+      return source;
+    }
+
+    return `---\n${source}`;
+  } catch (_error) {
+    return source;
+  }
+}
 
 
 function dccDefinitionTypeForEditorType(type) {
@@ -1120,7 +1148,11 @@ const handlers = {
   },
   agent: {
     createForm: createAgentForm,
-    parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
+    parse: (txt) => {
+      const normalizedText = addMissingOpeningFrontmatterFence(txt || "");
+      const m = matter(normalizedText);
+      return { ...m.data, body: m.content.trimStart() };
+    },
     serialize: (state) => {
       const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
       return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_definition_type: dccDefinitionTypeForEditorType("agent"), dcc_tags: normalizeStringArray(tags) }));
@@ -1130,7 +1162,8 @@ const handlers = {
     createForm: createRuleForm,
     parse: (txt) => {
       if (ruleContentFormat === "markdown") {
-        const m = matter(txt || "");
+        const normalizedText = addMissingOpeningFrontmatterFence(txt || "");
+        const m = matter(normalizedText);
         return { ...m.data, body: m.content.trimStart() };
       }
 
