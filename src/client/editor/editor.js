@@ -818,6 +818,34 @@ function detectRuleFormat(text = "") {
   return detectRuleFormatFromRawInput(text);
 }
 
+function addMissingOpeningFrontmatterFence(rawTextValue) {
+  const source = String(rawTextValue || "");
+  if (!source.trim()) return source;
+  if (source.trimStart().startsWith("---")) return source;
+
+  const separatorRegex = /^---\s*$/m;
+  const match = separatorRegex.exec(source);
+  if (!match || match.index <= 0) return source;
+
+  const headerCandidate = source.slice(0, match.index).trim();
+  if (!headerCandidate) return source;
+
+  try {
+    const parsedHeader = YAML.parse(headerCandidate);
+    if (!parsedHeader || typeof parsedHeader !== "object" || Array.isArray(parsedHeader)) {
+      return source;
+    }
+
+    const hasLikelyDefinitionKeys = YAML_HEADER_KEYS.some((key) => Object.prototype.hasOwnProperty.call(parsedHeader, key));
+    if (!hasLikelyDefinitionKeys) {
+      return source;
+    }
+
+    return `---\n${source}`;
+  } catch (_error) {
+    return source;
+  }
+}
 
 
 function dccDefinitionTypeForEditorType(type) {
@@ -1120,7 +1148,11 @@ const handlers = {
   },
   agent: {
     createForm: createAgentForm,
-    parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
+    parse: (txt) => {
+      const normalizedText = addMissingOpeningFrontmatterFence(txt || "");
+      const m = matter(normalizedText);
+      return { ...m.data, body: m.content.trimStart() };
+    },
     serialize: (state) => {
       const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
       return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_definition_type: dccDefinitionTypeForEditorType("agent"), dcc_tags: normalizeStringArray(tags) }));
@@ -1130,7 +1162,8 @@ const handlers = {
     createForm: createRuleForm,
     parse: (txt) => {
       if (ruleContentFormat === "markdown") {
-        const m = matter(txt || "");
+        const normalizedText = addMissingOpeningFrontmatterFence(txt || "");
+        const m = matter(normalizedText);
         return { ...m.data, body: m.content.trimStart() };
       }
 
@@ -1453,6 +1486,7 @@ function setupForType(type, initialRaw) {
 
 async function boot() {
   let raw = "";
+  let generatedRaw = "";
   try {
     console.debug(`${TAG_DEBUG_PREFIX} boot: requesting /api/definition-tags`);
     const tagsResponse = await fetch("/api/definition-tags");
@@ -1506,11 +1540,11 @@ async function boot() {
       if (rawStored) {
         const parsedStored = JSON.parse(rawStored);
         if (parsedStored && parsedStored.type === definitionType && parsedStored.content) {
-          raw = String(parsedStored.content);
+          generatedRaw = String(parsedStored.content);
         }
       }
     } catch (_error) {
-      raw = "";
+      generatedRaw = "";
     } finally {
       window.sessionStorage.removeItem(GENERATED_DEFINITION_STORAGE_KEY);
     }
@@ -1545,7 +1579,18 @@ async function boot() {
   } else {
     window.sessionStorage.removeItem(EDITOR_HELP_STATE_STORAGE_KEY);
   }
+
   setupForType(definitionType, raw);
+
+  if (generatedRaw && mode === "create") {
+    rawText.value = "";
+    sync.updateFormFromText({ reason: "generated-clear" });
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    rawText.value = generatedRaw;
+    sync.updateFormFromText({ reason: "generated-apply" });
+    sync.updateTextFromForm();
+  }
+
   if (restoredSnapshot?.formState) {
     formController.setState(restoredSnapshot.formState);
     sync.updateTextFromForm();
