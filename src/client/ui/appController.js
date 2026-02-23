@@ -76,6 +76,40 @@ const runPickerApplyButton = document.getElementById("runPickerApplyButton");
 const discoverTabBadge = document.getElementById("discoverTabBadge");
 const installedTabBadge = document.getElementById("installedTabBadge");
 const favoritesTabBadge = document.getElementById("favoritesTabBadge");
+const activityTabBadge = document.getElementById("activityTabBadge");
+const activityList = document.getElementById("activityList");
+const activityFilters = document.getElementById("activityFilters");
+const activityDetailEmpty = document.getElementById("activityDetailEmpty");
+const activityDetailCard = document.getElementById("activityDetailCard");
+const activityDetailName = document.getElementById("activityDetailName");
+const activityDetailStatus = document.getElementById("activityDetailStatus");
+const activityDetailRunId = document.getElementById("activityDetailRunId");
+const activityDetailAgent = document.getElementById("activityDetailAgent");
+const activityDetailConfig = document.getElementById("activityDetailConfig");
+const activityDetailPid = document.getElementById("activityDetailPid");
+const activityDetailStarted = document.getElementById("activityDetailStarted");
+const activityDetailDuration = document.getElementById("activityDetailDuration");
+const activityDetailExit = document.getElementById("activityDetailExit");
+const activityLog = document.getElementById("activityLog");
+const activityLiveDot = document.getElementById("activityLiveDot");
+const activityStreamBackdrop = document.getElementById("activityStreamBackdrop");
+const activityStreamPanel = document.getElementById("activityStreamPanel");
+const activityOpenStreamButton = document.getElementById("activityOpenStreamButton");
+const activityCloseStreamButton = document.getElementById("activityCloseStreamButton");
+const activityCancelButton = document.getElementById("activityCancelButton");
+const activityRerunButton = document.getElementById("activityRerunButton");
+const activityRefreshButton = document.getElementById("activityRefreshButton");
+const activityWrapButton = document.getElementById("activityWrapButton");
+const activityClearLogsButton = document.getElementById("activityClearLogsButton");
+const activityCopyLogsButton = document.getElementById("activityCopyLogsButton");
+const activityScrollLockButton = document.getElementById("activityScrollLockButton");
+const activityExportLogsButton = document.getElementById("activityExportLogsButton");
+const activityNewRunButton = document.getElementById("activityNewRunButton");
+const activityLastUpdated = document.getElementById("activityLastUpdated");
+const activityStatLaunched = document.getElementById("activityStatLaunched");
+const activityStatRunning = document.getElementById("activityStatRunning");
+const activityStatFinished = document.getElementById("activityStatFinished");
+const activityStatCancelled = document.getElementById("activityStatCancelled");
 const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
@@ -847,13 +881,14 @@ function setupRunBuilder() {
 }
 
 function updatePageTabBadges() {
-  if (!discoverTabBadge || !installedTabBadge || !favoritesTabBadge) {
+  if (!discoverTabBadge || !installedTabBadge || !favoritesTabBadge || !activityTabBadge) {
     return;
   }
 
   const hasSelectedProject = Boolean(String(devProjectInput?.value || "").trim());
   const installedCount = definitions.filter((definition) => definition.status === "saved" && hasSelectedProject).length;
   const favoritesCount = definitions.filter((definition) => isFavoriteDefinition(definition.id)).length;
+  const activityCount = activityRuns.filter((run) => ["running", "launched"].includes(mapRunStatus(run))).length;
 
   const applyBadgeValue = (element, value) => {
     if (!element) return;
@@ -869,6 +904,7 @@ function updatePageTabBadges() {
   applyBadgeValue(discoverTabBadge, definitions.length);
   applyBadgeValue(installedTabBadge, installedCount);
   applyBadgeValue(favoritesTabBadge, favoritesCount);
+  applyBadgeValue(activityTabBadge, activityCount);
 }
 
 function renderTopNavigation() {
@@ -910,6 +946,14 @@ function setActiveTopPage(page) {
   renderFilters();
   renderCards();
   renderRunBuilder();
+
+  if (activeTopPage === "activity") {
+    clearActivityPolling();
+    void pollActivity();
+  } else {
+    clearActivityPolling();
+    closeActivityStreamPanel();
+  }
 }
 
 function updateFavoriteDefinitionButton() {
@@ -4792,6 +4836,7 @@ export function initializeApp() {
   setupRecommendationsSection();
   setupEventListeners();
   setupRunBuilder();
+  setupActivityDashboard();
   loadDevProjects();
   loadCurrentDevProject()
     .then(loadSuggestionsForCurrentProject)
