@@ -393,10 +393,13 @@ function getRunBuilderPickerData() {
 
   const data = getRunBuilderData(runBuilderMode);
   const lowerQuery = runBuilderSearchQuery.toLowerCase();
+  const hasSelectedProject = Boolean(String(devProjectInput?.value || "").trim());
   let filtered = data;
 
   if (runBuilderPickerFilter === "installed") {
-    filtered = filtered.filter((item) => item.status === "saved");
+    filtered = filtered.filter((item) => hasSelectedProject && item.status === "saved");
+  } else if (runBuilderPickerFilter === "all" && hasSelectedProject) {
+    filtered = filtered.filter((item) => item.status !== "saved");
   }
 
   if (lowerQuery) {
