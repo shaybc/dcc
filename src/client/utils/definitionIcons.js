@@ -27,6 +27,7 @@ function canonicalizeIconType(type) {
   if (normalized === "models") return "model";
   if (normalized === "rules") return "rule";
   if (normalized === "agents") return "agent";
+  if (normalized === "workflows") return "workflow";
   if (normalized === "docs") return "doc";
   if (normalized === "configs") return "config";
   if (normalized === "tags") return "tag";
