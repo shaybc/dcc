@@ -212,6 +212,7 @@ let onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
 let activeTopPage = "discover";
 const RECENT_AGENT_RUNS_STORAGE_KEY = "dcc.agent.builder.recent-runs";
 const RECENT_AGENT_RUN_PACKS_ENDPOINT = "/api/agent-run-packs";
+const AGENT_RUNS_ENDPOINT = "/api/agent-runs";
 let runBuilderMode = "agent";
 let runBuilderPickerFilter = "installed";
 let runBuilderSearchQuery = "";
@@ -628,7 +629,8 @@ async function ensureRunBuilderDefinitionsInstalled(selection) {
 async function handleRunAgentClick() {
   if (!runBuilderSelection.agent || !runBuilderSelection.config || !runAgentButton) return;
 
-  if (!devProjectInput.value.trim()) {
+  const selectedProject = String(devProjectInput.value || "").trim();
+  if (!selectedProject) {
     window.alert("Please select a project first.");
     return;
   }
@@ -652,7 +654,28 @@ async function handleRunAgentClick() {
     persistRecentAgentRunPacks();
     void persistRecentAgentRunPackToDatabase(recentAgentRunPacks[0]);
 
-    window.alert(runSummary);
+    const launchPayload = {
+      agentId: Number(runBuilderSelection.agent.id),
+      configId: Number(runBuilderSelection.config.id),
+      prompt: String(runPromptInput?.value || ""),
+      projectPath: selectedProject
+    };
+    const response = await fetch(AGENT_RUNS_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(launchPayload)
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.error || `Failed to launch agent (${response.status})`);
+    }
+
+    const payload = await response.json();
+    const runId = payload?.run?.runId ? `\nRun ID: ${payload.run.runId}` : "";
+    window.alert(`${runSummary}${runId}`);
   } catch (error) {
     window.alert(error?.message || "Failed to prepare agent launch.");
   } finally {
