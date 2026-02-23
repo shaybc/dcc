@@ -218,9 +218,8 @@
 .run-agent-output-text {
   margin: 0;
   padding: 10px;
-  min-height: 140px;
   max-height: 220px;
-  overflow-y: auto;
+  overflow: auto;
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.4;

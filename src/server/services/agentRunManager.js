@@ -263,15 +263,6 @@ class AgentRunManager {
     };
   }
 
-  listRunSnapshots({ limit = 200 } = {}) {
-    const max = Number.isFinite(Number(limit)) ? Math.max(1, Number(limit)) : 200;
-    return Array
-      .from(this.runs.values())
-      .sort((a, b) => Date.parse(b.createdAt || "") - Date.parse(a.createdAt || ""))
-      .slice(0, max)
-      .map((run) => this.getRunSnapshot(run.runId));
-  }
-
   getRunLogs(runId, { since = 0 } = {}) {
     const run = this.runs.get(runId);
     if (!run) return null;
