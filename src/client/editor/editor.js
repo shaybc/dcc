@@ -960,38 +960,6 @@ function setPromptFormatControlVisibility(visible) {
   promptFormatControl.hidden = !visible;
 }
 
-function parseAgentMarkdownContent(text) {
-  const source = String(text || "");
-  const parsed = matter(source);
-  const hasFrontmatter = parsed && parsed.data && Object.keys(parsed.data).length > 0;
-
-  if (hasFrontmatter) {
-    return { ...parsed.data, body: parsed.content.trimStart() };
-  }
-
-  const nestedSource = String(parsed?.content || "").trimStart();
-  if (nestedSource.startsWith("---")) {
-    const nestedParsed = matter(nestedSource);
-    if (nestedParsed?.data && Object.keys(nestedParsed.data).length > 0) {
-      return { ...nestedParsed.data, body: nestedParsed.content.trimStart() };
-    }
-  }
-
-  try {
-    const yamlParsed = YAML.parse(source);
-    if (yamlParsed && typeof yamlParsed === "object" && !Array.isArray(yamlParsed)) {
-      return {
-        ...yamlParsed,
-        body: String(yamlParsed.body || yamlParsed.prompt || "").trimStart()
-      };
-    }
-  } catch (_error) {
-    // fall through to plain markdown parsing
-  }
-
-  return { ...parsed.data, body: parsed.content.trimStart() };
-}
-
 const handlers = {
   prompt: {
     createForm: createPromptForm,
@@ -1152,7 +1120,7 @@ const handlers = {
   },
   agent: {
     createForm: createAgentForm,
-    parse: (txt) => parseAgentMarkdownContent(txt),
+    parse: (txt) => { const m = matter(txt || ""); return { ...m.data, body: m.content.trimStart() }; },
     serialize: (state) => {
       const { body = "", tags, ...frontmatter } = { ...unknown, ...state };
       return matter.stringify(body, omitUndefinedValues({ ...frontmatter, dcc_definition_type: dccDefinitionTypeForEditorType("agent"), dcc_tags: normalizeStringArray(tags) }));
