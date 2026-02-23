@@ -510,13 +510,27 @@ function normalizeGeminiTools(tools) {
       return {
         name,
         description,
-        parameters
+        parameters: sanitizeGeminiSchema(parameters)
       };
     })
     .filter(Boolean);
 
   if (!functionDeclarations.length) return undefined;
   return [{ functionDeclarations }];
+}
+
+function sanitizeGeminiSchema(schema) {
+  if (!schema || typeof schema !== "object") return schema;
+  if (Array.isArray(schema)) {
+    return schema.map(item => sanitizeGeminiSchema(item));
+  }
+
+  const sanitized = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === "additionalProperties") continue;
+    sanitized[key] = sanitizeGeminiSchema(value);
+  }
+  return sanitized;
 }
 
 function extractGeminiTextAndCalls(rawResponse) {
