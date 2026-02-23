@@ -47,15 +47,24 @@ function buildArgs({ configPath, prompt, agentPath }) {
   return args;
 }
 
+function quoteWindowsArg(value) {
+  const text = String(value || "");
+  if (!text) return '""';
+  if (!/[\s"&|<>^()]/u.test(text)) return text;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
 function createSpawnSpec(commandPath, args) {
   const isWindowsCmd = process.platform === "win32" && /\.cmd$/i.test(commandPath);
   if (isWindowsCmd) {
+    const cmdExe = process.env.comspec || "cmd.exe";
+    const commandLine = `${quoteWindowsArg(commandPath)} ${args.map((arg) => quoteWindowsArg(arg)).join(" ")}`.trim();
     return {
-      command: commandPath,
-      args,
-      shell: true,
-      launchMode: "windows_cmd_shell",
-      launchedCommand: `${JSON.stringify(commandPath)} ${args.map((arg) => JSON.stringify(arg)).join(" ")}`
+      command: cmdExe,
+      args: ["/d", "/s", "/c", commandLine],
+      shell: false,
+      launchMode: "windows_cmd_exe",
+      launchedCommand: `${cmdExe} /d /s /c ${commandLine}`
     };
   }
 
@@ -111,7 +120,8 @@ class AgentRunManager {
       projectPath,
       agentPath,
       configPath,
-      command: run.command
+      command: run.command,
+      args
     });
 
     logInfo("Agent launch environment", {
@@ -196,8 +206,9 @@ class AgentRunManager {
         endedAt: run.endedAt
       });
       if (run.exitCode !== 0 || run.signal) {
+        const hadNoOutput = run.emittedStdoutBytes === 0 && run.emittedStderrBytes === 0;
         this.pushLog(runId, "stderr", `Process ended with status=${run.status} exitCode=${run.exitCode} signal=${run.signal || "none"}.\n`);
-        if (run.emittedStdoutBytes === 0 && run.emittedStderrBytes === 0) {
+        if (hadNoOutput) {
           this.pushLog(runId, "stderr", "Process produced no stdout/stderr before exit. Verify command arguments and project/config/agent file paths.\n");
         }
       }
