@@ -1,9 +1,0 @@
-name: Team Project Config
-version: 1.0.0
-schema: v1
-context:
-  - provider: clipboard
-  - provider: code
-  - provider: currentFile
-  - provider: file
-  - provider: tree
