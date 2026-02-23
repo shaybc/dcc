@@ -76,6 +76,40 @@ const runPickerApplyButton = document.getElementById("runPickerApplyButton");
 const discoverTabBadge = document.getElementById("discoverTabBadge");
 const installedTabBadge = document.getElementById("installedTabBadge");
 const favoritesTabBadge = document.getElementById("favoritesTabBadge");
+const activityTabBadge = document.getElementById("activityTabBadge");
+const activityList = document.getElementById("activityList");
+const activityFilters = document.getElementById("activityFilters");
+const activityDetailEmpty = document.getElementById("activityDetailEmpty");
+const activityDetailCard = document.getElementById("activityDetailCard");
+const activityDetailName = document.getElementById("activityDetailName");
+const activityDetailStatus = document.getElementById("activityDetailStatus");
+const activityDetailRunId = document.getElementById("activityDetailRunId");
+const activityDetailAgent = document.getElementById("activityDetailAgent");
+const activityDetailConfig = document.getElementById("activityDetailConfig");
+const activityDetailPid = document.getElementById("activityDetailPid");
+const activityDetailStarted = document.getElementById("activityDetailStarted");
+const activityDetailDuration = document.getElementById("activityDetailDuration");
+const activityDetailExit = document.getElementById("activityDetailExit");
+const activityLog = document.getElementById("activityLog");
+const activityLiveDot = document.getElementById("activityLiveDot");
+const activityStreamBackdrop = document.getElementById("activityStreamBackdrop");
+const activityStreamPanel = document.getElementById("activityStreamPanel");
+const activityOpenStreamButton = document.getElementById("activityOpenStreamButton");
+const activityCloseStreamButton = document.getElementById("activityCloseStreamButton");
+const activityCancelButton = document.getElementById("activityCancelButton");
+const activityRerunButton = document.getElementById("activityRerunButton");
+const activityRefreshButton = document.getElementById("activityRefreshButton");
+const activityWrapButton = document.getElementById("activityWrapButton");
+const activityClearLogsButton = document.getElementById("activityClearLogsButton");
+const activityCopyLogsButton = document.getElementById("activityCopyLogsButton");
+const activityScrollLockButton = document.getElementById("activityScrollLockButton");
+const activityExportLogsButton = document.getElementById("activityExportLogsButton");
+const activityNewRunButton = document.getElementById("activityNewRunButton");
+const activityLastUpdated = document.getElementById("activityLastUpdated");
+const activityStatLaunched = document.getElementById("activityStatLaunched");
+const activityStatRunning = document.getElementById("activityStatRunning");
+const activityStatFinished = document.getElementById("activityStatFinished");
+const activityStatCancelled = document.getElementById("activityStatCancelled");
 const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
@@ -225,6 +259,16 @@ let recentAgentRunPacks = getStoredRecentAgentRunPacks();
 let activeRunId = "";
 let activeRunLogSince = 0;
 let activeRunPollTimer = null;
+let activityRuns = [];
+let activityFilter = "all";
+let activitySelectedRunId = "";
+let activityLogsSince = 0;
+let activityLogEntries = [];
+let activityWrapEnabled = true;
+let activityScrollLocked = true;
+let activityPollTimer = null;
+let activityTickerTimer = null;
+let isActivityStreamOpen = false;
 const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
 let favoriteDefinitionIds = getStoredFavoriteDefinitionIds();
 
@@ -693,6 +737,441 @@ async function pollActiveRun() {
   }
 }
 
+function mapRunStatus(run) {
+  const status = String(run?.status || "").toLowerCase();
+  if (status === "running" || status === "stuck") return "running";
+  if (status === "launched" || status === "preparing_to_launch") return "launched";
+  if (status === "terminated") return "finished";
+  if (status === "killed" || status === "failed") return "cancelled";
+  return "finished";
+}
+
+function getRunNameFromPath(pathValue, fallback) {
+  const normalized = String(pathValue || "").trim();
+  if (!normalized) return fallback;
+  const segments = normalized.split(/[\/]/).filter(Boolean);
+  const finalName = segments[segments.length - 1] || fallback;
+  return finalName.replace(/\.[^.]+$/, "") || fallback;
+}
+
+function isRunCancelable(run) {
+  const status = mapRunStatus(run);
+  return status === "running" || status === "launched";
+}
+
+function isRunLive(run) {
+  const status = mapRunStatus(run);
+  return status === "running" || status === "launched";
+}
+
+function getRunElapsedSeconds(run) {
+  const startedAtMs = Date.parse(run?.startedAt || run?.createdAt || "");
+  if (!Number.isFinite(startedAtMs)) return 0;
+  const endedAtMs = Date.parse(run?.endedAt || "");
+  const endMs = Number.isFinite(endedAtMs) ? endedAtMs : Date.now();
+  return Math.max(0, Math.floor((endMs - startedAtMs) / 1000));
+}
+
+function formatDurationSeconds(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins > 0) return `${String(mins).padStart(2, "0")}m ${String(secs).padStart(2, "0")}s`;
+  return `${String(secs).padStart(2, "0")}s`;
+}
+
+function formatDuration(startedAt, endedAt) {
+  const run = { startedAt, endedAt };
+  return formatDurationSeconds(getRunElapsedSeconds(run));
+}
+
+function formatLogLevel(entry = {}) {
+  const text = String(entry?.text || "").toLowerCase();
+  if (entry?.stream === "stderr") {
+    if (text.includes("warn")) return "warn";
+    return "error";
+  }
+  if (text.includes("warn")) return "warn";
+  if (text.includes("error") || text.includes("failed")) return "error";
+  if (text.includes("success") || text.includes("completed") || text.includes("✓")) return "success";
+  if (text.includes("init") || text.includes("launch") || text.includes("loading")) return "info";
+  return "default";
+}
+
+function getLogTimestamp(entry) {
+  if (!entry?.timestamp) return "--:--:--";
+  return new Date(entry.timestamp).toLocaleTimeString();
+}
+
+function getStatusIcon(status) {
+  return { running: "▶", launched: "◎", finished: "✓", cancelled: "✕" }[status] || "•";
+}
+
+function renderActivityStats() {
+  if (!activityStatRunning || !activityStatLaunched || !activityStatFinished || !activityStatCancelled) return;
+  const counts = { running: 0, launched: 0, finished: 0, cancelled: 0 };
+  activityRuns.forEach((run) => {
+    const status = mapRunStatus(run);
+    counts[status] = (counts[status] || 0) + 1;
+  });
+  activityStatRunning.textContent = String(counts.running || 0);
+  activityStatLaunched.textContent = String(counts.launched || 0);
+  activityStatFinished.textContent = String(counts.finished || 0);
+  activityStatCancelled.textContent = String(counts.cancelled || 0);
+  updatePageTabBadges();
+}
+
+function renderActivityList() {
+  if (!activityList) return;
+  const items = activityRuns.filter((run) => activityFilter === "all" || mapRunStatus(run) === activityFilter);
+  if (!items.length) {
+    activityList.innerHTML = '<p class="activity-list-empty">No agent runs match this filter.</p>';
+    return;
+  }
+
+  activityList.innerHTML = items.map((run, index) => {
+    const status = mapRunStatus(run);
+    const agentName = getRunNameFromPath(run.agentPath, run.runId);
+    const configName = getRunNameFromPath(run.configPath, "config");
+    const runSeconds = getRunElapsedSeconds(run);
+    const canCancel = isRunCancelable(run);
+
+    return `
+      <article class="activity-row ${activitySelectedRunId === run.runId ? "active" : ""} ${status}" data-run-id="${escapeHtml(run.runId)}" data-run-status="${status}" style="animation-delay:${(index * 0.04).toFixed(2)}s">
+        <div class="activity-status-indicator ${status}">
+          <span class="activity-spin-ring"></span>
+          <span class="activity-status-icon">${getStatusIcon(status)}</span>
+          <span class="activity-pulse-dot"></span>
+        </div>
+
+        <div class="activity-row-info">
+          <h3>${escapeHtml(agentName)}</h3>
+          <div class="activity-row-meta">
+            <span class="activity-row-chip">${escapeHtml(run.runId)}</span>
+            <span class="activity-row-config">⚙ ${escapeHtml(configName)}</span>
+            <span class="activity-row-pid">pid ${run.pid ?? "n/a"}</span>
+          </div>
+        </div>
+
+        <div class="activity-row-timer">
+          <div class="activity-row-timer-value ${status === "running" ? "running" : status === "launched" ? "launched" : ""}" data-activity-timer="${escapeHtml(run.runId)}">${formatDurationSeconds(runSeconds)}</div>
+          <div class="activity-row-timer-label">${status === "running" ? "running" : status === "launched" ? "launching" : "duration"}</div>
+        </div>
+
+        <div class="activity-run-actions">
+          <button type="button" title="View logs" data-activity-open="${escapeHtml(run.runId)}">≡</button>
+          <button type="button" title="Re-run" data-activity-rerun="${escapeHtml(run.runId)}">↺</button>
+          <button type="button" title="Cancel run" data-activity-kill="${escapeHtml(run.runId)}" ${canCancel ? "" : "disabled"}>✕</button>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+function renderActivityDetail() {
+  if (!activityDetailCard || !activityDetailEmpty) return;
+  const run = activityRuns.find((entry) => entry.runId === activitySelectedRunId);
+  if (!run) {
+    activityDetailCard.hidden = true;
+    activityDetailEmpty.hidden = false;
+    if (activityLog) {
+      activityLog.innerHTML = '<div class="activity-log-empty">No logs loaded.</div>';
+    }
+    return;
+  }
+
+  const status = mapRunStatus(run);
+  activityDetailEmpty.hidden = true;
+  activityDetailCard.hidden = false;
+  activityDetailName.textContent = getRunNameFromPath(run.agentPath, run.runId);
+  activityDetailStatus.textContent = status;
+  activityDetailStatus.className = `activity-status-badge ${status}`;
+  activityDetailRunId.textContent = run.runId;
+  activityDetailAgent.textContent = getRunNameFromPath(run.agentPath, run.runId);
+  activityDetailConfig.textContent = getRunNameFromPath(run.configPath, "config");
+  activityDetailPid.textContent = run.pid ?? "n/a";
+  activityDetailStarted.textContent = run.startedAt || run.createdAt || "—";
+  activityDetailDuration.textContent = formatDuration(run.startedAt || run.createdAt, run.endedAt);
+  activityDetailExit.textContent = run.exitCode ?? "—";
+  activityCancelButton.disabled = !isRunCancelable(run);
+  if (activityLiveDot) {
+    activityLiveDot.hidden = !isRunLive(run);
+  }
+}
+
+function openActivityStreamPanel() {
+  if (!activityStreamPanel || !activityStreamBackdrop) return;
+  isActivityStreamOpen = true;
+  activityStreamBackdrop.hidden = false;
+  activityStreamPanel.hidden = false;
+  requestAnimationFrame(() => {
+    activityStreamPanel.classList.add("open");
+  });
+}
+
+function closeActivityStreamPanel() {
+  if (!activityStreamPanel || !activityStreamBackdrop) return;
+  isActivityStreamOpen = false;
+  activityStreamPanel.classList.remove("open");
+  setTimeout(() => {
+    if (!isActivityStreamOpen) {
+      activityStreamPanel.hidden = true;
+      activityStreamBackdrop.hidden = true;
+    }
+  }, 220);
+}
+
+function renderActivityLogStream() {
+  if (!activityLog) return;
+
+  const lines = activityLogEntries.map((entry) => {
+    const level = formatLogLevel(entry);
+    const text = escapeHtml(String(entry?.text || "").trimEnd());
+    const ts = escapeHtml(getLogTimestamp(entry));
+    return `<div class="activity-log-line"><span class="activity-log-ts">${ts}</span><span class="activity-log-text ${level}">${text}</span></div>`;
+  });
+
+  const run = activityRuns.find((entry) => entry.runId === activitySelectedRunId);
+  if (isRunLive(run)) {
+    lines.push('<span class="activity-log-cursor"></span>');
+  }
+
+  if (!lines.length) {
+    activityLog.innerHTML = '<div class="activity-log-empty">No logs yet.</div>';
+    return;
+  }
+
+  activityLog.innerHTML = lines.join("");
+  if (activityScrollLocked) {
+    activityLog.scrollTop = activityLog.scrollHeight;
+  }
+}
+
+function refreshVisibleTimers() {
+  if (!activityList) return;
+  const timerEls = activityList.querySelectorAll("[data-activity-timer]");
+  timerEls.forEach((timerEl) => {
+    const runId = timerEl.getAttribute("data-activity-timer") || "";
+    const run = activityRuns.find((entry) => entry.runId === runId);
+    if (!run) return;
+    timerEl.textContent = formatDurationSeconds(getRunElapsedSeconds(run));
+  });
+
+  const selectedRun = activityRuns.find((entry) => entry.runId === activitySelectedRunId);
+  if (selectedRun && activityDetailDuration) {
+    activityDetailDuration.textContent = formatDurationSeconds(getRunElapsedSeconds(selectedRun));
+  }
+}
+
+async function loadActivityRuns() {
+  try {
+    const response = await fetch(`${AGENT_RUNS_ENDPOINT}?limit=300`);
+    if (!response.ok) throw new Error(`Failed to load agent runs (${response.status})`);
+    const payload = await response.json();
+    activityRuns = Array.isArray(payload?.runs) ? payload.runs : [];
+    if (activitySelectedRunId && !activityRuns.some((run) => run.runId === activitySelectedRunId)) {
+      activitySelectedRunId = "";
+      activityLogsSince = 0;
+      activityLogEntries = [];
+    }
+    renderActivityStats();
+    renderActivityList();
+    renderActivityDetail();
+    refreshVisibleTimers();
+    if (activityLastUpdated) {
+      activityLastUpdated.textContent = `Last updated ${new Date().toLocaleTimeString()}`;
+    }
+  } catch (error) {
+    if (activityList) {
+      activityList.innerHTML = `<p class="activity-list-empty">${escapeHtml(error?.message || "Unable to load activity")}</p>`;
+    }
+  }
+}
+
+async function loadActivityLogs(fullReload = false) {
+  if (!activitySelectedRunId) return;
+  if (fullReload) {
+    activityLogsSince = 0;
+    activityLogEntries = [];
+  }
+
+  const response = await fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activitySelectedRunId)}/logs?since=${activityLogsSince}`);
+  if (!response.ok) return;
+
+  const payload = await response.json();
+  const entries = Array.isArray(payload?.entries) ? payload.entries : [];
+  entries.forEach((entry) => {
+    activityLogEntries.push({
+      stream: entry?.stream || "stdout",
+      text: String(entry?.text || ""),
+      timestamp: entry?.timestamp || ""
+    });
+  });
+  activityLogsSince = Number(payload?.nextSince || activityLogsSince);
+  renderActivityLogStream();
+}
+
+function clearActivityPolling() {
+  if (activityPollTimer) {
+    clearTimeout(activityPollTimer);
+    activityPollTimer = null;
+  }
+}
+
+async function pollActivity() {
+  if (activeTopPage !== "activity") return;
+  await loadActivityRuns();
+  if (activitySelectedRunId) {
+    await loadActivityLogs(false);
+  }
+  activityPollTimer = setTimeout(pollActivity, 1800);
+}
+
+function setActivityFilter(filter) {
+  activityFilter = filter || "all";
+  activityFilters?.querySelectorAll("[data-activity-filter]").forEach((button) => {
+    button.classList.toggle("active", button.getAttribute("data-activity-filter") === activityFilter);
+  });
+  renderActivityList();
+  refreshVisibleTimers();
+}
+
+async function selectActivityRun(runId) {
+  activitySelectedRunId = runId;
+  renderActivityList();
+  renderActivityDetail();
+  await loadActivityLogs(true);
+}
+
+async function killActivityRun(runId) {
+  const response = await fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(runId)}/kill`, { method: "POST" });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload?.error || `Unable to cancel run (${response.status})`);
+  }
+  await loadActivityRuns();
+  if (activitySelectedRunId === runId) {
+    await loadActivityLogs(true);
+    renderActivityDetail();
+  }
+}
+
+function setupActivityDashboard() {
+  if (!activityPage) return;
+
+  activityFilters?.querySelectorAll("[data-activity-filter]").forEach((button) => {
+    button.addEventListener("click", () => setActivityFilter(button.getAttribute("data-activity-filter") || "all"));
+  });
+
+  activityList?.addEventListener("click", (event) => {
+    const killButton = event.target.closest("[data-activity-kill]");
+    if (killButton) {
+      event.stopPropagation();
+      const runId = killButton.getAttribute("data-activity-kill") || "";
+      if (runId) {
+        killActivityRun(runId).catch((error) => window.alert(error?.message || "Unable to cancel run."));
+      }
+      return;
+    }
+
+    const rerunButton = event.target.closest("[data-activity-rerun]");
+    if (rerunButton) {
+      event.stopPropagation();
+      setActiveTopPage("agents");
+      return;
+    }
+
+    const openButton = event.target.closest("[data-activity-open]");
+    const row = event.target.closest("[data-run-id]");
+    const runId = openButton?.getAttribute("data-activity-open") || row?.getAttribute("data-run-id") || "";
+    if (runId) {
+      const shouldOpenStream = Boolean(openButton);
+      selectActivityRun(runId).then(() => {
+        if (shouldOpenStream) {
+          openActivityStreamPanel();
+        }
+      }).catch(() => {});
+    }
+  });
+
+  activityRefreshButton?.addEventListener("click", () => {
+    loadActivityRuns().then(() => {
+      if (activitySelectedRunId) return loadActivityLogs(false);
+      return null;
+    });
+  });
+
+  activityCancelButton?.addEventListener("click", () => {
+    if (!activitySelectedRunId) return;
+    killActivityRun(activitySelectedRunId).catch((error) => window.alert(error?.message || "Unable to cancel run."));
+  });
+
+  activityRerunButton?.addEventListener("click", () => {
+    setActiveTopPage("agents");
+  });
+
+  activityOpenStreamButton?.addEventListener("click", () => {
+    if (!activitySelectedRunId) return;
+    openActivityStreamPanel();
+  });
+
+  activityCloseStreamButton?.addEventListener("click", () => {
+    closeActivityStreamPanel();
+  });
+
+  activityStreamBackdrop?.addEventListener("click", () => {
+    closeActivityStreamPanel();
+  });
+
+  activityWrapButton?.addEventListener("click", () => {
+    activityWrapEnabled = !activityWrapEnabled;
+    activityWrapButton.classList.toggle("active", activityWrapEnabled);
+    activityLog?.classList.toggle("no-wrap", !activityWrapEnabled);
+  });
+
+  activityClearLogsButton?.addEventListener("click", () => {
+    activityLogEntries = [];
+    renderActivityLogStream();
+  });
+
+  activityScrollLockButton?.addEventListener("click", () => {
+    activityScrollLocked = !activityScrollLocked;
+    activityScrollLockButton.classList.toggle("active", activityScrollLocked);
+  });
+
+  activityCopyLogsButton?.addEventListener("click", async () => {
+    const raw = activityLogEntries.map((entry) => `[${getLogTimestamp(entry)}] ${String(entry?.text || "").trimEnd()}`).join("\n");
+    if (!raw) return;
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(raw);
+    }
+  });
+
+  activityExportLogsButton?.addEventListener("click", () => {
+    if (!activitySelectedRunId || !activityLogEntries.length) return;
+    const raw = activityLogEntries.map((entry) => `[${getLogTimestamp(entry)}] ${String(entry?.text || "").trimEnd()}`).join("\n");
+    const blob = new Blob([raw], { type: "text/plain" });
+    const anchor = document.createElement("a");
+    anchor.href = URL.createObjectURL(blob);
+    anchor.download = `${activitySelectedRunId}-logs.txt`;
+    anchor.click();
+  });
+
+  activityNewRunButton?.addEventListener("click", () => {
+    setActiveTopPage("agents");
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && isActivityStreamOpen) {
+      closeActivityStreamPanel();
+    }
+  });
+
+  if (!activityTickerTimer) {
+    activityTickerTimer = setInterval(refreshVisibleTimers, 1000);
+  }
+
+  loadActivityRuns().catch(() => {});
+}
+
 async function handleRunAgentClick() {
   if (!runBuilderSelection.agent || !runBuilderSelection.config || !runAgentButton) return;
 
@@ -844,13 +1323,14 @@ function setupRunBuilder() {
 }
 
 function updatePageTabBadges() {
-  if (!discoverTabBadge || !installedTabBadge || !favoritesTabBadge) {
+  if (!discoverTabBadge || !installedTabBadge || !favoritesTabBadge || !activityTabBadge) {
     return;
   }
 
   const hasSelectedProject = Boolean(String(devProjectInput?.value || "").trim());
   const installedCount = definitions.filter((definition) => definition.status === "saved" && hasSelectedProject).length;
   const favoritesCount = definitions.filter((definition) => isFavoriteDefinition(definition.id)).length;
+  const activityCount = activityRuns.filter((run) => ["running", "launched"].includes(mapRunStatus(run))).length;
 
   const applyBadgeValue = (element, value) => {
     if (!element) return;
@@ -866,6 +1346,7 @@ function updatePageTabBadges() {
   applyBadgeValue(discoverTabBadge, definitions.length);
   applyBadgeValue(installedTabBadge, installedCount);
   applyBadgeValue(favoritesTabBadge, favoritesCount);
+  applyBadgeValue(activityTabBadge, activityCount);
 }
 
 function renderTopNavigation() {
@@ -907,6 +1388,14 @@ function setActiveTopPage(page) {
   renderFilters();
   renderCards();
   renderRunBuilder();
+
+  if (activeTopPage === "activity") {
+    clearActivityPolling();
+    void pollActivity();
+  } else {
+    clearActivityPolling();
+    closeActivityStreamPanel();
+  }
 }
 
 function updateFavoriteDefinitionButton() {
@@ -4789,6 +5278,7 @@ export function initializeApp() {
   setupRecommendationsSection();
   setupEventListeners();
   setupRunBuilder();
+  setupActivityDashboard();
   loadDevProjects();
   loadCurrentDevProject()
     .then(loadSuggestionsForCurrentProject)
