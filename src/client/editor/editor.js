@@ -1453,6 +1453,7 @@ function setupForType(type, initialRaw) {
 
 async function boot() {
   let raw = "";
+  let generatedRaw = "";
   try {
     console.debug(`${TAG_DEBUG_PREFIX} boot: requesting /api/definition-tags`);
     const tagsResponse = await fetch("/api/definition-tags");
@@ -1506,11 +1507,11 @@ async function boot() {
       if (rawStored) {
         const parsedStored = JSON.parse(rawStored);
         if (parsedStored && parsedStored.type === definitionType && parsedStored.content) {
-          raw = String(parsedStored.content);
+          generatedRaw = String(parsedStored.content);
         }
       }
     } catch (_error) {
-      raw = "";
+      generatedRaw = "";
     } finally {
       window.sessionStorage.removeItem(GENERATED_DEFINITION_STORAGE_KEY);
     }
@@ -1545,7 +1546,18 @@ async function boot() {
   } else {
     window.sessionStorage.removeItem(EDITOR_HELP_STATE_STORAGE_KEY);
   }
+
   setupForType(definitionType, raw);
+
+  if (generatedRaw && mode === "create") {
+    rawText.value = "";
+    sync.updateFormFromText({ reason: "generated-clear" });
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    rawText.value = generatedRaw;
+    sync.updateFormFromText({ reason: "generated-apply" });
+    sync.updateTextFromForm();
+  }
+
   if (restoredSnapshot?.formState) {
     formController.setState(restoredSnapshot.formState);
     sync.updateTextFromForm();
