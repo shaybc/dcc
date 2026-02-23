@@ -47,24 +47,15 @@ function buildArgs({ configPath, prompt, agentPath }) {
   return args;
 }
 
-
-function quoteWindowsArg(value) {
-  const text = String(value || "");
-  if (!text) return '""';
-  if (!/[\s"]/u.test(text)) return text;
-  return `"${text.replace(/"/g, '\\"')}"`;
-}
-
 function createSpawnSpec(commandPath, args) {
   const isWindowsCmd = process.platform === "win32" && /\.cmd$/i.test(commandPath);
   if (isWindowsCmd) {
-    const joinedArgs = args.map((arg) => quoteWindowsArg(arg)).join(" ");
-    const commandLine = `${quoteWindowsArg(commandPath)} ${joinedArgs}`.trim();
     return {
-      command: process.env.comspec || "cmd.exe",
-      args: ["/d", "/s", "/c", commandLine],
-      shell: false,
-      launchedCommand: `${process.env.comspec || "cmd.exe"} /d /s /c ${commandLine}`
+      command: commandPath,
+      args,
+      shell: true,
+      launchMode: "windows_cmd_shell",
+      launchedCommand: `${JSON.stringify(commandPath)} ${args.map((arg) => JSON.stringify(arg)).join(" ")}`
     };
   }
 
@@ -72,6 +63,7 @@ function createSpawnSpec(commandPath, args) {
     command: commandPath,
     args,
     shell: false,
+    launchMode: "direct_exec",
     launchedCommand: `${commandPath} ${args.map((arg) => JSON.stringify(arg)).join(" ")}`
   };
 }
@@ -107,6 +99,8 @@ class AgentRunManager {
       exitCode: null,
       signal: null,
       lastActivityAt: createdAt,
+      emittedStdoutBytes: 0,
+      emittedStderrBytes: 0,
       logs: []
     };
 
@@ -118,6 +112,15 @@ class AgentRunManager {
       agentPath,
       configPath,
       command: run.command
+    });
+
+    logInfo("Agent launch environment", {
+      runId,
+      commandPathExists: fs.existsSync(commandPath),
+      projectPathExists: fs.existsSync(projectPath),
+      launchMode: spawnSpec.launchMode,
+      shell: spawnSpec.shell,
+      cwd: projectPath
     });
 
     let child;
@@ -194,8 +197,19 @@ class AgentRunManager {
       });
       if (run.exitCode !== 0 || run.signal) {
         this.pushLog(runId, "stderr", `Process ended with status=${run.status} exitCode=${run.exitCode} signal=${run.signal || "none"}.\n`);
+        if (run.emittedStdoutBytes === 0 && run.emittedStderrBytes === 0) {
+          this.pushLog(runId, "stderr", "Process produced no stdout/stderr before exit. Verify command arguments and project/config/agent file paths.\n");
+        }
       }
-      logInfo("Agent process closed", { runId, pid: run.pid, status: run.status, exitCode: run.exitCode, signal: run.signal });
+      logInfo("Agent process closed", {
+        runId,
+        pid: run.pid,
+        status: run.status,
+        exitCode: run.exitCode,
+        signal: run.signal,
+        emittedStdoutBytes: run.emittedStdoutBytes,
+        emittedStderrBytes: run.emittedStderrBytes
+      });
     });
 
     run.child = child;
@@ -221,7 +235,9 @@ class AgentRunManager {
       endedAt: run.endedAt,
       lastActivityAt: run.lastActivityAt,
       exitCode: run.exitCode,
-      signal: run.signal
+      signal: run.signal,
+      emittedStdoutBytes: run.emittedStdoutBytes,
+      emittedStderrBytes: run.emittedStderrBytes
     };
   }
 
@@ -263,6 +279,13 @@ class AgentRunManager {
 
     const text = Buffer.isBuffer(chunk) ? chunk.toString("utf8") : String(chunk || "");
     if (!text) return;
+
+    const bytes = Buffer.byteLength(text, "utf8");
+    if (stream === "stderr") {
+      run.emittedStderrBytes += bytes;
+    } else {
+      run.emittedStdoutBytes += bytes;
+    }
 
     run.lastActivityAt = nowIso();
     const seq = run.logs.length ? run.logs[run.logs.length - 1].seq + 1 : 1;

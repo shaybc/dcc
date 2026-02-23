@@ -666,7 +666,7 @@ async function pollActiveRun() {
       }
 
       if (run && runAgentOutputMeta) {
-        runAgentOutputMeta.textContent = `runId=${run.runId} pid=${run.pid ?? "n/a"} status=${run.status}`;
+        runAgentOutputMeta.textContent = `runId=${run.runId} pid=${run.pid ?? "n/a"} status=${run.status} out=${run.emittedStdoutBytes ?? 0}B err=${run.emittedStderrBytes ?? 0}B`;
       }
 
       if (run && ["terminated", "failed", "killed"].includes(run.status)) {
@@ -750,7 +750,7 @@ async function handleRunAgentClick() {
     if (runAgentOutputText) runAgentOutputText.textContent = "";
     if (runAgentOutputMeta) {
       runAgentOutputMeta.textContent = runId
-        ? `runId=${runId} pid=${payload?.run?.pid ?? "n/a"} status=${payload?.run?.status || "launched"}`
+        ? `runId=${runId} pid=${payload?.run?.pid ?? "n/a"} status=${payload?.run?.status || "launched"} out=${payload?.run?.emittedStdoutBytes ?? 0}B err=${payload?.run?.emittedStderrBytes ?? 0}B`
         : "No active run";
     }
 
