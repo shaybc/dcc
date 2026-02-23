@@ -960,21 +960,47 @@ function setPromptFormatControlVisibility(visible) {
   promptFormatControl.hidden = !visible;
 }
 
+function isEmptyAgentTemplateFrontmatter(frontmatter) {
+  if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) {
+    return false;
+  }
+
+  const normalizedName = String(frontmatter.name || "").trim();
+  const normalizedUri = String(frontmatter.dcc_uri || "").trim();
+  const normalizedDescription = String(frontmatter.description || "").trim();
+  const normalizedVersion = String(frontmatter.version || "").trim();
+  const normalizedSchema = String(frontmatter.schema || "").trim();
+  const normalizedType = String(frontmatter.dcc_definition_type || "").trim();
+  const tags = Array.isArray(frontmatter.dcc_tags) ? frontmatter.dcc_tags : null;
+
+  return normalizedName === ""
+    && normalizedUri === ""
+    && normalizedDescription === ""
+    && normalizedVersion === ""
+    && normalizedSchema === ""
+    && normalizedType === dccDefinitionTypeForEditorType("agent")
+    && Array.isArray(tags)
+    && tags.length === 0;
+}
+
 function parseAgentMarkdownContent(text) {
   const source = String(text || "");
   const parsed = matter(source);
-  const hasFrontmatter = parsed && parsed.data && Object.keys(parsed.data).length > 0;
-
-  if (hasFrontmatter) {
-    return { ...parsed.data, body: parsed.content.trimStart() };
-  }
+  const parsedData = parsed?.data || {};
+  const hasFrontmatter = Object.keys(parsedData).length > 0;
 
   const nestedSource = String(parsed?.content || "").trimStart();
   if (nestedSource.startsWith("---")) {
     const nestedParsed = matter(nestedSource);
     if (nestedParsed?.data && Object.keys(nestedParsed.data).length > 0) {
-      return { ...nestedParsed.data, body: nestedParsed.content.trimStart() };
+      if (!hasFrontmatter || isEmptyAgentTemplateFrontmatter(parsedData)) {
+        return { ...nestedParsed.data, body: nestedParsed.content.trimStart() };
+      }
     }
+  }
+
+  if (hasFrontmatter) {
+    return { ...parsedData, body: parsed.content.trimStart() };
   }
 
   try {
@@ -989,7 +1015,7 @@ function parseAgentMarkdownContent(text) {
     // fall through to plain markdown parsing
   }
 
-  return { ...parsed.data, body: parsed.content.trimStart() };
+  return { ...parsedData, body: parsed.content.trimStart() };
 }
 
 const handlers = {
