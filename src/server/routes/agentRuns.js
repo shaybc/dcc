@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import { getDb } from "../db/helpers.js";
 import { getProjectDestinationInfo } from "../definitions/install.js";
 import { agentRunManager } from "../services/agentRunManager.js";
+import { logError, logInfo } from "../utils/logger.js";
 
 const router = express.Router();
 
@@ -63,8 +64,16 @@ router.post("/api/agent-runs", async (req, res) => {
       prompt: payload.prompt
     });
 
+    logInfo("Agent run launch request succeeded", {
+      runId: run?.runId,
+      projectPath: payload.projectPath,
+      agentId: payload.agentId,
+      configId: payload.configId
+    });
+
     res.status(201).json({ run });
   } catch (error) {
+    logError("Agent run launch request failed", { error: error.message, payload: req.body || {} });
     res.status(500).json({ error: error.message || "Unable to launch agent." });
   }
 });

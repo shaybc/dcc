@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
+import { logError, logInfo, logWarn } from "../utils/logger.js";
 
 const MAX_LOG_ENTRIES = 2000;
 const STUCK_TIMEOUT_MS = 120000;
@@ -46,6 +47,35 @@ function buildArgs({ configPath, prompt, agentPath }) {
   return args;
 }
 
+
+function quoteWindowsArg(value) {
+  const text = String(value || "");
+  if (!text) return '""';
+  if (!/[\s"]/u.test(text)) return text;
+  return `"${text.replace(/"/g, '\\"')}"`;
+}
+
+function createSpawnSpec(commandPath, args) {
+  const isWindowsCmd = process.platform === "win32" && /\.cmd$/i.test(commandPath);
+  if (isWindowsCmd) {
+    const joinedArgs = args.map((arg) => quoteWindowsArg(arg)).join(" ");
+    const commandLine = `${quoteWindowsArg(commandPath)} ${joinedArgs}`.trim();
+    return {
+      command: process.env.comspec || "cmd.exe",
+      args: ["/d", "/s", "/c", commandLine],
+      shell: false,
+      launchedCommand: `${process.env.comspec || "cmd.exe"} /d /s /c ${commandLine}`
+    };
+  }
+
+  return {
+    command: commandPath,
+    args,
+    shell: false,
+    launchedCommand: `${commandPath} ${args.map((arg) => JSON.stringify(arg)).join(" ")}`
+  };
+}
+
 class AgentRunManager {
   constructor() {
     this.runs = new Map();
@@ -58,6 +88,7 @@ class AgentRunManager {
     const createdAt = nowIso();
     const commandPath = detectCnExecutable(process.cwd());
     const args = buildArgs({ configPath, prompt, agentPath });
+    const spawnSpec = createSpawnSpec(commandPath, args);
 
     const run = {
       runId,
@@ -67,7 +98,7 @@ class AgentRunManager {
       prompt: String(prompt || ""),
       commandPath,
       args,
-      command: `${commandPath} ${args.map((arg) => JSON.stringify(arg)).join(" ")}`,
+      command: spawnSpec.launchedCommand,
       pid: null,
       status: "preparing_to_launch",
       createdAt,
@@ -81,22 +112,43 @@ class AgentRunManager {
 
     this.runs.set(runId, run);
 
-    const child = spawn(commandPath, args, {
-      cwd: process.cwd(),
-      stdio: ["ignore", "pipe", "pipe"],
-      windowsHide: true,
-      shell: false
+    logInfo("Preparing agent launch", {
+      runId,
+      projectPath,
+      agentPath,
+      configPath,
+      command: run.command
     });
+
+    let child;
+    try {
+      child = spawn(spawnSpec.command, spawnSpec.args, {
+        cwd: process.cwd(),
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+        shell: spawnSpec.shell
+      });
+    } catch (error) {
+      run.status = "failed";
+      run.endedAt = nowIso();
+      run.lastActivityAt = run.endedAt;
+      this.pushLog(runId, "stderr", `Failed to launch process: ${error.message}\n`);
+      logError("Agent process error event", { runId, pid: run.pid, error: error.message, command: run.command });
+      logError("Agent launch threw before spawn", { runId, error: error.message, command: run.command });
+      return this.getRunSnapshot(runId);
+    }
 
     run.pid = child.pid || null;
     run.status = "launched";
     run.startedAt = nowIso();
     this.publish(runId, { type: "status", status: run.status, pid: run.pid, startedAt: run.startedAt });
+    logInfo("Agent process launched", { runId, pid: run.pid, command: run.command });
 
     child.on("spawn", () => {
       run.status = "running";
       run.lastActivityAt = nowIso();
       this.publish(runId, { type: "status", status: run.status, pid: run.pid });
+      logInfo("Agent process running", { runId, pid: run.pid });
     });
 
     child.stdout?.on("data", (chunk) => {
@@ -112,6 +164,7 @@ class AgentRunManager {
       run.endedAt = nowIso();
       run.lastActivityAt = run.endedAt;
       this.pushLog(runId, "stderr", `Failed to launch process: ${error.message}\n`);
+      logError("Agent process error event", { runId, pid: run.pid, error: error.message, command: run.command });
       this.publish(runId, {
         type: "status",
         status: run.status,
@@ -139,6 +192,7 @@ class AgentRunManager {
         signal: run.signal,
         endedAt: run.endedAt
       });
+      logInfo("Agent process closed", { runId, pid: run.pid, status: run.status, exitCode: run.exitCode, signal: run.signal });
     });
 
     run.child = child;
@@ -216,6 +270,9 @@ class AgentRunManager {
     }
 
     this.publish(runId, { type: "log", ...entry });
+
+    const logFn = stream === "stderr" ? logWarn : logInfo;
+    logFn("Agent process output", { runId, stream, pid: run.pid, text: text.slice(0, 4000) });
   }
 
   publish(runId, message) {
