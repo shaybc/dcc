@@ -63,6 +63,9 @@ const runAgentStatusText = document.getElementById("runAgentStatusText");
 const runAgentCheckAgent = document.getElementById("runAgentCheckAgent");
 const runAgentCheckConfig = document.getElementById("runAgentCheckConfig");
 const runAgentCheckReady = document.getElementById("runAgentCheckReady");
+const runAgentOutputPanel = document.getElementById("runAgentOutputPanel");
+const runAgentOutputMeta = document.getElementById("runAgentOutputMeta");
+const runAgentOutputText = document.getElementById("runAgentOutputText");
 const runPickerTitle = document.getElementById("runPickerTitle");
 const runPickerSubtitle = document.getElementById("runPickerSubtitle");
 const runPickerSearch = document.getElementById("runPickerSearch");
@@ -212,12 +215,16 @@ let onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
 let activeTopPage = "discover";
 const RECENT_AGENT_RUNS_STORAGE_KEY = "dcc.agent.builder.recent-runs";
 const RECENT_AGENT_RUN_PACKS_ENDPOINT = "/api/agent-run-packs";
+const AGENT_RUNS_ENDPOINT = "/api/agent-runs";
 let runBuilderMode = "agent";
 let runBuilderPickerFilter = "installed";
 let runBuilderSearchQuery = "";
 let runBuilderPendingSelection = null;
 let runBuilderSelection = { agent: null, config: null };
 let recentAgentRunPacks = getStoredRecentAgentRunPacks();
+let activeRunId = "";
+let activeRunLogSince = 0;
+let activeRunPollTimer = null;
 const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
 let favoriteDefinitionIds = getStoredFavoriteDefinitionIds();
 
@@ -625,10 +632,72 @@ async function ensureRunBuilderDefinitionsInstalled(selection) {
   renderRunBuilder();
 }
 
+function clearActiveRunPolling() {
+  if (activeRunPollTimer) {
+    clearTimeout(activeRunPollTimer);
+    activeRunPollTimer = null;
+  }
+}
+
+function appendRunOutputLine(stream, text) {
+  if (!runAgentOutputText) return;
+  const prefix = stream === "stderr" ? "[stderr]" : "[stdout]";
+  runAgentOutputText.textContent += `${prefix} ${text}`;
+  runAgentOutputText.scrollTop = runAgentOutputText.scrollHeight;
+}
+
+async function pollActiveRun() {
+  if (!activeRunId) return;
+
+  try {
+    const [runResponse, logsResponse] = await Promise.all([
+      fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activeRunId)}`),
+      fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activeRunId)}/logs?since=${activeRunLogSince}`)
+    ]);
+
+    if (runResponse.ok) {
+      const payload = await runResponse.json();
+      const run = payload?.run;
+      if (run && runAgentStatusText) {
+        const exitSuffix = run.status === "terminated" || run.status === "failed" || run.status === "killed"
+          ? ` (exit=${run.exitCode ?? "n/a"}${run.signal ? `, signal=${run.signal}` : ""})`
+          : "";
+        runAgentStatusText.textContent = `Run ${run.runId}: ${run.status}${exitSuffix}`;
+      }
+
+      if (run && runAgentOutputMeta) {
+        runAgentOutputMeta.textContent = `runId=${run.runId} pid=${run.pid ?? "n/a"} status=${run.status}`;
+      }
+
+      if (run && ["terminated", "failed", "killed"].includes(run.status)) {
+        clearActiveRunPolling();
+      }
+    }
+
+    if (logsResponse.ok) {
+      const payload = await logsResponse.json();
+      const entries = Array.isArray(payload?.entries) ? payload.entries : [];
+      entries.forEach((entry) => {
+        appendRunOutputLine(entry?.stream, String(entry?.text || ""));
+      });
+      activeRunLogSince = Number(payload?.nextSince || activeRunLogSince);
+    }
+  } catch (_error) {
+    if (runAgentStatusText) {
+      runAgentStatusText.textContent = `Run ${activeRunId}: unable to fetch updates.`;
+    }
+  }
+
+  if (activeRunId) {
+    activeRunPollTimer = setTimeout(pollActiveRun, 1500);
+  }
+}
+
 async function handleRunAgentClick() {
   if (!runBuilderSelection.agent || !runBuilderSelection.config || !runAgentButton) return;
 
-  if (!devProjectInput.value.trim()) {
+  const selectedProject = String(devProjectInput.value || "").trim();
+  if (!selectedProject) {
     window.alert("Please select a project first.");
     return;
   }
@@ -652,7 +721,47 @@ async function handleRunAgentClick() {
     persistRecentAgentRunPacks();
     void persistRecentAgentRunPackToDatabase(recentAgentRunPacks[0]);
 
-    window.alert(runSummary);
+    const launchPayload = {
+      agentId: Number(runBuilderSelection.agent.id),
+      configId: Number(runBuilderSelection.config.id),
+      prompt: String(runPromptInput?.value || ""),
+      projectPath: selectedProject
+    };
+    const response = await fetch(AGENT_RUNS_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(launchPayload)
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.error || `Failed to launch agent (${response.status})`);
+    }
+
+    const payload = await response.json();
+    const runId = String(payload?.run?.runId || "").trim();
+    activeRunId = runId;
+    activeRunLogSince = 0;
+    clearActiveRunPolling();
+
+    if (runAgentOutputPanel) runAgentOutputPanel.hidden = !runId;
+    if (runAgentOutputText) runAgentOutputText.textContent = "";
+    if (runAgentOutputMeta) {
+      runAgentOutputMeta.textContent = runId
+        ? `runId=${runId} pid=${payload?.run?.pid ?? "n/a"} status=${payload?.run?.status || "launched"}`
+        : "No active run";
+    }
+
+    if (runId) {
+      if (runAgentStatusText) {
+        runAgentStatusText.textContent = `Run ${runId}: ${payload?.run?.status || "launched"}`;
+      }
+      void pollActiveRun();
+    }
+
+    window.alert(`${runSummary}${runId ? `\nRun ID: ${runId}` : ""}`);
   } catch (error) {
     window.alert(error?.message || "Failed to prepare agent launch.");
   } finally {
