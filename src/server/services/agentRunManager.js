@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
+import { allDb, runDb } from "../db/helpers.js";
 import { logError, logInfo, logWarn } from "../utils/logger.js";
 
 const MAX_LOG_ENTRIES = 2000;
@@ -93,6 +94,149 @@ class AgentRunManager {
     this.runs = new Map();
     this.subscribers = new Map();
     this.sequence = 0;
+    this.persistenceQueue = Promise.resolve();
+    this.restorePersistedRuns();
+  }
+
+  queuePersistence(work) {
+    this.persistenceQueue = this.persistenceQueue
+      .then(() => work())
+      .catch((error) => {
+        logError("Failed to persist agent run state", { error: error.message });
+      });
+    return this.persistenceQueue;
+  }
+
+  async restorePersistedRuns() {
+    try {
+      const rows = await allDb(
+        `SELECT runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, pid, status,
+                createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes
+         FROM agent_runs
+         ORDER BY createdAt ASC`
+      );
+
+      for (const row of rows) {
+        let parsedArgs = [];
+        try {
+          parsedArgs = JSON.parse(row.argsJson || "[]");
+          if (!Array.isArray(parsedArgs)) {
+            parsedArgs = [];
+          }
+        } catch {
+          parsedArgs = [];
+        }
+
+        const run = {
+          runId: row.runId,
+          projectPath: row.projectPath,
+          agentPath: row.agentPath,
+          configPath: row.configPath,
+          prompt: String(row.prompt || ""),
+          commandPath: row.commandPath,
+          args: parsedArgs,
+          command: row.command,
+          pid: Number.isInteger(row.pid) ? row.pid : null,
+          status: row.status,
+          createdAt: row.createdAt,
+          startedAt: row.startedAt,
+          endedAt: row.endedAt,
+          exitCode: Number.isInteger(row.exitCode) ? row.exitCode : null,
+          signal: row.signal,
+          lastActivityAt: row.lastActivityAt,
+          emittedStdoutBytes: Number(row.emittedStdoutBytes || 0),
+          emittedStderrBytes: Number(row.emittedStderrBytes || 0),
+          logs: []
+        };
+
+        if (["running", "launched", "preparing_to_launch"].includes(run.status)) {
+          run.status = "terminated";
+          run.endedAt = run.endedAt || nowIso();
+          run.lastActivityAt = run.endedAt;
+          run.signal = run.signal || "server_restart";
+          run.exitCode = Number.isInteger(run.exitCode) ? run.exitCode : null;
+        }
+
+        const logs = await allDb(
+          `SELECT seq, stream, text, timestamp
+           FROM agent_run_logs
+           WHERE runId = ?
+           ORDER BY seq ASC`,
+          [run.runId]
+        );
+        run.logs = logs;
+        this.runs.set(run.runId, run);
+      }
+
+      if (this.runs.size) {
+        logInfo("Restored persisted agent runs", { count: this.runs.size });
+      }
+
+      for (const run of this.runs.values()) {
+        if (run.signal === "server_restart") {
+          this.persistRun(run);
+        }
+      }
+    } catch (error) {
+      logError("Unable to restore persisted agent runs", { error: error.message });
+    }
+  }
+
+  persistRun(run) {
+    if (!run?.runId) return;
+    this.queuePersistence(() => runDb(
+      `INSERT INTO agent_runs (
+        runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, pid, status,
+        createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(runId) DO UPDATE SET
+        projectPath = excluded.projectPath,
+        agentPath = excluded.agentPath,
+        configPath = excluded.configPath,
+        prompt = excluded.prompt,
+        commandPath = excluded.commandPath,
+        argsJson = excluded.argsJson,
+        command = excluded.command,
+        pid = excluded.pid,
+        status = excluded.status,
+        createdAt = excluded.createdAt,
+        startedAt = excluded.startedAt,
+        endedAt = excluded.endedAt,
+        lastActivityAt = excluded.lastActivityAt,
+        exitCode = excluded.exitCode,
+        signal = excluded.signal,
+        emittedStdoutBytes = excluded.emittedStdoutBytes,
+        emittedStderrBytes = excluded.emittedStderrBytes`,
+      [
+        run.runId,
+        run.projectPath,
+        run.agentPath,
+        run.configPath,
+        String(run.prompt || ""),
+        run.commandPath || null,
+        JSON.stringify(Array.isArray(run.args) ? run.args : []),
+        run.command || null,
+        Number.isInteger(run.pid) ? run.pid : null,
+        run.status,
+        run.createdAt,
+        run.startedAt || null,
+        run.endedAt || null,
+        run.lastActivityAt || null,
+        Number.isInteger(run.exitCode) ? run.exitCode : null,
+        run.signal || null,
+        Number(run.emittedStdoutBytes || 0),
+        Number(run.emittedStderrBytes || 0)
+      ]
+    ));
+  }
+
+  persistLog(runId, entry) {
+    if (!runId || !entry) return;
+    this.queuePersistence(() => runDb(
+      `INSERT OR REPLACE INTO agent_run_logs (runId, seq, stream, text, timestamp)
+       VALUES (?, ?, ?, ?, ?)`,
+      [runId, entry.seq, entry.stream, entry.text, entry.timestamp]
+    ));
   }
 
   startRun({ projectPath, agentPath, configPath, prompt }) {
@@ -125,6 +269,7 @@ class AgentRunManager {
     };
 
     this.runs.set(runId, run);
+    this.persistRun(run);
 
     logInfo("Preparing agent launch", {
       runId,
@@ -157,6 +302,7 @@ class AgentRunManager {
       run.endedAt = nowIso();
       run.lastActivityAt = run.endedAt;
       this.pushLog(runId, "stderr", `Failed to launch process: ${error.message}\n`);
+      this.persistRun(run);
       logError("Agent process error event", { runId, pid: run.pid, error: error.message, command: run.command });
       logError("Agent launch threw before spawn", { runId, error: error.message, command: run.command });
       return this.getRunSnapshot(runId);
@@ -165,12 +311,14 @@ class AgentRunManager {
     run.pid = child.pid || null;
     run.status = "launched";
     run.startedAt = nowIso();
+    this.persistRun(run);
     this.publish(runId, { type: "status", status: run.status, pid: run.pid, startedAt: run.startedAt });
     logInfo("Agent process launched", { runId, pid: run.pid, command: run.command });
 
     child.on("spawn", () => {
       run.status = "running";
       run.lastActivityAt = nowIso();
+      this.persistRun(run);
       this.publish(runId, { type: "status", status: run.status, pid: run.pid });
       logInfo("Agent process running", { runId, pid: run.pid });
     });
@@ -188,6 +336,7 @@ class AgentRunManager {
       run.endedAt = nowIso();
       run.lastActivityAt = run.endedAt;
       this.pushLog(runId, "stderr", `Failed to launch process: ${error.message}\n`);
+      this.persistRun(run);
       logError("Agent process error event", { runId, pid: run.pid, error: error.message, command: run.command });
       this.publish(runId, {
         type: "status",
@@ -223,6 +372,7 @@ class AgentRunManager {
           this.pushLog(runId, "stderr", "Process produced no stdout/stderr before exit. Verify command arguments and project/config/agent file paths.\n");
         }
       }
+      this.persistRun(run);
       logInfo("Agent process closed", {
         runId,
         pid: run.pid,
@@ -325,6 +475,9 @@ class AgentRunManager {
     if (run.logs.length > MAX_LOG_ENTRIES) {
       run.logs.splice(0, run.logs.length - MAX_LOG_ENTRIES);
     }
+
+    this.persistLog(runId, entry);
+    this.persistRun(run);
 
     this.publish(runId, { type: "log", ...entry });
 

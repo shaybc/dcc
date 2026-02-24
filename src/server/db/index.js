@@ -143,6 +143,44 @@ db.serialize(() => {
   );
   db.run("CREATE INDEX IF NOT EXISTS idx_agent_run_packs_updated_at ON agent_run_packs(updatedAt DESC)");
 
+  db.run(
+    `CREATE TABLE IF NOT EXISTS agent_runs (
+      runId TEXT PRIMARY KEY,
+      projectPath TEXT NOT NULL,
+      agentPath TEXT NOT NULL,
+      configPath TEXT NOT NULL,
+      prompt TEXT NOT NULL DEFAULT '',
+      commandPath TEXT,
+      argsJson TEXT NOT NULL DEFAULT '[]',
+      command TEXT,
+      pid INTEGER,
+      status TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      startedAt TEXT,
+      endedAt TEXT,
+      lastActivityAt TEXT,
+      exitCode INTEGER,
+      signal TEXT,
+      emittedStdoutBytes INTEGER NOT NULL DEFAULT 0,
+      emittedStderrBytes INTEGER NOT NULL DEFAULT 0
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_agent_runs_created_at ON agent_runs(createdAt DESC)");
+  db.run("CREATE INDEX IF NOT EXISTS idx_agent_runs_last_activity ON agent_runs(lastActivityAt DESC)");
+
+  db.run(
+    `CREATE TABLE IF NOT EXISTS agent_run_logs (
+      runId TEXT NOT NULL,
+      seq INTEGER NOT NULL,
+      stream TEXT NOT NULL,
+      text TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      PRIMARY KEY(runId, seq),
+      FOREIGN KEY(runId) REFERENCES agent_runs(runId) ON DELETE CASCADE
+    )`
+  );
+  db.run("CREATE INDEX IF NOT EXISTS idx_agent_run_logs_run_seq ON agent_run_logs(runId, seq DESC)");
+
   db.all("PRAGMA table_info(definitions)", (err, rows = []) => {
     if (err) {
       return;
