@@ -443,6 +443,16 @@
   color: var(--activity-text);
 }
 
+.activity-meta-path {
+  grid-column: 1 / -1;
+}
+
+.activity-meta-path dd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .activity-log-head {
   display: flex;
   align-items: center;
