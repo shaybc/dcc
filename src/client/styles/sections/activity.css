@@ -195,6 +195,28 @@
   padding: 14px 6px;
 }
 
+.activity-group-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 2px 10px;
+  color: var(--activity-subtle);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.activity-group-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in oklab, var(--activity-border) 90%, transparent);
+}
+
+.activity-list > .activity-group-label:first-child {
+  margin-top: 4px;
+}
+
 .activity-row {
   position: relative;
   display: grid;
