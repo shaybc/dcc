@@ -27,6 +27,8 @@ const saveMaxRecommendedDefinitionsButton = document.getElementById("saveMaxReco
 const openAiResponseLogEnabledInput = document.getElementById("openAiResponseLogEnabledInput");
 const aiClientTrafficLogEnabledInput = document.getElementById("aiClientTrafficLogEnabledInput");
 const aiResponseLogMaxLengthInput = document.getElementById("aiResponseLogMaxLengthInput");
+const logFileMaxSizeMbInput = document.getElementById("logFileMaxSizeMbInput");
+const logFileMaxFilesInput = document.getElementById("logFileMaxFilesInput");
 const saveAiLoggingSettingsButton = document.getElementById("saveAiLoggingSettingsBtn");
 const geminiClientSelect = document.getElementById("geminiClientSelect");
 const geminiAiStudioSection = document.getElementById("geminiAiStudioSection");
@@ -414,6 +416,20 @@ async function loadRecommendationSettings() {
     const rawLogLength = Number(data?.aiResponseLogMaxLength);
     const normalizedLogLength = Number.isFinite(rawLogLength) ? Math.max(50, Math.min(5000, Math.round(rawLogLength))) : 300;
     aiResponseLogMaxLengthInput.value = String(normalizedLogLength);
+  }
+  if (logFileMaxSizeMbInput) {
+    const rawLogFileMaxSizeMb = Number(data?.logFileMaxSizeMb);
+    const normalizedLogFileMaxSizeMb = Number.isFinite(rawLogFileMaxSizeMb)
+      ? Math.max(10, Math.min(1024, Math.round(rawLogFileMaxSizeMb)))
+      : 100;
+    logFileMaxSizeMbInput.value = String(normalizedLogFileMaxSizeMb);
+  }
+  if (logFileMaxFilesInput) {
+    const rawLogFileMaxFiles = Number(data?.logFileMaxFiles);
+    const normalizedLogFileMaxFiles = Number.isFinite(rawLogFileMaxFiles)
+      ? Math.max(1, Math.min(365, Math.round(rawLogFileMaxFiles)))
+      : 30;
+    logFileMaxFilesInput.value = String(normalizedLogFileMaxFiles);
   }
   toggleGeminiSettingsSections();
 }
@@ -881,8 +897,18 @@ saveMaxRecommendedDefinitionsButton?.addEventListener("click", async () => {
 
 saveAiLoggingSettingsButton?.addEventListener("click", async () => {
   const aiResponseLogMaxLength = Number(aiResponseLogMaxLengthInput?.value || 0);
+  const logFileMaxSizeMb = Number(logFileMaxSizeMbInput?.value || 0);
+  const logFileMaxFiles = Number(logFileMaxFilesInput?.value || 0);
   if (!Number.isFinite(aiResponseLogMaxLength) || aiResponseLogMaxLength < 50 || aiResponseLogMaxLength > 5000) {
     setNotice("Log max response length must be between 50 and 5000.", true);
+    return;
+  }
+  if (!Number.isFinite(logFileMaxSizeMb) || logFileMaxSizeMb < 10 || logFileMaxSizeMb > 1024) {
+    setNotice("Log file max size must be between 10 and 1024 MB.", true);
+    return;
+  }
+  if (!Number.isFinite(logFileMaxFiles) || logFileMaxFiles < 1 || logFileMaxFiles > 365) {
+    setNotice("Max log files must be between 1 and 365.", true);
     return;
   }
 
@@ -892,7 +918,9 @@ saveAiLoggingSettingsButton?.addEventListener("click", async () => {
     body: JSON.stringify({
       openAiResponseLogEnabled: Boolean(openAiResponseLogEnabledInput?.checked),
       aiClientTrafficLogEnabled: Boolean(aiClientTrafficLogEnabledInput?.checked),
-      aiResponseLogMaxLength: Math.round(aiResponseLogMaxLength)
+      aiResponseLogMaxLength: Math.round(aiResponseLogMaxLength),
+      logFileMaxSizeMb: Math.round(logFileMaxSizeMb),
+      logFileMaxFiles: Math.round(logFileMaxFiles)
     })
   });
 
@@ -904,6 +932,12 @@ saveAiLoggingSettingsButton?.addEventListener("click", async () => {
 
   if (aiResponseLogMaxLengthInput) {
     aiResponseLogMaxLengthInput.value = String(Math.round(aiResponseLogMaxLength));
+  }
+  if (logFileMaxSizeMbInput) {
+    logFileMaxSizeMbInput.value = String(Math.round(logFileMaxSizeMb));
+  }
+  if (logFileMaxFilesInput) {
+    logFileMaxFilesInput.value = String(Math.round(logFileMaxFiles));
   }
   setNotice("AI logging settings updated.");
 });

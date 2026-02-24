@@ -13,6 +13,7 @@ import versionsRouter from "./routes/versions.js";
 import agentRunPacksRouter from "./routes/agentRunPacks.js";
 import agentRunsRouter from "./routes/agentRuns.js";
 import { loadAiLogConfigFromSettings } from "./utils/aiLogging.js";
+import { loadLoggerFileConfigFromSettings } from "./utils/logger.js";
 
 const __dirname = import.meta.dirname;
 const app = express();
@@ -55,6 +56,7 @@ app.get("/settings", (req, res) => {
 });
 
 await loadAiLogConfigFromSettings();
+await loadLoggerFileConfigFromSettings();
 
 app.listen(PORT, () => {
   console.log(`DCC server listening on http://localhost:${PORT}`);

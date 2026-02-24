@@ -13,6 +13,7 @@ import {
   upsertLegacyAssetRepo,
 } from "../utils/assetRepos.js";
 import { getAiLogConfigSync, saveAiLogConfigToSettings } from "../utils/aiLogging.js";
+import { getLoggerFileConfigSync, saveLoggerFileConfigToSettings } from "../utils/logger.js";
 
 const router = express.Router();
 
@@ -31,11 +32,14 @@ router.get("/api/settings", async (req, res) => {
     const gemini = await getGeminiSettings();
     await setSetting("maxRecommendedDefinitions", String(maxRecommendedDefinitions));
     const aiLogConfig = getAiLogConfigSync();
+    const loggerFileConfig = getLoggerFileConfigSync();
     res.json({
       maxRecommendedDefinitions,
       openAiResponseLogEnabled: aiLogConfig.openAiResponseEnabled,
       aiClientTrafficLogEnabled: aiLogConfig.aiClientTrafficEnabled,
       aiResponseLogMaxLength: aiLogConfig.responseMaxLength,
+      logFileMaxSizeMb: loggerFileConfig.maxSizeMb,
+      logFileMaxFiles: loggerFileConfig.maxFiles,
       geminiClient: normalizeGeminiClient(gemini.client),
       geminiApiKey: gemini.apiKey,
       geminiModel: normalizeGeminiModel(gemini.model),
@@ -64,6 +68,8 @@ router.post("/api/settings", async (req, res) => {
     openAiResponseLogEnabled,
     aiClientTrafficLogEnabled,
     aiResponseLogMaxLength,
+    logFileMaxSizeMb,
+    logFileMaxFiles,
   } = req.body || {};
   try {
     if (repoUrl !== undefined || repoPath !== undefined) {
@@ -86,6 +92,10 @@ router.post("/api/settings", async (req, res) => {
       openAiResponseEnabled: openAiResponseLogEnabled,
       aiClientTrafficEnabled: aiClientTrafficLogEnabled,
       responseMaxLength: aiResponseLogMaxLength,
+    });
+    await saveLoggerFileConfigToSettings({
+      maxSizeMb: logFileMaxSizeMb,
+      maxFiles: logFileMaxFiles,
     });
     res.json({ ok: true });
   } catch (error) {
