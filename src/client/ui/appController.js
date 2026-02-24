@@ -268,6 +268,7 @@ let activityWrapEnabled = true;
 let activityScrollLocked = true;
 let activityPollTimer = null;
 let activityTickerTimer = null;
+let activityRenderSignature = null;
 let isActivityStreamOpen = false;
 const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
 let favoriteDefinitionIds = getStoredFavoriteDefinitionIds();
@@ -964,20 +965,43 @@ function refreshVisibleTimers() {
   }
 }
 
+function buildActivityRenderSignature(runs) {
+  if (!Array.isArray(runs) || !runs.length) return "";
+  return runs.map((run) => {
+    const status = mapRunStatus(run);
+    return [
+      run?.runId || "",
+      status,
+      run?.pid ?? "",
+      run?.startedAt || run?.createdAt || "",
+      run?.endedAt || "",
+      run?.exitCode ?? "",
+      run?.agentPath || "",
+      run?.configPath || ""
+    ].join("|");
+  }).join("||");
+}
+
 async function loadActivityRuns() {
   try {
     const response = await fetch(`${AGENT_RUNS_ENDPOINT}?limit=300`);
     if (!response.ok) throw new Error(`Failed to load agent runs (${response.status})`);
     const payload = await response.json();
-    activityRuns = Array.isArray(payload?.runs) ? payload.runs : [];
+    const nextRuns = Array.isArray(payload?.runs) ? payload.runs : [];
+    const nextSignature = buildActivityRenderSignature(nextRuns);
+    const hasStructuralChanges = nextSignature !== activityRenderSignature;
+    activityRuns = nextRuns;
     if (activitySelectedRunId && !activityRuns.some((run) => run.runId === activitySelectedRunId)) {
       activitySelectedRunId = "";
       activityLogsSince = 0;
       activityLogEntries = [];
     }
-    renderActivityStats();
-    renderActivityList();
-    renderActivityDetail();
+    if (hasStructuralChanges) {
+      activityRenderSignature = nextSignature;
+      renderActivityStats();
+      renderActivityList();
+      renderActivityDetail();
+    }
     refreshVisibleTimers();
     if (activityLastUpdated) {
       activityLastUpdated.textContent = `Last updated ${new Date().toLocaleTimeString()}`;
