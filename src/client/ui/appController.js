@@ -3213,6 +3213,8 @@ async function fetchDefinitions() {
 
   renderFilters();
   renderCards();
+  renderActivityList();
+  renderActivityDetail();
 }
 
 
