@@ -480,6 +480,10 @@
   font-size: 14px;
 }
 
+.activity-meta-command {
+  color: #767686;
+}
+
 .activity-meta-path,
 .activity-meta-command {
   grid-column: 1 / -1;
