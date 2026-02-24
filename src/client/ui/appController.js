@@ -849,6 +849,10 @@ function updateRunBuilderParamState() {
   const allowOnlyEnabled = Boolean(runParamAllowOnlyEnabled?.checked);
   const denyTerminalEnabled = Boolean(runParamDenyTerminalEnabled?.checked);
 
+  if (allowOnlyEnabled && runParamAllowWrite?.checked) {
+    runParamAllowWrite.checked = false;
+  }
+
   if (runParamAllowOnlyList) runParamAllowOnlyList.hidden = !allowOnlyEnabled;
   if (runParamAllowOnlyAdd) runParamAllowOnlyAdd.hidden = !allowOnlyEnabled;
   if (runParamDenyTerminalList) runParamDenyTerminalList.hidden = !denyTerminalEnabled;
