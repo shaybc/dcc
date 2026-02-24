@@ -6,12 +6,9 @@
   --activity-border-md: color-mix(in srgb, var(--border) 88%, transparent);
   --activity-text: var(--text);
   --activity-muted: color-mix(in srgb, var(--muted) 86%, var(--text) 14%);
-  --activity-command: rgb(55, 55, 55);
-  --activity-subtle: color-mix(in srgb, var(--text-3) 80%, var(--muted) 20%);
   --activity-purple: #7c5cfc;
   --activity-purple-line: #8b6dff;
   --activity-green: #3ecf8e;
-  --activity-blue: #38bdf8;
   --activity-red: #f87171;
   --activity-amber: #f59e0b;
   --activity-surface-faint: color-mix(in srgb, var(--card) 92%, var(--text) 8%);
@@ -602,7 +599,6 @@
 .activity-detail-link {
   cursor: pointer;
   color: var(--activity-blue);
-  text-decoration: underline;
   text-underline-offset: 2px;
 }
 

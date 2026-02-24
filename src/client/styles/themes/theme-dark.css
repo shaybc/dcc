@@ -6,6 +6,9 @@
   --bg: #0b0b0f;
   --bg-soft: #353848;
   --activity-bg: color-mix(in srgb, var(--bg) 88%, #000);
+  --activity-command: rgb(55, 55, 55);
+  --activity-blue: #9180cc;
+  --activity-subtle: color-mix(in srgb, var(--text-3) 80%, var(--muted) 20%);
   --card: #14161b;
   --text: #f4f4f5;
   --text-3: #4f5368;
