@@ -954,21 +954,13 @@ function renderActivityLogStream() {
   activityLog.scrollTop = activityLog.scrollHeight;
 }
 
-function setActivityScrollLocked(locked, { forceScrollToBottom = false } = {}) {
+function updateActivityScrollLockState(locked, { forceScrollToBottom = false } = {}) {
   activityScrollLocked = Boolean(locked);
   activityScrollLockButton?.classList.toggle("active", activityScrollLocked);
   if (activityScrollLockButton) {
     activityScrollLockButton.textContent = activityScrollLocked ? "🔒 lock" : "↓ follow";
   }
   if (forceScrollToBottom && activityLog) {
-    activityLog.scrollTop = activityLog.scrollHeight;
-  }
-}
-
-function setActivityScrollLocked(locked, { forceScrollToBottom = false } = {}) {
-  activityScrollLocked = Boolean(locked);
-  activityScrollLockButton?.classList.toggle("active", activityScrollLocked);
-  if ((forceScrollToBottom || activityScrollLocked) && activityLog) {
     activityLog.scrollTop = activityLog.scrollHeight;
   }
 }
@@ -1183,11 +1175,11 @@ function setupActivityDashboard() {
     renderActivityLogStream();
   });
 
-  setActivityScrollLocked(activityScrollLocked);
+  updateActivityScrollLockState(activityScrollLocked);
 
   activityScrollLockButton?.addEventListener("click", () => {
     const nextLockedState = !activityScrollLocked;
-    setActivityScrollLocked(nextLockedState, { forceScrollToBottom: !nextLockedState });
+    updateActivityScrollLockState(nextLockedState, { forceScrollToBottom: !nextLockedState });
   });
 
   activityCopyLogsButton?.addEventListener("click", async () => {
