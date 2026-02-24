@@ -204,15 +204,15 @@
 }
 
 .activity-group-label {
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 14px 0 6px;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 6px 2px 10px;
-  color: var(--text-1);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-weight: 600;
+
 }
 
 .activity-group-label-text {
@@ -475,7 +475,6 @@
 .activity-meta dd {
   margin: 3px 0 0;
   font-size: 14px;
-  color: var(--activity-text);
 }
 
 .activity-meta-path {
