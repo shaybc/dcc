@@ -12,12 +12,31 @@ function normalizePayload(payload) {
   const configId = Number(payload?.configId);
   const prompt = String(payload?.prompt || "");
   const projectPath = String(payload?.projectPath || "").trim();
+  const runOptions = payload?.runOptions || {};
 
   if (!Number.isFinite(agentId) || !Number.isFinite(configId) || !projectPath) {
     return null;
   }
 
-  return { agentId, configId, prompt, projectPath };
+  return {
+    agentId,
+    configId,
+    prompt,
+    projectPath,
+    runOptions: {
+      verbose: Boolean(runOptions.verbose),
+      readonly: Boolean(runOptions.readonly),
+      allowWrite: Boolean(runOptions.allowWrite),
+      allowEdit: Boolean(runOptions.allowEdit),
+      allowMultiEdit: Boolean(runOptions.allowMultiEdit),
+      allowOnly: Array.isArray(runOptions.allowOnly)
+        ? runOptions.allowOnly.map((entry) => String(entry || "").trim()).filter(Boolean)
+        : [],
+      denyTerminalCommands: Array.isArray(runOptions.denyTerminalCommands)
+        ? runOptions.denyTerminalCommands.map((entry) => String(entry || "").trim()).filter(Boolean)
+        : []
+    }
+  };
 }
 
 async function resolveInstalledDefinitionPath(definitionId, expectedType, projectPath) {
@@ -61,7 +80,8 @@ router.post("/api/agent-runs", async (req, res) => {
       projectPath: payload.projectPath,
       agentPath,
       configPath,
-      prompt: payload.prompt
+      prompt: payload.prompt,
+      runOptions: payload.runOptions
     });
 
     if (!run || run.status === "failed") {
