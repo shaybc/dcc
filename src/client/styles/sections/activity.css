@@ -30,6 +30,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 0 0 0 8px;
 }
 
 .activity-header h2 {
@@ -111,6 +112,8 @@
 
 .activity-controls-row {
   padding: 10px 12px 4px;
+  display: flex;
+  justify-content: space-between;
 }
 
 .activity-filter-tabs {
