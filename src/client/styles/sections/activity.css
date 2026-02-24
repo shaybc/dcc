@@ -553,7 +553,7 @@
 
 .activity-log-ts {
   color: var(--activity-subtle);
-  font-size: 10px;
+  font-size: 12px;
   flex-shrink: 0;
 }
 
