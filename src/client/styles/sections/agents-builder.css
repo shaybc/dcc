@@ -7,7 +7,7 @@
   border-radius: 16px;
   /* background: rgba(20, 22, 27, 0.78); */
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: 1fr 25%;
   height: calc(100vh - 220px);
   overflow: hidden;
 }
