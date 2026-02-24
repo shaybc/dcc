@@ -506,7 +506,13 @@
 }
 
 .activity-log-text {
+  white-space: pre-wrap;
   word-break: break-word;
+}
+
+.activity-log.no-wrap .activity-log-text {
+  white-space: pre;
+  word-break: normal;
 }
 
 .activity-log-text.info { color: var(--activity-blue); }
