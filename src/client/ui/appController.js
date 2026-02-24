@@ -965,6 +965,14 @@ function setActivityScrollLocked(locked, { forceScrollToBottom = false } = {}) {
   }
 }
 
+function setActivityScrollLocked(locked, { forceScrollToBottom = false } = {}) {
+  activityScrollLocked = Boolean(locked);
+  activityScrollLockButton?.classList.toggle("active", activityScrollLocked);
+  if ((forceScrollToBottom || activityScrollLocked) && activityLog) {
+    activityLog.scrollTop = activityLog.scrollHeight;
+  }
+}
+
 function refreshVisibleTimers() {
   if (!activityList) return;
   const timerEls = activityList.querySelectorAll("[data-activity-timer]");
