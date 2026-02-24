@@ -1059,11 +1059,24 @@ function clearActivityPolling() {
   }
 }
 
+function hasLiveActivityRuns() {
+  return activityRuns.some((run) => isRunLive(run));
+}
+
+function startActivityPolling() {
+  clearActivityPolling();
+  void pollActivity();
+}
+
 async function pollActivity() {
   if (activeTopPage !== "activity") return;
   await loadActivityRuns();
   if (activitySelectedRunId) {
     await loadActivityLogs(false);
+  }
+  if (!hasLiveActivityRuns()) {
+    clearActivityPolling();
+    return;
   }
   activityPollTimer = setTimeout(pollActivity, 1800);
 }
@@ -1139,6 +1152,10 @@ function setupActivityDashboard() {
     loadActivityRuns().then(() => {
       if (activitySelectedRunId) return loadActivityLogs(false);
       return null;
+    }).finally(() => {
+      if (activeTopPage === "activity" && hasLiveActivityRuns() && !activityPollTimer) {
+        startActivityPolling();
+      }
     });
   });
 
@@ -1436,8 +1453,7 @@ function setActiveTopPage(page) {
   renderRunBuilder();
 
   if (activeTopPage === "activity") {
-    clearActivityPolling();
-    void pollActivity();
+    startActivityPolling();
   } else {
     clearActivityPolling();
     closeActivityStreamPanel();
