@@ -368,12 +368,6 @@
   color: var(--activity-subtle);
 }
 
-.activity-row-chip {
-  background: color-mix(in srgb, var(--activity-card) 84%, var(--activity-text) 16%);
-  border-radius: 999px;
-  padding: 2px 6px;
-}
-
 .activity-row-config,
 .activity-row-pid,
 .activity-row-timer-value,
