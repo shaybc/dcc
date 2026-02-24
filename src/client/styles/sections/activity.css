@@ -554,6 +554,18 @@
   flex: 1;
 }
 
+.activity-detail-link {
+  cursor: pointer;
+  color: var(--activity-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.activity-detail-link:hover,
+.activity-detail-link:focus-visible {
+  color: var(--activity-blue-strong);
+}
+
 .activity-stream-backdrop {
   position: fixed;
   inset: 0;
