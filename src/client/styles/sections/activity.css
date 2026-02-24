@@ -1,19 +1,27 @@
 .activity-page {
-  --activity-bg: #0c0d11;
-  --activity-card: #111318;
-  --activity-raised: #16181f;
-  --activity-hover: #1c1f2a;
-  --activity-border: rgba(255, 255, 255, 0.07);
-  --activity-border-md: rgba(255, 255, 255, 0.11);
-  --activity-text: #eceef5;
-  --activity-muted: #8a8fa8;
-  --activity-subtle: #4f5368;
+  --activity-bg: color-mix(in srgb, var(--bg) 88%, #000);
+  --activity-card: color-mix(in srgb, var(--card) 72%, var(--bg) 28%);
+  --activity-raised: color-mix(in srgb, var(--card) 84%, var(--bg) 16%);
+  --activity-hover: color-mix(in srgb, var(--card) 70%, var(--accent) 8%);
+  --activity-border: color-mix(in srgb, var(--border) 68%, transparent);
+  --activity-border-md: color-mix(in srgb, var(--border) 88%, transparent);
+  --activity-text: var(--text);
+  --activity-muted: color-mix(in srgb, var(--muted) 86%, var(--text) 14%);
+  --activity-subtle: color-mix(in srgb, var(--text-3) 80%, var(--muted) 20%);
   --activity-purple: #7c5cfc;
   --activity-purple-line: #8b6dff;
   --activity-green: #3ecf8e;
   --activity-blue: #38bdf8;
   --activity-red: #f87171;
   --activity-amber: #f59e0b;
+  --activity-surface-faint: color-mix(in srgb, var(--card) 92%, var(--text) 8%);
+  --activity-running-soft: color-mix(in srgb, var(--activity-green) 16%, transparent);
+  --activity-running-border: color-mix(in srgb, var(--activity-green) 34%, transparent);
+  --activity-launched-soft: color-mix(in srgb, var(--activity-blue) 16%, transparent);
+  --activity-launched-border: color-mix(in srgb, var(--activity-blue) 34%, transparent);
+  --activity-cancelled-soft: color-mix(in srgb, var(--activity-red) 16%, transparent);
+  --activity-cancelled-border: color-mix(in srgb, var(--activity-red) 34%, transparent);
+  --activity-focus-ring: color-mix(in srgb, var(--accent) 34%, transparent);
   padding: 16px 20px 20px;
   font-family: 'JetBrains Mono', monospace;
   color: var(--activity-text);
@@ -270,7 +278,7 @@
 }
 
 .activity-row.active {
-  box-shadow: 0 0 0 1px rgba(139, 109, 255, 0.15) inset;
+  box-shadow: 0 0 0 1px var(--activity-focus-ring) inset;
 }
 
 .activity-status-indicator {
@@ -282,12 +290,12 @@
   justify-content: center;
   position: relative;
   border: 1px solid var(--activity-border);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--activity-surface-faint);
 }
 
-.activity-status-indicator.running { border-color: rgba(62, 207, 142, 0.25); background: rgba(62, 207, 142, 0.1); }
-.activity-status-indicator.launched { border-color: rgba(56, 189, 248, 0.25); background: rgba(56, 189, 248, 0.1); }
-.activity-status-indicator.cancelled { border-color: rgba(248, 113, 113, 0.28); background: rgba(248, 113, 113, 0.1); }
+.activity-status-indicator.running { border-color: var(--activity-running-border); background: var(--activity-running-soft); }
+.activity-status-indicator.launched { border-color: var(--activity-launched-border); background: var(--activity-launched-soft); }
+.activity-status-indicator.cancelled { border-color: var(--activity-cancelled-border); background: var(--activity-cancelled-soft); }
 
 .activity-status-icon {
   z-index: 1;
@@ -308,13 +316,13 @@
 
 .activity-status-indicator.running .activity-spin-ring {
   border-top-color: var(--activity-green);
-  border-right-color: rgba(62, 207, 142, 0.25);
+  border-right-color: var(--activity-running-border);
   animation: activitySpin 1s linear infinite;
 }
 
 .activity-status-indicator.launched .activity-spin-ring {
   border-top-color: var(--activity-blue);
-  border-right-color: rgba(56, 189, 248, 0.25);
+  border-right-color: var(--activity-launched-border);
   animation: activitySpin 1.4s linear infinite;
 }
 
@@ -361,7 +369,7 @@
 }
 
 .activity-row-chip {
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--activity-card) 84%, var(--activity-text) 16%);
   border-radius: 999px;
   padding: 2px 6px;
 }
@@ -454,10 +462,10 @@
   color: var(--activity-muted);
 }
 
-.activity-status-badge.running { color: var(--activity-green); border-color: rgba(62, 207, 142, 0.28); background: rgba(62, 207, 142, 0.1); }
-.activity-status-badge.launched { color: var(--activity-blue); border-color: rgba(56, 189, 248, 0.28); background: rgba(56, 189, 248, 0.1); }
+.activity-status-badge.running { color: var(--activity-green); border-color: var(--activity-running-border); background: var(--activity-running-soft); }
+.activity-status-badge.launched { color: var(--activity-blue); border-color: var(--activity-launched-border); background: var(--activity-launched-soft); }
 .activity-status-badge.finished { color: var(--activity-muted); }
-.activity-status-badge.cancelled { color: var(--activity-red); border-color: rgba(248, 113, 113, 0.28); background: rgba(248, 113, 113, 0.1); }
+.activity-status-badge.cancelled { color: var(--activity-red); border-color: var(--activity-cancelled-border); background: var(--activity-cancelled-soft); }
 
 .activity-meta {
   margin: 0;
@@ -481,7 +489,7 @@
 }
 
 .activity-meta-command {
-  color: #767686;
+  color: var(--activity-muted);
 }
 
 .activity-meta-path,
@@ -531,8 +539,8 @@
 
 .activity-log-btn.active {
   color: var(--activity-purple-line);
-  border-color: rgba(139, 109, 255, 0.32);
-  background: rgba(124, 92, 252, 0.16);
+  border-color: color-mix(in srgb, var(--activity-purple-line) 42%, transparent);
+  background: color-mix(in srgb, var(--activity-purple) 20%, transparent);
 }
 
 .activity-log {
@@ -646,7 +654,7 @@
 }
 
 .activity-stream-panel .activity-log {
-  background: #0d0f13;
+  background: color-mix(in srgb, var(--activity-bg) 90%, var(--bg) 10%);
 }
 
 @keyframes activitySpin {
