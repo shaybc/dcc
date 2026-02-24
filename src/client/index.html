@@ -294,6 +294,7 @@
                 <div><dt>Exit code</dt><dd id="activityDetailExit">—</dd></div>
                 <div class="activity-meta-path"><dt>Agent path</dt><dd id="activityDetailAgentPath">—</dd></div>
                 <div class="activity-meta-path"><dt>Config path</dt><dd id="activityDetailConfigPath">—</dd></div>
+                <div class="activity-meta-command"><dt>Selected parameters</dt><dd id="activityDetailSelectedParams">—</dd></div>
                 <div class="activity-meta-command"><dt>Command line</dt><dd id="activityDetailCommandLine">—</dd></div>
               </dl>
 
@@ -418,6 +419,40 @@
               </div>
               <div class="run-stage-actions">
                 <button type="button" class="run-stage-clear" id="runPromptClearButton" aria-label="Clear prompt">✕</button>
+              </div>
+            </article>
+
+            <article class="run-stage run-stage-optional run-params-stage" id="runParamsStage">
+              <div class="run-stage-gutter">
+                <span class="run-stage-num">4</span>
+                <span class="run-stage-type" aria-hidden="true">⚙</span>
+              </div>
+              <div class="run-stage-body">
+                <div class="run-stage-meta">
+                  <span class="run-stage-label">Command Line Parameters</span>
+                  <span class="run-stage-optional-badge">Optional</span>
+                </div>
+                <div class="run-params-grid">
+                  <label class="run-param-check"><input type="checkbox" id="runParamVerbose"> Verbose —verbose</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamReadonly"> Readonly mode —readonly</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamAllowWrite"> Allow Write --allow Write</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamAllowEdit"> Allow Edit --allow Edit</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamAllowMultiEdit"> Allow Multiedit --allow MultiEdit</label>
+                </div>
+
+                <div class="run-param-array-block">
+                  <label class="run-param-check"><input type="checkbox" id="runParamAllowOnlyEnabled"> Allow Only</label>
+                  <p class="run-param-help">Each value adds: --allow "Write(**/*.&lt;extension&gt;)"</p>
+                  <div id="runParamAllowOnlyList" class="run-param-array-list" hidden></div>
+                  <button type="button" class="run-param-add" id="runParamAllowOnlyAdd" hidden>+ Add allowed pattern</button>
+                </div>
+
+                <div class="run-param-array-block">
+                  <label class="run-param-check"><input type="checkbox" id="runParamDenyTerminalEnabled"> Deny Terminal Commaand</label>
+                  <p class="run-param-help">Adds --allow Bash and --exclude "Bash(&lt;command&gt;*)" for each entry.</p>
+                  <div id="runParamDenyTerminalList" class="run-param-array-list" hidden></div>
+                  <button type="button" class="run-param-add" id="runParamDenyTerminalAdd" hidden>+ Add denied command</button>
+                </div>
               </div>
             </article>
           </div>

@@ -136,6 +136,7 @@ db.serialize(() => {
       agentId TEXT NOT NULL,
       configId TEXT NOT NULL,
       prompt TEXT NOT NULL DEFAULT '',
+      runOptionsJson TEXT NOT NULL DEFAULT '{}',
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL,
       UNIQUE(agentId, configId)
@@ -163,7 +164,8 @@ db.serialize(() => {
       exitCode INTEGER,
       signal TEXT,
       emittedStdoutBytes INTEGER NOT NULL DEFAULT 0,
-      emittedStderrBytes INTEGER NOT NULL DEFAULT 0
+      emittedStderrBytes INTEGER NOT NULL DEFAULT 0,
+      runOptionsJson TEXT NOT NULL DEFAULT '{}'
     )`
   );
   db.run("CREATE INDEX IF NOT EXISTS idx_agent_runs_created_at ON agent_runs(createdAt DESC)");
@@ -189,6 +191,21 @@ db.serialize(() => {
     const hasCommandLineColumn = rows.some((row) => row.name === "commandLine");
     if (!hasCommandLineColumn) {
       db.run("ALTER TABLE agent_runs ADD COLUMN commandLine TEXT", () => {});
+    }
+
+    const hasRunOptionsJsonColumn = rows.some((row) => row.name === "runOptionsJson");
+    if (!hasRunOptionsJsonColumn) {
+      db.run("ALTER TABLE agent_runs ADD COLUMN runOptionsJson TEXT NOT NULL DEFAULT '{}'", () => {});
+    }
+  });
+
+  db.all("PRAGMA table_info(agent_run_packs)", (err, rows = []) => {
+    if (err) {
+      return;
+    }
+    const hasRunOptionsJsonColumn = rows.some((row) => row.name === "runOptionsJson");
+    if (!hasRunOptionsJsonColumn) {
+      db.run("ALTER TABLE agent_run_packs ADD COLUMN runOptionsJson TEXT NOT NULL DEFAULT '{}'", () => {});
     }
   });
 
