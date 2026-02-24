@@ -6,6 +6,19 @@ import { logError, logInfo, logWarn } from "../utils/logger.js";
 
 const MAX_LOG_ENTRIES = 2000;
 const STUCK_TIMEOUT_MS = 120000;
+const RUN_OPTION_FLAG_MAP = [
+  ["denyRead", "--exclude", "Read"],
+  ["denyList", "--exclude", "List"],
+  ["denySearch", "--exclude", "Search"],
+  ["denyFetch", "--exclude", "Fetch"],
+  ["denyDiff", "--exclude", "Diff"],
+  ["allowWrite", "--allow", "Write"],
+  ["allowEdit", "--allow", "Edit"],
+  ["allowMultiEdit", "--allow", "MultiEdit"],
+  ["allowTerminal", "--allow", "Bash"]
+];
+
+const RUN_STATUS_LAUNCHING = new Set(["running", "launched", "preparing_to_launch"]);
 
 function nowIso() {
   return new Date().toISOString();
@@ -44,6 +57,19 @@ function normalizeStatus(run) {
   return run.status;
 }
 
+function parseJson(raw, fallback) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function parseJsonArray(raw) {
+  const value = parseJson(raw || "[]", []);
+  return Array.isArray(value) ? value : [];
+}
+
 function detectCnExecutable(cwd) {
   const binDir = path.join(cwd, "node_modules", ".bin");
   const candidates = process.platform === "win32"
@@ -70,15 +96,11 @@ function buildArgs({ configPath, prompt, agentPath, runOptions = {} }) {
 
   if (runOptions.verbose) args.push("--verbose");
   if (runOptions.readonly) args.push("--readonly");
-  if (runOptions.denyRead) args.push("--exclude", "Read");
-  if (runOptions.denyList) args.push("--exclude", "List");
-  if (runOptions.denySearch) args.push("--exclude", "Search");
-  if (runOptions.denyFetch) args.push("--exclude", "Fetch");
-  if (runOptions.denyDiff) args.push("--exclude", "Diff");
-  if (runOptions.allowWrite) args.push("--allow", "Write");
-  if (runOptions.allowEdit) args.push("--allow", "Edit");
-  if (runOptions.allowMultiEdit) args.push("--allow", "MultiEdit");
-  if (runOptions.allowTerminal) args.push("--allow", "Bash");
+  for (const [optionKey, flag, value] of RUN_OPTION_FLAG_MAP) {
+    if (runOptions[optionKey]) {
+      args.push(flag, value);
+    }
+  }
 
   for (const allowPattern of Array.isArray(runOptions.allowOnly) ? runOptions.allowOnly : []) {
     const normalizedPattern = String(allowPattern || "").trim();
@@ -197,22 +219,8 @@ class AgentRunManager {
       }
 
       for (const row of rows) {
-        let parsedArgs = [];
-        try {
-          parsedArgs = JSON.parse(row.argsJson || "[]");
-          if (!Array.isArray(parsedArgs)) {
-            parsedArgs = [];
-          }
-        } catch {
-          parsedArgs = [];
-        }
-
-        let parsedRunOptions = {};
-        try {
-          parsedRunOptions = JSON.parse(row.runOptionsJson || "{}");
-        } catch {
-          parsedRunOptions = {};
-        }
+        const parsedArgs = parseJsonArray(row.argsJson);
+        const parsedRunOptions = parseJson(row.runOptionsJson || "{}", {});
 
         const run = {
           runId: row.runId,
@@ -238,7 +246,7 @@ class AgentRunManager {
           logs: []
         };
 
-        if (["running", "launched", "preparing_to_launch"].includes(run.status)) {
+        if (RUN_STATUS_LAUNCHING.has(run.status)) {
           run.status = "terminated";
           run.endedAt = run.endedAt || nowIso();
           run.lastActivityAt = run.endedAt;
@@ -273,6 +281,7 @@ class AgentRunManager {
 
   persistRun(run) {
     if (!run?.runId) return;
+    const runValues = this.buildRunPersistValues(run);
     const persistWithRunOptionsColumn = () => runDb(
       `INSERT INTO agent_runs (
         runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
@@ -299,28 +308,7 @@ class AgentRunManager {
         emittedStdoutBytes = excluded.emittedStdoutBytes,
         emittedStderrBytes = excluded.emittedStderrBytes,
         runOptionsJson = excluded.runOptionsJson`,
-      [
-        run.runId,
-        run.projectPath,
-        run.agentPath,
-        run.configPath,
-        String(run.prompt || ""),
-        run.commandPath || null,
-        JSON.stringify(Array.isArray(run.args) ? run.args : []),
-        run.command || null,
-        run.commandLine || run.command || null,
-        Number.isInteger(run.pid) ? run.pid : null,
-        run.status,
-        run.createdAt,
-        run.startedAt || null,
-        run.endedAt || null,
-        run.lastActivityAt || null,
-        Number.isInteger(run.exitCode) ? run.exitCode : null,
-        run.signal || null,
-        Number(run.emittedStdoutBytes || 0),
-        Number(run.emittedStderrBytes || 0),
-        JSON.stringify(normalizeRunOptions(run.runOptions || {}))
-      ]
+      [...runValues, JSON.stringify(normalizeRunOptions(run.runOptions || {}))]
     );
 
     const persistWithoutRunOptionsColumn = () => runDb(
@@ -347,27 +335,7 @@ class AgentRunManager {
         signal = excluded.signal,
         emittedStdoutBytes = excluded.emittedStdoutBytes,
         emittedStderrBytes = excluded.emittedStderrBytes`,
-      [
-        run.runId,
-        run.projectPath,
-        run.agentPath,
-        run.configPath,
-        String(run.prompt || ""),
-        run.commandPath || null,
-        JSON.stringify(Array.isArray(run.args) ? run.args : []),
-        run.command || null,
-        run.commandLine || run.command || null,
-        Number.isInteger(run.pid) ? run.pid : null,
-        run.status,
-        run.createdAt,
-        run.startedAt || null,
-        run.endedAt || null,
-        run.lastActivityAt || null,
-        Number.isInteger(run.exitCode) ? run.exitCode : null,
-        run.signal || null,
-        Number(run.emittedStdoutBytes || 0),
-        Number(run.emittedStderrBytes || 0)
-      ]
+      runValues
     );
 
     this.queuePersistence(async () => {
@@ -386,6 +354,38 @@ class AgentRunManager {
         await persistWithoutRunOptionsColumn();
       }
     });
+  }
+
+  buildRunPersistValues(run) {
+    return [
+      run.runId,
+      run.projectPath,
+      run.agentPath,
+      run.configPath,
+      String(run.prompt || ""),
+      run.commandPath || null,
+      JSON.stringify(Array.isArray(run.args) ? run.args : []),
+      run.command || null,
+      run.commandLine || run.command || null,
+      Number.isInteger(run.pid) ? run.pid : null,
+      run.status,
+      run.createdAt,
+      run.startedAt || null,
+      run.endedAt || null,
+      run.lastActivityAt || null,
+      Number.isInteger(run.exitCode) ? run.exitCode : null,
+      run.signal || null,
+      Number(run.emittedStdoutBytes || 0),
+      Number(run.emittedStderrBytes || 0)
+    ];
+  }
+
+  markRunFailed(run, message) {
+    run.status = "failed";
+    run.endedAt = nowIso();
+    run.lastActivityAt = run.endedAt;
+    this.pushLog(run.runId, "stderr", `Failed to launch process: ${message}\n`);
+    this.persistRun(run);
   }
 
   persistLog(runId, entry) {
@@ -459,11 +459,7 @@ class AgentRunManager {
         shell: spawnSpec.shell
       });
     } catch (error) {
-      run.status = "failed";
-      run.endedAt = nowIso();
-      run.lastActivityAt = run.endedAt;
-      this.pushLog(runId, "stderr", `Failed to launch process: ${error.message}\n`);
-      this.persistRun(run);
+      this.markRunFailed(run, error.message);
       logError("Agent process error event", { runId, pid: run.pid, error: error.message, command: run.command });
       logError("Agent launch threw before spawn", { runId, error: error.message, command: run.command });
       return this.getRunSnapshot(runId);
@@ -493,11 +489,7 @@ class AgentRunManager {
     });
 
     child.on("error", (error) => {
-      run.status = "failed";
-      run.endedAt = nowIso();
-      run.lastActivityAt = run.endedAt;
-      this.pushLog(runId, "stderr", `Failed to launch process: ${error.message}\n`);
-      this.persistRun(run);
+      this.markRunFailed(run, error.message);
       logError("Agent process error event", { runId, pid: run.pid, error: error.message, command: run.command });
       this.publish(runId, {
         type: "status",
