@@ -926,6 +926,8 @@ function closeActivityStreamPanel() {
 function renderActivityLogStream() {
   if (!activityLog) return;
 
+  const previousScrollTop = activityLog.scrollTop;
+
   const lines = activityLogEntries.map((entry) => {
     const level = formatLogLevel(entry);
     const text = escapeHtml(String(entry?.text || "").trimEnd());
@@ -945,6 +947,20 @@ function renderActivityLogStream() {
 
   activityLog.innerHTML = lines.join("");
   if (activityScrollLocked) {
+    const maxScrollTop = Math.max(0, activityLog.scrollHeight - activityLog.clientHeight);
+    activityLog.scrollTop = Math.min(previousScrollTop, maxScrollTop);
+    return;
+  }
+  activityLog.scrollTop = activityLog.scrollHeight;
+}
+
+function updateActivityScrollLockState(locked, { forceScrollToBottom = false } = {}) {
+  activityScrollLocked = Boolean(locked);
+  activityScrollLockButton?.classList.toggle("active", activityScrollLocked);
+  if (activityScrollLockButton) {
+    activityScrollLockButton.textContent = activityScrollLocked ? "🔒 lock" : "↓ follow";
+  }
+  if (forceScrollToBottom && activityLog) {
     activityLog.scrollTop = activityLog.scrollHeight;
   }
 }
@@ -1043,11 +1059,24 @@ function clearActivityPolling() {
   }
 }
 
+function hasLiveActivityRuns() {
+  return activityRuns.some((run) => isRunLive(run));
+}
+
+function startActivityPolling() {
+  clearActivityPolling();
+  void pollActivity();
+}
+
 async function pollActivity() {
   if (activeTopPage !== "activity") return;
   await loadActivityRuns();
   if (activitySelectedRunId) {
     await loadActivityLogs(false);
+  }
+  if (!hasLiveActivityRuns()) {
+    clearActivityPolling();
+    return;
   }
   activityPollTimer = setTimeout(pollActivity, 1800);
 }
@@ -1123,6 +1152,10 @@ function setupActivityDashboard() {
     loadActivityRuns().then(() => {
       if (activitySelectedRunId) return loadActivityLogs(false);
       return null;
+    }).finally(() => {
+      if (activeTopPage === "activity" && hasLiveActivityRuns() && !activityPollTimer) {
+        startActivityPolling();
+      }
     });
   });
 
@@ -1159,9 +1192,11 @@ function setupActivityDashboard() {
     renderActivityLogStream();
   });
 
+  updateActivityScrollLockState(activityScrollLocked);
+
   activityScrollLockButton?.addEventListener("click", () => {
-    activityScrollLocked = !activityScrollLocked;
-    activityScrollLockButton.classList.toggle("active", activityScrollLocked);
+    const nextLockedState = !activityScrollLocked;
+    updateActivityScrollLockState(nextLockedState, { forceScrollToBottom: !nextLockedState });
   });
 
   activityCopyLogsButton?.addEventListener("click", async () => {
@@ -1418,8 +1453,7 @@ function setActiveTopPage(page) {
   renderRunBuilder();
 
   if (activeTopPage === "activity") {
-    clearActivityPolling();
-    void pollActivity();
+    startActivityPolling();
   } else {
     clearActivityPolling();
     closeActivityStreamPanel();
