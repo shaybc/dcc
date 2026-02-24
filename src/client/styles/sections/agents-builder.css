@@ -116,7 +116,7 @@
 .run-stage-change {
   font-size: 9px; color: var(--text-3); cursor: pointer; font-family: var(--mono);
   text-decoration: underline; text-underline-offset: 3px; background: none; border: none;
-  ! transition: color .15s;
+  transition: color .15s;
 }
 .run-stage-change:hover { color: var(--text-2); }
 
@@ -304,6 +304,7 @@
   line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
