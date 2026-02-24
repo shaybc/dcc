@@ -1,5 +1,4 @@
 .activity-page {
-  --activity-bg: color-mix(in srgb, var(--bg) 88%, #000);
   --activity-card: color-mix(in srgb, var(--card) 72%, var(--bg) 28%);
   --activity-raised: color-mix(in srgb, var(--card) 84%, var(--bg) 16%);
   --activity-hover: color-mix(in srgb, var(--card) 70%, var(--accent) 8%);
@@ -7,6 +6,7 @@
   --activity-border-md: color-mix(in srgb, var(--border) 88%, transparent);
   --activity-text: var(--text);
   --activity-muted: color-mix(in srgb, var(--muted) 86%, var(--text) 14%);
+  --activity-command: rgb(55, 55, 55);
   --activity-subtle: color-mix(in srgb, var(--text-3) 80%, var(--muted) 20%);
   --activity-purple: #7c5cfc;
   --activity-purple-line: #8b6dff;
@@ -483,7 +483,7 @@
 }
 
 .activity-meta-command {
-  color: var(--activity-muted);
+  color: var(--activity-command);
 }
 
 .activity-meta-path,
