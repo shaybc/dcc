@@ -38,13 +38,36 @@ function detectCnExecutable(cwd) {
   return path.join(binDir, process.platform === "win32" ? "cn.cmd" : "cn");
 }
 
-function buildArgs({ configPath, prompt, agentPath }) {
+function buildArgs({ configPath, prompt, agentPath, runOptions = {} }) {
   const args = ["--config", configPath];
   const normalizedPrompt = String(prompt || "").trim();
   if (normalizedPrompt) {
     args.push("-p", normalizedPrompt);
   }
-  args.push("--agent", agentPath, "--verbose");
+  args.push("--agent", agentPath);
+
+  if (runOptions.verbose) args.push("--verbose");
+  if (runOptions.readonly) args.push("--readonly");
+  if (runOptions.allowWrite) args.push("--allow", "Write");
+  if (runOptions.allowEdit) args.push("--allow", "Edit");
+  if (runOptions.allowMultiEdit) args.push("--allow", "MultiEdit");
+
+  for (const allowPattern of Array.isArray(runOptions.allowOnly) ? runOptions.allowOnly : []) {
+    const normalizedPattern = String(allowPattern || "").trim();
+    if (!normalizedPattern) continue;
+    args.push("--allow", `Write(**/${normalizedPattern})`);
+  }
+
+  const deniedCommands = Array.isArray(runOptions.denyTerminalCommands) ? runOptions.denyTerminalCommands : [];
+  if (deniedCommands.length) {
+    args.push("--allow", "Bash");
+    for (const command of deniedCommands) {
+      const normalizedCommand = String(command || "").trim();
+      if (!normalizedCommand) continue;
+      args.push("--exclude", `Bash(${normalizedCommand}*)`);
+    }
+  }
+
   return args;
 }
 
@@ -242,11 +265,11 @@ class AgentRunManager {
     ));
   }
 
-  startRun({ projectPath, agentPath, configPath, prompt }) {
+  startRun({ projectPath, agentPath, configPath, prompt, runOptions = {} }) {
     const runId = `run_${Date.now()}_${++this.sequence}`;
     const createdAt = nowIso();
     const commandPath = detectCnExecutable(process.cwd());
-    const args = buildArgs({ configPath, prompt, agentPath });
+    const args = buildArgs({ configPath, prompt, agentPath, runOptions });
     const spawnSpec = createSpawnSpec(commandPath, args, process.cwd());
 
     const run = {

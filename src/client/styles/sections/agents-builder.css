@@ -179,6 +179,65 @@
 .run-prompt-input:focus { outline: none; }
 .run-prompt-footer { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; display:flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
 
+.run-params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.run-param-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.run-param-array-block {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.run-param-help {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.run-param-array-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.run-param-array-row {
+  display: flex;
+  gap: 8px;
+}
+
+.run-param-array-input {
+  flex: 1;
+}
+
+.run-param-add,
+.run-param-remove {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.run-param-add {
+  margin-top: 8px;
+  padding: 6px 10px;
+}
+
+.run-param-remove {
+  width: 34px;
+}
+
 .run-agent-status {
   border: 1px solid var(--border);
   border-radius: 10px;
