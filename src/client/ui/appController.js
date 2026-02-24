@@ -758,11 +758,11 @@ function formatRunOptionSummary(runOptions = {}) {
   const labels = [];
   if (options.verbose) labels.push("--verbose");
   if (options.readonly) labels.push("--readonly");
-  if (options.denyRead) labels.push("--deny Read");
-  if (options.denyList) labels.push("--deny List");
-  if (options.denySearch) labels.push("--deny Search");
-  if (options.denyFetch) labels.push("--deny Fetch");
-  if (options.denyDiff) labels.push("--deny Diff");
+  if (options.denyRead) labels.push("--exclude Read");
+  if (options.denyList) labels.push("--exclude List");
+  if (options.denySearch) labels.push("--exclude Search");
+  if (options.denyFetch) labels.push("--exclude Fetch");
+  if (options.denyDiff) labels.push("--exclude Diff");
   if (options.allowWrite) labels.push("--allow Write");
   if (options.allowEdit) labels.push("--allow Edit");
   if (options.allowMultiEdit) labels.push("--allow MultiEdit");

@@ -70,11 +70,11 @@ function buildArgs({ configPath, prompt, agentPath, runOptions = {} }) {
 
   if (runOptions.verbose) args.push("--verbose");
   if (runOptions.readonly) args.push("--readonly");
-  if (runOptions.denyRead) args.push("--deny", "Read");
-  if (runOptions.denyList) args.push("--deny", "List");
-  if (runOptions.denySearch) args.push("--deny", "Search");
-  if (runOptions.denyFetch) args.push("--deny", "Fetch");
-  if (runOptions.denyDiff) args.push("--deny", "Diff");
+  if (runOptions.denyRead) args.push("--exclude", "Read");
+  if (runOptions.denyList) args.push("--exclude", "List");
+  if (runOptions.denySearch) args.push("--exclude", "Search");
+  if (runOptions.denyFetch) args.push("--exclude", "Fetch");
+  if (runOptions.denyDiff) args.push("--exclude", "Diff");
   if (runOptions.allowWrite) args.push("--allow", "Write");
   if (runOptions.allowEdit) args.push("--allow", "Edit");
   if (runOptions.allowMultiEdit) args.push("--allow", "MultiEdit");
