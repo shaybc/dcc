@@ -755,7 +755,7 @@ function mapRunStatus(run) {
 function getRunNameFromPath(pathValue, fallback) {
   const normalized = String(pathValue || "").trim();
   if (!normalized) return fallback;
-  const segments = normalized.split(/[\/]/).filter(Boolean);
+  const segments = normalized.split(/[\\/]/).filter(Boolean);
   const finalName = segments[segments.length - 1] || fallback;
   return finalName.replace(/\.[^.]+$/, "") || fallback;
 }
@@ -4578,7 +4578,7 @@ function createDuplicateDefaults(definitionName, definitionPath, definitionConte
 
 function pathBasename(filePath) {
   const normalized = String(filePath || "").replace(/\\/g, "/");
-  const segments = normalized.split("/").filter(Boolean);
+  const segments = normalized.split(/[\\/]/).filter(Boolean);
   return segments[segments.length - 1] || "";
 }
 
