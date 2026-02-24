@@ -645,6 +645,35 @@ function resetRunAgentForm() {
   renderRunBuilder();
 }
 
+function prefillRunBuilderFromActivityRun(runId) {
+  const normalizedRunId = String(runId || "").trim();
+  if (!normalizedRunId) return;
+
+  const run = activityRuns.find((entry) => entry.runId === normalizedRunId);
+  if (!run) return;
+
+  const agentDefinition = findDefinitionByPath(run.agentPath);
+  const configDefinition = findDefinitionByPath(run.configPath);
+
+  runBuilderSelection = {
+    agent: agentDefinition ? toRunBuilderItem(agentDefinition, "◈") : null,
+    config: configDefinition ? toRunBuilderItem(configDefinition, "⚙") : null
+  };
+  runBuilderPendingSelection = null;
+
+  if (runPromptInput) {
+    runPromptInput.value = String(run.prompt || "");
+    handleRunBuilderPromptInput();
+  }
+
+  renderRunBuilder();
+  if (!runBuilderSelection.agent) {
+    openRunBuilderPicker("agent");
+  } else if (!runBuilderSelection.config) {
+    openRunBuilderPicker("config");
+  }
+}
+
 function handleRunBuilderPromptInput() {
   if (!runPromptInput || !runPromptCharCount || !runPromptStage) return;
   const length = runPromptInput.value.length;
@@ -1221,6 +1250,8 @@ function setupActivityDashboard() {
     const rerunButton = event.target.closest("[data-activity-rerun]");
     if (rerunButton) {
       event.stopPropagation();
+      const runId = rerunButton.getAttribute("data-activity-rerun") || "";
+      prefillRunBuilderFromActivityRun(runId);
       setActiveTopPage("agents");
       return;
     }
@@ -1270,6 +1301,7 @@ function setupActivityDashboard() {
   });
 
   activityRerunButton?.addEventListener("click", () => {
+    prefillRunBuilderFromActivityRun(activitySelectedRunId);
     setActiveTopPage("agents");
   });
 
