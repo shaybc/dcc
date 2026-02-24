@@ -340,7 +340,20 @@ function normalizeRecentAgentRunPack(entry) {
   return {
     agentId,
     configId,
-    prompt: String(entry.prompt || "")
+    prompt: String(entry.prompt || ""),
+    runOptions: {
+      verbose: Boolean(entry?.runOptions?.verbose),
+      readonly: Boolean(entry?.runOptions?.readonly),
+      allowWrite: Boolean(entry?.runOptions?.allowWrite),
+      allowEdit: Boolean(entry?.runOptions?.allowEdit),
+      allowMultiEdit: Boolean(entry?.runOptions?.allowMultiEdit),
+      allowOnly: Array.isArray(entry?.runOptions?.allowOnly)
+        ? entry.runOptions.allowOnly.map((value) => String(value || "").trim()).filter(Boolean)
+        : [],
+      denyTerminalCommands: Array.isArray(entry?.runOptions?.denyTerminalCommands)
+        ? entry.runOptions.denyTerminalCommands.map((value) => String(value || "").trim()).filter(Boolean)
+        : []
+    }
   };
 }
 
@@ -442,7 +455,8 @@ function getRunBuilderPickerData() {
           tags: [],
           agent,
           config,
-          prompt: pack.prompt
+          prompt: pack.prompt,
+          runOptions: pack.runOptions || {}
         };
       })
       .filter(Boolean)
@@ -625,6 +639,7 @@ function applyRunBuilderPendingSelection() {
       runPromptInput.value = runBuilderPendingSelection.prompt || "";
       handleRunBuilderPromptInput();
     }
+    applyRunBuilderParams(runBuilderPendingSelection.runOptions || {});
     renderRunBuilder();
     return;
   }
@@ -1541,7 +1556,8 @@ async function handleRunAgentClick() {
       {
         agentId: runBuilderSelection.agent.id,
         configId: runBuilderSelection.config.id,
-        prompt: String(runPromptInput?.value || "")
+        prompt: String(runPromptInput?.value || ""),
+        runOptions: collectRunBuilderParams()
       },
       ...recentAgentRunPacks.filter((pack) => pack.agentId !== idsToPromote[0] || pack.configId !== idsToPromote[1])
     ].slice(0, 30);

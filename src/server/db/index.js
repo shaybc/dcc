@@ -136,6 +136,7 @@ db.serialize(() => {
       agentId TEXT NOT NULL,
       configId TEXT NOT NULL,
       prompt TEXT NOT NULL DEFAULT '',
+      runOptionsJson TEXT NOT NULL DEFAULT '{}',
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL,
       UNIQUE(agentId, configId)
@@ -195,6 +196,16 @@ db.serialize(() => {
     const hasRunOptionsJsonColumn = rows.some((row) => row.name === "runOptionsJson");
     if (!hasRunOptionsJsonColumn) {
       db.run("ALTER TABLE agent_runs ADD COLUMN runOptionsJson TEXT NOT NULL DEFAULT '{}'", () => {});
+    }
+  });
+
+  db.all("PRAGMA table_info(agent_run_packs)", (err, rows = []) => {
+    if (err) {
+      return;
+    }
+    const hasRunOptionsJsonColumn = rows.some((row) => row.name === "runOptionsJson");
+    if (!hasRunOptionsJsonColumn) {
+      db.run("ALTER TABLE agent_run_packs ADD COLUMN runOptionsJson TEXT NOT NULL DEFAULT '{}'", () => {});
     }
   });
 
