@@ -24,6 +24,34 @@
   color: var(--activity-text);
 }
 
+.activity-page :is(.activity-row, .activity-stat-pill, .activity-status-indicator, .activity-status-badge)[data-status="running"],
+.activity-page :is(.activity-row, .activity-stat-pill, .activity-status-indicator, .activity-status-badge).running {
+  --activity-state-color: var(--activity-green);
+  --activity-state-soft: var(--activity-running-soft);
+  --activity-state-border: var(--activity-running-border);
+}
+
+.activity-page :is(.activity-row, .activity-stat-pill, .activity-status-indicator, .activity-status-badge)[data-status="launched"],
+.activity-page :is(.activity-row, .activity-stat-pill, .activity-status-indicator, .activity-status-badge).launched {
+  --activity-state-color: var(--activity-blue);
+  --activity-state-soft: var(--activity-launched-soft);
+  --activity-state-border: var(--activity-launched-border);
+}
+
+.activity-page :is(.activity-row, .activity-stat-pill, .activity-status-indicator, .activity-status-badge)[data-status="finished"],
+.activity-page :is(.activity-row, .activity-stat-pill, .activity-status-indicator, .activity-status-badge).finished {
+  --activity-state-color: var(--activity-subtle);
+  --activity-state-soft: transparent;
+  --activity-state-border: var(--activity-border);
+}
+
+.activity-page :is(.activity-row, .activity-stat-pill, .activity-status-indicator, .activity-status-badge)[data-status="cancelled"],
+.activity-page :is(.activity-row, .activity-stat-pill, .activity-status-indicator, .activity-status-badge).cancelled {
+  --activity-state-color: var(--activity-red);
+  --activity-state-soft: var(--activity-cancelled-soft);
+  --activity-state-border: var(--activity-cancelled-border);
+}
+
 .activity-shell {
   display: flex;
   flex-direction: column;
@@ -187,10 +215,13 @@
   letter-spacing: 0.08em;
 }
 
-.activity-stat-pill[data-status="running"] .activity-stat-dot { background: var(--activity-green); box-shadow: 0 0 7px var(--activity-green); }
-.activity-stat-pill[data-status="launched"] .activity-stat-dot { background: var(--activity-blue); box-shadow: 0 0 7px var(--activity-blue); }
-.activity-stat-pill[data-status="finished"] .activity-stat-dot { background: var(--activity-subtle); }
-.activity-stat-pill[data-status="cancelled"] .activity-stat-dot { background: var(--activity-red); }
+.activity-stat-pill .activity-stat-dot {
+  background: var(--activity-state-color, var(--activity-subtle));
+}
+
+.activity-stat-pill:is([data-status="running"], [data-status="launched"]) .activity-stat-dot {
+  box-shadow: 0 0 7px var(--activity-state-color);
+}
 
 .activity-list {
   padding: 0 12px 12px;
@@ -263,10 +294,9 @@
   width: 3px;
 }
 
-.activity-row.running::before { background: var(--activity-green); }
-.activity-row.launched::before { background: var(--activity-blue); }
-.activity-row.finished::before { background: var(--activity-subtle); }
-.activity-row.cancelled::before { background: var(--activity-red); }
+.activity-row::before {
+  background: var(--activity-state-color, var(--activity-subtle));
+}
 
 .activity-row:hover,
 .activity-row.active {
@@ -288,21 +318,15 @@
   position: relative;
   border: 1px solid var(--activity-border);
   background: var(--activity-surface-faint);
+  border-color: var(--activity-state-border, var(--activity-border));
+  background: color-mix(in srgb, var(--activity-surface-faint) 78%, var(--activity-state-soft, transparent));
 }
-
-.activity-status-indicator.running { border-color: var(--activity-running-border); background: var(--activity-running-soft); }
-.activity-status-indicator.launched { border-color: var(--activity-launched-border); background: var(--activity-launched-soft); }
-.activity-status-indicator.cancelled { border-color: var(--activity-cancelled-border); background: var(--activity-cancelled-soft); }
 
 .activity-status-icon {
   z-index: 1;
   font-size: 13px;
+  color: var(--activity-state-color, var(--activity-muted));
 }
-
-.activity-status-indicator.running .activity-status-icon { color: var(--activity-green); }
-.activity-status-indicator.launched .activity-status-icon { color: var(--activity-blue); }
-.activity-status-indicator.finished .activity-status-icon { color: var(--activity-subtle); }
-.activity-status-indicator.cancelled .activity-status-icon { color: var(--activity-red); }
 
 .activity-spin-ring {
   position: absolute;
@@ -312,14 +336,14 @@
 }
 
 .activity-status-indicator.running .activity-spin-ring {
-  border-top-color: var(--activity-green);
-  border-right-color: var(--activity-running-border);
+  border-top-color: var(--activity-state-color);
+  border-right-color: var(--activity-state-border);
   animation: activitySpin 1s linear infinite;
 }
 
 .activity-status-indicator.launched .activity-spin-ring {
-  border-top-color: var(--activity-blue);
-  border-right-color: var(--activity-launched-border);
+  border-top-color: var(--activity-state-color);
+  border-right-color: var(--activity-state-border);
   animation: activitySpin 1.4s linear infinite;
 }
 
@@ -339,8 +363,7 @@
   animation: activityPulse 1.45s ease-in-out infinite;
 }
 
-.activity-status-indicator.running .activity-pulse-dot { background: var(--activity-green); }
-.activity-status-indicator.launched .activity-pulse-dot { background: var(--activity-blue); }
+.activity-status-indicator:is(.running, .launched) .activity-pulse-dot { background: var(--activity-state-color); }
 
 .activity-row-info h3,
 .activity-detail-header h3 {
@@ -453,10 +476,11 @@
   color: var(--activity-muted);
 }
 
-.activity-status-badge.running { color: var(--activity-green); border-color: var(--activity-running-border); background: var(--activity-running-soft); }
-.activity-status-badge.launched { color: var(--activity-blue); border-color: var(--activity-launched-border); background: var(--activity-launched-soft); }
-.activity-status-badge.finished { color: var(--activity-muted); }
-.activity-status-badge.cancelled { color: var(--activity-red); border-color: var(--activity-cancelled-border); background: var(--activity-cancelled-soft); }
+.activity-status-badge {
+  color: var(--activity-state-color, var(--activity-muted));
+  border-color: var(--activity-state-border, var(--activity-border));
+  background: var(--activity-state-soft, transparent);
+}
 
 .activity-meta {
   margin: 0;
