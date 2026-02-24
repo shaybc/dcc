@@ -949,6 +949,14 @@ function renderActivityLogStream() {
   }
 }
 
+function setActivityScrollLocked(locked, { forceScrollToBottom = false } = {}) {
+  activityScrollLocked = Boolean(locked);
+  activityScrollLockButton?.classList.toggle("active", activityScrollLocked);
+  if ((forceScrollToBottom || activityScrollLocked) && activityLog) {
+    activityLog.scrollTop = activityLog.scrollHeight;
+  }
+}
+
 function refreshVisibleTimers() {
   if (!activityList) return;
   const timerEls = activityList.querySelectorAll("[data-activity-timer]");
@@ -1160,8 +1168,15 @@ function setupActivityDashboard() {
   });
 
   activityScrollLockButton?.addEventListener("click", () => {
-    activityScrollLocked = !activityScrollLocked;
-    activityScrollLockButton.classList.toggle("active", activityScrollLocked);
+    setActivityScrollLocked(!activityScrollLocked, { forceScrollToBottom: true });
+  });
+
+  activityLog?.addEventListener("scroll", () => {
+    if (!activityScrollLocked) return;
+    const distanceFromBottom = activityLog.scrollHeight - activityLog.clientHeight - activityLog.scrollTop;
+    if (distanceFromBottom > 8) {
+      setActivityScrollLocked(false);
+    }
   });
 
   activityCopyLogsButton?.addEventListener("click", async () => {
