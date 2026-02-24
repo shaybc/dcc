@@ -339,6 +339,16 @@
             </button>
           </div>
 
+          <div class="run-agent-status" id="runAgentStatusBar">
+            <span class="run-agent-status-dot" aria-hidden="true"></span>
+            <span id="runAgentStatusText">Select an agent and config to continue.</span>
+            <div class="run-agent-status-checks">
+              <span class="run-agent-status-check" id="runAgentCheckAgent">agent</span>
+              <span class="run-agent-status-check" id="runAgentCheckConfig">config</span>
+              <span class="run-agent-status-check" id="runAgentCheckReady">ready</span>
+            </div>
+          </div>
+
           <div class="run-stage-list">
             <article class="run-stage" data-run-stage="agent" id="runAgentStage" tabindex="0">
               <div class="run-stage-gutter">
@@ -422,6 +432,11 @@
               </div>
             </article>
 
+            <div class="run-stage-connector">
+              <span class="run-stage-connector-arrow">↓</span>
+              <span class="run-stage-connector-label">Select Agent Permissions (optional)</span>
+            </div>
+
             <article class="run-stage run-stage-optional run-params-stage" id="runParamsStage">
               <div class="run-stage-gutter">
                 <span class="run-stage-num">4</span>
@@ -433,38 +448,37 @@
                   <span class="run-stage-optional-badge">Optional</span>
                 </div>
                 <div class="run-params-grid">
-                  <label class="run-param-check"><input type="checkbox" id="runParamVerbose"> Verbose —verbose</label>
-                  <label class="run-param-check"><input type="checkbox" id="runParamReadonly"> Readonly mode —readonly</label>
-                  <label class="run-param-check"><input type="checkbox" id="runParamAllowWrite"> Allow Write --allow Write</label>
-                  <label class="run-param-check"><input type="checkbox" id="runParamAllowEdit"> Allow Edit --allow Edit</label>
-                  <label class="run-param-check"><input type="checkbox" id="runParamAllowMultiEdit"> Allow Multiedit --allow MultiEdit</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamVerbose"> Verbose</label>
+                  <!-- when read only mode is selected - uncheck all other params -->
+                  <label class="run-param-check"><input type="checkbox" id="runParamReadonly"> Readonly mode</label>
+                  <!-- Readonly Mode deny list, Defaults to allow -->
+                  <label class="run-param-check"><input type="checkbox" id="runParamDenyRead"> Deny Read</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamDenyList"> Deny List</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamDenySearch"> Deny Search</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamDenyFetch"> Deny Fetch</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamDenyDiff"> Deny Diff</label>
+                  <!-- Write Mode allow list, Defaults to Deny -->
+                  <label class="run-param-check"><input type="checkbox" id="runParamAllowWrite"> Allow Write</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamAllowEdit"> Allow Edit</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamAllowMultiEdit"> Allow Multiedit</label>
+                  <label class="run-param-check"><input type="checkbox" id="runParamAllowTerminal"> Allow Terminal</label>
                 </div>
 
                 <div class="run-param-array-block">
-                  <label class="run-param-check"><input type="checkbox" id="runParamAllowOnlyEnabled"> Allow Only</label>
-                  <p class="run-param-help">Each value adds: --allow "Write(**/*.&lt;extension&gt;)"</p>
+                  <label class="run-param-check"><input type="checkbox" id="runParamAllowOnlyEnabled"> Allow Write to specific files</label>
+                  <p class="run-param-help">Each value allows a file type, e.g: "*.ts" allows agent to write only to TypeScript files</p>
                   <div id="runParamAllowOnlyList" class="run-param-array-list" hidden></div>
                   <button type="button" class="run-param-add" id="runParamAllowOnlyAdd" hidden>+ Add allowed pattern</button>
                 </div>
 
                 <div class="run-param-array-block">
-                  <label class="run-param-check"><input type="checkbox" id="runParamDenyTerminalEnabled"> Deny Terminal Commaand</label>
-                  <p class="run-param-help">Adds --allow Bash and --exclude "Bash(&lt;command&gt;*)" for each entry.</p>
+                  <label class="run-param-check"><input type="checkbox" id="runParamDenyTerminalEnabled"> Deny Terminal specific commaands</label>
+                  <p class="run-param-help">each value states the terminal commands to exclude. for example: "npm install" will not allow agent to run "npm install*" command.</p>
                   <div id="runParamDenyTerminalList" class="run-param-array-list" hidden></div>
                   <button type="button" class="run-param-add" id="runParamDenyTerminalAdd" hidden>+ Add denied command</button>
                 </div>
               </div>
             </article>
-          </div>
-
-          <div class="run-agent-status" id="runAgentStatusBar">
-            <span class="run-agent-status-dot" aria-hidden="true"></span>
-            <span id="runAgentStatusText">Select an agent and config to continue.</span>
-            <div class="run-agent-status-checks">
-              <span class="run-agent-status-check" id="runAgentCheckAgent">agent</span>
-              <span class="run-agent-status-check" id="runAgentCheckConfig">config</span>
-              <span class="run-agent-status-check" id="runAgentCheckReady">ready</span>
-            </div>
           </div>
 
         </div>

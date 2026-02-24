@@ -8,7 +8,7 @@
   /* background: rgba(20, 22, 27, 0.78); */
   display: grid;
   grid-template-columns: 1fr 25%;
-  height: calc(100vh - 220px);
+  height: calc(99vh - 220px);
   overflow: hidden;
 }
 
@@ -17,6 +17,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow: hidden;
 }
 
 .agents-builder-header {
@@ -61,7 +62,12 @@
   background: rgba(255, 255, 255, 0.8);
 }
 
-.run-stage-list { display: flex; flex-direction: column; gap: 0px; }
+.run-stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  overflow: auto;
+}
 
 .run-stage {
   border: 1px solid var(--border);
@@ -70,6 +76,7 @@
   grid-template-columns: 52px 1fr auto;
   background: var(--card);
   cursor: pointer;
+  width: 99%;
 }
 
 .run-stage.picking { border-color: var(--accent); box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 30%, transparent); }
@@ -134,7 +141,7 @@
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 0 0 0 28px;
+  padding: 10px;
   height: 32px;
   position: relative;
 }
@@ -309,7 +316,7 @@
   .agents-builder-shell {
     grid-template-columns: 1fr;
     height: auto;
-    min-height: calc(100vh - 220px);
+    min-height: calc(99vh - 220px);
   }
   .run-picker-panel { border-left: 0; border-top: 1px solid var(--border); min-height: 330px; }
 }
