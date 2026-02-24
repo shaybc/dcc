@@ -1,3 +1,10 @@
+/* Header-specific design tokens */
+:root {
+  --header-focus-ring-sm: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  --header-focus-ring-md: 0 0 0 2px rgba(139, 92, 246, 0.3);
+  --header-pill-radius: 999px;
+}
+
 /* Top navigation */
 .top-nav {
   display: flex;
@@ -37,7 +44,7 @@
 
 .top-nav-tab-badge {
   display: none;
-  border-radius: 999px;
+  border-radius: var(--header-pill-radius);
   border: 1px solid rgba(139, 92, 246, 0.35);
   background: rgba(139, 92, 246, 0.16);
   color: #ac98ff;
@@ -105,8 +112,6 @@ header .actions {
 }
 
 header .actions .btn {
-  display: inline-flex;
-  align-items: center;
   line-height: 1;
 }
 
@@ -219,15 +224,12 @@ header .actions .btn {
   width: 24px;
   height: 24px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--header-pill-radius);
   background: var(--bg-soft);
   color: var(--muted);
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   padding: 0;
 }
 
@@ -274,7 +276,7 @@ header .actions .btn {
 .hub-menu-tag-search:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+  box-shadow: var(--header-focus-ring-sm);
 }
 
 .hub-menu-tag-pills {
@@ -287,12 +289,9 @@ header .actions .btn {
 }
 
 .hub-menu-tag-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   min-height: 34px;
   padding: 8px 14px;
-  border-radius: 999px;
+  border-radius: var(--header-pill-radius);
   border: 1px solid var(--border);
   background: var(--bg-soft);
   color: var(--text);
@@ -431,13 +430,12 @@ header .actions .btn {
 .dev-project-picker input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+  box-shadow: var(--header-focus-ring-md);
 }
 
 .recommendations-header-toggle {
   padding: 10px;
   min-width: 44px;
-  justify-content: center;
 }
 
 .recommendations-header-toggle[hidden] {
@@ -451,4 +449,11 @@ header .actions .btn {
 
 .recommendations-header-toggle .recommendations-star-outline {
   fill: none;
+}
+
+/* Shared header control primitives */
+:is(header .actions .btn, .hub-tag-filter-clear-btn, .hub-menu-tag-pill) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
