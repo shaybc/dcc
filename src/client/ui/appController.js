@@ -63,9 +63,6 @@ const runAgentStatusText = document.getElementById("runAgentStatusText");
 const runAgentCheckAgent = document.getElementById("runAgentCheckAgent");
 const runAgentCheckConfig = document.getElementById("runAgentCheckConfig");
 const runAgentCheckReady = document.getElementById("runAgentCheckReady");
-const runAgentOutputPanel = document.getElementById("runAgentOutputPanel");
-const runAgentOutputMeta = document.getElementById("runAgentOutputMeta");
-const runAgentOutputText = document.getElementById("runAgentOutputText");
 const runPickerTitle = document.getElementById("runPickerTitle");
 const runPickerSubtitle = document.getElementById("runPickerSubtitle");
 const runPickerSearch = document.getElementById("runPickerSearch");
@@ -260,7 +257,6 @@ let runBuilderPendingSelection = null;
 let runBuilderSelection = { agent: null, config: null };
 let recentAgentRunPacks = getStoredRecentAgentRunPacks();
 let activeRunId = "";
-let activeRunLogSince = 0;
 let activeRunPollTimer = null;
 let activityRuns = [];
 let activityFilter = "all";
@@ -687,23 +683,13 @@ function clearActiveRunPolling() {
   }
 }
 
-function appendRunOutputLine(stream, text) {
-  if (!runAgentOutputText) return;
-  const prefix = stream === "stderr" ? "[stderr]" : "[stdout]";
-  runAgentOutputText.textContent += `${prefix} ${text}`;
-  runAgentOutputText.scrollTop = runAgentOutputText.scrollHeight;
-}
-
 async function pollActiveRun() {
   if (!activeRunId) return;
 
   let shouldScheduleNextPoll = true;
 
   try {
-    const [runResponse, logsResponse] = await Promise.all([
-      fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activeRunId)}`),
-      fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activeRunId)}/logs?since=${activeRunLogSince}`)
-    ]);
+    const runResponse = await fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activeRunId)}`);
 
     if (runResponse.ok) {
       const payload = await runResponse.json();
@@ -715,23 +701,10 @@ async function pollActiveRun() {
         runAgentStatusText.textContent = `Run ${run.runId}: ${run.status}${exitSuffix}`;
       }
 
-      if (run && runAgentOutputMeta) {
-        runAgentOutputMeta.textContent = `runId=${run.runId} pid=${run.pid ?? "n/a"} status=${run.status} out=${run.emittedStdoutBytes ?? 0}B err=${run.emittedStderrBytes ?? 0}B`;
-      }
-
       if (run && ["terminated", "failed", "killed"].includes(run.status)) {
         clearActiveRunPolling();
         shouldScheduleNextPoll = false;
       }
-    }
-
-    if (logsResponse.ok) {
-      const payload = await logsResponse.json();
-      const entries = Array.isArray(payload?.entries) ? payload.entries : [];
-      entries.forEach((entry) => {
-        appendRunOutputLine(entry?.stream, String(entry?.text || ""));
-      });
-      activeRunLogSince = Number(payload?.nextSince || activeRunLogSince);
     }
   } catch (_error) {
     if (runAgentStatusText) {
@@ -1405,16 +1378,7 @@ async function handleRunAgentClick() {
     const payload = await response.json();
     const runId = String(payload?.run?.runId || "").trim();
     activeRunId = runId;
-    activeRunLogSince = 0;
     clearActiveRunPolling();
-
-    if (runAgentOutputPanel) runAgentOutputPanel.hidden = !runId;
-    if (runAgentOutputText) runAgentOutputText.textContent = "";
-    if (runAgentOutputMeta) {
-      runAgentOutputMeta.textContent = runId
-        ? `runId=${runId} pid=${payload?.run?.pid ?? "n/a"} status=${payload?.run?.status || "launched"} out=${payload?.run?.emittedStdoutBytes ?? 0}B err=${payload?.run?.emittedStderrBytes ?? 0}B`
-        : "No active run";
-    }
 
     if (runId) {
       if (runAgentStatusText) {

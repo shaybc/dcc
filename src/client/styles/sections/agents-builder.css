@@ -197,36 +197,6 @@
 .run-agent-status-check { border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; font-size: 11px; color: var(--muted); }
 .run-agent-status-check.done { border-color: rgba(52, 211, 153, 0.35); color: var(--success); }
 
-.run-agent-output {
-  margin-top: 12px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card-bg);
-  overflow: hidden;
-}
-
-.run-agent-output-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.run-agent-output-text {
-  margin: 0;
-  padding: 10px;
-  max-height: 220px;
-  overflow: auto;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  color: var(--text);
-}
-
 .run-picker-panel {
   border-left: 1px solid var(--border);
   display:flex;
