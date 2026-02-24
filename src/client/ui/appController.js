@@ -86,6 +86,8 @@ const activityDetailStatus = document.getElementById("activityDetailStatus");
 const activityDetailRunId = document.getElementById("activityDetailRunId");
 const activityDetailAgent = document.getElementById("activityDetailAgent");
 const activityDetailConfig = document.getElementById("activityDetailConfig");
+const activityDetailAgentPath = document.getElementById("activityDetailAgentPath");
+const activityDetailConfigPath = document.getElementById("activityDetailConfigPath");
 const activityDetailPid = document.getElementById("activityDetailPid");
 const activityDetailStarted = document.getElementById("activityDetailStarted");
 const activityDetailDuration = document.getElementById("activityDetailDuration");
@@ -758,6 +760,11 @@ function getRunNameFromPath(pathValue, fallback) {
   return finalName.replace(/\.[^.]+$/, "") || fallback;
 }
 
+function getFullRunPath(pathValue, fallback = "—") {
+  const normalized = String(pathValue || "").trim();
+  return normalized || fallback;
+}
+
 function isRunCancelable(run) {
   const status = mapRunStatus(run);
   return status === "running" || status === "launched";
@@ -891,6 +898,8 @@ function renderActivityDetail() {
   activityDetailRunId.textContent = run.runId;
   activityDetailAgent.textContent = getRunNameFromPath(run.agentPath, run.runId);
   activityDetailConfig.textContent = getRunNameFromPath(run.configPath, "config");
+  activityDetailAgentPath.textContent = getFullRunPath(run.agentPath);
+  activityDetailConfigPath.textContent = getFullRunPath(run.configPath);
   activityDetailPid.textContent = run.pid ?? "n/a";
   activityDetailStarted.textContent = run.startedAt || run.createdAt || "—";
   activityDetailDuration.textContent = formatDuration(run.startedAt || run.createdAt, run.endedAt);
