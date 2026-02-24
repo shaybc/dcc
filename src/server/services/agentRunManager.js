@@ -15,9 +15,15 @@ function normalizeRunOptions(runOptions = {}) {
   return {
     verbose: Boolean(runOptions.verbose),
     readonly: Boolean(runOptions.readonly),
+    denyRead: Boolean(runOptions.denyRead),
+    denyList: Boolean(runOptions.denyList),
+    denySearch: Boolean(runOptions.denySearch),
+    denyFetch: Boolean(runOptions.denyFetch),
+    denyDiff: Boolean(runOptions.denyDiff),
     allowWrite: Boolean(runOptions.allowWrite),
     allowEdit: Boolean(runOptions.allowEdit),
     allowMultiEdit: Boolean(runOptions.allowMultiEdit),
+    allowTerminal: Boolean(runOptions.allowTerminal),
     allowOnly: Array.isArray(runOptions.allowOnly)
       ? runOptions.allowOnly.map((entry) => String(entry || "").trim()).filter(Boolean)
       : [],
@@ -64,9 +70,15 @@ function buildArgs({ configPath, prompt, agentPath, runOptions = {} }) {
 
   if (runOptions.verbose) args.push("--verbose");
   if (runOptions.readonly) args.push("--readonly");
+  if (runOptions.denyRead) args.push("--deny", "Read");
+  if (runOptions.denyList) args.push("--deny", "List");
+  if (runOptions.denySearch) args.push("--deny", "Search");
+  if (runOptions.denyFetch) args.push("--deny", "Fetch");
+  if (runOptions.denyDiff) args.push("--deny", "Diff");
   if (runOptions.allowWrite) args.push("--allow", "Write");
   if (runOptions.allowEdit) args.push("--allow", "Edit");
   if (runOptions.allowMultiEdit) args.push("--allow", "MultiEdit");
+  if (runOptions.allowTerminal) args.push("--allow", "Bash");
 
   for (const allowPattern of Array.isArray(runOptions.allowOnly) ? runOptions.allowOnly : []) {
     const normalizedPattern = String(allowPattern || "").trim();
@@ -76,7 +88,7 @@ function buildArgs({ configPath, prompt, agentPath, runOptions = {} }) {
 
   const deniedCommands = Array.isArray(runOptions.denyTerminalCommands) ? runOptions.denyTerminalCommands : [];
   if (deniedCommands.length) {
-    args.push("--allow", "Bash");
+    if (!runOptions.allowTerminal) args.push("--allow", "Bash");
     for (const command of deniedCommands) {
       const normalizedCommand = String(command || "").trim();
       if (!normalizedCommand) continue;
