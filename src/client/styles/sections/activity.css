@@ -195,25 +195,38 @@
   padding: 14px 6px;
 }
 
+.activity-group {
+  margin: 0;
+}
+
+.activity-group + .activity-group {
+  margin-top: 10px;
+}
+
 .activity-group-label {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 14px 2px 10px;
-  color: var(--activity-subtle);
-  font-size: 10px;
+  gap: 8px;
+  margin: 6px 2px 10px;
+  color: var(--text-1);
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
+  font-weight: 600;
+}
+
+.activity-group-label-text {
+  color: color-mix(in oklab, var(--text-1) 62%, var(--activity-subtle));
 }
 
 .activity-group-label::after {
   content: "";
   flex: 1;
   height: 1px;
-  background: color-mix(in oklab, var(--activity-border) 90%, transparent);
+  background: color-mix(in oklab, var(--activity-border-md) 88%, transparent);
 }
 
-.activity-list > .activity-group-label:first-child {
+.activity-list > .activity-group:first-child .activity-group-label {
   margin-top: 4px;
 }
 

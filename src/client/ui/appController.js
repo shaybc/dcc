@@ -913,9 +913,13 @@ function renderActivityList() {
     groupedRuns.get(status).push(run);
   });
 
+  const statusesToRender = [
+    ...groupOrder.filter((status) => (groupedRuns.get(status) || []).length),
+    ...Array.from(groupedRuns.keys()).filter((status) => !groupOrder.includes(status) && (groupedRuns.get(status) || []).length),
+  ];
+
   let animationIndex = 0;
-  activityList.innerHTML = groupOrder
-    .filter((status) => (groupedRuns.get(status) || []).length)
+  activityList.innerHTML = statusesToRender
     .map((status) => {
       const rows = (groupedRuns.get(status) || []).map((run) => {
         const agentName = getRunNameFromPath(run.agentPath, run.runId);
@@ -955,7 +959,13 @@ function renderActivityList() {
         return rowMarkup;
       }).join("");
 
-      return `<div class="activity-group-label">${getStatusIcon(status)} ${getStatusGroupLabel(status)}</div>${rows}`;
+      return `
+        <section class="activity-group" data-status="${status}">
+          <div class="activity-group-label" role="heading" aria-level="3">
+            <span class="activity-group-label-text">${getStatusIcon(status)} ${escapeHtml(getStatusGroupLabel(status))}</span>
+          </div>
+          ${rows}
+        </section>`;
     })
     .join("");
 }
