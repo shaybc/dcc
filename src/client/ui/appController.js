@@ -61,9 +61,15 @@ const runPromptClearButton = document.getElementById("runPromptClearButton");
 const runParamsStage = document.getElementById("runParamsStage");
 const runParamVerbose = document.getElementById("runParamVerbose");
 const runParamReadonly = document.getElementById("runParamReadonly");
+const runParamDenyRead = document.getElementById("runParamDenyRead");
+const runParamDenyList = document.getElementById("runParamDenyList");
+const runParamDenySearch = document.getElementById("runParamDenySearch");
+const runParamDenyFetch = document.getElementById("runParamDenyFetch");
+const runParamDenyDiff = document.getElementById("runParamDenyDiff");
 const runParamAllowWrite = document.getElementById("runParamAllowWrite");
 const runParamAllowEdit = document.getElementById("runParamAllowEdit");
 const runParamAllowMultiEdit = document.getElementById("runParamAllowMultiEdit");
+const runParamAllowTerminal = document.getElementById("runParamAllowTerminal");
 const runParamAllowOnlyEnabled = document.getElementById("runParamAllowOnlyEnabled");
 const runParamAllowOnlyList = document.getElementById("runParamAllowOnlyList");
 const runParamAllowOnlyAdd = document.getElementById("runParamAllowOnlyAdd");
@@ -344,9 +350,15 @@ function normalizeRecentAgentRunPack(entry) {
     runOptions: {
       verbose: Boolean(entry?.runOptions?.verbose),
       readonly: Boolean(entry?.runOptions?.readonly),
+      denyRead: Boolean(entry?.runOptions?.denyRead),
+      denyList: Boolean(entry?.runOptions?.denyList),
+      denySearch: Boolean(entry?.runOptions?.denySearch),
+      denyFetch: Boolean(entry?.runOptions?.denyFetch),
+      denyDiff: Boolean(entry?.runOptions?.denyDiff),
       allowWrite: Boolean(entry?.runOptions?.allowWrite),
       allowEdit: Boolean(entry?.runOptions?.allowEdit),
       allowMultiEdit: Boolean(entry?.runOptions?.allowMultiEdit),
+      allowTerminal: Boolean(entry?.runOptions?.allowTerminal),
       allowOnly: Array.isArray(entry?.runOptions?.allowOnly)
         ? entry.runOptions.allowOnly.map((value) => String(value || "").trim()).filter(Boolean)
         : [],
@@ -708,9 +720,15 @@ function applyRunBuilderParams(runOptions = {}) {
   const options = runOptions || {};
   if (runParamVerbose) runParamVerbose.checked = Boolean(options.verbose);
   if (runParamReadonly) runParamReadonly.checked = Boolean(options.readonly);
+  if (runParamDenyRead) runParamDenyRead.checked = Boolean(options.denyRead);
+  if (runParamDenyList) runParamDenyList.checked = Boolean(options.denyList);
+  if (runParamDenySearch) runParamDenySearch.checked = Boolean(options.denySearch);
+  if (runParamDenyFetch) runParamDenyFetch.checked = Boolean(options.denyFetch);
+  if (runParamDenyDiff) runParamDenyDiff.checked = Boolean(options.denyDiff);
   if (runParamAllowWrite) runParamAllowWrite.checked = Boolean(options.allowWrite);
   if (runParamAllowEdit) runParamAllowEdit.checked = Boolean(options.allowEdit);
   if (runParamAllowMultiEdit) runParamAllowMultiEdit.checked = Boolean(options.allowMultiEdit);
+  if (runParamAllowTerminal) runParamAllowTerminal.checked = Boolean(options.allowTerminal);
   if (runParamAllowOnlyEnabled) runParamAllowOnlyEnabled.checked = Array.isArray(options.allowOnly) && options.allowOnly.length > 0;
   if (runParamDenyTerminalEnabled) runParamDenyTerminalEnabled.checked = Array.isArray(options.denyTerminalCommands) && options.denyTerminalCommands.length > 0;
 
@@ -740,16 +758,22 @@ function formatRunOptionSummary(runOptions = {}) {
   const labels = [];
   if (options.verbose) labels.push("--verbose");
   if (options.readonly) labels.push("--readonly");
+  if (options.denyRead) labels.push("--deny Read");
+  if (options.denyList) labels.push("--deny List");
+  if (options.denySearch) labels.push("--deny Search");
+  if (options.denyFetch) labels.push("--deny Fetch");
+  if (options.denyDiff) labels.push("--deny Diff");
   if (options.allowWrite) labels.push("--allow Write");
   if (options.allowEdit) labels.push("--allow Edit");
   if (options.allowMultiEdit) labels.push("--allow MultiEdit");
+  if (options.allowTerminal) labels.push("--allow Bash");
 
   for (const pattern of Array.isArray(options.allowOnly) ? options.allowOnly : []) {
     labels.push(`--allow Write(**/${String(pattern)})`);
   }
   const denied = Array.isArray(options.denyTerminalCommands) ? options.denyTerminalCommands : [];
   if (denied.length) {
-    labels.push("--allow Bash");
+    if (!options.allowTerminal) labels.push("--allow Bash");
     for (const command of denied) {
       labels.push(`--exclude Bash(${String(command)}*)`);
     }
@@ -799,8 +823,34 @@ function getRunParamArrayValues(container) {
 }
 
 function updateRunBuilderParamState() {
+  const readonlyEnabled = Boolean(runParamReadonly?.checked);
+  if (readonlyEnabled) {
+    [
+      runParamDenyRead,
+      runParamDenyList,
+      runParamDenySearch,
+      runParamDenyFetch,
+      runParamDenyDiff,
+      runParamAllowWrite,
+      runParamAllowEdit,
+      runParamAllowMultiEdit,
+      runParamAllowTerminal,
+      runParamAllowOnlyEnabled,
+      runParamDenyTerminalEnabled
+    ].forEach((checkbox) => {
+      if (checkbox) checkbox.checked = false;
+    });
+
+    if (runParamAllowOnlyList) runParamAllowOnlyList.innerHTML = "";
+    if (runParamDenyTerminalList) runParamDenyTerminalList.innerHTML = "";
+  }
+
   const allowOnlyEnabled = Boolean(runParamAllowOnlyEnabled?.checked);
   const denyTerminalEnabled = Boolean(runParamDenyTerminalEnabled?.checked);
+
+  if (allowOnlyEnabled && runParamAllowWrite?.checked) {
+    runParamAllowWrite.checked = false;
+  }
 
   if (runParamAllowOnlyList) runParamAllowOnlyList.hidden = !allowOnlyEnabled;
   if (runParamAllowOnlyAdd) runParamAllowOnlyAdd.hidden = !allowOnlyEnabled;
@@ -810,9 +860,15 @@ function updateRunBuilderParamState() {
   const hasAnySelected = Boolean(
     runParamVerbose?.checked
     || runParamReadonly?.checked
+    || runParamDenyRead?.checked
+    || runParamDenyList?.checked
+    || runParamDenySearch?.checked
+    || runParamDenyFetch?.checked
+    || runParamDenyDiff?.checked
     || runParamAllowWrite?.checked
     || runParamAllowEdit?.checked
     || runParamAllowMultiEdit?.checked
+    || runParamAllowTerminal?.checked
     || (allowOnlyEnabled && getRunParamArrayValues(runParamAllowOnlyList).length)
     || (denyTerminalEnabled && getRunParamArrayValues(runParamDenyTerminalList).length)
   );
@@ -820,7 +876,21 @@ function updateRunBuilderParamState() {
 }
 
 function resetRunBuilderParams() {
-  [runParamVerbose, runParamReadonly, runParamAllowWrite, runParamAllowEdit, runParamAllowMultiEdit, runParamAllowOnlyEnabled, runParamDenyTerminalEnabled]
+  [
+    runParamVerbose,
+    runParamReadonly,
+    runParamDenyRead,
+    runParamDenyList,
+    runParamDenySearch,
+    runParamDenyFetch,
+    runParamDenyDiff,
+    runParamAllowWrite,
+    runParamAllowEdit,
+    runParamAllowMultiEdit,
+    runParamAllowTerminal,
+    runParamAllowOnlyEnabled,
+    runParamDenyTerminalEnabled
+  ]
     .forEach((checkbox) => {
       if (checkbox) checkbox.checked = false;
     });
@@ -834,9 +904,15 @@ function collectRunBuilderParams() {
   return {
     verbose: Boolean(runParamVerbose?.checked),
     readonly: Boolean(runParamReadonly?.checked),
+    denyRead: Boolean(runParamDenyRead?.checked),
+    denyList: Boolean(runParamDenyList?.checked),
+    denySearch: Boolean(runParamDenySearch?.checked),
+    denyFetch: Boolean(runParamDenyFetch?.checked),
+    denyDiff: Boolean(runParamDenyDiff?.checked),
     allowWrite: Boolean(runParamAllowWrite?.checked),
     allowEdit: Boolean(runParamAllowEdit?.checked),
     allowMultiEdit: Boolean(runParamAllowMultiEdit?.checked),
+    allowTerminal: Boolean(runParamAllowTerminal?.checked),
     allowOnly: runParamAllowOnlyEnabled?.checked ? getRunParamArrayValues(runParamAllowOnlyList) : [],
     denyTerminalCommands: runParamDenyTerminalEnabled?.checked ? getRunParamArrayValues(runParamDenyTerminalList) : []
   };
@@ -1660,7 +1736,21 @@ function setupRunBuilder() {
     handleRunBuilderPromptInput();
   });
 
-  [runParamVerbose, runParamReadonly, runParamAllowWrite, runParamAllowEdit, runParamAllowMultiEdit, runParamAllowOnlyEnabled, runParamDenyTerminalEnabled]
+  [
+    runParamVerbose,
+    runParamReadonly,
+    runParamDenyRead,
+    runParamDenyList,
+    runParamDenySearch,
+    runParamDenyFetch,
+    runParamDenyDiff,
+    runParamAllowWrite,
+    runParamAllowEdit,
+    runParamAllowMultiEdit,
+    runParamAllowTerminal,
+    runParamAllowOnlyEnabled,
+    runParamDenyTerminalEnabled
+  ]
     .forEach((checkbox) => checkbox?.addEventListener("change", updateRunBuilderParamState));
   runParamAllowOnlyAdd?.addEventListener("click", () => {
     createRunParamArrayInput(runParamAllowOnlyList, "*.ts");

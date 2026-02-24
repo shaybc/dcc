@@ -26,9 +26,15 @@ function normalizePayload(payload) {
     runOptions: {
       verbose: Boolean(runOptions.verbose),
       readonly: Boolean(runOptions.readonly),
+      denyRead: Boolean(runOptions.denyRead),
+      denyList: Boolean(runOptions.denyList),
+      denySearch: Boolean(runOptions.denySearch),
+      denyFetch: Boolean(runOptions.denyFetch),
+      denyDiff: Boolean(runOptions.denyDiff),
       allowWrite: Boolean(runOptions.allowWrite),
       allowEdit: Boolean(runOptions.allowEdit),
       allowMultiEdit: Boolean(runOptions.allowMultiEdit),
+      allowTerminal: Boolean(runOptions.allowTerminal),
       allowOnly: Array.isArray(runOptions.allowOnly)
         ? runOptions.allowOnly.map((entry) => String(entry || "").trim()).filter(Boolean)
         : [],
