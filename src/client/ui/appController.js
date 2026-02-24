@@ -634,6 +634,17 @@ function clearRunBuilderStage(mode) {
   renderRunBuilderStage(mode);
 }
 
+function resetRunAgentForm() {
+  runBuilderSelection = { agent: null, config: null };
+  runBuilderPendingSelection = null;
+  if (runPromptInput) {
+    runPromptInput.value = "";
+  }
+  openRunBuilderPicker("agent");
+  handleRunBuilderPromptInput();
+  renderRunBuilder();
+}
+
 function handleRunBuilderPromptInput() {
   if (!runPromptInput || !runPromptCharCount || !runPromptStage) return;
   const length = runPromptInput.value.length;
@@ -1386,6 +1397,9 @@ async function handleRunAgentClick() {
       }
       void pollActiveRun();
     }
+
+    resetRunAgentForm();
+    setActiveTopPage("activity");
 
     window.alert(`${runSummary}${runId ? `\nRun ID: ${runId}` : ""}`);
   } catch (error) {
