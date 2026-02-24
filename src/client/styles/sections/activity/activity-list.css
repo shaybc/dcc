@@ -1,0 +1,194 @@
+.activity-list {
+  padding: 0 12px 12px;
+  overflow-y: auto;
+}
+
+.activity-list-empty {
+  color: var(--activity-subtle);
+  font-size: 11px;
+  padding: 14px 6px;
+}
+
+.activity-group {
+  margin: 0;
+}
+
+.activity-group + .activity-group {
+  margin-top: 10px;
+}
+
+.activity-group-label {
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 14px 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+}
+
+.activity-group-label-text {
+  color: color-mix(in oklab, var(--text-1) 62%, var(--activity-subtle));
+}
+
+.activity-group-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: color-mix(in oklab, var(--activity-border-md) 88%, transparent);
+}
+
+.activity-list > .activity-group:first-child .activity-group-label {
+  margin-top: 4px;
+}
+
+.activity-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--activity-border);
+  border-radius: 11px;
+  background: var(--activity-card);
+  margin-bottom: 7px;
+  padding: 12px 14px;
+  cursor: pointer;
+  overflow: hidden;
+  animation: activityFadeUp 0.28s ease both;
+}
+
+.activity-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.activity-row::before {
+  background: var(--activity-state-color, var(--activity-subtle));
+}
+
+.activity-row:hover,
+.activity-row.active {
+  border-color: var(--activity-border-md);
+  background: var(--activity-hover);
+}
+
+.activity-row.active {
+  box-shadow: 0 0 0 1px var(--activity-focus-ring) inset;
+}
+
+.activity-status-indicator {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 1px solid var(--activity-border);
+  background: var(--activity-surface-faint);
+  border-color: var(--activity-state-border, var(--activity-border));
+  background: color-mix(in srgb, var(--activity-surface-faint) 78%, var(--activity-state-soft, transparent));
+}
+
+.activity-status-icon {
+  z-index: 1;
+  font-size: 13px;
+  color: var(--activity-state-color, var(--activity-muted));
+}
+
+.activity-spin-ring {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.activity-status-indicator.running .activity-spin-ring {
+  border-top-color: var(--activity-state-color);
+  border-right-color: var(--activity-state-border);
+  animation: activitySpin 1s linear infinite;
+}
+
+.activity-status-indicator.launched .activity-spin-ring {
+  border-top-color: var(--activity-state-color);
+  border-right-color: var(--activity-state-border);
+  animation: activitySpin 1.4s linear infinite;
+}
+
+.activity-pulse-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: none;
+}
+
+.activity-status-indicator.running .activity-pulse-dot,
+.activity-status-indicator.launched .activity-pulse-dot {
+  display: block;
+  animation: activityPulse 1.45s ease-in-out infinite;
+}
+
+.activity-status-indicator:is(.running, .launched) .activity-pulse-dot { background: var(--activity-state-color); }
+
+.activity-row-info h3,
+.activity-detail-header h3 {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.activity-row-info h3 {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-row-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--activity-subtle);
+}
+
+.activity-row-config,
+.activity-row-pid,
+.activity-row-timer-value,
+.activity-row-timer-label,
+.activity-meta dd,
+.activity-log,
+.activity-log-ts {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.activity-row-timer {
+  min-width: 86px;
+  text-align: right;
+}
+
+.activity-row-timer-value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.activity-row-timer-value.running { color: var(--activity-green); }
+.activity-row-timer-value.launched { color: var(--activity-blue); }
+
+.activity-row-timer-label {
+  font-size: 9px;
+  color: var(--activity-subtle);
+  margin-top: 2px;
+  text-transform: uppercase;
+}
