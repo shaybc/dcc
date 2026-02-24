@@ -939,7 +939,7 @@ function renderActivityList() {
         <div class="activity-row-info">
           <h3>${escapeHtml(agentName)}</h3>
           <div class="activity-row-meta">
-            <span class="activity-row-chip">${escapeHtml(run.runId)}</span>
+            <span class="tag-pill">${escapeHtml(run.runId)}</span>
             <span class="activity-row-config">⚙ ${escapeHtml(configName)}</span>
             <span class="activity-row-pid">pid ${run.pid ?? "n/a"}</span>
           </div>
