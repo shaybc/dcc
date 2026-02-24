@@ -926,6 +926,8 @@ function closeActivityStreamPanel() {
 function renderActivityLogStream() {
   if (!activityLog) return;
 
+  const previousScrollTop = activityLog.scrollTop;
+
   const lines = activityLogEntries.map((entry) => {
     const level = formatLogLevel(entry);
     const text = escapeHtml(String(entry?.text || "").trimEnd());
@@ -945,6 +947,20 @@ function renderActivityLogStream() {
 
   activityLog.innerHTML = lines.join("");
   if (activityScrollLocked) {
+    const maxScrollTop = Math.max(0, activityLog.scrollHeight - activityLog.clientHeight);
+    activityLog.scrollTop = Math.min(previousScrollTop, maxScrollTop);
+    return;
+  }
+  activityLog.scrollTop = activityLog.scrollHeight;
+}
+
+function setActivityScrollLocked(locked, { forceScrollToBottom = false } = {}) {
+  activityScrollLocked = Boolean(locked);
+  activityScrollLockButton?.classList.toggle("active", activityScrollLocked);
+  if (activityScrollLockButton) {
+    activityScrollLockButton.textContent = activityScrollLocked ? "🔒 lock" : "↓ follow";
+  }
+  if (forceScrollToBottom && activityLog) {
     activityLog.scrollTop = activityLog.scrollHeight;
   }
 }
@@ -1167,16 +1183,11 @@ function setupActivityDashboard() {
     renderActivityLogStream();
   });
 
-  activityScrollLockButton?.addEventListener("click", () => {
-    setActivityScrollLocked(!activityScrollLocked, { forceScrollToBottom: true });
-  });
+  setActivityScrollLocked(activityScrollLocked);
 
-  activityLog?.addEventListener("scroll", () => {
-    if (!activityScrollLocked) return;
-    const distanceFromBottom = activityLog.scrollHeight - activityLog.clientHeight - activityLog.scrollTop;
-    if (distanceFromBottom > 8) {
-      setActivityScrollLocked(false);
-    }
+  activityScrollLockButton?.addEventListener("click", () => {
+    const nextLockedState = !activityScrollLocked;
+    setActivityScrollLocked(nextLockedState, { forceScrollToBottom: !nextLockedState });
   });
 
   activityCopyLogsButton?.addEventListener("click", async () => {
