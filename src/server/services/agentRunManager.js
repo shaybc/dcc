@@ -110,7 +110,7 @@ class AgentRunManager {
   async restorePersistedRuns() {
     try {
       const rows = await allDb(
-        `SELECT runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, pid, status,
+        `SELECT runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
                 createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes
          FROM agent_runs
          ORDER BY createdAt ASC`
@@ -136,6 +136,7 @@ class AgentRunManager {
           commandPath: row.commandPath,
           args: parsedArgs,
           command: row.command,
+          commandLine: row.commandLine || row.command,
           pid: Number.isInteger(row.pid) ? row.pid : null,
           status: row.status,
           createdAt: row.createdAt,
@@ -186,9 +187,9 @@ class AgentRunManager {
     if (!run?.runId) return;
     this.queuePersistence(() => runDb(
       `INSERT INTO agent_runs (
-        runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, pid, status,
+        runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
         createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(runId) DO UPDATE SET
         projectPath = excluded.projectPath,
         agentPath = excluded.agentPath,
@@ -197,6 +198,7 @@ class AgentRunManager {
         commandPath = excluded.commandPath,
         argsJson = excluded.argsJson,
         command = excluded.command,
+        commandLine = excluded.commandLine,
         pid = excluded.pid,
         status = excluded.status,
         createdAt = excluded.createdAt,
@@ -216,6 +218,7 @@ class AgentRunManager {
         run.commandPath || null,
         JSON.stringify(Array.isArray(run.args) ? run.args : []),
         run.command || null,
+        run.commandLine || run.command || null,
         Number.isInteger(run.pid) ? run.pid : null,
         run.status,
         run.createdAt,
@@ -255,6 +258,7 @@ class AgentRunManager {
       commandPath,
       args,
       command: spawnSpec.launchedCommand,
+      commandLine: spawnSpec.launchedCommand,
       pid: null,
       status: "preparing_to_launch",
       createdAt,
@@ -402,6 +406,7 @@ class AgentRunManager {
       commandPath: run.commandPath,
       args: run.args,
       command: run.command,
+      commandLine: run.commandLine || run.command,
       createdAt: run.createdAt,
       startedAt: run.startedAt,
       endedAt: run.endedAt,

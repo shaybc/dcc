@@ -153,6 +153,7 @@ db.serialize(() => {
       commandPath TEXT,
       argsJson TEXT NOT NULL DEFAULT '[]',
       command TEXT,
+      commandLine TEXT,
       pid INTEGER,
       status TEXT NOT NULL,
       createdAt TEXT NOT NULL,
@@ -180,6 +181,16 @@ db.serialize(() => {
     )`
   );
   db.run("CREATE INDEX IF NOT EXISTS idx_agent_run_logs_run_seq ON agent_run_logs(runId, seq DESC)");
+
+  db.all("PRAGMA table_info(agent_runs)", (err, rows = []) => {
+    if (err) {
+      return;
+    }
+    const hasCommandLineColumn = rows.some((row) => row.name === "commandLine");
+    if (!hasCommandLineColumn) {
+      db.run("ALTER TABLE agent_runs ADD COLUMN commandLine TEXT", () => {});
+    }
+  });
 
   db.all("PRAGMA table_info(definitions)", (err, rows = []) => {
     if (err) {

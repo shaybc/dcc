@@ -92,6 +92,7 @@ const activityDetailPid = document.getElementById("activityDetailPid");
 const activityDetailStarted = document.getElementById("activityDetailStarted");
 const activityDetailDuration = document.getElementById("activityDetailDuration");
 const activityDetailExit = document.getElementById("activityDetailExit");
+const activityDetailCommandLine = document.getElementById("activityDetailCommandLine");
 const activityLog = document.getElementById("activityLog");
 const activityLiveDot = document.getElementById("activityLiveDot");
 const activityStreamBackdrop = document.getElementById("activityStreamBackdrop");
@@ -997,6 +998,9 @@ function renderActivityDetail() {
   activityDetailStarted.textContent = run.startedAt || run.createdAt || "—";
   activityDetailDuration.textContent = formatDuration(run.startedAt || run.createdAt, run.endedAt);
   activityDetailExit.textContent = run.exitCode ?? "—";
+  if (activityDetailCommandLine) {
+    activityDetailCommandLine.textContent = run.commandLine || run.command || "—";
+  }
   activityCancelButton.disabled = !isRunCancelable(run);
   if (activityLiveDot) {
     activityLiveDot.hidden = !isRunLive(run);
