@@ -872,6 +872,15 @@ function getStatusIcon(status) {
   return { running: "▶", launched: "◎", finished: "✓", cancelled: "✕" }[status] || "•";
 }
 
+function getStatusGroupLabel(status) {
+  return {
+    running: "Active",
+    launched: "Launching",
+    finished: "Finished",
+    cancelled: "Stopped",
+  }[status] || "Other";
+}
+
 function renderActivityStats() {
   if (!activityStatRunning || !activityStatLaunched || !activityStatFinished || !activityStatCancelled) return;
   const counts = { running: 0, launched: 0, finished: 0, cancelled: 0 };
@@ -894,15 +903,28 @@ function renderActivityList() {
     return;
   }
 
-  activityList.innerHTML = items.map((run, index) => {
+  const groupOrder = ["running", "launched", "finished", "cancelled"];
+  const groupedRuns = new Map(groupOrder.map((status) => [status, []]));
+  items.forEach((run) => {
     const status = mapRunStatus(run);
-    const agentName = getRunNameFromPath(run.agentPath, run.runId);
-    const configName = getRunNameFromPath(run.configPath, "config");
-    const runSeconds = getRunElapsedSeconds(run);
-    const canCancel = isRunCancelable(run);
+    if (!groupedRuns.has(status)) {
+      groupedRuns.set(status, []);
+    }
+    groupedRuns.get(status).push(run);
+  });
 
-    return `
-      <article class="activity-row ${activitySelectedRunId === run.runId ? "active" : ""} ${status}" data-run-id="${escapeHtml(run.runId)}" data-run-status="${status}" style="animation-delay:${(index * 0.04).toFixed(2)}s">
+  let animationIndex = 0;
+  activityList.innerHTML = groupOrder
+    .filter((status) => (groupedRuns.get(status) || []).length)
+    .map((status) => {
+      const rows = (groupedRuns.get(status) || []).map((run) => {
+        const agentName = getRunNameFromPath(run.agentPath, run.runId);
+        const configName = getRunNameFromPath(run.configPath, "config");
+        const runSeconds = getRunElapsedSeconds(run);
+        const canCancel = isRunCancelable(run);
+
+        const rowMarkup = `
+      <article class="activity-row ${activitySelectedRunId === run.runId ? "active" : ""} ${status}" data-run-id="${escapeHtml(run.runId)}" data-run-status="${status}" style="animation-delay:${(animationIndex * 0.04).toFixed(2)}s">
         <div class="activity-status-indicator ${status}">
           <span class="activity-spin-ring"></span>
           <span class="activity-status-icon">${getStatusIcon(status)}</span>
@@ -929,7 +951,13 @@ function renderActivityList() {
           <button type="button" title="Cancel run" data-activity-kill="${escapeHtml(run.runId)}" ${canCancel ? "" : "disabled"}>✕</button>
         </div>
       </article>`;
-  }).join("");
+        animationIndex += 1;
+        return rowMarkup;
+      }).join("");
+
+      return `<div class="activity-group-label">${getStatusIcon(status)} ${getStatusGroupLabel(status)}</div>${rows}`;
+    })
+    .join("");
 }
 
 function renderActivityDetail() {
