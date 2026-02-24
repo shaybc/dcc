@@ -163,7 +163,8 @@ db.serialize(() => {
       exitCode INTEGER,
       signal TEXT,
       emittedStdoutBytes INTEGER NOT NULL DEFAULT 0,
-      emittedStderrBytes INTEGER NOT NULL DEFAULT 0
+      emittedStderrBytes INTEGER NOT NULL DEFAULT 0,
+      runOptionsJson TEXT NOT NULL DEFAULT '{}'
     )`
   );
   db.run("CREATE INDEX IF NOT EXISTS idx_agent_runs_created_at ON agent_runs(createdAt DESC)");
@@ -189,6 +190,11 @@ db.serialize(() => {
     const hasCommandLineColumn = rows.some((row) => row.name === "commandLine");
     if (!hasCommandLineColumn) {
       db.run("ALTER TABLE agent_runs ADD COLUMN commandLine TEXT", () => {});
+    }
+
+    const hasRunOptionsJsonColumn = rows.some((row) => row.name === "runOptionsJson");
+    if (!hasRunOptionsJsonColumn) {
+      db.run("ALTER TABLE agent_runs ADD COLUMN runOptionsJson TEXT NOT NULL DEFAULT '{}'", () => {});
     }
   });
 

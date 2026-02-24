@@ -58,6 +58,18 @@ const runPromptStage = document.getElementById("runPromptStage");
 const runPromptInput = document.getElementById("runPromptInput");
 const runPromptCharCount = document.getElementById("runPromptCharCount");
 const runPromptClearButton = document.getElementById("runPromptClearButton");
+const runParamsStage = document.getElementById("runParamsStage");
+const runParamVerbose = document.getElementById("runParamVerbose");
+const runParamReadonly = document.getElementById("runParamReadonly");
+const runParamAllowWrite = document.getElementById("runParamAllowWrite");
+const runParamAllowEdit = document.getElementById("runParamAllowEdit");
+const runParamAllowMultiEdit = document.getElementById("runParamAllowMultiEdit");
+const runParamAllowOnlyEnabled = document.getElementById("runParamAllowOnlyEnabled");
+const runParamAllowOnlyList = document.getElementById("runParamAllowOnlyList");
+const runParamAllowOnlyAdd = document.getElementById("runParamAllowOnlyAdd");
+const runParamDenyTerminalEnabled = document.getElementById("runParamDenyTerminalEnabled");
+const runParamDenyTerminalList = document.getElementById("runParamDenyTerminalList");
+const runParamDenyTerminalAdd = document.getElementById("runParamDenyTerminalAdd");
 const runAgentStatusBar = document.getElementById("runAgentStatusBar");
 const runAgentStatusText = document.getElementById("runAgentStatusText");
 const runAgentCheckAgent = document.getElementById("runAgentCheckAgent");
@@ -89,6 +101,7 @@ const activityDetailPid = document.getElementById("activityDetailPid");
 const activityDetailStarted = document.getElementById("activityDetailStarted");
 const activityDetailDuration = document.getElementById("activityDetailDuration");
 const activityDetailExit = document.getElementById("activityDetailExit");
+const activityDetailSelectedParams = document.getElementById("activityDetailSelectedParams");
 const activityDetailCommandLine = document.getElementById("activityDetailCommandLine");
 const activityLog = document.getElementById("activityLog");
 const activityLiveDot = document.getElementById("activityLiveDot");
@@ -640,6 +653,7 @@ function resetRunAgentForm() {
   if (runPromptInput) {
     runPromptInput.value = "";
   }
+  resetRunBuilderParams();
   openRunBuilderPicker("agent");
   handleRunBuilderPromptInput();
   renderRunBuilder();
@@ -665,6 +679,7 @@ function prefillRunBuilderFromActivityRun(runId) {
     runPromptInput.value = String(run.prompt || "");
     handleRunBuilderPromptInput();
   }
+  applyRunBuilderParams(run.runOptions || {});
 
   renderRunBuilder();
   if (!runBuilderSelection.agent) {
@@ -674,11 +689,142 @@ function prefillRunBuilderFromActivityRun(runId) {
   }
 }
 
+function applyRunBuilderParams(runOptions = {}) {
+  const options = runOptions || {};
+  if (runParamVerbose) runParamVerbose.checked = Boolean(options.verbose);
+  if (runParamReadonly) runParamReadonly.checked = Boolean(options.readonly);
+  if (runParamAllowWrite) runParamAllowWrite.checked = Boolean(options.allowWrite);
+  if (runParamAllowEdit) runParamAllowEdit.checked = Boolean(options.allowEdit);
+  if (runParamAllowMultiEdit) runParamAllowMultiEdit.checked = Boolean(options.allowMultiEdit);
+  if (runParamAllowOnlyEnabled) runParamAllowOnlyEnabled.checked = Array.isArray(options.allowOnly) && options.allowOnly.length > 0;
+  if (runParamDenyTerminalEnabled) runParamDenyTerminalEnabled.checked = Array.isArray(options.denyTerminalCommands) && options.denyTerminalCommands.length > 0;
+
+  if (runParamAllowOnlyList) {
+    runParamAllowOnlyList.innerHTML = "";
+    for (const value of Array.isArray(options.allowOnly) ? options.allowOnly : []) {
+      createRunParamArrayInput(runParamAllowOnlyList, "*.ts");
+      const input = runParamAllowOnlyList.lastElementChild?.querySelector(".run-param-array-input");
+      if (input) input.value = String(value || "");
+    }
+  }
+
+  if (runParamDenyTerminalList) {
+    runParamDenyTerminalList.innerHTML = "";
+    for (const value of Array.isArray(options.denyTerminalCommands) ? options.denyTerminalCommands : []) {
+      createRunParamArrayInput(runParamDenyTerminalList, "npm install");
+      const input = runParamDenyTerminalList.lastElementChild?.querySelector(".run-param-array-input");
+      if (input) input.value = String(value || "");
+    }
+  }
+
+  updateRunBuilderParamState();
+}
+
+function formatRunOptionSummary(runOptions = {}) {
+  const options = runOptions || {};
+  const labels = [];
+  if (options.verbose) labels.push("--verbose");
+  if (options.readonly) labels.push("--readonly");
+  if (options.allowWrite) labels.push("--allow Write");
+  if (options.allowEdit) labels.push("--allow Edit");
+  if (options.allowMultiEdit) labels.push("--allow MultiEdit");
+
+  for (const pattern of Array.isArray(options.allowOnly) ? options.allowOnly : []) {
+    labels.push(`--allow Write(**/${String(pattern)})`);
+  }
+  const denied = Array.isArray(options.denyTerminalCommands) ? options.denyTerminalCommands : [];
+  if (denied.length) {
+    labels.push("--allow Bash");
+    for (const command of denied) {
+      labels.push(`--exclude Bash(${String(command)}*)`);
+    }
+  }
+
+  return labels.length ? labels.join(" | ") : "—";
+}
+
 function handleRunBuilderPromptInput() {
   if (!runPromptInput || !runPromptCharCount || !runPromptStage) return;
   const length = runPromptInput.value.length;
   runPromptCharCount.textContent = `${length} chars`;
   runPromptStage.classList.toggle("filled", length > 0);
+}
+
+function createRunParamArrayInput(container, placeholder) {
+  if (!container) return;
+  const row = document.createElement("div");
+  row.className = "run-param-array-row";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "run-param-array-input";
+  input.placeholder = placeholder;
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "run-param-remove";
+  removeButton.setAttribute("aria-label", "Remove value");
+  removeButton.textContent = "✕";
+
+  removeButton.addEventListener("click", () => {
+    row.remove();
+    updateRunBuilderParamState();
+  });
+  input.addEventListener("input", updateRunBuilderParamState);
+
+  row.append(input, removeButton);
+  container.appendChild(row);
+}
+
+function getRunParamArrayValues(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll(".run-param-array-input"))
+    .map((input) => String(input.value || "").trim())
+    .filter(Boolean);
+}
+
+function updateRunBuilderParamState() {
+  const allowOnlyEnabled = Boolean(runParamAllowOnlyEnabled?.checked);
+  const denyTerminalEnabled = Boolean(runParamDenyTerminalEnabled?.checked);
+
+  if (runParamAllowOnlyList) runParamAllowOnlyList.hidden = !allowOnlyEnabled;
+  if (runParamAllowOnlyAdd) runParamAllowOnlyAdd.hidden = !allowOnlyEnabled;
+  if (runParamDenyTerminalList) runParamDenyTerminalList.hidden = !denyTerminalEnabled;
+  if (runParamDenyTerminalAdd) runParamDenyTerminalAdd.hidden = !denyTerminalEnabled;
+
+  const hasAnySelected = Boolean(
+    runParamVerbose?.checked
+    || runParamReadonly?.checked
+    || runParamAllowWrite?.checked
+    || runParamAllowEdit?.checked
+    || runParamAllowMultiEdit?.checked
+    || (allowOnlyEnabled && getRunParamArrayValues(runParamAllowOnlyList).length)
+    || (denyTerminalEnabled && getRunParamArrayValues(runParamDenyTerminalList).length)
+  );
+  runParamsStage?.classList.toggle("filled", hasAnySelected);
+}
+
+function resetRunBuilderParams() {
+  [runParamVerbose, runParamReadonly, runParamAllowWrite, runParamAllowEdit, runParamAllowMultiEdit, runParamAllowOnlyEnabled, runParamDenyTerminalEnabled]
+    .forEach((checkbox) => {
+      if (checkbox) checkbox.checked = false;
+    });
+
+  if (runParamAllowOnlyList) runParamAllowOnlyList.innerHTML = "";
+  if (runParamDenyTerminalList) runParamDenyTerminalList.innerHTML = "";
+  updateRunBuilderParamState();
+}
+
+function collectRunBuilderParams() {
+  return {
+    verbose: Boolean(runParamVerbose?.checked),
+    readonly: Boolean(runParamReadonly?.checked),
+    allowWrite: Boolean(runParamAllowWrite?.checked),
+    allowEdit: Boolean(runParamAllowEdit?.checked),
+    allowMultiEdit: Boolean(runParamAllowMultiEdit?.checked),
+    allowOnly: runParamAllowOnlyEnabled?.checked ? getRunParamArrayValues(runParamAllowOnlyList) : [],
+    denyTerminalCommands: runParamDenyTerminalEnabled?.checked ? getRunParamArrayValues(runParamDenyTerminalList) : []
+  };
 }
 
 function isDefinitionInstalledInCurrentProject(definitionId) {
@@ -1011,6 +1157,9 @@ function renderActivityDetail() {
   activityDetailStarted.textContent = run.startedAt || run.createdAt || "—";
   activityDetailDuration.textContent = formatDuration(run.startedAt || run.createdAt, run.endedAt);
   activityDetailExit.textContent = run.exitCode ?? "—";
+  if (activityDetailSelectedParams) {
+    activityDetailSelectedParams.textContent = formatRunOptionSummary(run.runOptions || {});
+  }
   if (activityDetailCommandLine) {
     activityDetailCommandLine.textContent = run.commandLine || run.command || "—";
   }
@@ -1403,7 +1552,8 @@ async function handleRunAgentClick() {
       agentId: Number(runBuilderSelection.agent.id),
       configId: Number(runBuilderSelection.config.id),
       prompt: String(runPromptInput?.value || ""),
-      projectPath: selectedProject
+      projectPath: selectedProject,
+      runOptions: collectRunBuilderParams()
     };
     const response = await fetch(AGENT_RUNS_ENDPOINT, {
       method: "POST",
@@ -1493,6 +1643,18 @@ function setupRunBuilder() {
     runPromptInput.value = "";
     handleRunBuilderPromptInput();
   });
+
+  [runParamVerbose, runParamReadonly, runParamAllowWrite, runParamAllowEdit, runParamAllowMultiEdit, runParamAllowOnlyEnabled, runParamDenyTerminalEnabled]
+    .forEach((checkbox) => checkbox?.addEventListener("change", updateRunBuilderParamState));
+  runParamAllowOnlyAdd?.addEventListener("click", () => {
+    createRunParamArrayInput(runParamAllowOnlyList, "*.ts");
+    updateRunBuilderParamState();
+  });
+  runParamDenyTerminalAdd?.addEventListener("click", () => {
+    createRunParamArrayInput(runParamDenyTerminalList, "npm install");
+    updateRunBuilderParamState();
+  });
+  updateRunBuilderParamState();
 
   runPickerSearch?.addEventListener("input", () => {
     runBuilderSearchQuery = String(runPickerSearch.value || "").trim();
