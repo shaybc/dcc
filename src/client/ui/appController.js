@@ -826,7 +826,6 @@ function updateRunBuilderParamState() {
   const readonlyEnabled = Boolean(runParamReadonly?.checked);
   if (readonlyEnabled) {
     [
-      runParamVerbose,
       runParamDenyRead,
       runParamDenyList,
       runParamDenySearch,
