@@ -101,6 +101,7 @@ const activityDetailPid = document.getElementById("activityDetailPid");
 const activityDetailStarted = document.getElementById("activityDetailStarted");
 const activityDetailDuration = document.getElementById("activityDetailDuration");
 const activityDetailExit = document.getElementById("activityDetailExit");
+const activityDetailSelectedParams = document.getElementById("activityDetailSelectedParams");
 const activityDetailCommandLine = document.getElementById("activityDetailCommandLine");
 const activityLog = document.getElementById("activityLog");
 const activityLiveDot = document.getElementById("activityLiveDot");
@@ -678,6 +679,7 @@ function prefillRunBuilderFromActivityRun(runId) {
     runPromptInput.value = String(run.prompt || "");
     handleRunBuilderPromptInput();
   }
+  applyRunBuilderParams(run.runOptions || {});
 
   renderRunBuilder();
   if (!runBuilderSelection.agent) {
@@ -685,6 +687,60 @@ function prefillRunBuilderFromActivityRun(runId) {
   } else if (!runBuilderSelection.config) {
     openRunBuilderPicker("config");
   }
+}
+
+function applyRunBuilderParams(runOptions = {}) {
+  const options = runOptions || {};
+  if (runParamVerbose) runParamVerbose.checked = Boolean(options.verbose);
+  if (runParamReadonly) runParamReadonly.checked = Boolean(options.readonly);
+  if (runParamAllowWrite) runParamAllowWrite.checked = Boolean(options.allowWrite);
+  if (runParamAllowEdit) runParamAllowEdit.checked = Boolean(options.allowEdit);
+  if (runParamAllowMultiEdit) runParamAllowMultiEdit.checked = Boolean(options.allowMultiEdit);
+  if (runParamAllowOnlyEnabled) runParamAllowOnlyEnabled.checked = Array.isArray(options.allowOnly) && options.allowOnly.length > 0;
+  if (runParamDenyTerminalEnabled) runParamDenyTerminalEnabled.checked = Array.isArray(options.denyTerminalCommands) && options.denyTerminalCommands.length > 0;
+
+  if (runParamAllowOnlyList) {
+    runParamAllowOnlyList.innerHTML = "";
+    for (const value of Array.isArray(options.allowOnly) ? options.allowOnly : []) {
+      createRunParamArrayInput(runParamAllowOnlyList, "*.ts");
+      const input = runParamAllowOnlyList.lastElementChild?.querySelector(".run-param-array-input");
+      if (input) input.value = String(value || "");
+    }
+  }
+
+  if (runParamDenyTerminalList) {
+    runParamDenyTerminalList.innerHTML = "";
+    for (const value of Array.isArray(options.denyTerminalCommands) ? options.denyTerminalCommands : []) {
+      createRunParamArrayInput(runParamDenyTerminalList, "npm install");
+      const input = runParamDenyTerminalList.lastElementChild?.querySelector(".run-param-array-input");
+      if (input) input.value = String(value || "");
+    }
+  }
+
+  updateRunBuilderParamState();
+}
+
+function formatRunOptionSummary(runOptions = {}) {
+  const options = runOptions || {};
+  const labels = [];
+  if (options.verbose) labels.push("--verbose");
+  if (options.readonly) labels.push("--readonly");
+  if (options.allowWrite) labels.push("--allow Write");
+  if (options.allowEdit) labels.push("--allow Edit");
+  if (options.allowMultiEdit) labels.push("--allow MultiEdit");
+
+  for (const pattern of Array.isArray(options.allowOnly) ? options.allowOnly : []) {
+    labels.push(`--allow Write(**/${String(pattern)})`);
+  }
+  const denied = Array.isArray(options.denyTerminalCommands) ? options.denyTerminalCommands : [];
+  if (denied.length) {
+    labels.push("--allow Bash");
+    for (const command of denied) {
+      labels.push(`--exclude Bash(${String(command)}*)`);
+    }
+  }
+
+  return labels.length ? labels.join(" | ") : "—";
 }
 
 function handleRunBuilderPromptInput() {
@@ -1101,6 +1157,9 @@ function renderActivityDetail() {
   activityDetailStarted.textContent = run.startedAt || run.createdAt || "—";
   activityDetailDuration.textContent = formatDuration(run.startedAt || run.createdAt, run.endedAt);
   activityDetailExit.textContent = run.exitCode ?? "—";
+  if (activityDetailSelectedParams) {
+    activityDetailSelectedParams.textContent = formatRunOptionSummary(run.runOptions || {});
+  }
   if (activityDetailCommandLine) {
     activityDetailCommandLine.textContent = run.commandLine || run.command || "—";
   }

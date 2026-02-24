@@ -11,6 +11,22 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function normalizeRunOptions(runOptions = {}) {
+  return {
+    verbose: Boolean(runOptions.verbose),
+    readonly: Boolean(runOptions.readonly),
+    allowWrite: Boolean(runOptions.allowWrite),
+    allowEdit: Boolean(runOptions.allowEdit),
+    allowMultiEdit: Boolean(runOptions.allowMultiEdit),
+    allowOnly: Array.isArray(runOptions.allowOnly)
+      ? runOptions.allowOnly.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [],
+    denyTerminalCommands: Array.isArray(runOptions.denyTerminalCommands)
+      ? runOptions.denyTerminalCommands.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : []
+  };
+}
+
 function normalizeStatus(run) {
   if (!run) return "unknown";
   if (run.status === "running") {
@@ -78,6 +94,20 @@ function quoteWindowsArg(value) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
+function quotePosixArg(value) {
+  const text = String(value || "");
+  if (!text) return "''";
+  if (!/[\s"'`$&|;<>()[\]{}*?]/u.test(text)) return text;
+  return `'${text.replace(/'/g, `'"'"'`)}'`;
+}
+
+function formatLaunchedCommand(commandPath, args) {
+  if (process.platform === "win32") {
+    return `${commandPath} ${args.map((arg) => quoteWindowsArg(arg)).join(" ")}`.trim();
+  }
+  return `${commandPath} ${args.map((arg) => quotePosixArg(arg)).join(" ")}`.trim();
+}
+
 function createSpawnSpec(commandPath, args, dccRootPath) {
   const isWindowsCmd = process.platform === "win32" && /\.cmd$/i.test(commandPath);
   if (isWindowsCmd) {
@@ -88,7 +118,7 @@ function createSpawnSpec(commandPath, args, dccRootPath) {
         args: [nodeEntrypointPath, ...args],
         shell: false,
         launchMode: "windows_node_entrypoint",
-        launchedCommand: `${process.execPath} ${JSON.stringify(nodeEntrypointPath)} ${args.map((arg) => JSON.stringify(arg)).join(" ")}`
+        launchedCommand: formatLaunchedCommand(process.execPath, [nodeEntrypointPath, ...args])
       };
     }
 
@@ -108,7 +138,7 @@ function createSpawnSpec(commandPath, args, dccRootPath) {
     args,
     shell: false,
     launchMode: "direct_exec",
-    launchedCommand: `${commandPath} ${args.map((arg) => JSON.stringify(arg)).join(" ")}`
+    launchedCommand: formatLaunchedCommand(commandPath, args)
   };
 }
 
@@ -118,6 +148,7 @@ class AgentRunManager {
     this.subscribers = new Map();
     this.sequence = 0;
     this.persistenceQueue = Promise.resolve();
+    this.supportsRunOptionsJson = true;
     this.restorePersistedRuns();
   }
 
@@ -132,12 +163,26 @@ class AgentRunManager {
 
   async restorePersistedRuns() {
     try {
-      const rows = await allDb(
-        `SELECT runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
-                createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes
-         FROM agent_runs
-         ORDER BY createdAt ASC`
-      );
+      let rows = [];
+      try {
+        rows = await allDb(
+          `SELECT runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
+                  createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes,
+                  runOptionsJson
+           FROM agent_runs
+           ORDER BY createdAt ASC`
+        );
+      } catch (error) {
+        if (!String(error?.message || "").includes("runOptionsJson")) {
+          throw error;
+        }
+        rows = await allDb(
+          `SELECT runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
+                  createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes
+           FROM agent_runs
+           ORDER BY createdAt ASC`
+        );
+      }
 
       for (const row of rows) {
         let parsedArgs = [];
@@ -148,6 +193,13 @@ class AgentRunManager {
           }
         } catch {
           parsedArgs = [];
+        }
+
+        let parsedRunOptions = {};
+        try {
+          parsedRunOptions = JSON.parse(row.runOptionsJson || "{}");
+        } catch {
+          parsedRunOptions = {};
         }
 
         const run = {
@@ -170,6 +222,7 @@ class AgentRunManager {
           lastActivityAt: row.lastActivityAt,
           emittedStdoutBytes: Number(row.emittedStdoutBytes || 0),
           emittedStderrBytes: Number(row.emittedStderrBytes || 0),
+          runOptions: normalizeRunOptions(parsedRunOptions),
           logs: []
         };
 
@@ -208,7 +261,57 @@ class AgentRunManager {
 
   persistRun(run) {
     if (!run?.runId) return;
-    this.queuePersistence(() => runDb(
+    const persistWithRunOptionsColumn = () => runDb(
+      `INSERT INTO agent_runs (
+        runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
+        createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes,
+        runOptionsJson
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(runId) DO UPDATE SET
+        projectPath = excluded.projectPath,
+        agentPath = excluded.agentPath,
+        configPath = excluded.configPath,
+        prompt = excluded.prompt,
+        commandPath = excluded.commandPath,
+        argsJson = excluded.argsJson,
+        command = excluded.command,
+        commandLine = excluded.commandLine,
+        pid = excluded.pid,
+        status = excluded.status,
+        createdAt = excluded.createdAt,
+        startedAt = excluded.startedAt,
+        endedAt = excluded.endedAt,
+        lastActivityAt = excluded.lastActivityAt,
+        exitCode = excluded.exitCode,
+        signal = excluded.signal,
+        emittedStdoutBytes = excluded.emittedStdoutBytes,
+        emittedStderrBytes = excluded.emittedStderrBytes,
+        runOptionsJson = excluded.runOptionsJson`,
+      [
+        run.runId,
+        run.projectPath,
+        run.agentPath,
+        run.configPath,
+        String(run.prompt || ""),
+        run.commandPath || null,
+        JSON.stringify(Array.isArray(run.args) ? run.args : []),
+        run.command || null,
+        run.commandLine || run.command || null,
+        Number.isInteger(run.pid) ? run.pid : null,
+        run.status,
+        run.createdAt,
+        run.startedAt || null,
+        run.endedAt || null,
+        run.lastActivityAt || null,
+        Number.isInteger(run.exitCode) ? run.exitCode : null,
+        run.signal || null,
+        Number(run.emittedStdoutBytes || 0),
+        Number(run.emittedStderrBytes || 0),
+        JSON.stringify(normalizeRunOptions(run.runOptions || {}))
+      ]
+    );
+
+    const persistWithoutRunOptionsColumn = () => runDb(
       `INSERT INTO agent_runs (
         runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
         createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes
@@ -253,7 +356,24 @@ class AgentRunManager {
         Number(run.emittedStdoutBytes || 0),
         Number(run.emittedStderrBytes || 0)
       ]
-    ));
+    );
+
+    this.queuePersistence(async () => {
+      if (!this.supportsRunOptionsJson) {
+        await persistWithoutRunOptionsColumn();
+        return;
+      }
+
+      try {
+        await persistWithRunOptionsColumn();
+      } catch (error) {
+        if (!String(error?.message || "").includes("runOptionsJson")) {
+          throw error;
+        }
+        this.supportsRunOptionsJson = false;
+        await persistWithoutRunOptionsColumn();
+      }
+    });
   }
 
   persistLog(runId, entry) {
@@ -269,7 +389,8 @@ class AgentRunManager {
     const runId = `run_${Date.now()}_${++this.sequence}`;
     const createdAt = nowIso();
     const commandPath = detectCnExecutable(process.cwd());
-    const args = buildArgs({ configPath, prompt, agentPath, runOptions });
+    const normalizedRunOptions = normalizeRunOptions(runOptions);
+    const args = buildArgs({ configPath, prompt, agentPath, runOptions: normalizedRunOptions });
     const spawnSpec = createSpawnSpec(commandPath, args, process.cwd());
 
     const run = {
@@ -278,6 +399,7 @@ class AgentRunManager {
       agentPath,
       configPath,
       prompt: String(prompt || ""),
+      runOptions: normalizedRunOptions,
       commandPath,
       args,
       command: spawnSpec.launchedCommand,
@@ -426,6 +548,7 @@ class AgentRunManager {
       agentPath: run.agentPath,
       configPath: run.configPath,
       prompt: run.prompt,
+      runOptions: normalizeRunOptions(run.runOptions || {}),
       commandPath: run.commandPath,
       args: run.args,
       command: run.command,
