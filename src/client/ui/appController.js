@@ -773,7 +773,7 @@ function formatRunOptionSummary(runOptions = {}) {
   }
   const denied = Array.isArray(options.denyTerminalCommands) ? options.denyTerminalCommands : [];
   if (denied.length) {
-    labels.push("--allow Bash");
+    if (!options.allowTerminal) labels.push("--allow Bash");
     for (const command of denied) {
       labels.push(`--exclude Bash(${String(command)}*)`);
     }
