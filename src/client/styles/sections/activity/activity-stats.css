@@ -1,0 +1,46 @@
+.activity-stats-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 10px;
+}
+
+.activity-stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--activity-card);
+  border: 1px solid var(--activity-border);
+  border-radius: 8px;
+  padding: 8px 11px;
+  min-width: 132px;
+}
+
+.activity-stat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.activity-stat-pill p {
+  margin: 0;
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.activity-stat-pill h3 {
+  margin: 3px 0 0;
+  color: var(--activity-subtle);
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.activity-stat-pill .activity-stat-dot {
+  background: var(--activity-state-color, var(--activity-subtle));
+}
+
+.activity-stat-pill:is([data-status="running"], [data-status="launched"]) .activity-stat-dot {
+  box-shadow: 0 0 7px var(--activity-state-color);
+}

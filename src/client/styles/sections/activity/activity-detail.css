@@ -1,0 +1,114 @@
+.activity-detail {
+  display: flex;
+  flex-direction: column;
+  background: var(--activity-bg);
+}
+
+.activity-detail-empty {
+  margin: auto;
+  text-align: center;
+  color: var(--activity-subtle);
+}
+
+.activity-detail-empty-icon {
+  font-size: 24px;
+  opacity: 0.45;
+  margin-bottom: 6px;
+}
+
+.activity-detail-empty p {
+  margin: 0;
+  font-size: 11px;
+}
+
+.activity-detail-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.activity-detail-header {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--activity-border);
+}
+
+.activity-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: 7px;
+}
+
+.activity-status-badge,
+.activity-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  font-size: 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--activity-border);
+  color: var(--activity-muted);
+}
+
+.activity-status-badge {
+  color: var(--activity-state-color, var(--activity-muted));
+  border-color: var(--activity-state-border, var(--activity-border));
+  background: var(--activity-state-soft, transparent);
+}
+
+.activity-meta {
+  margin: 0;
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  border-bottom: 1px solid var(--activity-border);
+}
+
+.activity-meta dt {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--activity-subtle);
+}
+
+.activity-meta dd {
+  margin: 3px 0 0;
+  font-size: 14px;
+}
+
+.activity-meta-command {
+  color: var(--activity-command);
+}
+
+.activity-meta-path,
+.activity-meta-command {
+  grid-column: 1 / -1;
+}
+
+.activity-meta-path dd,
+.activity-meta-command dd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.activity-detail-actions {
+  padding: 11px 14px;
+  border-top: 1px solid var(--activity-border);
+}
+
+.activity-detail-actions .activity-btn {
+  flex: 1;
+}
+
+.activity-detail-link {
+  cursor: pointer;
+  color: var(--activity-blue);
+  text-underline-offset: 2px;
+}
+
+.activity-detail-link:hover,
+.activity-detail-link:focus-visible {
+  color: var(--activity-blue-strong);
+}
