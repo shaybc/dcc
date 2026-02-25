@@ -2418,15 +2418,21 @@ function createTagFilterPill(label, { selected = false, emptyState = false } = {
 
 function applyTagSearchFilter(tagPillsContainer, emptySearchState, rawQuery) {
   const query = String(rawQuery || "").trim().toLowerCase();
-  const pills = Array.from(tagPillsContainer.querySelectorAll(".hub-menu-tag-pill[data-tag-filter-value]"));
+  const pills = Array.from(tagPillsContainer.querySelectorAll(".hub-menu-tag-pill"));
   let visibleCount = 0;
 
   pills.forEach((pill) => {
-    const value = String(pill.dataset.tagFilterValue || "");
+    const value = String(pill.dataset.tagFilterValue || "").toLowerCase();
     const label = String(pill.dataset.tagLabel || pill.textContent || "").trim().toLowerCase();
-    const shouldShow = !query || label.includes(query) || value.includes(query);
+    const isEmptyStatePill = pill.classList.contains("is-empty");
+    const shouldShow = isEmptyStatePill
+      ? !query
+      : (!query || label.includes(query) || value.includes(query));
+
     pill.hidden = !shouldShow;
-    if (shouldShow) {
+    pill.classList.toggle("is-hidden-by-search", !shouldShow);
+
+    if (shouldShow && !isEmptyStatePill) {
       visibleCount += 1;
     }
   });

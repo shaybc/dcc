@@ -316,6 +316,11 @@ header .actions .btn {
   cursor: default;
 }
 
+.hub-menu-tag-pill.is-hidden-by-search {
+  display: none !important;
+}
+
+
 .hub-menu-tag-empty-state {
   margin: 0;
   color: var(--muted);
