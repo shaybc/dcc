@@ -54,27 +54,35 @@
   gap: 10px;
 }
 
-.activity-log-ts {
+.activity-log-ts,
+.activity-log-timestamp {
   color: var(--activity-subtle);
   font-size: 12px;
   flex-shrink: 0;
 }
 
-.activity-log-text {
+.activity-log-text,
+.activity-log-message {
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.activity-log.no-wrap .activity-log-text {
+.activity-log.no-wrap .activity-log-text,
+.activity-log.no-wrap .activity-log-message {
   white-space: pre;
   word-break: normal;
 }
 
-.activity-log-text.info { color: var(--activity-blue); }
-.activity-log-text.warn { color: var(--activity-amber); }
-.activity-log-text.error { color: var(--activity-red); }
-.activity-log-text.success { color: var(--activity-green); }
-.activity-log-text.default { color: var(--activity-muted); }
+.activity-log-text.info,
+.activity-log-line.level-info .activity-log-message { color: var(--activity-blue); }
+.activity-log-text.warn,
+.activity-log-line.level-warn .activity-log-message { color: var(--activity-amber); }
+.activity-log-text.error,
+.activity-log-line.level-error .activity-log-message { color: var(--activity-red); }
+.activity-log-text.success,
+.activity-log-line.level-success .activity-log-message { color: var(--activity-green); }
+.activity-log-text.default,
+.activity-log-line.level-default .activity-log-message { color: var(--activity-muted); }
 
 .activity-log-cursor {
   display: inline-block;
