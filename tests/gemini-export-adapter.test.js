@@ -54,3 +54,18 @@ test("gemini remove plan retracts only DCC-managed files/sections", () => {
     relativePath: ".gemini/commands/prompts-code-review.md"
   }]);
 });
+
+test("gemini adapter builds managed markers from definition key when dccUri metadata is absent", () => {
+  const adapter = new GeminiAdapter();
+
+  const ruleArtifact = adapter.convertDefinition({
+    type: "rules",
+    key: "rules::dev/rules/backend_core_rules",
+    content: "# backend core rules"
+  });
+
+  assert.deepEqual(ruleArtifact.markers, {
+    start: "<!-- DCC:BEGIN dev/rules/backend_core_rules -->",
+    end: "<!-- DCC:END dev/rules/backend_core_rules -->"
+  });
+});
