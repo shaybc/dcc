@@ -388,6 +388,8 @@ export class AgentRunManager {
     if (!run) return null;
     return {
       runId: run.runId,
+      agentId: Number.isFinite(Number(run.agentId)) ? Number(run.agentId) : null,
+      configId: Number.isFinite(Number(run.configId)) ? Number(run.configId) : null,
       pid: run.pid,
       status: normalizeStatus(run),
       projectPath: run.projectPath,
