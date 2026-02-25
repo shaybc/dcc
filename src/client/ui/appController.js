@@ -282,6 +282,30 @@ const {
   persistOnlyLocalDefinitions,
 } = preferencesStorage;
 let recommendationsVisible = getStoredRecommendationsVisibility();
+let activeFilter = "all";
+let searchTerm = "";
+let semanticSearchState = { query: "", suggestions: [], error: "" };
+let tagFilterMode = "or";
+let showUntaggedDefinitions = false;
+let tagFilterSearchTerm = "";
+const selectedTagFilters = new Set();
+let devProjects = [];
+let currentDetailDefinitionId = null;
+let currentDetailDefinitionSource = "";
+let currentDetailDefinitionName = "";
+let currentDetailDefinitionPath = "";
+let currentDetailDefinitionContent = "";
+let currentDetailDefinitionDccUri = "";
+let currentDetailDefinitionStatus = "";
+let currentDetailDefinitionTags = [];
+let currentDetailInstalledDestinations = [];
+let currentDefinitionVersion = "";
+let activeHistoricalVersion = "";
+let activeVersionDropdown = null;
+let lastValidationResult = null;
+let validationAutoRunTimeout = null;
+let diffService = null;
+let currentDefinitionVersions = [];
 let activeInstallDestinationMenu = null;
 
 let currentCardsPage = 1;
