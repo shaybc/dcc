@@ -47,6 +47,22 @@ import {
 import { createRunBuilderParamsController } from "./appController/runBuilderParams.js";
 import { createPaginationController } from "./appController/pagination.js";
 import { createActivityUtils } from "./appController/activityUtils.js";
+import { createActivityDashboardController } from "./appController/activityDashboardController.js";
+import {
+  buildIntentSearchCatalogSnapshot,
+  normalizeAiSuggestedEntries,
+  parseAiSuggestionPayload,
+  truncateForIntentSearchLog,
+} from "./appController/intentSuggestionUtils.js";
+import {
+  buildInstallExportSummary,
+  getDestinationLabel,
+  getDestinationLogoPath,
+  getInstalledDestinationSet,
+  getSupportedDestinationOptions,
+  normalizeDestinationCompatibilityType,
+  formatSkippedReason,
+} from "./appController/installDestinationUtils.js";
 
 import {
   AGENT_RUNS_ENDPOINT,
@@ -322,17 +338,6 @@ let runBuilderSelection = { agent: null, config: null };
 let recentAgentRunPacks = getStoredRecentAgentRunPacks(RECENT_AGENT_RUNS_STORAGE_KEY);
 let activeRunId = "";
 let activeRunPollTimer = null;
-let activityRuns = [];
-let activityFilter = "all";
-let activitySelectedRunId = "";
-let activityLogsSince = 0;
-let activityLogEntries = [];
-let activityWrapEnabled = true;
-let activityScrollLocked = true;
-let activityPollTimer = null;
-let activityTickerTimer = null;
-let activityRenderSignature = null;
-let isActivityStreamOpen = false;
 const favoritesStorage = createFavoritesStorage(FAVORITE_DEFINITION_IDS_STORAGE_KEY);
 const { isFavoriteDefinition, toggleFavoriteDefinition, pruneFavoriteDefinitionIds } = favoritesStorage;
 
@@ -401,6 +406,74 @@ const {
   setActivityDefinitionLink,
   openDefinitionDetailsByPath,
 } = activityUtils;
+
+const activityDashboardController = createActivityDashboardController({
+  elements: {
+    activityPage,
+    activityList,
+    activityFilters,
+    activityDetailEmpty,
+    activityDetailCard,
+    activityDetailName,
+    activityDetailStatus,
+    activityDetailRunId,
+    activityDetailAgent,
+    activityDetailConfig,
+    activityDetailAgentPath,
+    activityDetailConfigPath,
+    activityDetailPid,
+    activityDetailStarted,
+    activityDetailDuration,
+    activityDetailExit,
+    activityDetailSelectedParams,
+    activityDetailCommandLine,
+    activityLog,
+    activityLiveDot,
+    activityStreamBackdrop,
+    activityStreamPanel,
+    activityOpenStreamButton,
+    activityCloseStreamButton,
+    activityCancelButton,
+    activityRerunButton,
+    activityRefreshButton,
+    activityWrapButton,
+    activityClearLogsButton,
+    activityCopyLogsButton,
+    activityScrollLockButton,
+    activityExportLogsButton,
+    activityNewRunButton,
+    activityLastUpdated,
+    activityStatLaunched,
+    activityStatRunning,
+    activityStatFinished,
+    activityStatCancelled,
+  },
+  activityUtils: {
+    getRunNameFromPath,
+    setActivityDefinitionLink,
+    openDefinitionDetailsByPath,
+  },
+  activityRunUtils: {
+    formatDuration,
+    formatDurationSeconds,
+    getFullRunPath,
+    getLogTimestamp,
+    getRunElapsedSeconds,
+    getStatusGroupLabel,
+    getStatusIcon,
+    isRunCancelable,
+    isRunLive,
+    mapRunStatus,
+  },
+  formatRunOptionSummary,
+  escapeHtml,
+  fetchWithErrorHandling,
+  agentRunsEndpoint: AGENT_RUNS_ENDPOINT,
+  updatePageTabBadges,
+  prefillRunBuilderFromActivityRun,
+  setActiveTopPage,
+  getActiveTopPage: () => activeTopPage,
+});
 
 async function loadRecentAgentRunPacksFromDatabase() {
   try {
@@ -779,9 +852,9 @@ async function prefillRunBuilderFromActivityRun(runId) {
     return;
   }
 
-  const run = activityRuns.find((entry) => entry.runId === normalizedRunId);
+  const run = activityDashboardController.getRunById(normalizedRunId);
   if (!run) {
-    console.warn("[ActivityReRun] Run not found for prefill.", { runId: normalizedRunId, knownRunIds: activityRuns.map((entry) => entry?.runId).filter(Boolean).slice(0, 20) });
+    console.warn("[ActivityReRun] Run not found for prefill.", { runId: normalizedRunId, knownRunIds: activityDashboardController.getRuns().map((entry) => entry?.runId).filter(Boolean).slice(0, 20) });
     await emitRerunDebugLog({ event: "run_not_found", runId: normalizedRunId });
     return;
   }
@@ -916,495 +989,6 @@ async function pollActiveRun() {
   if (activeRunId && shouldScheduleNextPoll) {
     activeRunPollTimer = setTimeout(pollActiveRun, 1500);
   }
-}
-
-function renderActivityStats() {
-  if (!activityStatRunning || !activityStatLaunched || !activityStatFinished || !activityStatCancelled) return;
-  const counts = { running: 0, launched: 0, finished: 0, cancelled: 0 };
-  activityRuns.forEach((run) => {
-    const status = mapRunStatus(run);
-    counts[status] = (counts[status] || 0) + 1;
-  });
-  activityStatRunning.textContent = String(counts.running || 0);
-  activityStatLaunched.textContent = String(counts.launched || 0);
-  activityStatFinished.textContent = String(counts.finished || 0);
-  activityStatCancelled.textContent = String(counts.cancelled || 0);
-  updatePageTabBadges();
-}
-
-function renderActivityList() {
-  if (!activityList) return;
-  const items = activityRuns.filter((run) => activityFilter === "all" || mapRunStatus(run) === activityFilter);
-  if (!items.length) {
-    activityList.innerHTML = '<p class="activity-list-empty">No agent runs match this filter.</p>';
-    return;
-  }
-
-  const groupOrder = ["running", "launched", "finished", "cancelled"];
-  const groupedRuns = new Map(groupOrder.map((status) => [status, []]));
-  items.forEach((run) => {
-    const status = mapRunStatus(run);
-    if (!groupedRuns.has(status)) {
-      groupedRuns.set(status, []);
-    }
-    groupedRuns.get(status).push(run);
-  });
-
-  const statusesToRender = [
-    ...groupOrder.filter((status) => (groupedRuns.get(status) || []).length),
-    ...Array.from(groupedRuns.keys()).filter((status) => !groupOrder.includes(status) && (groupedRuns.get(status) || []).length),
-  ];
-
-  let animationIndex = 0;
-  activityList.innerHTML = statusesToRender
-    .map((status) => {
-      const rows = (groupedRuns.get(status) || []).map((run) => {
-        const agentName = getRunNameFromPath(run.agentPath, run.runId);
-        const configName = getRunNameFromPath(run.configPath, "config");
-        const runSeconds = getRunElapsedSeconds(run);
-        const canCancel = isRunCancelable(run);
-
-        const rowMarkup = `
-      <article class="activity-row ${activitySelectedRunId === run.runId ? "active" : ""} ${status}" data-run-id="${escapeHtml(run.runId)}" data-run-status="${status}" style="animation-delay:${(animationIndex * 0.04).toFixed(2)}s">
-        <div class="activity-status-indicator ${status}">
-          <span class="activity-spin-ring"></span>
-          <span class="activity-status-icon">${getStatusIcon(status)}</span>
-          <span class="activity-pulse-dot"></span>
-        </div>
-
-        <div class="activity-row-info">
-          <h3>${escapeHtml(agentName)}</h3>
-          <div class="activity-row-meta">
-            <span class="tag-pill">${escapeHtml(run.runId)}</span>
-            <span class="activity-row-config">⚙ ${escapeHtml(configName)}</span>
-            <span class="activity-row-pid">pid ${run.pid ?? "n/a"}</span>
-          </div>
-        </div>
-
-        <div class="activity-row-timer">
-          <div class="activity-row-timer-value ${status === "running" ? "running" : status === "launched" ? "launched" : ""}" data-activity-timer="${escapeHtml(run.runId)}">${formatDurationSeconds(runSeconds)}</div>
-          <div class="activity-row-timer-label">${status === "running" ? "running" : status === "launched" ? "launching" : "duration"}</div>
-        </div>
-
-        <div class="activity-run-actions">
-          <button type="button" title="View logs" data-activity-open="${escapeHtml(run.runId)}">≡</button>
-          <button type="button" title="Re-run" data-activity-rerun="${escapeHtml(run.runId)}">↺</button>
-          <button type="button" title="Cancel run" data-activity-kill="${escapeHtml(run.runId)}" ${canCancel ? "" : "disabled"}>✕</button>
-        </div>
-      </article>`;
-        animationIndex += 1;
-        return rowMarkup;
-      }).join("");
-
-      return `
-        <section class="activity-group" data-status="${status}">
-          <div class="activity-group-label" role="heading" aria-level="3">
-            <span class="activity-group-label-text">${getStatusIcon(status)} ${escapeHtml(getStatusGroupLabel(status))}</span>
-          </div>
-          ${rows}
-        </section>`;
-    })
-    .join("");
-}
-
-function renderActivityDetail() {
-  if (!activityDetailCard || !activityDetailEmpty) return;
-  const run = activityRuns.find((entry) => entry.runId === activitySelectedRunId);
-  if (!run) {
-    activityDetailCard.hidden = true;
-    activityDetailEmpty.hidden = false;
-    if (activityLog) {
-      activityLog.innerHTML = '<div class="activity-log-empty">No logs loaded.</div>';
-    }
-    return;
-  }
-
-  const status = mapRunStatus(run);
-  activityDetailEmpty.hidden = true;
-  activityDetailCard.hidden = false;
-  activityDetailName.textContent = getRunNameFromPath(run.agentPath, run.runId);
-  activityDetailStatus.textContent = status;
-  activityDetailStatus.className = `activity-status-badge ${status}`;
-  activityDetailRunId.textContent = run.runId;
-  setActivityDefinitionLink(activityDetailAgent, run.agentPath, run.runId);
-  setActivityDefinitionLink(activityDetailConfig, run.configPath, "config");
-  activityDetailAgentPath.textContent = getFullRunPath(run.agentPath);
-  activityDetailConfigPath.textContent = getFullRunPath(run.configPath);
-  activityDetailPid.textContent = run.pid ?? "n/a";
-  activityDetailStarted.textContent = run.startedAt || run.createdAt || "—";
-  activityDetailDuration.textContent = formatDuration(run.startedAt || run.createdAt, run.endedAt);
-  activityDetailExit.textContent = run.exitCode ?? "—";
-  if (activityDetailSelectedParams) {
-    activityDetailSelectedParams.textContent = formatRunOptionSummary(run.runOptions || {});
-  }
-  if (activityDetailCommandLine) {
-    activityDetailCommandLine.textContent = run.commandLine || run.command || "—";
-  }
-  activityCancelButton.disabled = !isRunCancelable(run);
-  if (activityLiveDot) {
-    activityLiveDot.hidden = !isRunLive(run);
-  }
-}
-
-function openActivityStreamPanel() {
-  if (!activityStreamPanel || !activityStreamBackdrop) return;
-  isActivityStreamOpen = true;
-  activityStreamBackdrop.hidden = false;
-  activityStreamPanel.hidden = false;
-  requestAnimationFrame(() => {
-    activityStreamPanel.classList.add("open");
-  });
-}
-
-function closeActivityStreamPanel() {
-  if (!activityStreamPanel || !activityStreamBackdrop) return;
-  isActivityStreamOpen = false;
-  activityStreamPanel.classList.remove("open");
-  setTimeout(() => {
-    if (!isActivityStreamOpen) {
-      activityStreamPanel.hidden = true;
-      activityStreamBackdrop.hidden = true;
-    }
-  }, 220);
-}
-
-function renderActivityLogStream() {
-  if (!activityLog) return;
-
-  const previousScrollTop = activityLog.scrollTop;
-
-  const lines = activityLogEntries.map((entry) => {
-    const level = formatLogLevel(entry);
-    const text = escapeHtml(String(entry?.text || "").trimEnd());
-    const ts = escapeHtml(getLogTimestamp(entry));
-    return `<div class="activity-log-line"><span class="activity-log-ts">${ts}</span><span class="activity-log-text ${level}">${text}</span></div>`;
-  });
-
-  const run = activityRuns.find((entry) => entry.runId === activitySelectedRunId);
-  if (isRunLive(run)) {
-    lines.push('<span class="activity-log-cursor"></span>');
-  }
-
-  if (!lines.length) {
-    activityLog.innerHTML = '<div class="activity-log-empty">No logs yet.</div>';
-    return;
-  }
-
-  activityLog.innerHTML = lines.join("");
-  if (activityScrollLocked) {
-    const maxScrollTop = Math.max(0, activityLog.scrollHeight - activityLog.clientHeight);
-    activityLog.scrollTop = Math.min(previousScrollTop, maxScrollTop);
-    return;
-  }
-  activityLog.scrollTop = activityLog.scrollHeight;
-}
-
-function updateActivityScrollLockState(locked, { forceScrollToBottom = false } = {}) {
-  activityScrollLocked = Boolean(locked);
-  activityScrollLockButton?.classList.toggle("active", activityScrollLocked);
-  if (activityScrollLockButton) {
-    activityScrollLockButton.textContent = activityScrollLocked ? "🔒 lock" : "↓ follow";
-  }
-  if (forceScrollToBottom && activityLog) {
-    activityLog.scrollTop = activityLog.scrollHeight;
-  }
-}
-
-function refreshVisibleTimers() {
-  if (!activityList) return;
-  const timerEls = activityList.querySelectorAll("[data-activity-timer]");
-  timerEls.forEach((timerEl) => {
-    const runId = timerEl.getAttribute("data-activity-timer") || "";
-    const run = activityRuns.find((entry) => entry.runId === runId);
-    if (!run) return;
-    timerEl.textContent = formatDurationSeconds(getRunElapsedSeconds(run));
-  });
-
-  const selectedRun = activityRuns.find((entry) => entry.runId === activitySelectedRunId);
-  if (selectedRun && activityDetailDuration) {
-    activityDetailDuration.textContent = formatDurationSeconds(getRunElapsedSeconds(selectedRun));
-  }
-}
-
-function buildActivityRenderSignature(runs) {
-  if (!Array.isArray(runs) || !runs.length) return "";
-  return runs.map((run) => {
-    const status = mapRunStatus(run);
-    return [
-      run?.runId || "",
-      status,
-      run?.pid ?? "",
-      run?.startedAt || run?.createdAt || "",
-      run?.endedAt || "",
-      run?.exitCode ?? "",
-      run?.agentPath || "",
-      run?.configPath || ""
-    ].join("|");
-  }).join("||");
-}
-
-async function loadActivityRuns() {
-  try {
-    const response = await fetch(`${AGENT_RUNS_ENDPOINT}?limit=300`);
-    if (!response.ok) throw new Error(`Failed to load agent runs (${response.status})`);
-    const payload = await response.json();
-    const nextRuns = Array.isArray(payload?.runs) ? payload.runs : [];
-    console.info("[ActivityRuns] Loaded runs snapshot.", {
-      count: nextRuns.length,
-      sample: nextRuns.slice(0, 5).map((run) => ({
-        runId: run?.runId || "",
-        agentId: run?.agentId ?? null,
-        configId: run?.configId ?? null,
-        agentPath: run?.agentPath || "",
-        configPath: run?.configPath || ""
-      }))
-    });
-    const nextSignature = buildActivityRenderSignature(nextRuns);
-    const hasStructuralChanges = nextSignature !== activityRenderSignature;
-    activityRuns = nextRuns;
-    if (activitySelectedRunId && !activityRuns.some((run) => run.runId === activitySelectedRunId)) {
-      activitySelectedRunId = "";
-      activityLogsSince = 0;
-      activityLogEntries = [];
-    }
-    if (hasStructuralChanges) {
-      activityRenderSignature = nextSignature;
-      renderActivityStats();
-      renderActivityList();
-      renderActivityDetail();
-    }
-    refreshVisibleTimers();
-    if (activityLastUpdated) {
-      activityLastUpdated.textContent = `Last updated ${new Date().toLocaleTimeString()}`;
-    }
-  } catch (error) {
-    if (activityList) {
-      activityList.innerHTML = `<p class="activity-list-empty">${escapeHtml(error?.message || "Unable to load activity")}</p>`;
-    }
-  }
-}
-
-async function loadActivityLogs(fullReload = false) {
-  if (!activitySelectedRunId) return;
-  if (fullReload) {
-    activityLogsSince = 0;
-    activityLogEntries = [];
-  }
-
-  const response = await fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(activitySelectedRunId)}/logs?since=${activityLogsSince}`);
-  if (!response.ok) return;
-
-  const payload = await response.json();
-  const entries = Array.isArray(payload?.entries) ? payload.entries : [];
-  entries.forEach((entry) => {
-    activityLogEntries.push({
-      stream: entry?.stream || "stdout",
-      text: String(entry?.text || ""),
-      timestamp: entry?.timestamp || ""
-    });
-  });
-  activityLogsSince = Number(payload?.nextSince || activityLogsSince);
-  renderActivityLogStream();
-}
-
-function clearActivityPolling() {
-  if (activityPollTimer) {
-    clearTimeout(activityPollTimer);
-    activityPollTimer = null;
-  }
-}
-
-function hasLiveActivityRuns() {
-  return activityRuns.some((run) => isRunLive(run));
-}
-
-function startActivityPolling() {
-  clearActivityPolling();
-  void pollActivity();
-}
-
-async function pollActivity() {
-  if (activeTopPage !== "activity") return;
-  await loadActivityRuns();
-  if (activitySelectedRunId) {
-    await loadActivityLogs(false);
-  }
-  if (!hasLiveActivityRuns()) {
-    clearActivityPolling();
-    return;
-  }
-  activityPollTimer = setTimeout(pollActivity, 1800);
-}
-
-function setActivityFilter(filter) {
-  activityFilter = filter || "all";
-  activityFilters?.querySelectorAll("[data-activity-filter]").forEach((button) => {
-    button.classList.toggle("active", button.getAttribute("data-activity-filter") === activityFilter);
-  });
-  renderActivityList();
-  refreshVisibleTimers();
-}
-
-async function selectActivityRun(runId) {
-  activitySelectedRunId = runId;
-  renderActivityList();
-  renderActivityDetail();
-  await loadActivityLogs(true);
-}
-
-async function killActivityRun(runId) {
-  const response = await fetch(`${AGENT_RUNS_ENDPOINT}/${encodeURIComponent(runId)}/kill`, { method: "POST" });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload?.error || `Unable to cancel run (${response.status})`);
-  }
-  await loadActivityRuns();
-  if (activitySelectedRunId === runId) {
-    await loadActivityLogs(true);
-    renderActivityDetail();
-  }
-}
-
-function setupActivityDashboard() {
-  if (!activityPage) return;
-
-  activityFilters?.querySelectorAll("[data-activity-filter]").forEach((button) => {
-    button.addEventListener("click", () => setActivityFilter(button.getAttribute("data-activity-filter") || "all"));
-  });
-
-  activityList?.addEventListener("click", (event) => {
-    const killButton = event.target.closest("[data-activity-kill]");
-    if (killButton) {
-      event.stopPropagation();
-      const runId = killButton.getAttribute("data-activity-kill") || "";
-      if (runId) {
-        killActivityRun(runId).catch((error) => window.alert(error?.message || "Unable to cancel run."));
-      }
-      return;
-    }
-
-    const rerunButton = event.target.closest("[data-activity-rerun]");
-    if (rerunButton) {
-      event.stopPropagation();
-      const runId = rerunButton.getAttribute("data-activity-rerun") || "";
-      void prefillRunBuilderFromActivityRun(runId);
-      setActiveTopPage("agents");
-      return;
-    }
-
-    const openButton = event.target.closest("[data-activity-open]");
-    const row = event.target.closest("[data-run-id]");
-    const runId = openButton?.getAttribute("data-activity-open") || row?.getAttribute("data-run-id") || "";
-    if (runId) {
-      const shouldOpenStream = Boolean(openButton);
-      selectActivityRun(runId).then(() => {
-        if (shouldOpenStream) {
-          openActivityStreamPanel();
-        }
-      }).catch(() => {});
-    }
-  });
-
-  [activityDetailAgent, activityDetailConfig].forEach((element) => {
-    element?.addEventListener("click", () => {
-      if (!activitySelectedRunId) return;
-      const run = activityRuns.find((entry) => entry.runId === activitySelectedRunId);
-      if (!run) return;
-      const pathValue = element === activityDetailAgent ? run.agentPath : run.configPath;
-      openDefinitionDetailsByPath(pathValue);
-    });
-    element?.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      element.click();
-    });
-  });
-
-  activityRefreshButton?.addEventListener("click", () => {
-    loadActivityRuns().then(() => {
-      if (activitySelectedRunId) return loadActivityLogs(false);
-      return null;
-    }).finally(() => {
-      if (activeTopPage === "activity" && hasLiveActivityRuns() && !activityPollTimer) {
-        startActivityPolling();
-      }
-    });
-  });
-
-  activityCancelButton?.addEventListener("click", () => {
-    if (!activitySelectedRunId) return;
-    killActivityRun(activitySelectedRunId).catch((error) => window.alert(error?.message || "Unable to cancel run."));
-  });
-
-  activityRerunButton?.addEventListener("click", () => {
-    void prefillRunBuilderFromActivityRun(activitySelectedRunId);
-    setActiveTopPage("agents");
-  });
-
-  activityOpenStreamButton?.addEventListener("click", () => {
-    if (!activitySelectedRunId) return;
-    openActivityStreamPanel();
-  });
-
-  activityCloseStreamButton?.addEventListener("click", () => {
-    closeActivityStreamPanel();
-  });
-
-  activityStreamBackdrop?.addEventListener("click", () => {
-    closeActivityStreamPanel();
-  });
-
-  activityWrapButton?.addEventListener("click", () => {
-    activityWrapEnabled = !activityWrapEnabled;
-    activityWrapButton.classList.toggle("active", activityWrapEnabled);
-    activityLog?.classList.toggle("no-wrap", !activityWrapEnabled);
-  });
-
-  activityClearLogsButton?.addEventListener("click", () => {
-    activityLogEntries = [];
-    renderActivityLogStream();
-  });
-
-  updateActivityScrollLockState(activityScrollLocked);
-
-  activityScrollLockButton?.addEventListener("click", () => {
-    const nextLockedState = !activityScrollLocked;
-    updateActivityScrollLockState(nextLockedState, { forceScrollToBottom: !nextLockedState });
-  });
-
-  activityCopyLogsButton?.addEventListener("click", async () => {
-    const raw = activityLogEntries.map((entry) => `[${getLogTimestamp(entry)}] ${String(entry?.text || "").trimEnd()}`).join("\n");
-    if (!raw) return;
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(raw);
-    }
-  });
-
-  activityExportLogsButton?.addEventListener("click", () => {
-    if (!activitySelectedRunId || !activityLogEntries.length) return;
-    const raw = activityLogEntries.map((entry) => `[${getLogTimestamp(entry)}] ${String(entry?.text || "").trimEnd()}`).join("\n");
-    const blob = new Blob([raw], { type: "text/plain" });
-    const anchor = document.createElement("a");
-    anchor.href = URL.createObjectURL(blob);
-    anchor.download = `${activitySelectedRunId}-logs.txt`;
-    anchor.click();
-  });
-
-  activityNewRunButton?.addEventListener("click", () => {
-    setActiveTopPage("agents");
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isActivityStreamOpen) {
-      closeActivityStreamPanel();
-    }
-  });
-
-  if (!activityTickerTimer) {
-    activityTickerTimer = setInterval(refreshVisibleTimers, 1000);
-  }
-
-  loadActivityRuns().catch(() => {});
 }
 
 async function handleRunAgentClick() {
@@ -1587,8 +1171,7 @@ function updatePageTabBadges() {
   const hasSelectedProject = Boolean(String(devProjectInput?.value || "").trim());
   const installedCount = definitions.filter((definition) => definition.status === "saved" && hasSelectedProject).length;
   const favoritesCount = definitions.filter((definition) => isFavoriteDefinition(definition.id)).length;
-  const runsForBadge = typeof activityRuns !== "undefined" && Array.isArray(activityRuns) ? activityRuns : [];
-  const activityCount = runsForBadge.filter((run) => ["running", "launched"].includes(mapRunStatus(run))).length;
+  const activityCount = activityDashboardController.getRuns().filter((run) => ["running", "launched"].includes(mapRunStatus(run))).length;
 
   const applyBadgeValue = (element, value) => {
     if (!element) return;
@@ -1647,12 +1230,7 @@ function setActiveTopPage(page) {
   renderCards();
   renderRunBuilder();
 
-  if (activeTopPage === "activity") {
-    startActivityPolling();
-  } else {
-    clearActivityPolling();
-    closeActivityStreamPanel();
-  }
+  activityDashboardController.handleTopPageChange(activeTopPage);
 }
 
 function updateFavoriteDefinitionButton() {
@@ -2589,72 +2167,6 @@ async function fetchDefinitionSuggestions() {
   }
 }
 
-function parseAiSuggestionPayload(rawContent) {
-  const text = String(rawContent || "").trim();
-  if (!text) return null;
-
-  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fencedMatch?.[1] ? fencedMatch[1].trim() : text;
-
-  try {
-    return JSON.parse(candidate);
-  } catch (_error) {
-    const objectMatch = candidate.match(/\{[\s\S]*\}/);
-    if (!objectMatch) return null;
-    try {
-      return JSON.parse(objectMatch[0]);
-    } catch (_nestedError) {
-      return null;
-    }
-  }
-}
-
-function normalizeAiSuggestedEntries(items = []) {
-  const seen = new Set();
-  const normalized = [];
-
-  items.forEach((item, index) => {
-    const definitionId = Number(item?.definitionId);
-    if (!Number.isFinite(definitionId) || seen.has(definitionId)) {
-      return;
-    }
-
-    const score = Number(item?.score);
-    normalized.push({
-      definitionId,
-      score: Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : Math.max(100 - (index * 6), 40),
-      reasons: Array.isArray(item?.reasons)
-        ? item.reasons.map((reason) => String(reason || "").trim()).filter(Boolean).slice(0, 4)
-        : []
-    });
-    seen.add(definitionId);
-  });
-
-  return normalized;
-}
-
-function buildIntentSearchCatalogSnapshot(sourceDefinitions = []) {
-  return sourceDefinitions.map((definition) => {
-    const tags = Array.isArray(definition.tags) ? definition.tags.slice(0, 8) : [];
-    const description = String(definition.description || "").trim();
-    return {
-      id: Number(definition.id),
-      name: String(definition.name || "").slice(0, 120),
-      description: description.slice(0, 260),
-      type: definition.type,
-      tags
-    };
-  });
-}
-
-function truncateForIntentSearchLog(value, maxLength = 300) {
-  const normalized = String(value || "").replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, maxLength)}...`;
-}
-
 async function requestIntentSuggestions(intent = "") {
   const normalizedIntent = String(intent || "").trim();
   if (!normalizedIntent) {
@@ -2824,8 +2336,7 @@ async function fetchDefinitions() {
 
   renderFilters();
   renderCards();
-  renderActivityList();
-  renderActivityDetail();
+  activityDashboardController.refreshActivityPanels();
 }
 
 
@@ -3223,94 +2734,10 @@ async function showDetails(id) {
   showDetailPage();
 }
 
-function normalizeDestinationCompatibilityType(type) {
-  const normalizedType = normalizeFilterType(type);
-  if (normalizedType === "mcp servers") return "mcpservers";
-  return normalizedType;
-}
-
-function getSupportedDestinationOptions(definition = {}) {
-  const normalizedType = normalizeDestinationCompatibilityType(definition?.type);
-  if (!normalizedType || normalizedType === "unknown") return [];
-  return INSTALL_DESTINATION_OPTIONS.filter((option) => DESTINATION_COMPATIBILITY[option.key]?.has(normalizedType));
-}
-
-function getDestinationLogoPath(destinationKey) {
-  const normalizedKey = String(destinationKey || "").trim().toLowerCase();
-  const currentTheme = String(document.documentElement.getAttribute("data-theme") || "dark").trim().toLowerCase();
-  const logoTone = currentTheme === "light" ? "black" : "white";
-  if (!["continue", "copilot", "gemini"].includes(normalizedKey)) return "";
-  return `/img/${normalizedKey}_small_${logoTone}_logo.png`;
-}
-
-function getDestinationLabel(destination) {
-  const normalizedDestination = String(destination || "continue").trim().toLowerCase();
-  if (normalizedDestination === "copilot") return "GitHub Copilot";
-  if (normalizedDestination === "gemini") return "Gemini CLI";
-  return "Continue";
-}
-
-function getInstalledDestinationSet(definition = {}) {
-  const installed = Array.isArray(definition?.installedDestinations) ? definition.installedDestinations : [];
-  return new Set(installed.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean));
-}
-
 function closeInstallDestinationMenu() {
   if (!activeInstallDestinationMenu) return;
   activeInstallDestinationMenu.cleanup?.();
   activeInstallDestinationMenu = null;
-}
-
-function formatSkippedReason(skippedItem) {
-  const reason = String(skippedItem?.reason || "not_exported").trim().toLowerCase();
-  const message = String(skippedItem?.message || "").trim();
-  const reasonLabels = {
-    unknown_destination: "unknown destination",
-    unsupported_type_for_destination: "unsupported definition type",
-    conversion_failed: "conversion failed",
-    no_write_plan: "no output generated",
-    unsupported_destination: "unsupported destination",
-    unknown_operation: "unsupported write operation"
-  };
-
-  const label = reasonLabels[reason] || reason.replace(/_/g, " ");
-  return message ? `${label} (${message})` : label;
-}
-
-function buildInstallExportSummary(result, destination) {
-  const normalizedDestination = String(destination || "continue").trim().toLowerCase();
-  const destinationLabel = normalizedDestination === "continue"
-    ? "current project"
-    : normalizedDestination === "copilot"
-      ? "GitHub Copilot"
-      : normalizedDestination === "gemini"
-        ? "Gemini CLI"
-        : normalizedDestination;
-
-  const writtenFiles = Array.isArray(result?.writtenFiles) ? result.writtenFiles : [];
-  const skipped = Array.isArray(result?.skipped) ? result.skipped : [];
-  const exportedCount = Number.isFinite(Number(result?.exportedCount))
-    ? Number(result.exportedCount)
-    : (result?.exported ? 1 : 0);
-
-  const lines = [
-    normalizedDestination === "continue"
-      ? "Definition installed in current project."
-      : `Definition exported to ${destinationLabel}.`,
-    `Exported: ${exportedCount}`,
-    `Files written: ${writtenFiles.length}`,
-    `Skipped definitions: ${skipped.length}`
-  ];
-
-  if (skipped.length > 0) {
-    lines.push("Skipped details:");
-    skipped.forEach((entry, index) => {
-      const label = entry?.name || entry?.key || entry?.definitionKey || `Definition ${index + 1}`;
-      lines.push(`- ${label}: ${formatSkippedReason(entry)}`);
-    });
-  }
-
-  return lines.join("\n");
 }
 
 
@@ -3941,7 +3368,7 @@ export function initializeApp() {
   setupRecommendationsSection();
   setupEventListeners();
   setupRunBuilder();
-  setupActivityDashboard();
+  activityDashboardController.setupActivityDashboard();
   loadDevProjects();
   loadCurrentDevProject()
     .then(loadSuggestionsForCurrentProject)
