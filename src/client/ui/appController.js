@@ -471,6 +471,7 @@ const activityDashboardController = createActivityDashboardController({
   agentRunsEndpoint: AGENT_RUNS_ENDPOINT,
   updatePageTabBadges,
   prefillRunBuilderFromActivityRun,
+  resetRunAgentForm,
   setActiveTopPage,
   getActiveTopPage: () => activeTopPage,
 });

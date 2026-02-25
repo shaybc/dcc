@@ -8,6 +8,7 @@ export function createActivityDashboardController({
   agentRunsEndpoint,
   updatePageTabBadges,
   prefillRunBuilderFromActivityRun,
+  resetRunAgentForm,
   setActiveTopPage,
   getActiveTopPage,
 }) {
@@ -522,6 +523,7 @@ export function createActivityDashboardController({
     });
 
     activityNewRunButton?.addEventListener("click", () => {
+      resetRunAgentForm?.();
       setActiveTopPage("agents");
     });
 
