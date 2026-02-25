@@ -467,7 +467,7 @@ const activityDashboardController = createActivityDashboardController({
   },
   formatRunOptionSummary,
   escapeHtml,
-  fetchWithErrorHandling,
+  fetchWithErrorHandling: (...args) => fetchWithErrorHandling(...args),
   agentRunsEndpoint: AGENT_RUNS_ENDPOINT,
   updatePageTabBadges,
   prefillRunBuilderFromActivityRun,
