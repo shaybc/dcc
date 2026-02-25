@@ -263,6 +263,25 @@ let definitions = [];
 let suggestionDefinitionIds = [];
 let suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
 let latestSuggestionIntent = "";
+const preferencesStorage = createPreferencesStorage({
+  recommendationsVisibilityStorageKey: RECOMMENDATIONS_VISIBILITY_STORAGE_KEY,
+  intentRecommendationsStorageKey: INTENT_RECOMMENDATIONS_STORAGE_KEY,
+  hideInstalledDefinitionsStorageKey: HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY,
+  onlyLocalDefinitionsStorageKey: ONLY_LOCAL_DEFINITIONS_STORAGE_KEY,
+  normalizeAiSuggestedEntries,
+});
+const {
+  getStoredRecommendationsVisibility,
+  persistRecommendationsVisibility,
+  getStoredIntentRecommendations,
+  persistIntentRecommendations,
+  clearPersistedIntentRecommendations,
+  getStoredHideInstalledDefinitions,
+  persistHideInstalledDefinitions,
+  getStoredOnlyLocalDefinitions,
+  persistOnlyLocalDefinitions,
+} = preferencesStorage;
+let recommendationsVisible = getStoredRecommendationsVisibility();
 let activeInstallDestinationMenu = null;
 
 let currentCardsPage = 1;
