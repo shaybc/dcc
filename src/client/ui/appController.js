@@ -45,189 +45,224 @@ import {
   persistRecentAgentRunPacks,
 } from "./appController/recentRunPackStorage.js";
 
-const cardsContainer = document.getElementById("cards");
-const definitionsCountLabel = document.getElementById("definitionsCountLabel");
-const paginationContainer = document.getElementById("pagination");
-const filtersContainer = document.getElementById("filters");
-const searchInput = document.getElementById("search");
-const clearSearchButton = document.getElementById("clearSearch");
-const searchField = document.querySelector(".search-field");
-const filterButton = document.getElementById("filterButton");
-const filterMenu = document.getElementById("filterMenu");
-const hubHeader = document.getElementById("hubHeader");
-const hubMain = document.getElementById("hubMain");
-const detailPage = document.getElementById("detailPage");
-const closeModal = document.getElementById("closeModal");
-const detailTitle = document.getElementById("detailTitle");
-const detailDescription = document.getElementById("detailDescription");
-const detailContent = document.getElementById("detailContent");
-const detailStatus = document.getElementById("detailStatus");
-const detailTypeIcon = document.getElementById("detailTypeIcon");
-const detailTypeMetaIcon = document.getElementById("detailTypeMetaIcon");
-const detailTypeText = document.getElementById("detailTypeText");
-const detailCreatedDate = document.getElementById("detailCreatedDate");
-const detailDccUri = document.getElementById("detailDccUri");
-const detailRepoOrigin = document.getElementById("detailRepoOrigin");
-const detailTags = document.getElementById("detailTags");
-const detailVersionMeta = document.getElementById("detailVersionMeta");
-const copyDefinitionButton = document.getElementById("copyDefinition");
-const autoTagDefinitionButton = document.getElementById("autoTagDefinition");
-const editDefinitionButton = document.getElementById("editDefinition");
-const newDefinitionButton = document.getElementById("newDefinitionButton");
-const newDefinitionMenu = document.getElementById("newDefinitionMenu");
-const generateDefinitionMenuItem = document.getElementById("generateDefinitionMenuItem");
-const recommendationsToggleButton = document.getElementById("recommendationsToggleButton");
-const hubMenuToggleButton = document.getElementById("hubMenuToggle");
-const hubMenu = document.getElementById("hubMenu");
-const localDefinitionsToggle = document.getElementById("localDefinitionsToggle");
-const hideInstalledMenuToggle = document.getElementById("hideInstalledMenuToggle");
-const userGuideSeparator = document.getElementById("userGuideSeparator");
-const installGuideMenuItem = document.getElementById("installGuideMenuItem");
-const settingsMenuItem = document.getElementById("settingsMenuItem");
-const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
-const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
-const versionHistoryButton = document.getElementById("versionHistoryButton");
-const deleteDefinitionButton = document.getElementById("deleteDefinition");
-const installDefinitionButton = document.getElementById("installDefinition");
-const favoriteDefinitionButton = document.getElementById("favoriteDefinition");
-const topNav = document.getElementById("topNav");
-const activityPage = document.getElementById("activityPage");
-const agentsPage = document.getElementById("agentsPage");
-const runAgentButton = document.getElementById("runAgentButton");
-const runAgentStage = document.getElementById("runAgentStage");
-const runConfigStage = document.getElementById("runConfigStage");
-const runPromptStage = document.getElementById("runPromptStage");
-const runPromptInput = document.getElementById("runPromptInput");
-const runPromptCharCount = document.getElementById("runPromptCharCount");
-const runPromptClearButton = document.getElementById("runPromptClearButton");
-const runParamsStage = document.getElementById("runParamsStage");
-const runParamVerbose = document.getElementById("runParamVerbose");
-const runParamReadonly = document.getElementById("runParamReadonly");
-const runParamDenyRead = document.getElementById("runParamDenyRead");
-const runParamDenyList = document.getElementById("runParamDenyList");
-const runParamDenySearch = document.getElementById("runParamDenySearch");
-const runParamDenyFetch = document.getElementById("runParamDenyFetch");
-const runParamDenyDiff = document.getElementById("runParamDenyDiff");
-const runParamAllowWrite = document.getElementById("runParamAllowWrite");
-const runParamAllowEdit = document.getElementById("runParamAllowEdit");
-const runParamAllowMultiEdit = document.getElementById("runParamAllowMultiEdit");
-const runParamAllowTerminal = document.getElementById("runParamAllowTerminal");
-const runParamAllowOnlyEnabled = document.getElementById("runParamAllowOnlyEnabled");
-const runParamAllowOnlyList = document.getElementById("runParamAllowOnlyList");
-const runParamAllowOnlyAdd = document.getElementById("runParamAllowOnlyAdd");
-const runParamDenyTerminalEnabled = document.getElementById("runParamDenyTerminalEnabled");
-const runParamDenyTerminalList = document.getElementById("runParamDenyTerminalList");
-const runParamDenyTerminalAdd = document.getElementById("runParamDenyTerminalAdd");
-const runAgentStatusBar = document.getElementById("runAgentStatusBar");
-const runAgentStatusText = document.getElementById("runAgentStatusText");
-const runAgentCheckAgent = document.getElementById("runAgentCheckAgent");
-const runAgentCheckConfig = document.getElementById("runAgentCheckConfig");
-const runAgentCheckReady = document.getElementById("runAgentCheckReady");
-const runPickerTitle = document.getElementById("runPickerTitle");
-const runPickerSubtitle = document.getElementById("runPickerSubtitle");
-const runPickerSearch = document.getElementById("runPickerSearch");
-const runPickerTabs = document.getElementById("runPickerTabs");
-const runPickerList = document.getElementById("runPickerList");
-const runPickerFooter = document.getElementById("runPickerFooter");
-const runPickerApplyButton = document.getElementById("runPickerApplyButton");
-const discoverTabBadge = document.getElementById("discoverTabBadge");
-const installedTabBadge = document.getElementById("installedTabBadge");
-const favoritesTabBadge = document.getElementById("favoritesTabBadge");
-const activityTabBadge = document.getElementById("activityTabBadge");
-const activityList = document.getElementById("activityList");
-const activityFilters = document.getElementById("activityFilters");
-const activityDetailEmpty = document.getElementById("activityDetailEmpty");
-const activityDetailCard = document.getElementById("activityDetailCard");
-const activityDetailName = document.getElementById("activityDetailName");
-const activityDetailStatus = document.getElementById("activityDetailStatus");
-const activityDetailRunId = document.getElementById("activityDetailRunId");
-const activityDetailAgent = document.getElementById("activityDetailAgent");
-const activityDetailConfig = document.getElementById("activityDetailConfig");
-const activityDetailAgentPath = document.getElementById("activityDetailAgentPath");
-const activityDetailConfigPath = document.getElementById("activityDetailConfigPath");
-const activityDetailPid = document.getElementById("activityDetailPid");
-const activityDetailStarted = document.getElementById("activityDetailStarted");
-const activityDetailDuration = document.getElementById("activityDetailDuration");
-const activityDetailExit = document.getElementById("activityDetailExit");
-const activityDetailSelectedParams = document.getElementById("activityDetailSelectedParams");
-const activityDetailCommandLine = document.getElementById("activityDetailCommandLine");
-const activityLog = document.getElementById("activityLog");
-const activityLiveDot = document.getElementById("activityLiveDot");
-const activityStreamBackdrop = document.getElementById("activityStreamBackdrop");
-const activityStreamPanel = document.getElementById("activityStreamPanel");
-const activityOpenStreamButton = document.getElementById("activityOpenStreamButton");
-const activityCloseStreamButton = document.getElementById("activityCloseStreamButton");
-const activityCancelButton = document.getElementById("activityCancelButton");
-const activityRerunButton = document.getElementById("activityRerunButton");
-const activityRefreshButton = document.getElementById("activityRefreshButton");
-const activityWrapButton = document.getElementById("activityWrapButton");
-const activityClearLogsButton = document.getElementById("activityClearLogsButton");
-const activityCopyLogsButton = document.getElementById("activityCopyLogsButton");
-const activityScrollLockButton = document.getElementById("activityScrollLockButton");
-const activityExportLogsButton = document.getElementById("activityExportLogsButton");
-const activityNewRunButton = document.getElementById("activityNewRunButton");
-const activityLastUpdated = document.getElementById("activityLastUpdated");
-const activityStatLaunched = document.getElementById("activityStatLaunched");
-const activityStatRunning = document.getElementById("activityStatRunning");
-const activityStatFinished = document.getElementById("activityStatFinished");
-const activityStatCancelled = document.getElementById("activityStatCancelled");
-const versionBanner = document.getElementById("versionBanner");
-const definitionTabPreview = document.getElementById("definitionTabPreview");
-const definitionTabSource = document.getElementById("definitionTabSource");
-const definitionTabTest = document.getElementById("definitionTabTest");
-const definitionPreviewPanel = document.getElementById("definitionPreviewPanel");
-const definitionSourcePanel = document.getElementById("definitionSourcePanel");
-const definitionTestPanel = document.getElementById("definitionTestPanel");
-const definitionPreviewContent = document.getElementById("definitionPreviewContent");
-const diffControls = document.getElementById("diffControls");
-const enableDiffMode = document.getElementById("enableDiffMode");
-const diffIgnoreWhitespace = document.getElementById("diffIgnoreWhitespace");
-const diffCompareBar = document.getElementById("diffCompareBar");
-const diffVersionMode = document.getElementById("diffVersionMode");
-const versionSelectA = document.getElementById("versionSelectA");
-const versionSelectB = document.getElementById("versionSelectB");
-const diffContainer = document.getElementById("diffContainer");
-const diffStatistics = document.getElementById("diffStatistics");
-const diffNavigation = document.getElementById("diffNavigation");
-const diffAddedLines = document.getElementById("diffAddedLines");
-const diffRemovedLines = document.getElementById("diffRemovedLines");
-const diffModifiedLines = document.getElementById("diffModifiedLines");
-const prevChangeBtn = document.getElementById("prevChangeBtn");
-const nextChangeBtn = document.getElementById("nextChangeBtn");
-const currentChangeIndex = document.getElementById("currentChangeIndex");
-const totalChanges = document.getElementById("totalChanges");
-const diffModeButtons = document.querySelectorAll(".diff-mode-btn");
-const runValidationButton = document.getElementById("runValidationButton");
-const copyValidationReportButton = document.getElementById("copyValidationReportButton");
-const validationStrictToggle = document.getElementById("validationStrictToggle");
-const validationLintToggle = document.getElementById("validationLintToggle");
-const validationReferencesToggle = document.getElementById("validationReferencesToggle");
-const validationAutoRunToggle = document.getElementById("validationAutoRunToggle");
-const validationSeverityFilter = document.getElementById("validationSeverityFilter");
-const validationResults = document.getElementById("validationResults");
-const validationLastRun = document.getElementById("validationLastRun");
-const devProjectInput = document.getElementById("devProjectSelect");
-const devProjectOptions = document.getElementById("devProjectOptions");
-const recommendationsSection = document.createElement("section");
-const recommendationsTitle = document.createElement("h2");
-const recommendationsActions = document.createElement("div");
-const recommendationsAiButton = document.createElement("button");
-const recommendationsMeta = document.createElement("p");
-const recommendationsState = document.createElement("p");
-const recommendationsCards = document.createElement("div");
-const recommendationsCardsContainer = document.createElement("div");
-const recommendationsInstallAllButton = document.createElement("button");
-const recommendationsDivider = document.createElement("div");
-const recommendationsContent = document.createElement("div");
+import {
+  AGENT_RUNS_ENDPOINT,
+  CARDS_PER_PAGE,
+  COMMON_DEFINITION_HELP_PAGE_PATH,
+  DEFINITION_HELP_PAGE_BY_TYPE,
+  DEFINITION_TYPE_ALIASES,
+  DESTINATION_COMPATIBILITY,
+  FAVORITE_DEFINITION_IDS_STORAGE_KEY,
+  FILTER_TYPE_SET,
+  FILTER_TYPES,
+  GENERATED_DEFINITION_STORAGE_KEY,
+  GENERATABLE_DEFINITION_TYPES,
+  HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY,
+  INSTALL_DESTINATION_OPTIONS,
+  INTENT_RECOMMENDATIONS_STORAGE_KEY,
+  MAX_CARD_TAG_PILLS,
+  ONLY_LOCAL_DEFINITIONS_STORAGE_KEY,
+  RECOMMENDATIONS_VISIBILITY_STORAGE_KEY,
+  RECENT_AGENT_RUN_PACKS_ENDPOINT,
+  RECENT_AGENT_RUNS_STORAGE_KEY,
+  SPECIAL_FILTERS,
+} from "./appController/constants.js";
+
+import {
+  formatDuration,
+  formatDurationSeconds,
+  formatLogLevel,
+  getFullRunPath,
+  getLogTimestamp,
+  getRunElapsedSeconds,
+  getStatusGroupLabel,
+  getStatusIcon,
+  isRunCancelable,
+  isRunLive,
+  mapRunStatus,
+} from "./appController/activityRunUtils.js";
+
+import {
+  cardsContainer,
+  definitionsCountLabel,
+  paginationContainer,
+  filtersContainer,
+  searchInput,
+  clearSearchButton,
+  searchField,
+  filterButton,
+  filterMenu,
+  hubHeader,
+  hubMain,
+  detailPage,
+  closeModal,
+  detailTitle,
+  detailDescription,
+  detailContent,
+  detailStatus,
+  detailTypeIcon,
+  detailTypeMetaIcon,
+  detailTypeText,
+  detailCreatedDate,
+  detailDccUri,
+  detailRepoOrigin,
+  detailTags,
+  detailVersionMeta,
+  copyDefinitionButton,
+  autoTagDefinitionButton,
+  editDefinitionButton,
+  newDefinitionButton,
+  newDefinitionMenu,
+  generateDefinitionMenuItem,
+  recommendationsToggleButton,
+  hubMenuToggleButton,
+  hubMenu,
+  localDefinitionsToggle,
+  hideInstalledMenuToggle,
+  userGuideSeparator,
+  installGuideMenuItem,
+  settingsMenuItem,
+  duplicateDefinitionButton,
+  pushUpstreamDefinitionButton,
+  versionHistoryButton,
+  deleteDefinitionButton,
+  installDefinitionButton,
+  favoriteDefinitionButton,
+  topNav,
+  activityPage,
+  agentsPage,
+  runAgentButton,
+  runAgentStage,
+  runConfigStage,
+  runPromptStage,
+  runPromptInput,
+  runPromptCharCount,
+  runPromptClearButton,
+  runParamsStage,
+  runParamVerbose,
+  runParamReadonly,
+  runParamDenyRead,
+  runParamDenyList,
+  runParamDenySearch,
+  runParamDenyFetch,
+  runParamDenyDiff,
+  runParamAllowWrite,
+  runParamAllowEdit,
+  runParamAllowMultiEdit,
+  runParamAllowTerminal,
+  runParamAllowOnlyEnabled,
+  runParamAllowOnlyList,
+  runParamAllowOnlyAdd,
+  runParamDenyTerminalEnabled,
+  runParamDenyTerminalList,
+  runParamDenyTerminalAdd,
+  runAgentStatusBar,
+  runAgentStatusText,
+  runAgentCheckAgent,
+  runAgentCheckConfig,
+  runAgentCheckReady,
+  runPickerTitle,
+  runPickerSubtitle,
+  runPickerSearch,
+  runPickerTabs,
+  runPickerList,
+  runPickerFooter,
+  runPickerApplyButton,
+  discoverTabBadge,
+  installedTabBadge,
+  favoritesTabBadge,
+  activityTabBadge,
+  activityList,
+  activityFilters,
+  activityDetailEmpty,
+  activityDetailCard,
+  activityDetailName,
+  activityDetailStatus,
+  activityDetailRunId,
+  activityDetailAgent,
+  activityDetailConfig,
+  activityDetailAgentPath,
+  activityDetailConfigPath,
+  activityDetailPid,
+  activityDetailStarted,
+  activityDetailDuration,
+  activityDetailExit,
+  activityDetailSelectedParams,
+  activityDetailCommandLine,
+  activityLog,
+  activityLiveDot,
+  activityStreamBackdrop,
+  activityStreamPanel,
+  activityOpenStreamButton,
+  activityCloseStreamButton,
+  activityCancelButton,
+  activityRerunButton,
+  activityRefreshButton,
+  activityWrapButton,
+  activityClearLogsButton,
+  activityCopyLogsButton,
+  activityScrollLockButton,
+  activityExportLogsButton,
+  activityNewRunButton,
+  activityLastUpdated,
+  activityStatLaunched,
+  activityStatRunning,
+  activityStatFinished,
+  activityStatCancelled,
+  versionBanner,
+  definitionTabPreview,
+  definitionTabSource,
+  definitionTabTest,
+  definitionPreviewPanel,
+  definitionSourcePanel,
+  definitionTestPanel,
+  definitionPreviewContent,
+  diffControls,
+  enableDiffMode,
+  diffIgnoreWhitespace,
+  diffCompareBar,
+  diffVersionMode,
+  versionSelectA,
+  versionSelectB,
+  diffContainer,
+  diffStatistics,
+  diffNavigation,
+  diffAddedLines,
+  diffRemovedLines,
+  diffModifiedLines,
+  prevChangeBtn,
+  nextChangeBtn,
+  currentChangeIndex,
+  totalChanges,
+  diffModeButtons,
+  runValidationButton,
+  copyValidationReportButton,
+  validationStrictToggle,
+  validationLintToggle,
+  validationReferencesToggle,
+  validationAutoRunToggle,
+  validationSeverityFilter,
+  validationResults,
+  validationLastRun,
+  devProjectInput,
+  devProjectOptions,
+  recommendationsSection,
+  recommendationsTitle,
+  recommendationsActions,
+  recommendationsAiButton,
+  recommendationsMeta,
+  recommendationsState,
+  recommendationsCards,
+  recommendationsCardsContainer,
+  recommendationsInstallAllButton,
+  recommendationsDivider,
+  recommendationsContent,
+} from "./appController/domElements.js";
 
 let definitions = [];
 let suggestionDefinitionIds = [];
 let suggestionsMeta = { projectPath: "", projectType: "", corePlatform: "", suggestions: [] };
 let latestSuggestionIntent = "";
-const RECOMMENDATIONS_VISIBILITY_STORAGE_KEY = "dcc.recommendations.visible";
-const INTENT_RECOMMENDATIONS_STORAGE_KEY = "dcc.recommendations.intent";
-const HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY = "dcc.hub.hideInstalledDefinitions";
-const ONLY_LOCAL_DEFINITIONS_STORAGE_KEY = "dcc.hub.onlyLocalDefinitions";
 const preferencesStorage = createPreferencesStorage({
   recommendationsVisibilityStorageKey: RECOMMENDATIONS_VISIBILITY_STORAGE_KEY,
   intentRecommendationsStorageKey: INTENT_RECOMMENDATIONS_STORAGE_KEY,
@@ -247,88 +282,11 @@ const {
   persistOnlyLocalDefinitions,
 } = preferencesStorage;
 let recommendationsVisible = getStoredRecommendationsVisibility();
-let activeFilter = "all";
-let searchTerm = "";
-let semanticSearchState = { query: "", suggestions: [], error: "" };
-let tagFilterMode = "or";
-let showUntaggedDefinitions = false;
-let tagFilterSearchTerm = "";
-const selectedTagFilters = new Set();
-let devProjects = [];
-let currentDetailDefinitionId = null;
-let currentDetailDefinitionSource = "";
-let currentDetailDefinitionName = "";
-let currentDetailDefinitionPath = "";
-let currentDetailDefinitionContent = "";
-let currentDetailDefinitionDccUri = "";
-let currentDetailDefinitionStatus = "";
-let currentDetailDefinitionTags = [];
-let currentDetailInstalledDestinations = [];
-let currentDefinitionVersion = "";
-let activeHistoricalVersion = "";
-let activeVersionDropdown = null;
-let lastValidationResult = null;
-let validationAutoRunTimeout = null;
-let diffService = null;
-let currentDefinitionVersions = [];
-
-const FILTER_TYPES = ["models", "mcp servers", "rules", "prompts", "agents", "context", "workflows", "docs", "configs", "unknown"];
-const SPECIAL_FILTERS = [];
-const GENERATED_DEFINITION_STORAGE_KEY = "dcc.generated.definition";
-const GENERATABLE_DEFINITION_TYPES = ["prompt", "mcpServer", "agent", "rule", "model", "workflow", "context", "doc", "config"];
-const COMMON_DEFINITION_HELP_PAGE_PATH = "/help/user-guide/pages/usage/definition-details-actions-test-schema-common.md";
-const DEFINITION_HELP_PAGE_BY_TYPE = {
-  prompt: "/help/user-guide/pages/usage/definition-details-actions-test-schema-prompt.md",
-  mcpServer: "/help/user-guide/pages/usage/definition-details-actions-test-schema-mcpserver.md",
-  agent: "/help/user-guide/pages/usage/definition-details-actions-test-schema-agent.md",
-  rule: "/help/user-guide/pages/usage/definition-details-actions-test-schema-rule.md",
-  model: "/help/user-guide/pages/usage/definition-details-actions-test-schema-model.md",
-  workflow: "/help/user-guide/pages/usage/definition-details-actions-test-schema-workflow.md",
-  context: "/help/user-guide/pages/usage/definition-details-actions-test-schema-context.md",
-  doc: "/help/user-guide/pages/usage/definition-details-actions-test-schema-docs.md",
-  config: "/help/user-guide/pages/usage/definition-details-actions-test-schema-config.md"
-};
-const DEFINITION_TYPE_ALIASES = {
-  prompt: "prompt",
-  prompts: "prompt",
-  mcpserver: "mcpServer",
-  mcpservers: "mcpServer",
-  agent: "agent",
-  agents: "agent",
-  rule: "rule",
-  rules: "rule",
-  model: "model",
-  models: "model",
-  workflow: "workflow",
-  workflows: "workflow",
-  context: "context",
-  contexts: "context",
-  doc: "doc",
-  docs: "doc",
-  config: "config",
-  configs: "config"
-};
-const FILTER_TYPE_SET = new Set(FILTER_TYPES);
-const INSTALL_DESTINATION_OPTIONS = [
-  { key: "continue", label: "Continue" },
-  { key: "copilot", label: "GitHub Copilot" },
-  { key: "gemini", label: "Gemini CLI" }
-];
-const DESTINATION_COMPATIBILITY = {
-  continue: new Set(["rules", "prompts", "workflows", "models", "agents", "mcpservers", "context", "docs", "configs"]),
-  copilot: new Set(["rules", "prompts"]),
-  gemini: new Set(["rules", "prompts"])
-};
 let activeInstallDestinationMenu = null;
 
-const MAX_CARD_TAG_PILLS = 3;
-const CARDS_PER_PAGE = 25;
 let currentCardsPage = 1;
 let onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
 let activeTopPage = "discover";
-const RECENT_AGENT_RUNS_STORAGE_KEY = "dcc.agent.builder.recent-runs";
-const RECENT_AGENT_RUN_PACKS_ENDPOINT = "/api/agent-run-packs";
-const AGENT_RUNS_ENDPOINT = "/api/agent-runs";
 let runBuilderMode = "agent";
 let runBuilderPickerFilter = "installed";
 let runBuilderSearchQuery = "";
@@ -348,7 +306,6 @@ let activityPollTimer = null;
 let activityTickerTimer = null;
 let activityRenderSignature = null;
 let isActivityStreamOpen = false;
-const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
 const favoritesStorage = createFavoritesStorage(FAVORITE_DEFINITION_IDS_STORAGE_KEY);
 const { isFavoriteDefinition, toggleFavoriteDefinition, pruneFavoriteDefinitionIds } = favoritesStorage;
 
@@ -954,21 +911,12 @@ async function pollActiveRun() {
   }
 }
 
-function mapRunStatus(run) {
-  const status = String(run?.status || "").toLowerCase();
-  if (status === "running" || status === "stuck") return "running";
-  if (status === "launched" || status === "preparing_to_launch") return "launched";
-  if (status === "terminated") return "finished";
-  if (status === "killed" || status === "failed") return "cancelled";
-  return "finished";
-}
-
 function getRunNameFromPath(pathValue, fallback) {
   const definition = findDefinitionByPath(pathValue);
   if (definition?.name) return definition.name;
   const normalized = String(pathValue || "").trim();
   if (!normalized) return fallback;
-  const segments = normalized.split(/[\\/]/).filter(Boolean);
+  const segments = normalized.split(/[\/]/).filter(Boolean);
   const finalName = segments[segments.length - 1] || fallback;
   return finalName.replace(/\.[^.]+$/, "") || fallback;
 }
@@ -1024,72 +972,6 @@ function openDefinitionDetailsByPath(pathValue) {
   showDetails(definitionId).catch((error) => {
     window.alert(error?.message || "Unable to open definition details.");
   });
-}
-
-function getFullRunPath(pathValue, fallback = "—") {
-  const normalized = String(pathValue || "").trim();
-  return normalized || fallback;
-}
-
-function isRunCancelable(run) {
-  const status = mapRunStatus(run);
-  return status === "running" || status === "launched";
-}
-
-function isRunLive(run) {
-  const status = mapRunStatus(run);
-  return status === "running" || status === "launched";
-}
-
-function getRunElapsedSeconds(run) {
-  const startedAtMs = Date.parse(run?.startedAt || run?.createdAt || "");
-  if (!Number.isFinite(startedAtMs)) return 0;
-  const endedAtMs = Date.parse(run?.endedAt || "");
-  const endMs = Number.isFinite(endedAtMs) ? endedAtMs : Date.now();
-  return Math.max(0, Math.floor((endMs - startedAtMs) / 1000));
-}
-
-function formatDurationSeconds(seconds) {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  if (mins > 0) return `${String(mins).padStart(2, "0")}m ${String(secs).padStart(2, "0")}s`;
-  return `${String(secs).padStart(2, "0")}s`;
-}
-
-function formatDuration(startedAt, endedAt) {
-  const run = { startedAt, endedAt };
-  return formatDurationSeconds(getRunElapsedSeconds(run));
-}
-
-function formatLogLevel(entry = {}) {
-  const text = String(entry?.text || "").toLowerCase();
-  if (entry?.stream === "stderr") {
-    if (text.includes("warn")) return "warn";
-    return "error";
-  }
-  if (text.includes("warn")) return "warn";
-  if (text.includes("error") || text.includes("failed")) return "error";
-  if (text.includes("success") || text.includes("completed") || text.includes("✓")) return "success";
-  if (text.includes("init") || text.includes("launch") || text.includes("loading")) return "info";
-  return "default";
-}
-
-function getLogTimestamp(entry) {
-  if (!entry?.timestamp) return "--:--:--";
-  return new Date(entry.timestamp).toLocaleTimeString();
-}
-
-function getStatusIcon(status) {
-  return { running: "▶", launched: "◎", finished: "✓", cancelled: "✕" }[status] || "•";
-}
-
-function getStatusGroupLabel(status) {
-  return {
-    running: "Active",
-    launched: "Launching",
-    finished: "Finished",
-    cancelled: "Stopped",
-  }[status] || "Other";
 }
 
 function renderActivityStats() {
