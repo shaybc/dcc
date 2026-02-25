@@ -62,7 +62,7 @@ export class GeminiAdapter extends BaseAdapter {
       return {
         destination: this.destination,
         type: normalizedType,
-        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri }),
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow }),
         mergeStrategy: "replace_file",
         content: buildSlashCommandContent(definitionRow, slug)
       };
@@ -95,7 +95,7 @@ export class GeminiAdapter extends BaseAdapter {
     if (normalizedType === "prompts") {
       return [{
         op: "delete_file",
-        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri })
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow })
       }];
     }
 
