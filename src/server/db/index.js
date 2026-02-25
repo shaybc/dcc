@@ -147,6 +147,8 @@ db.serialize(() => {
   db.run(
     `CREATE TABLE IF NOT EXISTS agent_runs (
       runId TEXT PRIMARY KEY,
+      agentId INTEGER,
+      configId INTEGER,
       projectPath TEXT NOT NULL,
       agentPath TEXT NOT NULL,
       configPath TEXT NOT NULL,
@@ -196,6 +198,16 @@ db.serialize(() => {
     const hasRunOptionsJsonColumn = rows.some((row) => row.name === "runOptionsJson");
     if (!hasRunOptionsJsonColumn) {
       db.run("ALTER TABLE agent_runs ADD COLUMN runOptionsJson TEXT NOT NULL DEFAULT '{}'", () => {});
+    }
+
+    const hasAgentIdColumn = rows.some((row) => row.name === "agentId");
+    if (!hasAgentIdColumn) {
+      db.run("ALTER TABLE agent_runs ADD COLUMN agentId INTEGER", () => {});
+    }
+
+    const hasConfigIdColumn = rows.some((row) => row.name === "configId");
+    if (!hasConfigIdColumn) {
+      db.run("ALTER TABLE agent_runs ADD COLUMN configId INTEGER", () => {});
     }
   });
 

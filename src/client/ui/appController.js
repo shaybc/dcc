@@ -696,6 +696,12 @@ function resetRunAgentForm() {
   renderRunBuilder();
 }
 
+function findDefinitionById(definitionId) {
+  const normalizedId = String(definitionId || "").trim();
+  if (!normalizedId) return null;
+  return definitions.find((definition) => String(definition?.id || "").trim() === normalizedId) || null;
+}
+
 function prefillRunBuilderFromActivityRun(runId) {
   const normalizedRunId = String(runId || "").trim();
   if (!normalizedRunId) return;
@@ -703,8 +709,8 @@ function prefillRunBuilderFromActivityRun(runId) {
   const run = activityRuns.find((entry) => entry.runId === normalizedRunId);
   if (!run) return;
 
-  const agentDefinition = findDefinitionByPath(run.agentPath);
-  const configDefinition = findDefinitionByPath(run.configPath);
+  const agentDefinition = findDefinitionById(run.agentId) || findDefinitionByPath(run.agentPath);
+  const configDefinition = findDefinitionById(run.configId) || findDefinitionByPath(run.configPath);
 
   runBuilderSelection = {
     agent: agentDefinition ? toRunBuilderItem(agentDefinition, "◈") : null,
