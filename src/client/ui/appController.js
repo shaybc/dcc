@@ -5,6 +5,7 @@ import { definitionIconSvg } from "../utils/definitionIcons.js";
 import { createDefinitionGenerationController } from "./appController/definitionGeneration.js";
 import { createHubMenuController } from "./appController/hubMenuController.js";
 import { createPreferencesStorage } from "./appController/preferencesStorage.js";
+import { setupEventListeners as setupAppEventListeners } from "./appController/eventListeners.js";
 
 const cardsContainer = document.getElementById("cards");
 const definitionsCountLabel = document.getElementById("definitionsCountLabel");
@@ -4997,390 +4998,45 @@ const {
 } = hubMenuController;
 
 function setupEventListeners() {
-  filterButton.addEventListener("click", () => {
-    const isOpen = filterMenu.classList.toggle("open");
-    filterButton.setAttribute("aria-expanded", String(isOpen));
+  setupAppEventListeners({
+    filterButton, filterMenu, hubMenu,
+    activeVersionDropdownRef: () => activeVersionDropdown,
+    closeFilterMenu, closeHubMenu, closeVersionDropdown,
+    hideInstalledDefinitionsStorageKey: HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY,
+    onlyLocalDefinitionsStorageKey: ONLY_LOCAL_DEFINITIONS_STORAGE_KEY,
+    updateHideInstalledToggleState, renderCards, getStoredOnlyLocalDefinitions,
+    setOnlyLocalDefinitions: (value) => { onlyLocalDefinitions = value; },
+    updateLocalDefinitionsToggleState, renderFilters,
+    clearSearchButton, setSearchValue,
+    deleteDefinitionButton, getCurrentDetailDefinitionId: () => currentDetailDefinitionId,
+    getCurrentDetailDefinitionSource: () => currentDetailDefinitionSource,
+    deleteDefinitionFromRepo, fetchDefinitions, updateRouteForHub, showHubPage,
+    pushUpstreamDefinitionButton, openPushUpstreamModal, getCurrentDetailDefinitionName: () => currentDetailDefinitionName,
+    pushDefinitionToUpstream, showDetails,
+    installDefinitionButton, devProjectInput, getDefinitions: () => definitions,
+    getSupportedDestinationOptions, openInstallDestinationMenu,
+    favoriteDefinitionButton, toggleFavoriteDefinition, updateFavoriteDefinitionButton,
+    autoTagDefinitionButton, getCurrentDetailDefinitionTags: () => currentDetailDefinitionTags,
+    suggestTagsForDefinitionContent, loadAvailableDefinitionTags, getCurrentDetailDefinitionContent: () => currentDetailDefinitionContent,
+    applyDefinitionTags, copyDefinitionButton, copyDefinitionToClipboard,
+    duplicateDefinitionButton, createDuplicateDefaults, getCurrentDetailDefinitionPath: () => currentDetailDefinitionPath,
+    getCurrentDetailDefinitionDccUri: () => currentDetailDefinitionDccUri, openDuplicateDefinitionModal,
+    getCurrentDetailDefinitionContentValue: () => currentDetailDefinitionContent, duplicateDefinition, updateRouteForDetails,
+    definitionTabPreview, setDefinitionTab, definitionTabSource, definitionTabTest,
+    runValidationButton, runValidationForCurrentDefinition, copyValidationReportButton,
+    getLastValidationResult: () => lastValidationResult, validationSeverityFilter, renderValidationResult,
+    closeModal, updateRouteForHubNoReplace: updateRouteForHub, handleRoute,
+    newDefinitionMenu, newDefinitionButton, toggleNewMenu, generateDefinitionMenuItem, generateDefinitionFromDescription,
+    formatFilterLabel, filterIconSvg, escapeHtml,
+    hubMenuToggleButton, toggleHubMenu, topNav, setActiveTopPage,
+    localDefinitionsToggle, persistOnlyLocalDefinitions, hideInstalledMenuToggle,
+    getStoredHideInstalledDefinitions, persistHideInstalledDefinitions,
+    installGuideMenuItem, settingsMenuItem, openEditorForCurrentDefinition, editDefinitionButton,
+    versionHistoryButton, openVersionHistoryDropdown,
+    setCurrentCardsPage: (value) => { currentCardsPage = value; },
   });
-  
-  document.addEventListener("click", (event) => {
-    const eventPath = typeof event.composedPath === "function" ? event.composedPath() : [];
-    const clickedInsideHubMenuWrap = eventPath.includes(hubMenu) || eventPath.some((node) => node?.classList?.contains?.("header-menu-wrap"));
-
-    if (!event.target.closest(".filter-dropdown")) {
-      closeFilterMenu();
-    }
-    if (hubMenu && !hubMenu.hidden && !clickedInsideHubMenuWrap) {
-      closeHubMenu();
-    }
-    if (activeVersionDropdown && !event.target.closest(".version-dropdown") && !event.target.closest("#versionHistoryButton")) {
-      closeVersionDropdown();
-    }
-  });
-
-  window.addEventListener("storage", (event) => {
-    if (event.key === HIDE_INSTALLED_DEFINITIONS_STORAGE_KEY) {
-      updateHideInstalledToggleState();
-      renderCards();
-      return;
-    }
-    if (event.key === ONLY_LOCAL_DEFINITIONS_STORAGE_KEY) {
-      onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
-      updateLocalDefinitionsToggleState();
-      renderFilters();
-      renderCards();
-    }
-  });
-  
-  clearSearchButton.addEventListener("click", () => {
-    setSearchValue("");
-    renderCards();
-  });
-  
-  
-  
-  deleteDefinitionButton.addEventListener("click", async () => {
-    if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
-      return;
-    }
-  
-    const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
-    const confirmationMessage = isUntrackedDefinition
-      ? "Are you sure you want to delete this untracked local definition file? Note: if this definition is already installed in any project - it will not be deleted from those projects."
-      : "Are you sure you want to delete this definition from team repository? Note: projects that already have this definition installed - will not be deleted, but you will not be able to install this definition to new projects or update existing installations. If you want to remove this definition from specific project(s) only - please select the project,and click 'Remove from project' button from the definition card or details page.";
-  
-    const isConfirmed = window.confirm(confirmationMessage);
-  
-    if (!isConfirmed) {
-      return;
-    }
-  
-    try {
-      const result = await deleteDefinitionFromRepo(currentDetailDefinitionId);
-      await fetchDefinitions();
-      updateRouteForHub(true);
-      showHubPage();
-      const successMessage = isUntrackedDefinition
-        ? "Definition deleted from local files."
-        : "Definition deleted from the repository.";
-      window.alert(result?.message || successMessage);
-    } catch (error) {
-      window.alert(error.message || "Unable to delete definition.");
-    }
-  });
-  
-  pushUpstreamDefinitionButton.addEventListener("click", async () => {
-    if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
-      return;
-    }
-
-    const submission = await openPushUpstreamModal({ definitionName: currentDetailDefinitionName || "" });
-    if (!submission) {
-      return;
-    }
-
-    try {
-      const result = await pushDefinitionToUpstream(currentDetailDefinitionId, submission);
-      await fetchDefinitions();
-      const updatedDefinitionId = Number(result?.definition?.id || currentDetailDefinitionId);
-      await showDetails(updatedDefinitionId);
-      window.alert(result?.message || "Definition pushed to upstream repository.");
-    } catch (error) {
-      window.alert(error.message || "Unable to push definition.");
-    }
-  });
-
-  installDefinitionButton?.addEventListener("click", () => {
-    if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
-      return;
-    }
-    if (!devProjectInput.value.trim()) {
-      window.alert("Please select a project first.");
-      return;
-    }
-
-    const currentDefinition = definitions.find((item) => Number(item.id) === Number(currentDetailDefinitionId));
-    if (!currentDefinition) {
-      window.alert("Definition not found.");
-      return;
-    }
-    if (getSupportedDestinationOptions(currentDefinition).length === 0) {
-      window.alert("This definition type cannot be installed/exported to available destinations.");
-      return;
-    }
-
-    openInstallDestinationMenu(installDefinitionButton, currentDefinition);
-  });
-  
-
-  favoriteDefinitionButton?.addEventListener("click", () => {
-    if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
-      return;
-    }
-
-    toggleFavoriteDefinition(currentDetailDefinitionId);
-    updateFavoriteDefinitionButton();
-    renderCards();
-  });
-
-  autoTagDefinitionButton?.addEventListener("click", async () => {
-    if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
-      return;
-    }
-
-    const existingTags = Array.isArray(currentDetailDefinitionTags) ? [...currentDetailDefinitionTags] : [];
-    if (existingTags.length > 0) {
-      const shouldContinue = await openConfirmationDialog({
-        title: "Replace existing tags?",
-        message: "This definition already has tags. Auto-tagging may replace the current tag selection.",
-        confirmText: "Continue",
-        cancelText: "Cancel"
-      });
-      if (!shouldContinue) {
-        return;
-      }
-    }
-
-    const originalLabel = autoTagDefinitionButton.getAttribute("title") || "Auto-tag definition with AI";
-    autoTagDefinitionButton.disabled = true;
-    autoTagDefinitionButton.setAttribute("title", "Auto-tagging...");
-
-    try {
-      const availableTags = await loadAvailableDefinitionTags();
-      const suggestedTags = await suggestTagsForDefinitionContent({
-        definitionContent: currentDetailDefinitionContent,
-        existingTags,
-        availableTags
-      });
-      await applyDefinitionTags(currentDetailDefinitionId, suggestedTags);
-      await fetchDefinitions();
-      await showDetails(currentDetailDefinitionId);
-      window.alert(`Auto-tag complete. ${suggestedTags.length} tags are now attached.`);
-    } catch (error) {
-      window.alert(error.message || "Unable to auto-tag definition.");
-    } finally {
-      autoTagDefinitionButton.disabled = false;
-      autoTagDefinitionButton.setAttribute("title", originalLabel);
-    }
-  });
-
-  copyDefinitionButton.addEventListener("click", async () => {
-    try {
-      await copyDefinitionToClipboard();
-      copyDefinitionButton.classList.add("copied");
-      copyDefinitionButton.setAttribute("title", "Copied");
-      copyDefinitionButton.setAttribute("aria-label", "Definition copied");
-      window.setTimeout(() => {
-        copyDefinitionButton.classList.remove("copied");
-        copyDefinitionButton.setAttribute("title", "Copy definition");
-        copyDefinitionButton.setAttribute("aria-label", "Copy definition");
-      }, 1200);
-    } catch (_error) {
-      copyDefinitionButton.setAttribute("title", "Unable to copy");
-    }
-  });
-  
-  duplicateDefinitionButton.addEventListener("click", async () => {
-    if (!Number.isFinite(Number(currentDetailDefinitionId)) || currentDetailDefinitionId <= 0) {
-      return;
-    }
-  
-    const { defaultName, defaultDccUri, defaultFileName } = createDuplicateDefaults(currentDetailDefinitionName, currentDetailDefinitionPath, currentDetailDefinitionContent, currentDetailDefinitionDccUri);
-    const duplicateDetails = await openDuplicateDefinitionModal({
-      defaultName,
-      defaultDccUri,
-      defaultContent: currentDetailDefinitionContent
-    });
-    if (!duplicateDetails) {
-      return;
-    }
-  
-    const duplicateFileName = window.prompt("New definition file name", defaultFileName);
-    if (duplicateFileName === null) {
-      return;
-    }
-  
-    const normalizedFileName = duplicateFileName.trim();
-    if (!normalizedFileName) {
-      window.alert("Definition file name cannot be empty.");
-      return;
-    }
-  
-    try {
-      const result = await duplicateDefinition(currentDetailDefinitionId, {
-        name: duplicateDetails.name,
-        fileName: normalizedFileName,
-        dccUri: duplicateDetails.dccUri,
-        content: duplicateDetails.content
-      });
-      await fetchDefinitions();
-      if (Number.isFinite(Number(result?.id)) && result.id > 0) {
-        updateRouteForDetails(result.id);
-        await showDetails(result.id);
-        return;
-      }
-      window.alert("Definition duplicated, but unable to locate the new copy.");
-    } catch (error) {
-      window.alert(error.message || "Unable to duplicate definition.");
-    }
-  });
-  
-  
-  definitionTabPreview.addEventListener("click", () => {
-    setDefinitionTab("preview");
-  });
-  
-  definitionTabSource.addEventListener("click", () => {
-    setDefinitionTab("source");
-  });
-  
-  definitionTabTest.addEventListener("click", () => {
-    setDefinitionTab("test");
-  });
-  
-  runValidationButton?.addEventListener("click", () => {
-    runValidationForCurrentDefinition();
-  });
-  
-  copyValidationReportButton?.addEventListener("click", async () => {
-    if (!lastValidationResult) {
-      return;
-    }
-    const raw = JSON.stringify(lastValidationResult, null, 2);
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(raw);
-    }
-  });
-  
-  validationSeverityFilter?.addEventListener("change", () => {
-    if (lastValidationResult) {
-      renderValidationResult(lastValidationResult);
-    }
-  });
-  
-  closeModal.addEventListener("click", () => {
-    showHubPage();
-    updateRouteForHub();
-  });
-  
-  window.addEventListener("popstate", () => {
-    handleRoute();
-  });
-  
-  document.addEventListener("click", (event) => {
-    if (newDefinitionMenu && !event.target.closest(".new-menu-wrap")) {
-      newDefinitionMenu.hidden = true;
-      if (newDefinitionButton) {
-        newDefinitionButton.setAttribute("aria-expanded", "false");
-      }
-    }
-  });
-  
-  if (newDefinitionButton) {
-    newDefinitionButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      toggleNewMenu();
-    });
-  }
-  
-  if (newDefinitionMenu) {
-    newDefinitionMenu.querySelectorAll("[data-new-type]").forEach((button) => {
-      const type = button.getAttribute("data-new-type") || "prompt";
-      const label = button.getAttribute("data-type-label") || formatFilterLabel(type);
-      button.innerHTML = `<span class="menu-type-icon">${filterIconSvg(type)}</span><span>${escapeHtml(label)}</span>`;
-      button.addEventListener("click", () => {
-        window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(type)}`);
-      });
-    });
-  }
-
-  if (generateDefinitionMenuItem) {
-    generateDefinitionMenuItem.innerHTML = `<span class="menu-type-icon">✨</span><span>Generate Definition</span>`;
-    generateDefinitionMenuItem.addEventListener("click", async () => {
-      newDefinitionMenu.hidden = true;
-      newDefinitionButton?.setAttribute("aria-expanded", "false");
-      await generateDefinitionFromDescription();
-    });
-  }
-  
-  if (hubMenuToggleButton) {
-    hubMenuToggleButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      toggleHubMenu();
-    });
-  }
-
-  if (topNav) {
-    topNav.querySelectorAll("[data-top-nav-tab]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const selectedPage = button.getAttribute("data-top-nav-tab") || "discover";
-        setActiveTopPage(selectedPage);
-      });
-    });
-  }
-
-
-  if (localDefinitionsToggle) {
-    updateLocalDefinitionsToggleState();
-    localDefinitionsToggle.addEventListener("click", () => {
-      onlyLocalDefinitions = !onlyLocalDefinitions;
-      persistOnlyLocalDefinitions(onlyLocalDefinitions);
-      updateLocalDefinitionsToggleState();
-      currentCardsPage = 1;
-      renderFilters();
-      renderCards();
-    });
-  }
-
-  if (hideInstalledMenuToggle) {
-    updateHideInstalledToggleState();
-    hideInstalledMenuToggle.addEventListener("click", () => {
-      const nextValue = !getStoredHideInstalledDefinitions();
-      persistHideInstalledDefinitions(nextValue);
-      updateHideInstalledToggleState();
-      currentCardsPage = 1;
-      renderCards();
-    });
-  }
-
-  if (installGuideMenuItem) {
-    installGuideMenuItem.addEventListener("click", () => {
-      closeHubMenu({ animate: false });
-      window.location.assign("/user-guide.html");
-    });
-  }
-
-  if (settingsMenuItem) {
-    settingsMenuItem.addEventListener("click", () => {
-      closeHubMenu({ animate: false });
-      window.location.assign("/settings.html");
-    });
-  }
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && hubMenu && !hubMenu.hidden) {
-      closeHubMenu();
-    }
-  });
-
-  if (editDefinitionButton) {
-    editDefinitionButton.addEventListener("click", () => {
-      openEditorForCurrentDefinition();
-    });
-  }
-  
-  if (versionHistoryButton) {
-    versionHistoryButton.addEventListener("click", async () => {
-      try {
-        await openVersionHistoryDropdown();
-      } catch (error) {
-        window.alert(error.message || "Unable to load version history.");
-      }
-    });
-  }
-  
-  
-  
 }
+
 
 export function initializeApp() {
   renderTopNavigation();
