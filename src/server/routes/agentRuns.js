@@ -117,6 +117,25 @@ router.post("/api/agent-runs", async (req, res) => {
   }
 });
 
+
+router.post("/api/agent-runs/debug", (req, res) => {
+  const payload = req.body || {};
+  logInfo("Activity rerun debug", {
+    event: String(payload?.event || "unknown"),
+    runId: String(payload?.runId || ""),
+    agentId: payload?.agentId ?? null,
+    configId: payload?.configId ?? null,
+    agentPath: String(payload?.agentPath || ""),
+    configPath: String(payload?.configPath || ""),
+    matchedAgentBy: String(payload?.matchedAgentBy || ""),
+    matchedConfigBy: String(payload?.matchedConfigBy || ""),
+    matchedAgentDefinitionId: payload?.matchedAgentDefinitionId ?? null,
+    matchedConfigDefinitionId: payload?.matchedConfigDefinitionId ?? null,
+    definitionsCount: Number(payload?.definitionsCount || 0)
+  });
+  res.json({ ok: true });
+});
+
 router.get("/api/agent-runs", (req, res) => {
   const limit = Number(req.query?.limit || 200);
   const runs = agentRunManager.listRunSnapshots({ limit });

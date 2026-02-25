@@ -702,25 +702,54 @@ function findDefinitionById(definitionId) {
   return definitions.find((definition) => String(definition?.id || "").trim() === normalizedId) || null;
 }
 
-function prefillRunBuilderFromActivityRun(runId) {
+async function emitRerunDebugLog(payload) {
+  try {
+    await fetch(`${AGENT_RUNS_ENDPOINT}/debug`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {})
+    });
+  } catch (_error) {
+    // Ignore debug log transport errors.
+  }
+}
+
+function resolveRunBuilderDefinitionsFromRun(run) {
+  const agentDefinitionById = findDefinitionById(run.agentId);
+  const configDefinitionById = findDefinitionById(run.configId);
+  const agentDefinitionByPath = findDefinitionByPath(run.agentPath);
+  const configDefinitionByPath = findDefinitionByPath(run.configPath);
+  return {
+    agentDefinition: agentDefinitionById || agentDefinitionByPath,
+    configDefinition: configDefinitionById || configDefinitionByPath,
+    matchedAgentBy: agentDefinitionById ? "id" : (agentDefinitionByPath ? "path" : "none"),
+    matchedConfigBy: configDefinitionById ? "id" : (configDefinitionByPath ? "path" : "none")
+  };
+}
+
+async function prefillRunBuilderFromActivityRun(runId) {
   const normalizedRunId = String(runId || "").trim();
   if (!normalizedRunId) {
     console.warn("[ActivityReRun] Missing runId when attempting to prefill run builder.");
+    await emitRerunDebugLog({ event: "missing_run_id" });
     return;
   }
 
   const run = activityRuns.find((entry) => entry.runId === normalizedRunId);
   if (!run) {
     console.warn("[ActivityReRun] Run not found for prefill.", { runId: normalizedRunId, knownRunIds: activityRuns.map((entry) => entry?.runId).filter(Boolean).slice(0, 20) });
+    await emitRerunDebugLog({ event: "run_not_found", runId: normalizedRunId });
     return;
   }
 
-  const agentDefinitionById = findDefinitionById(run.agentId);
-  const configDefinitionById = findDefinitionById(run.configId);
-  const agentDefinitionByPath = findDefinitionByPath(run.agentPath);
-  const configDefinitionByPath = findDefinitionByPath(run.configPath);
-  const agentDefinition = agentDefinitionById || agentDefinitionByPath;
-  const configDefinition = configDefinitionById || configDefinitionByPath;
+  let resolution = resolveRunBuilderDefinitionsFromRun(run);
+
+  if (!resolution.agentDefinition || !resolution.configDefinition) {
+    await fetchDefinitions().catch(() => {});
+    resolution = resolveRunBuilderDefinitionsFromRun(run);
+  }
+
+  const { agentDefinition, configDefinition, matchedAgentBy, matchedConfigBy } = resolution;
 
   console.info("[ActivityReRun] Prefill lookup result.", {
     runId: normalizedRunId,
@@ -728,8 +757,22 @@ function prefillRunBuilderFromActivityRun(runId) {
     configId: run.configId ?? null,
     agentPath: run.agentPath || "",
     configPath: run.configPath || "",
-    matchedAgentBy: agentDefinitionById ? "id" : (agentDefinitionByPath ? "path" : "none"),
-    matchedConfigBy: configDefinitionById ? "id" : (configDefinitionByPath ? "path" : "none"),
+    matchedAgentBy,
+    matchedConfigBy,
+    matchedAgentDefinitionId: agentDefinition?.id ?? null,
+    matchedConfigDefinitionId: configDefinition?.id ?? null,
+    definitionsCount: definitions.length
+  });
+
+  await emitRerunDebugLog({
+    event: "prefill_lookup",
+    runId: normalizedRunId,
+    agentId: run.agentId ?? null,
+    configId: run.configId ?? null,
+    agentPath: run.agentPath || "",
+    configPath: run.configPath || "",
+    matchedAgentBy,
+    matchedConfigBy,
     matchedAgentDefinitionId: agentDefinition?.id ?? null,
     matchedConfigDefinitionId: configDefinition?.id ?? null,
     definitionsCount: definitions.length
@@ -1200,7 +1243,7 @@ function setupActivityDashboard() {
     if (rerunButton) {
       event.stopPropagation();
       const runId = rerunButton.getAttribute("data-activity-rerun") || "";
-      prefillRunBuilderFromActivityRun(runId);
+      void prefillRunBuilderFromActivityRun(runId);
       setActiveTopPage("agents");
       return;
     }
@@ -1250,7 +1293,7 @@ function setupActivityDashboard() {
   });
 
   activityRerunButton?.addEventListener("click", () => {
-    prefillRunBuilderFromActivityRun(activitySelectedRunId);
+    void prefillRunBuilderFromActivityRun(activitySelectedRunId);
     setActiveTopPage("agents");
   });
 
