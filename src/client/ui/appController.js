@@ -2405,6 +2405,7 @@ function createTagFilterPill(label, { selected = false, emptyState = false } = {
   button.type = "button";
   button.className = "hub-menu-tag-pill";
   button.textContent = label;
+  button.dataset.tagLabel = String(label || "");
   if (selected) {
     button.classList.add("is-selected");
   }
@@ -2417,20 +2418,21 @@ function createTagFilterPill(label, { selected = false, emptyState = false } = {
 
 function applyTagSearchFilter(tagPillsContainer, emptySearchState, rawQuery) {
   const query = String(rawQuery || "").trim().toLowerCase();
-  const pills = Array.from(tagPillsContainer.querySelectorAll(".hub-menu-tag-pill[data-tag-filter-value]"));
+  const pills = Array.from(tagPillsContainer.querySelectorAll(".hub-menu-tag-pill"));
   let visibleCount = 0;
 
   pills.forEach((pill) => {
-    const value = String(pill.dataset.tagFilterValue || "");
-    if (value === "__untagged__") {
-      pill.hidden = false;
-      return;
-    }
+    const value = String(pill.dataset.tagFilterValue || "").toLowerCase();
+    const label = String(pill.dataset.tagLabel || pill.textContent || "").trim().toLowerCase();
+    const isEmptyStatePill = pill.classList.contains("is-empty");
+    const shouldShow = isEmptyStatePill
+      ? !query
+      : (!query || label.includes(query) || value.includes(query));
 
-    const label = String(pill.dataset.tagLabel || "").toLowerCase();
-    const shouldShow = !query || label.includes(query);
     pill.hidden = !shouldShow;
-    if (shouldShow) {
+    pill.classList.toggle("is-hidden-by-search", !shouldShow);
+
+    if (shouldShow && !isEmptyStatePill) {
       visibleCount += 1;
     }
   });
