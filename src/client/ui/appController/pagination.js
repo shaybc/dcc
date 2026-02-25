@@ -2,8 +2,8 @@ export function createPaginationController({ paginationContainer, onPageChange }
   function createPaginationButton({ label, page, disabled = false, active = false, ariaLabel = "" }) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "pagination-button";
-    if (active) button.classList.add("active");
+    button.className = "pagination-btn";
+    if (active) button.classList.add("is-active");
     button.textContent = label;
     button.disabled = disabled;
     button.setAttribute("aria-label", ariaLabel || `Page ${label}`);
@@ -40,7 +40,10 @@ export function createPaginationController({ paginationContainer, onPageChange }
     }
 
     paginationContainer.hidden = false;
-    paginationContainer.appendChild(
+    const list = document.createElement("div");
+    list.className = "pagination-list";
+
+    list.appendChild(
       createPaginationButton({
         label: "‹",
         page: currentPage - 1,
@@ -52,9 +55,9 @@ export function createPaginationController({ paginationContainer, onPageChange }
     const pages = getVisiblePaginationPages(totalPages, currentPage);
     pages.forEach((page) => {
       if (page === "ellipsis") {
-        paginationContainer.appendChild(createPaginationEllipsis());
+        list.appendChild(createPaginationEllipsis());
       } else {
-        paginationContainer.appendChild(
+        list.appendChild(
           createPaginationButton({
             label: String(page),
             page,
@@ -65,7 +68,7 @@ export function createPaginationController({ paginationContainer, onPageChange }
       }
     });
 
-    paginationContainer.appendChild(
+    list.appendChild(
       createPaginationButton({
         label: "›",
         page: currentPage + 1,
@@ -73,6 +76,8 @@ export function createPaginationController({ paginationContainer, onPageChange }
         ariaLabel: "Next page",
       })
     );
+
+    paginationContainer.appendChild(list);
   }
 
   return { createPaginationButton, createPaginationEllipsis, getVisiblePaginationPages, renderPagination };
