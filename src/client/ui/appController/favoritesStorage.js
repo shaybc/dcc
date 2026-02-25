@@ -47,9 +47,24 @@ export function createFavoritesStorage(storageKey) {
 
   favoriteDefinitionIds = getStoredFavoriteDefinitionIds();
 
+
+  function pruneFavoriteDefinitionIds(validDefinitionIds = []) {
+    const validSet = new Set(
+      (Array.isArray(validDefinitionIds) ? validDefinitionIds : [])
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value) && value > 0)
+    );
+
+    favoriteDefinitionIds = new Set(
+      Array.from(favoriteDefinitionIds).filter((definitionId) => validSet.has(definitionId))
+    );
+    persistFavoriteDefinitionIds();
+  }
+
   return {
     getStoredFavoriteDefinitionIds,
     isFavoriteDefinition,
     toggleFavoriteDefinition,
+    pruneFavoriteDefinitionIds,
   };
 }

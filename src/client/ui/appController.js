@@ -350,7 +350,7 @@ let activityRenderSignature = null;
 let isActivityStreamOpen = false;
 const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
 const favoritesStorage = createFavoritesStorage(FAVORITE_DEFINITION_IDS_STORAGE_KEY);
-const { isFavoriteDefinition, toggleFavoriteDefinition } = favoritesStorage;
+const { isFavoriteDefinition, toggleFavoriteDefinition, pruneFavoriteDefinitionIds } = favoritesStorage;
 
 async function loadRecentAgentRunPacksFromDatabase() {
   try {
@@ -3087,10 +3087,7 @@ async function fetchDefinitions() {
     };
   });
 
-  favoriteDefinitionIds = new Set(
-    Array.from(favoriteDefinitionIds).filter((definitionId) => definitions.some((definition) => Number(definition.id) === definitionId))
-  );
-  persistFavoriteDefinitionIds();
+  pruneFavoriteDefinitionIds(definitions.map((definition) => definition.id));
 
   renderFilters();
   renderCards();
