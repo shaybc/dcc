@@ -6,6 +6,18 @@ import { createDefinitionGenerationController } from "./appController/definition
 import { createHubMenuController } from "./appController/hubMenuController.js";
 import { createPreferencesStorage } from "./appController/preferencesStorage.js";
 import { setupEventListeners as setupAppEventListeners } from "./appController/eventListeners.js";
+import {
+  createDefinitionPreviewRenderer,
+  formatCreatedDate,
+  formatTabLabel,
+  inferDefinitionFormat,
+} from "./appController/definitionPreview.js";
+import {
+  closeDuplicateDefinitionModal,
+  createDuplicateModalHelpers,
+  openConfirmationDialog,
+} from "./appController/definitionDialogs.js";
+import { createValidationController } from "./appController/validationController.js";
 
 const cardsContainer = document.getElementById("cards");
 const definitionsCountLabel = document.getElementById("definitionsCountLabel");
@@ -3424,378 +3436,37 @@ async function fetchDefinitions() {
 }
 
 
-function formatCreatedDate(value) {
-  if (!value) {
-    return "Created date unavailable";
-  }
+const definitionPreviewRenderer = createDefinitionPreviewRenderer({
+  normalizeFilterType,
+  escapeHtml,
+});
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Created date unavailable";
-  }
+const { renderDefinitionPreview } = definitionPreviewRenderer;
 
-  return `Created on ${date.toLocaleDateString()}`;
-}
+const validationController = createValidationController({
+  escapeHtml,
+  validationSeverityFilter,
+  validationResults,
+  validationLastRun,
+  runValidationButton,
+  validationStrictToggle,
+  validationLintToggle,
+  validationReferencesToggle,
+  validationAutoRunToggle,
+  definitionTabPreview,
+  definitionTabSource,
+  definitionTabTest,
+  definitionPreviewPanel,
+  definitionSourcePanel,
+  definitionTestPanel,
+  fetchWithErrorHandling,
+  getCurrentDetailDefinitionId: () => currentDetailDefinitionId,
+  getValidationAutoRunTimeout: () => validationAutoRunTimeout,
+  setValidationAutoRunTimeout: (value) => { validationAutoRunTimeout = value; },
+  setLastValidationResult: (value) => { lastValidationResult = value; },
+});
 
-
-function inferDefinitionFormat(definition) {
-  const filePath = String(definition?.filePath || "").toLowerCase();
-  if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) return "yaml";
-  if (filePath.endsWith(".md") || filePath.endsWith(".markdown")) return "md";
-  if (filePath.endsWith(".json")) return "json";
-  if (filePath.endsWith(".txt")) return "txt";
-
-  const content = String(definition?.content || "").trim();
-  if (content.startsWith("#") || content.includes("\n#")) return "md";
-  if (content.includes(":") && content.includes("\n")) return "yaml";
-  return "txt";
-}
-
-function formatTabLabel(format) {
-  if (format === "yaml") return "Source (YAML)";
-  if (format === "md") return "Source (MD)";
-  if (format === "json") return "Source (JSON)";
-  if (format === "txt") return "Source (TXT)";
-  return "Source";
-}
-
-
-const PREVIEW_SECTION_CONFIG = [
-  { key: "models", label: "Models", empty: "No Models configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#models" },
-  { key: "mcpServers", label: "MCP Servers", empty: "No MCP Servers configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#mcpServers" },
-  { key: "rules", label: "Rules", empty: "No Rules configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#rules" },
-  { key: "prompts", label: "Prompts", empty: "No Prompts configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#prompts" },
-  { key: "context", label: "Context", empty: "No Context configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#context" }
-];
-
-function prettifyName(rawValue) {
-  const raw = String(rawValue || "").trim();
-  if (!raw) {
-    return "Unnamed";
-  }
-
-  const tail = raw.includes("/") ? raw.split("/").pop() : raw;
-  return tail
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function extractField(block, field) {
-  const pattern = new RegExp(`(?:^|\\n)\\s*${field}\\s*:\\s*([^\\n]+)`, "i");
-  const match = block.match(pattern);
-  return match ? match[1].trim().replace(/^['\"]|['\"]$/g, "") : "";
-}
-
-function parseTopLevelListSection(content, sectionName) {
-  const lines = String(content || "").replace(/\r\n/g, "\n").split("\n");
-  const sectionRegex = new RegExp(`^${sectionName}\\s*:\\s*$`, "i");
-
-  let inSection = false;
-  let currentItemLines = [];
-  const blocks = [];
-
-  const flushCurrent = () => {
-    if (currentItemLines.length > 0) {
-      blocks.push(currentItemLines.join("\n"));
-      currentItemLines = [];
-    }
-  };
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const topLevelKeyMatch = trimmed.match(/^[A-Za-z][A-Za-z0-9_-]*\s*:\s*$/);
-
-    if (!inSection) {
-      if (sectionRegex.test(trimmed)) {
-        inSection = true;
-      }
-      continue;
-    }
-
-    if (topLevelKeyMatch && !sectionRegex.test(trimmed)) {
-      flushCurrent();
-      break;
-    }
-
-    const itemMatch = line.match(/^\s*-\s*(.*)$/);
-    if (itemMatch) {
-      flushCurrent();
-      currentItemLines.push(itemMatch[1] || "");
-      continue;
-    }
-
-    if (currentItemLines.length > 0) {
-      currentItemLines.push(line.replace(/^\s+/, ""));
-    }
-  }
-
-  flushCurrent();
-  return blocks;
-}
-
-function buildItemFromBlock(typeKey, block) {
-  const text = String(block || "").trim();
-  const uses = extractField(text, "uses");
-  const name = extractField(text, "name");
-  const provider = extractField(text, "provider");
-  const description = extractField(text, "description");
-
-  const titleSeed = uses || name || provider || text.split("\n")[0] || "Item";
-  const title = prettifyName(titleSeed);
-
-  if (typeKey === "models") {
-    const derivedProvider = provider || (uses.includes("/") ? uses.split("/")[0] : "model");
-    const roleMatches = [...text.matchAll(/-\s*(chat|edit|apply|autocomplete)\b/gi)].map((match) => match[1].toLowerCase());
-    const roles = [...new Set(roleMatches)].slice(0, 4);
-    return {
-      title,
-      subtitle: derivedProvider || "model",
-      chips: roles,
-      description: description || ""
-    };
-  }
-
-  if (typeKey === "context") {
-    return {
-      title: title.startsWith("@") ? title : `@${title.replace(/\s+/g, "").toLowerCase()}`,
-      subtitle: description || provider || "Context provider"
-    };
-  }
-
-  return {
-    title,
-    subtitle: description || provider || `${PREVIEW_SECTION_CONFIG.find((section) => section.key === typeKey)?.label || "Item"} item`
-  };
-}
-
-function getFallbackPreviewSectionKey(normalizedType) {
-  if (normalizedType === "rules") return "rules";
-  if (normalizedType === "prompts") return "prompts";
-  if (normalizedType === "context") return "context";
-  if (normalizedType === "models") return "models";
-  if (normalizedType === "mcp servers") return "mcpServers";
-  return null;
-}
-
-function buildFallbackPreviewItem(definitionMeta) {
-  return {
-    title: prettifyName(definitionMeta?.name || definitionMeta?.filePath || "Definition"),
-    subtitle: definitionMeta?.description || "Markdown definition"
-  };
-}
-
-function collectPreviewSections(definitionContent, definitionMeta = {}) {
-  const mappings = {
-    models: ["models"],
-    mcpServers: ["mcpServers", "mcp_servers", "mcpservers"],
-    rules: ["rules"],
-    prompts: ["prompts"],
-    context: ["context"]
-  };
-
-  const normalizedType = normalizeFilterType(definitionMeta?.type);
-  const isMarkdown = inferDefinitionFormat(definitionMeta) === "md";
-  const sourceContent = String(definitionContent || "");
-
-  if (isMarkdown) {
-    const markdownSectionKey = getFallbackPreviewSectionKey(normalizedType);
-    const markdownItem = buildFallbackPreviewItem(definitionMeta);
-    return PREVIEW_SECTION_CONFIG.map((section) => ({
-      ...section,
-      items: section.key === markdownSectionKey ? [markdownItem] : []
-    }));
-  }
-
-  return PREVIEW_SECTION_CONFIG.map((section) => {
-    if (isMarkdown) {
-      return {
-        ...section,
-        items: section.key === fallbackSectionKey ? [fallbackItem] : []
-      };
-    }
-
-    const aliases = mappings[section.key] || [section.key];
-    const blocks = aliases.flatMap((alias) => parseTopLevelListSection(sourceContent, alias));
-    const items = blocks.map((block) => buildItemFromBlock(section.key, block)).filter((item) => item.title);
-    return { ...section, items };
-  });
-
-  const hasItems = sections.some((section) => section.items.length > 0);
-  const fallbackSectionKey = getFallbackPreviewSectionKey(normalizedType);
-
-  if (!hasItems && isMarkdown && fallbackSectionKey) {
-    const fallbackItem = buildFallbackPreviewItem(definitionMeta);
-    return sections.map((section) => (
-      section.key === fallbackSectionKey
-        ? { ...section, items: [fallbackItem] }
-        : section
-    ));
-  }
-
-  return sections;
-}
-
-function renderPreviewSection(section) {
-  const header = `
-    <div class="preview-section-header">
-      <h3>${section.label}</h3>
-      <a href="${section.learnMore}" target="_blank" rel="noopener noreferrer">
-        Learn more
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M15 3h6v6"></path>
-          <path d="M10 14 21 3"></path>
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-        </svg>
-      </a>
-    </div>
-  `;
-
-  if (section.items.length === 0) {
-    return `
-      <section class="preview-section">
-        ${header}
-        <p class="preview-empty">${section.empty}</p>
-      </section>
-    `;
-  }
-
-  const cards = section.items
-    .map((item) => `
-      <article class="preview-card">
-        <div class="preview-card-title">${escapeHtml(item.title)}</div>
-        <div class="preview-card-subtitle">${escapeHtml(item.subtitle || "")}</div>
-        ${item.chips && item.chips.length > 0 ? `<div class="preview-card-chips">${item.chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join("")}</div>` : ""}
-      </article>
-    `)
-    .join("");
-
-  return `
-    <section class="preview-section">
-      ${header}
-      <div class="preview-grid">${cards}</div>
-    </section>
-  `;
-}
-
-function renderDefinitionPreview(definitionContent, definitionMeta = {}) {
-  const sections = collectPreviewSections(definitionContent, definitionMeta);
-  return sections.map((section) => renderPreviewSection(section)).join("");
-}
-function formatValidationSummary(status, summary) {
-  const label = String(status || "").toUpperCase() || "UNKNOWN";
-  const statusIcon = status === "success" ? "✅" : status === "failure" ? "❌" : "⚠️";
-  return `<div class="validation-summary status-${escapeHtml(status || "unknown")}"><span class="validation-status-icon" aria-hidden="true">${statusIcon}</span>${label} · ${summary.errors} errors · ${summary.warnings} warnings · ${summary.infos} info</div>`;
-}
-
-function validationCheckIcon(check) {
-  return check.passed ? '<span class="check-result-icon check-result-pass" aria-hidden="true">✓</span>' : '<span class="check-result-icon check-result-fail" aria-hidden="true">✕</span>';
-}
-
-function renderValidationChecks(checks, severityFilter) {
-  const grouped = { schema: [], lint: [], reference: [] };
-  checks.forEach((check) => {
-    if (severityFilter !== "all" && check.severity !== severityFilter) {
-      return;
-    }
-    const category = grouped[check.category] ? check.category : "lint";
-    grouped[category].push(check);
-  });
-
-  return Object.entries(grouped).map(([category, entries]) => {
-    const title = category.charAt(0).toUpperCase() + category.slice(1);
-    const body = entries.length === 0
-      ? '<div class="validation-group-empty">No checks in this category.</div>'
-      : entries.map((check) => {
-        const location = check.location?.line ? ` <span class="validation-location">(L${check.location.line}${check.location.col ? `:C${check.location.col}` : ""})</span>` : "";
-        return `<li>${validationCheckIcon(check)}<span class="severity-badge severity-${check.severity}">${check.severity}</span> ${escapeHtml(check.message)}${location}${check.path ? ` <code>${escapeHtml(check.path)}</code>` : ""}</li>`;
-      }).join("");
-
-    return `<div class="validation-group"><h4>${title} checks</h4>${entries.length ? `<ul>${body}</ul>` : body}</div>`;
-  }).join("");
-}
-
-function renderValidationResult(result) {
-  const severityFilter = validationSeverityFilter?.value || "all";
-  const checksHtml = renderValidationChecks(Array.isArray(result?.checks) ? result.checks : [], severityFilter);
-  validationResults.innerHTML = `
-    ${formatValidationSummary(result?.status || "unknown", result?.summary || { errors: 0, warnings: 0, infos: 0 })}
-    ${checksHtml}
-    <details class="validation-raw-report">
-      <summary>Raw report</summary>
-      <pre>${escapeHtml(JSON.stringify(result, null, 2))}</pre>
-    </details>
-  `;
-}
-
-function updateValidationLastRun() {
-  if (!validationLastRun) {
-    return;
-  }
-  validationLastRun.textContent = `Last run: ${new Date().toLocaleString()}`;
-}
-
-async function runValidationForCurrentDefinition() {
-  if (!currentDetailDefinitionId) {
-    return;
-  }
-  runValidationButton.disabled = true;
-  try {
-    const payload = await fetchWithErrorHandling(
-      `/api/definitions/${currentDetailDefinitionId}/validate`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          options: {
-            strict: Boolean(validationStrictToggle?.checked),
-            lint: Boolean(validationLintToggle?.checked),
-            references: Boolean(validationReferencesToggle?.checked),
-          },
-        }),
-      },
-      "Unable to validate definition.",
-      {
-        title: "Running validation...",
-        description: "Checking schema, lint, and references.",
-      }
-    );
-    lastValidationResult = payload;
-    renderValidationResult(payload);
-    updateValidationLastRun();
-  } catch (error) {
-    validationResults.innerHTML = `<div class="validation-error">${escapeHtml(error.message || "Validation failed")}</div>`;
-  } finally {
-    runValidationButton.disabled = false;
-  }
-}
-
-function scheduleValidationRun() {
-  if (validationAutoRunTimeout) {
-    window.clearTimeout(validationAutoRunTimeout);
-  }
-  validationAutoRunTimeout = window.setTimeout(() => {
-    runValidationForCurrentDefinition();
-  }, 350);
-}
-
-function setDefinitionTab(activeTab) {
-  const isPreview = activeTab === "preview";
-  const isSource = activeTab === "source";
-  const isTest = activeTab === "test";
-  definitionTabPreview.classList.toggle("active", isPreview);
-  definitionTabSource.classList.toggle("active", isSource);
-  definitionTabTest.classList.toggle("active", isTest);
-  definitionTabPreview.setAttribute("aria-selected", String(isPreview));
-  definitionTabSource.setAttribute("aria-selected", String(isSource));
-  definitionTabTest.setAttribute("aria-selected", String(isTest));
-  definitionPreviewPanel.hidden = !isPreview;
-  definitionSourcePanel.hidden = !isSource;
-  definitionTestPanel.hidden = !isTest;
-
-  if (isTest && validationAutoRunToggle?.checked) {
-    scheduleValidationRun();
-  }
-}
+const { renderValidationResult, runValidationForCurrentDefinition, scheduleValidationRun, setDefinitionTab } = validationController;
 
 function formatVersionCommitDate(value) {
   if (!value) return "";
@@ -4738,178 +4409,12 @@ async function openPushUpstreamModal({ definitionName = "" } = {}) {
   });
 }
 
-function closeDuplicateDefinitionModal() {
-  const existing = document.querySelector(".duplicate-definition-overlay");
-  if (existing) {
-    existing.remove();
-  }
-}
+const duplicateModalHelpers = createDuplicateModalHelpers({
+  escapeHtml,
+  extractDccUriFromDefinitionContent,
+});
 
-function openConfirmationDialog({
-  title = "Confirm action",
-  message = "Are you sure you want to continue?",
-  confirmText = "Confirm",
-  cancelText = "Cancel"
-} = {}) {
-  return new Promise((resolve) => {
-    const existingOverlay = document.getElementById("confirmationDialogOverlay");
-    existingOverlay?.remove();
-
-    const overlay = document.createElement("div");
-    overlay.id = "confirmationDialogOverlay";
-    overlay.className = "editor-modal-overlay";
-
-    const modal = document.createElement("div");
-    modal.className = "editor-modal";
-
-    const titleElement = document.createElement("h3");
-    titleElement.textContent = title;
-
-    const messageElement = document.createElement("p");
-    messageElement.textContent = message;
-    messageElement.style.margin = "0";
-
-    const actions = document.createElement("div");
-    actions.className = "editor-modal-actions";
-
-    const cancelButton = document.createElement("button");
-    cancelButton.className = "btn";
-    cancelButton.type = "button";
-    cancelButton.textContent = cancelText;
-
-    const confirmButton = document.createElement("button");
-    confirmButton.className = "btn primary";
-    confirmButton.type = "button";
-    confirmButton.textContent = confirmText;
-
-    const cleanUpAndResolve = (result) => {
-      document.removeEventListener("keydown", onKeydown);
-      overlay.remove();
-      resolve(Boolean(result));
-    };
-
-    const onKeydown = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        cleanUpAndResolve(false);
-      }
-    };
-
-    cancelButton.addEventListener("click", () => cleanUpAndResolve(false));
-    confirmButton.addEventListener("click", () => cleanUpAndResolve(true));
-    overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) {
-        cleanUpAndResolve(false);
-      }
-    });
-
-    actions.append(cancelButton, confirmButton);
-    modal.append(titleElement, messageElement, actions);
-    overlay.append(modal);
-
-    document.addEventListener("keydown", onKeydown);
-    document.body.append(overlay);
-    confirmButton.focus();
-  });
-}
-
-function openDuplicateDefinitionModal({ defaultName, defaultDccUri, defaultContent }) {
-  closeDuplicateDefinitionModal();
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "duplicate-definition-overlay";
-    overlay.innerHTML = `
-      <div class="duplicate-definition-modal" role="dialog" aria-modal="true" aria-labelledby="duplicateDefinitionTitle">
-        <h3 id="duplicateDefinitionTitle">Duplicate definition</h3>
-        <p class="duplicate-definition-subtitle">Review and update fields before creating the duplicate.</p>
-        <label class="duplicate-definition-field">Definition name
-          <input type="text" data-role="duplicate-name" value="${escapeHtml(defaultName)}" />
-        </label>
-        <label class="duplicate-definition-field">DCC URI
-          <input type="text" data-role="duplicate-dcc-uri" value="${escapeHtml(defaultDccUri)}" />
-        </label>
-        <label class="duplicate-definition-field">Definition source
-          <textarea data-role="duplicate-content" rows="14">${escapeHtml(defaultContent)}</textarea>
-        </label>
-        <div class="duplicate-definition-actions">
-          <button class="btn" type="button" data-role="duplicate-cancel">Cancel</button>
-          <button class="btn primary" type="button" data-role="duplicate-save">Create duplicate</button>
-        </div>
-      </div>
-    `;
-
-    const nameInput = overlay.querySelector('[data-role="duplicate-name"]');
-    const dccUriInput = overlay.querySelector('[data-role="duplicate-dcc-uri"]');
-    const contentInput = overlay.querySelector('[data-role="duplicate-content"]');
-    const cancelButton = overlay.querySelector('[data-role="duplicate-cancel"]');
-    const saveButton = overlay.querySelector('[data-role="duplicate-save"]');
-
-    function handleCancel() {
-      closeDuplicateDefinitionModal();
-      resolve(null);
-    }
-
-    cancelButton?.addEventListener("click", handleCancel);
-    overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) {
-        handleCancel();
-      }
-    });
-
-    saveButton?.addEventListener("click", () => {
-      const nextName = String(nameInput?.value || "").trim();
-      const nextDccUri = String(dccUriInput?.value || "").trim();
-      const nextContent = String(contentInput?.value || "").trim();
-      if (!nextName) {
-        window.alert("Definition name cannot be empty.");
-        nameInput?.focus();
-        return;
-      }
-      if (!nextDccUri) {
-        window.alert("Definition dcc_uri cannot be empty.");
-        dccUriInput?.focus();
-        return;
-      }
-      if (!nextContent) {
-        window.alert("Definition content cannot be empty.");
-        contentInput?.focus();
-        return;
-      }
-      closeDuplicateDefinitionModal();
-      resolve({ name: nextName, dccUri: nextDccUri, content: nextContent });
-    });
-
-    document.body.append(overlay);
-    nameInput?.focus();
-    nameInput?.select();
-  });
-}
-
-function createDuplicateDefaults(definitionName, definitionPath, definitionContent = "", definitionDccUri = "") {
-  const defaultName = `${String(definitionName || "definition").trim() || "definition"}_copy`;
-  const currentDccUri = String(definitionDccUri || extractDccUriFromDefinitionContent(definitionContent, definitionPath) || "").trim();
-  const defaultDccUri = currentDccUri ? `${currentDccUri}_copy` : defaultName;
-  const originalFileName = pathBasename(definitionPath) || "definition.md";
-  const extension = pathExtname(originalFileName);
-  const baseName = extension ? originalFileName.slice(0, -extension.length) : originalFileName;
-  const defaultFileName = `${baseName}_copy${extension}`;
-  return { defaultName, defaultDccUri, defaultFileName };
-}
-
-function pathBasename(filePath) {
-  const normalized = String(filePath || "").replace(/\\/g, "/");
-  const segments = normalized.split(/[\\/]/).filter(Boolean);
-  return segments[segments.length - 1] || "";
-}
-
-function pathExtname(fileName) {
-  const value = String(fileName || "");
-  const dotIndex = value.lastIndexOf(".");
-  if (dotIndex <= 0) {
-    return "";
-  }
-  return value.slice(dotIndex);
-}
+const { openDuplicateDefinitionModal, createDuplicateDefaults } = duplicateModalHelpers;
 
 async function duplicateDefinition(id, { name, fileName, dccUri, content }) {
   return fetchWithErrorHandling(`/api/definitions/${id}/duplicate`, {
