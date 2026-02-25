@@ -49,7 +49,7 @@ export class CopilotAdapter extends BaseAdapter {
       return {
         destination: this.destination,
         type: normalizedType,
-        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri }),
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow }),
         mergeStrategy: "dcc_marked_block",
         markers: getDccBlockMarkers(definitionRow),
         content: buildRulesBlock(definitionRow)
@@ -60,7 +60,7 @@ export class CopilotAdapter extends BaseAdapter {
       return {
         destination: this.destination,
         type: normalizedType,
-        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri }),
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow }),
         mergeStrategy: "replace_file",
         content: buildPromptContent(definitionRow)
       };
@@ -85,7 +85,7 @@ export class CopilotAdapter extends BaseAdapter {
     if (normalizedType === "rules") {
       return [{
         op: "remove_marked_block",
-        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri }),
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow }),
         markers: getDccBlockMarkers(definitionRow)
       }];
     }
@@ -93,7 +93,7 @@ export class CopilotAdapter extends BaseAdapter {
     if (normalizedType === "prompts") {
       return [{
         op: "delete_file",
-        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow.dccUri || definitionRow.dcc_uri })
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow })
       }];
     }
 
