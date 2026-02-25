@@ -19,6 +19,31 @@ import {
   openConfirmationDialog,
 } from "./appController/definitionDialogs.js";
 import { createValidationController } from "./appController/validationController.js";
+import { createFavoritesStorage } from "./appController/favoritesStorage.js";
+import {
+  createFetchWithErrorHandling,
+  escapeHtml,
+  extractDccDefinitionTypeFromDefinitionContent,
+  extractDccUriFromDefinitionContent,
+  formatFilterLabel,
+  formatTypePillLabel as formatTypePillLabelUtil,
+  getCardDescription,
+  getCardTitle,
+  iconSvg,
+  normalizeFilterType as normalizeFilterTypeUtil,
+  normalizeTagValue,
+  parseDefinitionTags,
+  parseTagSearchQuery,
+  renderDescriptionMarkdown,
+  renderRepoOrigin,
+  statusLabel,
+  typeClassName as typeClassNameUtil,
+} from "./appController/definitionUtils.js";
+import {
+  getStoredRecentAgentRunPacks,
+  normalizeRecentAgentRunPack,
+  persistRecentAgentRunPacks,
+} from "./appController/recentRunPackStorage.js";
 
 const cardsContainer = document.getElementById("cards");
 const definitionsCountLabel = document.getElementById("definitionsCountLabel");
@@ -309,7 +334,7 @@ let runBuilderPickerFilter = "installed";
 let runBuilderSearchQuery = "";
 let runBuilderPendingSelection = null;
 let runBuilderSelection = { agent: null, config: null };
-let recentAgentRunPacks = getStoredRecentAgentRunPacks();
+let recentAgentRunPacks = getStoredRecentAgentRunPacks(RECENT_AGENT_RUNS_STORAGE_KEY);
 let activeRunId = "";
 let activeRunPollTimer = null;
 let activityRuns = [];
@@ -324,108 +349,8 @@ let activityTickerTimer = null;
 let activityRenderSignature = null;
 let isActivityStreamOpen = false;
 const FAVORITE_DEFINITION_IDS_STORAGE_KEY = "dcc.favorite.definition.ids";
-let favoriteDefinitionIds = getStoredFavoriteDefinitionIds();
-
-
-function getStoredFavoriteDefinitionIds() {
-  try {
-    const raw = localStorage.getItem(FAVORITE_DEFINITION_IDS_STORAGE_KEY);
-    if (!raw) {
-      return new Set();
-    }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return new Set();
-    }
-    return new Set(parsed.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value > 0));
-  } catch (_error) {
-    return new Set();
-  }
-}
-
-function persistFavoriteDefinitionIds() {
-  try {
-    localStorage.setItem(FAVORITE_DEFINITION_IDS_STORAGE_KEY, JSON.stringify(Array.from(favoriteDefinitionIds)));
-  } catch (_error) {
-    // Ignore localStorage errors.
-  }
-}
-
-function isFavoriteDefinition(definitionId) {
-  return favoriteDefinitionIds.has(Number(definitionId));
-}
-
-function toggleFavoriteDefinition(definitionId) {
-  const normalizedId = Number(definitionId);
-  if (!Number.isFinite(normalizedId) || normalizedId <= 0) {
-    return false;
-  }
-
-  if (favoriteDefinitionIds.has(normalizedId)) {
-    favoriteDefinitionIds.delete(normalizedId);
-  } else {
-    favoriteDefinitionIds.add(normalizedId);
-  }
-
-  persistFavoriteDefinitionIds();
-  return favoriteDefinitionIds.has(normalizedId);
-}
-
-function normalizeRecentAgentRunPack(entry) {
-  if (!entry || typeof entry !== "object") return null;
-
-  const agentId = String(entry.agentId || "").trim();
-  const configId = String(entry.configId || "").trim();
-  if (!agentId || !configId) return null;
-
-  return {
-    agentId,
-    configId,
-    prompt: String(entry.prompt || ""),
-    runOptions: {
-      verbose: Boolean(entry?.runOptions?.verbose),
-      readonly: Boolean(entry?.runOptions?.readonly),
-      denyRead: Boolean(entry?.runOptions?.denyRead),
-      denyList: Boolean(entry?.runOptions?.denyList),
-      denySearch: Boolean(entry?.runOptions?.denySearch),
-      denyFetch: Boolean(entry?.runOptions?.denyFetch),
-      denyDiff: Boolean(entry?.runOptions?.denyDiff),
-      allowWrite: Boolean(entry?.runOptions?.allowWrite),
-      allowEdit: Boolean(entry?.runOptions?.allowEdit),
-      allowMultiEdit: Boolean(entry?.runOptions?.allowMultiEdit),
-      allowTerminal: Boolean(entry?.runOptions?.allowTerminal),
-      allowOnly: Array.isArray(entry?.runOptions?.allowOnly)
-        ? entry.runOptions.allowOnly.map((value) => String(value || "").trim()).filter(Boolean)
-        : [],
-      denyTerminalCommands: Array.isArray(entry?.runOptions?.denyTerminalCommands)
-        ? entry.runOptions.denyTerminalCommands.map((value) => String(value || "").trim()).filter(Boolean)
-        : []
-    }
-  };
-}
-
-function getStoredRecentAgentRunPacks() {
-  try {
-    const raw = localStorage.getItem(RECENT_AGENT_RUNS_STORAGE_KEY);
-    const parsed = JSON.parse(raw || "[]");
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((value) => normalizeRecentAgentRunPack(value))
-      .filter(Boolean)
-      .slice(0, 30);
-  } catch (_error) {
-    return [];
-  }
-}
-
-function persistRecentAgentRunPacks() {
-  try {
-    localStorage.setItem(RECENT_AGENT_RUNS_STORAGE_KEY, JSON.stringify(recentAgentRunPacks.slice(0, 30)));
-  } catch (_error) {
-    // Ignore localStorage failures.
-  }
-}
-
+const favoritesStorage = createFavoritesStorage(FAVORITE_DEFINITION_IDS_STORAGE_KEY);
+const { isFavoriteDefinition, toggleFavoriteDefinition, pruneFavoriteDefinitionIds } = favoritesStorage;
 
 async function loadRecentAgentRunPacksFromDatabase() {
   try {
@@ -441,7 +366,7 @@ async function loadRecentAgentRunPacksFromDatabase() {
       .map((entry) => normalizeRecentAgentRunPack(entry))
       .filter(Boolean)
       .slice(0, 30);
-    persistRecentAgentRunPacks();
+    persistRecentAgentRunPacks(RECENT_AGENT_RUNS_STORAGE_KEY, recentAgentRunPacks);
     renderRunBuilder();
   } catch (_error) {
     // Fall back to localStorage-backed recent packs.
@@ -1672,7 +1597,7 @@ async function handleRunAgentClick() {
       },
       ...recentAgentRunPacks.filter((pack) => pack.agentId !== idsToPromote[0] || pack.configId !== idsToPromote[1])
     ].slice(0, 30);
-    persistRecentAgentRunPacks();
+    persistRecentAgentRunPacks(RECENT_AGENT_RUNS_STORAGE_KEY, recentAgentRunPacks);
     void persistRecentAgentRunPackToDatabase(recentAgentRunPacks[0]);
 
     const launchPayload = {
@@ -1940,151 +1865,13 @@ async function loadSuggestionsForCurrentProject() {
 }
 
 function normalizeFilterType(type) {
-  const normalized = String(type || "").trim().toLowerCase();
-  if (["model", "models"].includes(normalized)) return "models";
-  if (["mcp server", "mcp servers", "mcpserver", "mcpservers"].includes(normalized)) return "mcp servers";
-  if (["rule", "rules"].includes(normalized)) return "rules";
-  if (["prompt", "prompts"].includes(normalized)) return "prompts";
-  if (["agent", "agents"].includes(normalized)) return "agents";
-  if (["context", "contexts"].includes(normalized)) return "context";
-  if (["workflow", "workflows"].includes(normalized)) return "workflows";
-  if (["doc", "docs", "documentation"].includes(normalized)) return "docs";
-  if (["config", "configs"].includes(normalized)) return "configs";
-  if (["user", "users", "org", "orgs", "ai_assets", "ai assets"].includes(normalized)) return "unknown";
-  return FILTER_TYPE_SET.has(normalized) ? normalized : "unknown";
-}
-
-
-function extractDccUriFromDefinitionContent(content, filePath = "") {
-  const raw = String(content || "");
-  const ext = String(filePath || "").toLowerCase();
-  const frontmatterMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (frontmatterMatch) {
-    const frontmatterValue = frontmatterMatch[1].match(/^\s*dcc_uri\s*:\s*(.+?)\s*$/m);
-    if (frontmatterValue?.[1]) {
-      return frontmatterValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
-    }
-  }
-
-  if (ext.endsWith(".md") || ext.endsWith(".markdown")) {
-    return "";
-  }
-
-  const yamlValue = raw.match(/^\s*dcc_uri\s*:\s*(.+?)\s*$/m);
-  if (!yamlValue?.[1]) {
-    return "";
-  }
-  return yamlValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
+  return normalizeFilterTypeUtil(type, FILTER_TYPE_SET);
 }
 
 
 
-function extractDccDefinitionTypeFromDefinitionContent(content, filePath = "") {
-  const raw = String(content || "");
-  const ext = String(filePath || "").toLowerCase();
-  const frontmatterMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (frontmatterMatch) {
-    const frontmatterValue = frontmatterMatch[1].match(/^\s*dcc_definition_type\s*:\s*(.+?)\s*$/m);
-    if (frontmatterValue?.[1]) {
-      return frontmatterValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
-    }
-  }
 
-  if (ext.endsWith(".md") || ext.endsWith(".markdown")) {
-    return "";
-  }
-
-  const yamlValue = raw.match(/^\s*dcc_definition_type\s*:\s*(.+?)\s*$/m);
-  if (!yamlValue?.[1]) {
-    return "";
-  }
-  return yamlValue[1].replace(/^("|')(.*)\1$/, "$2").trim();
-}
-
-function renderRepoOrigin(definition) {
-  const repoDisplayName = String(definition?.repoDisplayName || definition?.repoName || "").trim();
-  const repoRelativePath = String(definition?.repoRelativePath || "").trim();
-  const repoRemoteUrl = String(definition?.repoRemoteUrl || "").trim();
-
-  if (!repoDisplayName && !repoRemoteUrl) {
-    return "Origin: Team / local-only";
-  }
-
-  let originText = `Origin: ${repoDisplayName || repoRemoteUrl}`;
-  if (repoRelativePath) {
-    originText += ` (${repoRelativePath})`;
-  }
-  return originText;
-}
-
-function normalizeTagValue(tag) {
-  return String(tag || "").trim().toLowerCase();
-}
-
-function parseErrorMessage(payload, fallbackMessage) {
-  if (!payload) {
-    return fallbackMessage;
-  }
-  if (typeof payload === "string") {
-    return payload;
-  }
-  if (payload.error) {
-    return String(payload.error);
-  }
-  return fallbackMessage;
-}
-
-async function fetchWithErrorHandling(url, options = {}, fallbackMessage = "Request failed.", loadingOptions = null) {
-  const executeRequest = async () => {
-    const response = await fetch(url, options);
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch (_error) {
-      payload = null;
-    }
-
-    if (!response.ok) {
-      throw new Error(parseErrorMessage(payload, fallbackMessage));
-    }
-
-    return payload;
-  };
-
-  if (loadingOptions) {
-    return runWithLoading(executeRequest, loadingOptions);
-  }
-
-  return executeRequest();
-}
-
-function parseDefinitionTags(rawTags) {
-  const source = Array.isArray(rawTags) ? rawTags.join(",") : String(rawTags || "");
-  const seen = new Set();
-  const tags = [];
-
-  source
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean)
-    .forEach((tag) => {
-      const normalized = normalizeTagValue(tag);
-      if (!normalized || seen.has(normalized)) {
-        return;
-      }
-      seen.add(normalized);
-      tags.push(tag);
-    });
-
-  return tags;
-}
-
-function parseTagSearchQuery(rawSearch) {
-  return String(rawSearch || "")
-    .split(",")
-    .map((entry) => normalizeTagValue(entry))
-    .filter(Boolean);
-}
+const fetchWithErrorHandling = createFetchWithErrorHandling({ runWithLoading });
 
 function isTagOnlyQuery(queryTags) {
   if (queryTags.length === 0) {
@@ -2119,141 +1906,14 @@ function renderTagPills(tags, { truncate = false } = {}) {
   return `${pills}<span class="tag-pill tag-pill-more" aria-label="${hiddenCount} more tags">...</span>`;
 }
 
-function iconSvg(status) {
-  if (status === "saved") {
-    return `
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M5 10.5l3 3 7-7" />
-      </svg>
-    `;
-  }
-  if (status === "local-only") {
-    return `
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M10 4v12" />
-        <path d="M6 8l4-4 4 4" />
-      </svg>
-    `;
-  }
-  return `
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M10 4v12" />
-      <path d="M4 10h12" />
-    </svg>
-  `;
-}
-
-function statusLabel(status, source = "") {
-  const suffix = String(source || "").toLowerCase() === "untracked" ? " · Untracked" : "";
-  if (status === "saved") {
-    return `Saved to team${suffix}`;
-  }
-  if (status === "local-only") {
-    return `Local only${suffix}`;
-  }
-  return `Available${suffix}`;
-}
-
-function formatFilterLabel(type) {
-  if (type === "all") {
-    return "All";
-  }
-  if (type === "installed") {
-    return "Installed";
-  }
-  return type
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
 function formatTypePillLabel(type) {
-  const normalizedType = normalizeFilterType(type);
-  if (normalizedType === "models") return "Model";
-  if (normalizedType === "mcp servers") return "MCP Server";
-  if (normalizedType === "rules") return "Rule";
-  if (normalizedType === "prompts") return "Prompt";
-  if (normalizedType === "agents") return "Agent";
-  if (normalizedType === "context") return "Context";
-  if (normalizedType === "workflows") return "Workflow";
-  if (normalizedType === "docs") return "Doc";
-  if (normalizedType === "configs") return "Config";
-  return "Unknown";
+  return formatTypePillLabelUtil(type, FILTER_TYPE_SET);
 }
 
 function typeClassName(type) {
-  return `type-${normalizeFilterType(type).replace(/\s+/g, "-")}`;
+  return typeClassNameUtil(type, FILTER_TYPE_SET);
 }
 
-
-function getCardDescription(description) {
-  const fallback = "No description provided.";
-  if (!description) {
-    return fallback;
-  }
-
-  const normalized = String(description).replace(/\s+/g, " ").trim();
-  if (!normalized) {
-    return fallback;
-  }
-
-  return normalized;
-}
-
-function getCardTitle(name) {
-  const fallback = "Untitled definition";
-  const normalized = String(name || "").replace(/\s+/g, " ").trim();
-  if (!normalized) {
-    return fallback;
-  }
-
-  const maxLength = 25;
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function renderDescriptionMarkdown(description) {
-  const raw = String(description || "").replace(/\r\n/g, "\n");
-  if (!raw.trim()) {
-    return "<p>No description provided.</p>";
-  }
-
-  const codeBlocks = [];
-  let html = escapeHtml(raw).replace(/```([\s\S]*?)```/g, (_, code) => {
-    const trimmed = code.replace(/^\n+|\n+$/g, "");
-    const index = codeBlocks.push(`<pre><code>${trimmed}</code></pre>`) - 1;
-    return `@@CODE_BLOCK_${index}@@`;
-  });
-
-  html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
-  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-
-  const blocks = html
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      if (/^@@CODE_BLOCK_\d+@@$/.test(block)) {
-        return block;
-      }
-      return `<p>${block.replace(/\n/g, "<br>")}</p>`;
-    });
-
-  const withParagraphs = blocks.join("");
-  return withParagraphs.replace(/@@CODE_BLOCK_(\d+)@@/g, (_, index) => codeBlocks[Number(index)] || "");
-}
 
 function filterIconSvg(type) {
   return definitionIconSvg(type, { fallback: "filter" });
@@ -3427,10 +3087,7 @@ async function fetchDefinitions() {
     };
   });
 
-  favoriteDefinitionIds = new Set(
-    Array.from(favoriteDefinitionIds).filter((definitionId) => definitions.some((definition) => Number(definition.id) === definitionId))
-  );
-  persistFavoriteDefinitionIds();
+  pruneFavoriteDefinitionIds(definitions.map((definition) => definition.id));
 
   renderFilters();
   renderCards();
