@@ -47,6 +47,21 @@ import {
 import { createRunBuilderParamsController } from "./appController/runBuilderParams.js";
 import { createPaginationController } from "./appController/pagination.js";
 import { createActivityUtils } from "./appController/activityUtils.js";
+import {
+  buildIntentSearchCatalogSnapshot,
+  normalizeAiSuggestedEntries,
+  parseAiSuggestionPayload,
+  truncateForIntentSearchLog,
+} from "./appController/intentSuggestionUtils.js";
+import {
+  buildInstallExportSummary,
+  getDestinationLabel,
+  getDestinationLogoPath,
+  getInstalledDestinationSet,
+  getSupportedDestinationOptions,
+  normalizeDestinationCompatibilityType,
+  formatSkippedReason,
+} from "./appController/installDestinationUtils.js";
 
 import {
   AGENT_RUNS_ENDPOINT,
@@ -2589,72 +2604,6 @@ async function fetchDefinitionSuggestions() {
   }
 }
 
-function parseAiSuggestionPayload(rawContent) {
-  const text = String(rawContent || "").trim();
-  if (!text) return null;
-
-  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fencedMatch?.[1] ? fencedMatch[1].trim() : text;
-
-  try {
-    return JSON.parse(candidate);
-  } catch (_error) {
-    const objectMatch = candidate.match(/\{[\s\S]*\}/);
-    if (!objectMatch) return null;
-    try {
-      return JSON.parse(objectMatch[0]);
-    } catch (_nestedError) {
-      return null;
-    }
-  }
-}
-
-function normalizeAiSuggestedEntries(items = []) {
-  const seen = new Set();
-  const normalized = [];
-
-  items.forEach((item, index) => {
-    const definitionId = Number(item?.definitionId);
-    if (!Number.isFinite(definitionId) || seen.has(definitionId)) {
-      return;
-    }
-
-    const score = Number(item?.score);
-    normalized.push({
-      definitionId,
-      score: Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : Math.max(100 - (index * 6), 40),
-      reasons: Array.isArray(item?.reasons)
-        ? item.reasons.map((reason) => String(reason || "").trim()).filter(Boolean).slice(0, 4)
-        : []
-    });
-    seen.add(definitionId);
-  });
-
-  return normalized;
-}
-
-function buildIntentSearchCatalogSnapshot(sourceDefinitions = []) {
-  return sourceDefinitions.map((definition) => {
-    const tags = Array.isArray(definition.tags) ? definition.tags.slice(0, 8) : [];
-    const description = String(definition.description || "").trim();
-    return {
-      id: Number(definition.id),
-      name: String(definition.name || "").slice(0, 120),
-      description: description.slice(0, 260),
-      type: definition.type,
-      tags
-    };
-  });
-}
-
-function truncateForIntentSearchLog(value, maxLength = 300) {
-  const normalized = String(value || "").replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-  return `${normalized.slice(0, maxLength)}...`;
-}
-
 async function requestIntentSuggestions(intent = "") {
   const normalizedIntent = String(intent || "").trim();
   if (!normalizedIntent) {
@@ -3223,94 +3172,10 @@ async function showDetails(id) {
   showDetailPage();
 }
 
-function normalizeDestinationCompatibilityType(type) {
-  const normalizedType = normalizeFilterType(type);
-  if (normalizedType === "mcp servers") return "mcpservers";
-  return normalizedType;
-}
-
-function getSupportedDestinationOptions(definition = {}) {
-  const normalizedType = normalizeDestinationCompatibilityType(definition?.type);
-  if (!normalizedType || normalizedType === "unknown") return [];
-  return INSTALL_DESTINATION_OPTIONS.filter((option) => DESTINATION_COMPATIBILITY[option.key]?.has(normalizedType));
-}
-
-function getDestinationLogoPath(destinationKey) {
-  const normalizedKey = String(destinationKey || "").trim().toLowerCase();
-  const currentTheme = String(document.documentElement.getAttribute("data-theme") || "dark").trim().toLowerCase();
-  const logoTone = currentTheme === "light" ? "black" : "white";
-  if (!["continue", "copilot", "gemini"].includes(normalizedKey)) return "";
-  return `/img/${normalizedKey}_small_${logoTone}_logo.png`;
-}
-
-function getDestinationLabel(destination) {
-  const normalizedDestination = String(destination || "continue").trim().toLowerCase();
-  if (normalizedDestination === "copilot") return "GitHub Copilot";
-  if (normalizedDestination === "gemini") return "Gemini CLI";
-  return "Continue";
-}
-
-function getInstalledDestinationSet(definition = {}) {
-  const installed = Array.isArray(definition?.installedDestinations) ? definition.installedDestinations : [];
-  return new Set(installed.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean));
-}
-
 function closeInstallDestinationMenu() {
   if (!activeInstallDestinationMenu) return;
   activeInstallDestinationMenu.cleanup?.();
   activeInstallDestinationMenu = null;
-}
-
-function formatSkippedReason(skippedItem) {
-  const reason = String(skippedItem?.reason || "not_exported").trim().toLowerCase();
-  const message = String(skippedItem?.message || "").trim();
-  const reasonLabels = {
-    unknown_destination: "unknown destination",
-    unsupported_type_for_destination: "unsupported definition type",
-    conversion_failed: "conversion failed",
-    no_write_plan: "no output generated",
-    unsupported_destination: "unsupported destination",
-    unknown_operation: "unsupported write operation"
-  };
-
-  const label = reasonLabels[reason] || reason.replace(/_/g, " ");
-  return message ? `${label} (${message})` : label;
-}
-
-function buildInstallExportSummary(result, destination) {
-  const normalizedDestination = String(destination || "continue").trim().toLowerCase();
-  const destinationLabel = normalizedDestination === "continue"
-    ? "current project"
-    : normalizedDestination === "copilot"
-      ? "GitHub Copilot"
-      : normalizedDestination === "gemini"
-        ? "Gemini CLI"
-        : normalizedDestination;
-
-  const writtenFiles = Array.isArray(result?.writtenFiles) ? result.writtenFiles : [];
-  const skipped = Array.isArray(result?.skipped) ? result.skipped : [];
-  const exportedCount = Number.isFinite(Number(result?.exportedCount))
-    ? Number(result.exportedCount)
-    : (result?.exported ? 1 : 0);
-
-  const lines = [
-    normalizedDestination === "continue"
-      ? "Definition installed in current project."
-      : `Definition exported to ${destinationLabel}.`,
-    `Exported: ${exportedCount}`,
-    `Files written: ${writtenFiles.length}`,
-    `Skipped definitions: ${skipped.length}`
-  ];
-
-  if (skipped.length > 0) {
-    lines.push("Skipped details:");
-    skipped.forEach((entry, index) => {
-      const label = entry?.name || entry?.key || entry?.definitionKey || `Definition ${index + 1}`;
-      lines.push(`- ${label}: ${formatSkippedReason(entry)}`);
-    });
-  }
-
-  return lines.join("\n");
 }
 
 
