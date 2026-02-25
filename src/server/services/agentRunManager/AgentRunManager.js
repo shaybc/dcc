@@ -7,6 +7,14 @@ import { detectCnExecutable, createSpawnSpec } from "./commandLaunch.js";
 import { buildArgs, normalizeRunOptions } from "./runOptions.js";
 import { nowIso, normalizeStatus, parseJson, parseJsonArray } from "./utils.js";
 
+function normalizeOptionalDefinitionId(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  if (!Number.isInteger(numeric) || numeric <= 0) return null;
+  return numeric;
+}
+
 export class AgentRunManager {
   constructor() {
     this.runs = new Map();
@@ -31,14 +39,15 @@ export class AgentRunManager {
       let rows = [];
       try {
         rows = await allDb(
-          `SELECT runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
+          `SELECT runId, agentId, configId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
                   createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes,
                   runOptionsJson
            FROM agent_runs
            ORDER BY createdAt ASC`
         );
       } catch (error) {
-        if (!String(error?.message || "").includes("runOptionsJson")) {
+        const message = String(error?.message || "");
+        if (!message.includes("runOptionsJson") && !message.includes("agentId") && !message.includes("configId")) {
           throw error;
         }
         rows = await allDb(
@@ -55,6 +64,8 @@ export class AgentRunManager {
 
         const run = {
           runId: row.runId,
+          agentId: normalizeOptionalDefinitionId(row.agentId),
+          configId: normalizeOptionalDefinitionId(row.configId),
           projectPath: row.projectPath,
           agentPath: row.agentPath,
           configPath: row.configPath,
@@ -115,11 +126,13 @@ export class AgentRunManager {
     const runValues = this.buildRunPersistValues(run);
     const persistWithRunOptionsColumn = () => runDb(
       `INSERT INTO agent_runs (
-        runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
+        runId, agentId, configId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
         createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes,
         runOptionsJson
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(runId) DO UPDATE SET
+        agentId = excluded.agentId,
+        configId = excluded.configId,
         projectPath = excluded.projectPath,
         agentPath = excluded.agentPath,
         configPath = excluded.configPath,
@@ -144,10 +157,12 @@ export class AgentRunManager {
 
     const persistWithoutRunOptionsColumn = () => runDb(
       `INSERT INTO agent_runs (
-        runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
+        runId, agentId, configId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
         createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(runId) DO UPDATE SET
+        agentId = excluded.agentId,
+        configId = excluded.configId,
         projectPath = excluded.projectPath,
         agentPath = excluded.agentPath,
         configPath = excluded.configPath,
@@ -190,6 +205,8 @@ export class AgentRunManager {
   buildRunPersistValues(run) {
     return [
       run.runId,
+      normalizeOptionalDefinitionId(run.agentId),
+      normalizeOptionalDefinitionId(run.configId),
       run.projectPath,
       run.agentPath,
       run.configPath,
@@ -228,7 +245,7 @@ export class AgentRunManager {
     ));
   }
 
-  startRun({ projectPath, agentPath, configPath, prompt, runOptions = {} }) {
+  startRun({ agentId = null, configId = null, projectPath, agentPath, configPath, prompt, runOptions = {} }) {
     const runId = `run_${Date.now()}_${++this.sequence}`;
     const createdAt = nowIso();
     const commandPath = detectCnExecutable(process.cwd());
@@ -238,6 +255,8 @@ export class AgentRunManager {
 
     const run = {
       runId,
+      agentId: normalizeOptionalDefinitionId(agentId),
+      configId: normalizeOptionalDefinitionId(configId),
       projectPath,
       agentPath,
       configPath,
@@ -377,6 +396,8 @@ export class AgentRunManager {
     if (!run) return null;
     return {
       runId: run.runId,
+      agentId: normalizeOptionalDefinitionId(run.agentId),
+      configId: normalizeOptionalDefinitionId(run.configId),
       pid: run.pid,
       status: normalizeStatus(run),
       projectPath: run.projectPath,
