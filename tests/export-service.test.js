@@ -62,6 +62,35 @@ test("re-export updates existing managed prompt file without duplicating content
   assert.doesNotMatch(updated, /first version/);
 });
 
+test("copilot prompt exports derive unique file paths from definition keys", async () => {
+  const projectPath = await fs.mkdtemp(path.join(os.tmpdir(), "dcc-export-prompt-keys-"));
+
+  const result = await exportDefinitionsToDestination({
+    projectPath,
+    destination: DESTINATIONS.COPILOT,
+    definitions: [
+      { key: "prompts::prompts/code-review", type: "prompts", content: "review prompt" },
+      { key: "prompts::prompts/bug-triage", type: "prompts", content: "triage prompt" }
+    ],
+    mode: "install"
+  });
+
+  assert.equal(result.writtenFiles.length, 2);
+
+  const relativePaths = result.writtenFiles.map((entry) => entry.relativePath).sort();
+  assert.deepEqual(relativePaths, [
+    path.join(".github", "prompts", "prompts-bug-triage.prompt.md"),
+    path.join(".github", "prompts", "prompts-code-review.prompt.md")
+  ]);
+
+  const reviewPath = path.join(projectPath, ".github", "prompts", "prompts-code-review.prompt.md");
+  const triagePath = path.join(projectPath, ".github", "prompts", "prompts-bug-triage.prompt.md");
+
+  assert.match(await fs.readFile(reviewPath, "utf8"), /review prompt/);
+  assert.match(await fs.readFile(triagePath, "utf8"), /triage prompt/);
+});
+
+
 test("remove mode retracts DCC-managed prompt content only", async () => {
   const projectPath = await fs.mkdtemp(path.join(os.tmpdir(), "dcc-export-remove-"));
   const manualPath = path.join(projectPath, ".github", "copilot-instructions.md");
