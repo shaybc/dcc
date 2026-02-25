@@ -25,9 +25,9 @@ function normalizeType(type) {
 }
 
 export function slugFromDccUri(input = "") {
-  const rawValue = typeof input === "object" && input !== null
-    ? String(input.dccUri || input.dcc_uri || input.name || "")
-    : String(input || "");
+  const rawValue = resolveDccUri(input) || (typeof input === "object" && input !== null
+    ? String(input.name || "")
+    : String(input || ""));
 
   const slug = rawValue
     .trim()
@@ -39,10 +39,7 @@ export function slugFromDccUri(input = "") {
 }
 
 export function getDccBlockMarkers(input = "") {
-  const source = typeof input === "object" && input !== null
-    ? String(input.dccUri || input.dcc_uri || input.uri || "")
-    : String(input || "");
-  const dccUri = source.trim();
+  const dccUri = resolveDccUri(input);
 
   if (!dccUri) return null;
 
@@ -50,6 +47,23 @@ export function getDccBlockMarkers(input = "") {
     start: `<!-- DCC:BEGIN ${dccUri} -->`,
     end: `<!-- DCC:END ${dccUri} -->`
   };
+}
+
+export function resolveDccUri(input = "") {
+  if (typeof input === "object" && input !== null) {
+    const directUri = String(input.dccUri || input.dcc_uri || input.uri || "").trim();
+    if (directUri) return directUri;
+
+    const key = String(input.key || "").trim();
+    const keySeparatorIndex = key.indexOf("::");
+    if (keySeparatorIndex !== -1) {
+      const keyUri = key.slice(keySeparatorIndex + 2).trim();
+      if (keyUri) return keyUri;
+    }
+    return "";
+  }
+
+  return String(input || "").trim();
 }
 
 export function getManagedRelativePath({ destination, type, dccUri } = {}) {
@@ -73,6 +87,7 @@ export function getManagedRelativePath({ destination, type, dccUri } = {}) {
 
 export default {
   slugFromDccUri,
+  resolveDccUri,
   getDccBlockMarkers,
   getManagedRelativePath
 };
