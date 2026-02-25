@@ -215,6 +215,7 @@ export function createActivityDashboardController({
     if (!activitySelectedRunId || !activityStreamPanel || !activityStreamBackdrop) return;
     isActivityStreamOpen = true;
     activityStreamPanel.hidden = false;
+    activityStreamPanel.classList.add("open");
     activityStreamBackdrop.hidden = false;
     document.body.classList.add("activity-stream-open");
     renderActivityLogStream();
@@ -223,6 +224,7 @@ export function createActivityDashboardController({
   function closeActivityStreamPanel() {
     if (!activityStreamPanel || !activityStreamBackdrop) return;
     isActivityStreamOpen = false;
+    activityStreamPanel.classList.remove("open");
     activityStreamPanel.hidden = true;
     activityStreamBackdrop.hidden = true;
     document.body.classList.remove("activity-stream-open");
