@@ -26,7 +26,7 @@ function normalizeType(type) {
 
 export function slugFromDccUri(input = "") {
   const rawValue = typeof input === "object" && input !== null
-    ? String(input.dccUri || input.dcc_uri || input.uri || "")
+    ? String(input.dccUri || input.dcc_uri || input.name || "")
     : String(input || "");
 
   const slug = rawValue
