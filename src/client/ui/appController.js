@@ -44,9 +44,6 @@ import {
   normalizeRecentAgentRunPack,
   persistRecentAgentRunPacks,
 } from "./appController/recentRunPackStorage.js";
-import { createRunBuilderParamsController } from "./appController/runBuilderParams.js";
-import { createPaginationController } from "./appController/pagination.js";
-import { createActivityUtils } from "./appController/activityUtils.js";
 
 import {
   AGENT_RUNS_ENDPOINT,
@@ -335,72 +332,6 @@ let activityRenderSignature = null;
 let isActivityStreamOpen = false;
 const favoritesStorage = createFavoritesStorage(FAVORITE_DEFINITION_IDS_STORAGE_KEY);
 const { isFavoriteDefinition, toggleFavoriteDefinition, pruneFavoriteDefinitionIds } = favoritesStorage;
-
-const runBuilderParamsController = createRunBuilderParamsController({
-  runPromptInput,
-  runPromptCharCount,
-  runPromptStage,
-  runParamsStage,
-  runParamVerbose,
-  runParamReadonly,
-  runParamDenyRead,
-  runParamDenyList,
-  runParamDenySearch,
-  runParamDenyFetch,
-  runParamDenyDiff,
-  runParamAllowWrite,
-  runParamAllowEdit,
-  runParamAllowMultiEdit,
-  runParamAllowTerminal,
-  runParamAllowOnlyEnabled,
-  runParamAllowOnlyList,
-  runParamAllowOnlyAdd,
-  runParamDenyTerminalEnabled,
-  runParamDenyTerminalList,
-  runParamDenyTerminalAdd,
-});
-
-const {
-  applyRunBuilderParams,
-  collectRunBuilderParams,
-  resetRunBuilderParams,
-  updateRunBuilderParamState,
-  createRunParamArrayInput,
-  getRunParamArrayValues,
-  handleRunBuilderPromptInput,
-  formatRunOptionSummary,
-} = runBuilderParamsController;
-
-const paginationController = createPaginationController({
-  paginationContainer,
-  onPageChange: (page) => {
-    currentCardsPage = page;
-    renderCards();
-  },
-});
-
-const {
-  createPaginationButton,
-  createPaginationEllipsis,
-  getVisiblePaginationPages,
-  renderPagination,
-} = paginationController;
-
-const activityUtils = createActivityUtils({
-  definitionsRef: () => definitions,
-  showDetails,
-  activityLastUpdated,
-  setActiveTopPage,
-  updateRouteForDetails,
-});
-
-const {
-  getRunNameFromPath,
-  normalizeDefinitionPath,
-  findDefinitionByPath,
-  setActivityDefinitionLink,
-  openDefinitionDetailsByPath,
-} = activityUtils;
 
 async function loadRecentAgentRunPacksFromDatabase() {
   try {
@@ -726,6 +657,208 @@ function prefillRunBuilderFromActivityRun(runId) {
   }
 }
 
+function applyRunBuilderParams(runOptions = {}) {
+  const options = runOptions || {};
+  if (runParamVerbose) runParamVerbose.checked = Boolean(options.verbose);
+  if (runParamReadonly) runParamReadonly.checked = Boolean(options.readonly);
+  if (runParamDenyRead) runParamDenyRead.checked = Boolean(options.denyRead);
+  if (runParamDenyList) runParamDenyList.checked = Boolean(options.denyList);
+  if (runParamDenySearch) runParamDenySearch.checked = Boolean(options.denySearch);
+  if (runParamDenyFetch) runParamDenyFetch.checked = Boolean(options.denyFetch);
+  if (runParamDenyDiff) runParamDenyDiff.checked = Boolean(options.denyDiff);
+  if (runParamAllowWrite) runParamAllowWrite.checked = Boolean(options.allowWrite);
+  if (runParamAllowEdit) runParamAllowEdit.checked = Boolean(options.allowEdit);
+  if (runParamAllowMultiEdit) runParamAllowMultiEdit.checked = Boolean(options.allowMultiEdit);
+  if (runParamAllowTerminal) runParamAllowTerminal.checked = Boolean(options.allowTerminal);
+  if (runParamAllowOnlyEnabled) runParamAllowOnlyEnabled.checked = Array.isArray(options.allowOnly) && options.allowOnly.length > 0;
+  if (runParamDenyTerminalEnabled) runParamDenyTerminalEnabled.checked = Array.isArray(options.denyTerminalCommands) && options.denyTerminalCommands.length > 0;
+
+  if (runParamAllowOnlyList) {
+    runParamAllowOnlyList.innerHTML = "";
+    for (const value of Array.isArray(options.allowOnly) ? options.allowOnly : []) {
+      createRunParamArrayInput(runParamAllowOnlyList, "*.ts");
+      const input = runParamAllowOnlyList.lastElementChild?.querySelector(".run-param-array-input");
+      if (input) input.value = String(value || "");
+    }
+  }
+
+  if (runParamDenyTerminalList) {
+    runParamDenyTerminalList.innerHTML = "";
+    for (const value of Array.isArray(options.denyTerminalCommands) ? options.denyTerminalCommands : []) {
+      createRunParamArrayInput(runParamDenyTerminalList, "npm install");
+      const input = runParamDenyTerminalList.lastElementChild?.querySelector(".run-param-array-input");
+      if (input) input.value = String(value || "");
+    }
+  }
+
+  updateRunBuilderParamState();
+}
+
+function formatRunOptionSummary(runOptions = {}) {
+  const options = runOptions || {};
+  const labels = [];
+  if (options.verbose) labels.push("--verbose");
+  if (options.readonly) labels.push("--readonly");
+  if (options.denyRead) labels.push("--exclude Read");
+  if (options.denyList) labels.push("--exclude List");
+  if (options.denySearch) labels.push("--exclude Search");
+  if (options.denyFetch) labels.push("--exclude Fetch");
+  if (options.denyDiff) labels.push("--exclude Diff");
+  if (options.allowWrite) labels.push("--allow Write");
+  if (options.allowEdit) labels.push("--allow Edit");
+  if (options.allowMultiEdit) labels.push("--allow MultiEdit");
+  if (options.allowTerminal) labels.push("--allow Bash");
+
+  for (const pattern of Array.isArray(options.allowOnly) ? options.allowOnly : []) {
+    labels.push(`--allow Write(**/${String(pattern)})`);
+  }
+  const denied = Array.isArray(options.denyTerminalCommands) ? options.denyTerminalCommands : [];
+  if (denied.length) {
+    if (!options.allowTerminal) labels.push("--allow Bash");
+    for (const command of denied) {
+      labels.push(`--exclude Bash(${String(command)}*)`);
+    }
+  }
+
+  return labels.length ? labels.join(" | ") : "—";
+}
+
+function handleRunBuilderPromptInput() {
+  if (!runPromptInput || !runPromptCharCount || !runPromptStage) return;
+  const length = runPromptInput.value.length;
+  runPromptCharCount.textContent = `${length} chars`;
+  runPromptStage.classList.toggle("filled", length > 0);
+}
+
+function createRunParamArrayInput(container, placeholder) {
+  if (!container) return;
+  const row = document.createElement("div");
+  row.className = "run-param-array-row";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "run-param-array-input";
+  input.placeholder = placeholder;
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "run-param-remove";
+  removeButton.setAttribute("aria-label", "Remove value");
+  removeButton.textContent = "✕";
+
+  removeButton.addEventListener("click", () => {
+    row.remove();
+    updateRunBuilderParamState();
+  });
+  input.addEventListener("input", updateRunBuilderParamState);
+
+  row.append(input, removeButton);
+  container.appendChild(row);
+}
+
+function getRunParamArrayValues(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll(".run-param-array-input"))
+    .map((input) => String(input.value || "").trim())
+    .filter(Boolean);
+}
+
+function updateRunBuilderParamState() {
+  const readonlyEnabled = Boolean(runParamReadonly?.checked);
+  if (readonlyEnabled) {
+    [
+      runParamDenyRead,
+      runParamDenyList,
+      runParamDenySearch,
+      runParamDenyFetch,
+      runParamDenyDiff,
+      runParamAllowWrite,
+      runParamAllowEdit,
+      runParamAllowMultiEdit,
+      runParamAllowTerminal,
+      runParamAllowOnlyEnabled,
+      runParamDenyTerminalEnabled
+    ].forEach((checkbox) => {
+      if (checkbox) checkbox.checked = false;
+    });
+
+    if (runParamAllowOnlyList) runParamAllowOnlyList.innerHTML = "";
+    if (runParamDenyTerminalList) runParamDenyTerminalList.innerHTML = "";
+  }
+
+  const allowOnlyEnabled = Boolean(runParamAllowOnlyEnabled?.checked);
+  const denyTerminalEnabled = Boolean(runParamDenyTerminalEnabled?.checked);
+
+  if (allowOnlyEnabled && runParamAllowWrite?.checked) {
+    runParamAllowWrite.checked = false;
+  }
+
+  if (runParamAllowOnlyList) runParamAllowOnlyList.hidden = !allowOnlyEnabled;
+  if (runParamAllowOnlyAdd) runParamAllowOnlyAdd.hidden = !allowOnlyEnabled;
+  if (runParamDenyTerminalList) runParamDenyTerminalList.hidden = !denyTerminalEnabled;
+  if (runParamDenyTerminalAdd) runParamDenyTerminalAdd.hidden = !denyTerminalEnabled;
+
+  const hasAnySelected = Boolean(
+    runParamVerbose?.checked
+    || runParamReadonly?.checked
+    || runParamDenyRead?.checked
+    || runParamDenyList?.checked
+    || runParamDenySearch?.checked
+    || runParamDenyFetch?.checked
+    || runParamDenyDiff?.checked
+    || runParamAllowWrite?.checked
+    || runParamAllowEdit?.checked
+    || runParamAllowMultiEdit?.checked
+    || runParamAllowTerminal?.checked
+    || (allowOnlyEnabled && getRunParamArrayValues(runParamAllowOnlyList).length)
+    || (denyTerminalEnabled && getRunParamArrayValues(runParamDenyTerminalList).length)
+  );
+  runParamsStage?.classList.toggle("filled", hasAnySelected);
+}
+
+function resetRunBuilderParams() {
+  [
+    runParamVerbose,
+    runParamReadonly,
+    runParamDenyRead,
+    runParamDenyList,
+    runParamDenySearch,
+    runParamDenyFetch,
+    runParamDenyDiff,
+    runParamAllowWrite,
+    runParamAllowEdit,
+    runParamAllowMultiEdit,
+    runParamAllowTerminal,
+    runParamAllowOnlyEnabled,
+    runParamDenyTerminalEnabled
+  ]
+    .forEach((checkbox) => {
+      if (checkbox) checkbox.checked = false;
+    });
+
+  if (runParamAllowOnlyList) runParamAllowOnlyList.innerHTML = "";
+  if (runParamDenyTerminalList) runParamDenyTerminalList.innerHTML = "";
+  updateRunBuilderParamState();
+}
+
+function collectRunBuilderParams() {
+  return {
+    verbose: Boolean(runParamVerbose?.checked),
+    readonly: Boolean(runParamReadonly?.checked),
+    denyRead: Boolean(runParamDenyRead?.checked),
+    denyList: Boolean(runParamDenyList?.checked),
+    denySearch: Boolean(runParamDenySearch?.checked),
+    denyFetch: Boolean(runParamDenyFetch?.checked),
+    denyDiff: Boolean(runParamDenyDiff?.checked),
+    allowWrite: Boolean(runParamAllowWrite?.checked),
+    allowEdit: Boolean(runParamAllowEdit?.checked),
+    allowMultiEdit: Boolean(runParamAllowMultiEdit?.checked),
+    allowTerminal: Boolean(runParamAllowTerminal?.checked),
+    allowOnly: runParamAllowOnlyEnabled?.checked ? getRunParamArrayValues(runParamAllowOnlyList) : [],
+    denyTerminalCommands: runParamDenyTerminalEnabled?.checked ? getRunParamArrayValues(runParamDenyTerminalList) : []
+  };
+}
+
 function isDefinitionInstalledInCurrentProject(definitionId) {
   const normalizedId = String(definitionId || "").trim();
   if (!normalizedId) return false;
@@ -800,6 +933,69 @@ async function pollActiveRun() {
   if (activeRunId && shouldScheduleNextPoll) {
     activeRunPollTimer = setTimeout(pollActiveRun, 1500);
   }
+}
+
+function getRunNameFromPath(pathValue, fallback) {
+  const definition = findDefinitionByPath(pathValue);
+  if (definition?.name) return definition.name;
+  const normalized = String(pathValue || "").trim();
+  if (!normalized) return fallback;
+  const segments = normalized.split(/[\/]/).filter(Boolean);
+  const finalName = segments[segments.length - 1] || fallback;
+  return finalName.replace(/\.[^.]+$/, "") || fallback;
+}
+
+function normalizeDefinitionPath(pathValue) {
+  return String(pathValue || "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\.\//, "")
+    .toLowerCase();
+}
+
+function findDefinitionByPath(pathValue) {
+  const normalizedPath = normalizeDefinitionPath(pathValue);
+  if (!normalizedPath) return null;
+
+  const exactMatch = definitions.find((definition) => normalizeDefinitionPath(definition?.filePath) === normalizedPath);
+  if (exactMatch) return exactMatch;
+
+  const suffixMatch = definitions.find((definition) => {
+    const definitionPath = normalizeDefinitionPath(definition?.filePath);
+    return definitionPath.endsWith(normalizedPath) || normalizedPath.endsWith(definitionPath);
+  });
+  if (suffixMatch) return suffixMatch;
+
+  const pathFileName = normalizedPath.split("/").pop();
+  if (!pathFileName) return null;
+  return definitions.find((definition) => normalizeDefinitionPath(definition?.filePath).split("/").pop() === pathFileName) || null;
+}
+
+function setActivityDefinitionLink(targetNode, pathValue, fallbackText) {
+  if (!targetNode) return;
+  const definition = findDefinitionByPath(pathValue);
+  const label = definition?.name || getRunNameFromPath(pathValue, fallbackText);
+  targetNode.textContent = label;
+  targetNode.dataset.definitionId = definition?.id ? String(definition.id) : "";
+  targetNode.classList.toggle("activity-detail-link", Boolean(definition?.id));
+  if (definition?.id) {
+    targetNode.setAttribute("role", "button");
+    targetNode.tabIndex = 0;
+  } else {
+    targetNode.removeAttribute("role");
+    targetNode.tabIndex = -1;
+  }
+}
+
+function openDefinitionDetailsByPath(pathValue) {
+  const definition = findDefinitionByPath(pathValue);
+  const definitionId = Number(definition?.id || 0);
+  if (!definitionId) return;
+  showHubPage();
+  updateRouteForHub();
+  showDetails(definitionId).catch((error) => {
+    window.alert(error?.message || "Unable to open definition details.");
+  });
 }
 
 function renderActivityStats() {
@@ -2352,12 +2548,115 @@ function renderCards() {
     });
   }
 
-  renderPagination({ totalItems: visibleDefinitions.length, totalPages, currentPage: currentCardsPage });
+  renderPagination({ totalItems: visibleDefinitions.length, totalPages });
 
   renderRecommendationSection();
   updatePageTabBadges();
 }
 
+
+function createPaginationButton({ label, page, disabled = false, active = false, ariaLabel = "" }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "pagination-btn";
+  button.textContent = label;
+  if (active) {
+    button.classList.add("is-active");
+    button.setAttribute("aria-current", "page");
+  }
+  if (ariaLabel) {
+    button.setAttribute("aria-label", ariaLabel);
+  }
+  button.disabled = disabled;
+  button.addEventListener("click", () => {
+    if (disabled || active) {
+      return;
+    }
+    currentCardsPage = page;
+    renderCards();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  return button;
+}
+
+function createPaginationEllipsis() {
+  const ellipsis = document.createElement("span");
+  ellipsis.className = "pagination-ellipsis";
+  ellipsis.setAttribute("aria-hidden", "true");
+  ellipsis.textContent = "...";
+  return ellipsis;
+}
+
+function getVisiblePaginationPages(totalPages, currentPage) {
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 3) {
+    return [1, 2, 3, "ellipsis", totalPages];
+  }
+
+  if (currentPage >= totalPages - 2) {
+    return [1, "ellipsis", totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [1, "ellipsis", currentPage, "ellipsis", totalPages];
+}
+
+function renderPagination({ totalItems, totalPages }) {
+  if (!paginationContainer) {
+    return;
+  }
+
+  paginationContainer.innerHTML = "";
+
+  if (totalItems <= CARDS_PER_PAGE) {
+    paginationContainer.hidden = true;
+    return;
+  }
+
+  paginationContainer.hidden = false;
+
+  const list = document.createElement("ul");
+  list.className = "pagination-list";
+
+  const previousItem = document.createElement("li");
+  previousItem.appendChild(createPaginationButton({
+    label: "Previous",
+    page: currentCardsPage - 1,
+    disabled: currentCardsPage === 1,
+    ariaLabel: "Go to previous page"
+  }));
+  list.appendChild(previousItem);
+
+  getVisiblePaginationPages(totalPages, currentCardsPage).forEach((entry) => {
+    const item = document.createElement("li");
+    if (entry === "ellipsis") {
+      item.appendChild(createPaginationEllipsis());
+      list.appendChild(item);
+      return;
+    }
+
+    item.appendChild(createPaginationButton({
+      label: String(entry),
+      page: entry,
+      active: entry === currentCardsPage,
+      ariaLabel: `Go to page ${entry}`
+    }));
+    list.appendChild(item);
+  });
+
+  const nextItem = document.createElement("li");
+  nextItem.appendChild(createPaginationButton({
+    label: "Next",
+    page: currentCardsPage + 1,
+    disabled: currentCardsPage === totalPages,
+    ariaLabel: "Go to next page"
+  }));
+  list.appendChild(nextItem);
+
+  paginationContainer.appendChild(list);
+}
 
 function setupRecommendationsSection() {
   recommendationsSection.className = "recommendations-section";
