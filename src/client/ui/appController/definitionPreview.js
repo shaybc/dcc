@@ -40,7 +40,7 @@ export function formatTabLabel(format) {
   return "Source";
 }
 
-function prettifyName(rawValue) {
+export function prettifyName(rawValue) {
   const raw = String(rawValue || "").trim();
   if (!raw) {
     return "Unnamed";

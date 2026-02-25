@@ -11,6 +11,7 @@ import {
   formatCreatedDate,
   formatTabLabel,
   inferDefinitionFormat,
+  prettifyName,
 } from "./appController/definitionPreview.js";
 import {
   closeDuplicateDefinitionModal,
