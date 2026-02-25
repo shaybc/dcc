@@ -83,6 +83,8 @@ router.post("/api/agent-runs", async (req, res) => {
     ]);
 
     const run = agentRunManager.startRun({
+      agentId: payload.agentId,
+      configId: payload.configId,
       projectPath: payload.projectPath,
       agentPath,
       configPath,
@@ -113,6 +115,25 @@ router.post("/api/agent-runs", async (req, res) => {
     logError("Agent run launch request failed", { error: error.message, payload: req.body || {} });
     res.status(500).json({ error: error.message || "Unable to launch agent." });
   }
+});
+
+
+router.post("/api/agent-runs/debug", (req, res) => {
+  const payload = req.body || {};
+  logInfo("Activity rerun debug", {
+    event: String(payload?.event || "unknown"),
+    runId: String(payload?.runId || ""),
+    agentId: payload?.agentId ?? null,
+    configId: payload?.configId ?? null,
+    agentPath: String(payload?.agentPath || ""),
+    configPath: String(payload?.configPath || ""),
+    matchedAgentBy: String(payload?.matchedAgentBy || ""),
+    matchedConfigBy: String(payload?.matchedConfigBy || ""),
+    matchedAgentDefinitionId: payload?.matchedAgentDefinitionId ?? null,
+    matchedConfigDefinitionId: payload?.matchedConfigDefinitionId ?? null,
+    definitionsCount: Number(payload?.definitionsCount || 0)
+  });
+  res.json({ ok: true });
 });
 
 router.get("/api/agent-runs", (req, res) => {
