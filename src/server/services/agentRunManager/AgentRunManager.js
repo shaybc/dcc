@@ -31,14 +31,15 @@ export class AgentRunManager {
       let rows = [];
       try {
         rows = await allDb(
-          `SELECT runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
+          `SELECT runId, agentId, configId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
                   createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes,
                   runOptionsJson
            FROM agent_runs
            ORDER BY createdAt ASC`
         );
       } catch (error) {
-        if (!String(error?.message || "").includes("runOptionsJson")) {
+        const message = String(error?.message || "");
+        if (!message.includes("runOptionsJson") && !message.includes("agentId") && !message.includes("configId")) {
           throw error;
         }
         rows = await allDb(
@@ -55,6 +56,8 @@ export class AgentRunManager {
 
         const run = {
           runId: row.runId,
+          agentId: Number.isFinite(Number(row.agentId)) ? Number(row.agentId) : null,
+          configId: Number.isFinite(Number(row.configId)) ? Number(row.configId) : null,
           projectPath: row.projectPath,
           agentPath: row.agentPath,
           configPath: row.configPath,
@@ -115,11 +118,13 @@ export class AgentRunManager {
     const runValues = this.buildRunPersistValues(run);
     const persistWithRunOptionsColumn = () => runDb(
       `INSERT INTO agent_runs (
-        runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
+        runId, agentId, configId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
         createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes,
         runOptionsJson
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(runId) DO UPDATE SET
+        agentId = excluded.agentId,
+        configId = excluded.configId,
         projectPath = excluded.projectPath,
         agentPath = excluded.agentPath,
         configPath = excluded.configPath,
@@ -144,10 +149,12 @@ export class AgentRunManager {
 
     const persistWithoutRunOptionsColumn = () => runDb(
       `INSERT INTO agent_runs (
-        runId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
+        runId, agentId, configId, projectPath, agentPath, configPath, prompt, commandPath, argsJson, command, commandLine, pid, status,
         createdAt, startedAt, endedAt, lastActivityAt, exitCode, signal, emittedStdoutBytes, emittedStderrBytes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(runId) DO UPDATE SET
+        agentId = excluded.agentId,
+        configId = excluded.configId,
         projectPath = excluded.projectPath,
         agentPath = excluded.agentPath,
         configPath = excluded.configPath,
@@ -190,6 +197,8 @@ export class AgentRunManager {
   buildRunPersistValues(run) {
     return [
       run.runId,
+      Number.isFinite(Number(run.agentId)) ? Number(run.agentId) : null,
+      Number.isFinite(Number(run.configId)) ? Number(run.configId) : null,
       run.projectPath,
       run.agentPath,
       run.configPath,
@@ -228,7 +237,7 @@ export class AgentRunManager {
     ));
   }
 
-  startRun({ projectPath, agentPath, configPath, prompt, runOptions = {} }) {
+  startRun({ agentId = null, configId = null, projectPath, agentPath, configPath, prompt, runOptions = {} }) {
     const runId = `run_${Date.now()}_${++this.sequence}`;
     const createdAt = nowIso();
     const commandPath = detectCnExecutable(process.cwd());
@@ -238,6 +247,8 @@ export class AgentRunManager {
 
     const run = {
       runId,
+      agentId: Number.isFinite(Number(agentId)) ? Number(agentId) : null,
+      configId: Number.isFinite(Number(configId)) ? Number(configId) : null,
       projectPath,
       agentPath,
       configPath,
@@ -377,6 +388,8 @@ export class AgentRunManager {
     if (!run) return null;
     return {
       runId: run.runId,
+      agentId: Number.isFinite(Number(run.agentId)) ? Number(run.agentId) : null,
+      configId: Number.isFinite(Number(run.configId)) ? Number(run.configId) : null,
       pid: run.pid,
       status: normalizeStatus(run),
       projectPath: run.projectPath,

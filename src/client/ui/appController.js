@@ -696,15 +696,44 @@ function resetRunAgentForm() {
   renderRunBuilder();
 }
 
+function findDefinitionById(definitionId) {
+  const normalizedId = String(definitionId || "").trim();
+  if (!normalizedId) return null;
+  return definitions.find((definition) => String(definition?.id || "").trim() === normalizedId) || null;
+}
+
 function prefillRunBuilderFromActivityRun(runId) {
   const normalizedRunId = String(runId || "").trim();
-  if (!normalizedRunId) return;
+  if (!normalizedRunId) {
+    console.warn("[ActivityReRun] Missing runId when attempting to prefill run builder.");
+    return;
+  }
 
   const run = activityRuns.find((entry) => entry.runId === normalizedRunId);
-  if (!run) return;
+  if (!run) {
+    console.warn("[ActivityReRun] Run not found for prefill.", { runId: normalizedRunId, knownRunIds: activityRuns.map((entry) => entry?.runId).filter(Boolean).slice(0, 20) });
+    return;
+  }
 
-  const agentDefinition = findDefinitionByPath(run.agentPath);
-  const configDefinition = findDefinitionByPath(run.configPath);
+  const agentDefinitionById = findDefinitionById(run.agentId);
+  const configDefinitionById = findDefinitionById(run.configId);
+  const agentDefinitionByPath = findDefinitionByPath(run.agentPath);
+  const configDefinitionByPath = findDefinitionByPath(run.configPath);
+  const agentDefinition = agentDefinitionById || agentDefinitionByPath;
+  const configDefinition = configDefinitionById || configDefinitionByPath;
+
+  console.info("[ActivityReRun] Prefill lookup result.", {
+    runId: normalizedRunId,
+    agentId: run.agentId ?? null,
+    configId: run.configId ?? null,
+    agentPath: run.agentPath || "",
+    configPath: run.configPath || "",
+    matchedAgentBy: agentDefinitionById ? "id" : (agentDefinitionByPath ? "path" : "none"),
+    matchedConfigBy: configDefinitionById ? "id" : (configDefinitionByPath ? "path" : "none"),
+    matchedAgentDefinitionId: agentDefinition?.id ?? null,
+    matchedConfigDefinitionId: configDefinition?.id ?? null,
+    definitionsCount: definitions.length
+  });
 
   runBuilderSelection = {
     agent: agentDefinition ? toRunBuilderItem(agentDefinition, "◈") : null,
@@ -1033,6 +1062,16 @@ async function loadActivityRuns() {
     if (!response.ok) throw new Error(`Failed to load agent runs (${response.status})`);
     const payload = await response.json();
     const nextRuns = Array.isArray(payload?.runs) ? payload.runs : [];
+    console.info("[ActivityRuns] Loaded runs snapshot.", {
+      count: nextRuns.length,
+      sample: nextRuns.slice(0, 5).map((run) => ({
+        runId: run?.runId || "",
+        agentId: run?.agentId ?? null,
+        configId: run?.configId ?? null,
+        agentPath: run?.agentPath || "",
+        configPath: run?.configPath || ""
+      }))
+    });
     const nextSignature = buildActivityRenderSignature(nextRuns);
     const hasStructuralChanges = nextSignature !== activityRenderSignature;
     activityRuns = nextRuns;

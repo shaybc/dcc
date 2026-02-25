@@ -83,6 +83,8 @@ router.post("/api/agent-runs", async (req, res) => {
     ]);
 
     const run = agentRunManager.startRun({
+      agentId: payload.agentId,
+      configId: payload.configId,
       projectPath: payload.projectPath,
       agentPath,
       configPath,
