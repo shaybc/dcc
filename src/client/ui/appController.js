@@ -2405,6 +2405,7 @@ function createTagFilterPill(label, { selected = false, emptyState = false } = {
   button.type = "button";
   button.className = "hub-menu-tag-pill";
   button.textContent = label;
+  button.dataset.tagLabel = String(label || "");
   if (selected) {
     button.classList.add("is-selected");
   }
@@ -2422,13 +2423,8 @@ function applyTagSearchFilter(tagPillsContainer, emptySearchState, rawQuery) {
 
   pills.forEach((pill) => {
     const value = String(pill.dataset.tagFilterValue || "");
-    if (value === "__untagged__") {
-      pill.hidden = false;
-      return;
-    }
-
-    const label = String(pill.dataset.tagLabel || "").toLowerCase();
-    const shouldShow = !query || label.includes(query);
+    const label = String(pill.dataset.tagLabel || pill.textContent || "").trim().toLowerCase();
+    const shouldShow = !query || label.includes(query) || value.includes(query);
     pill.hidden = !shouldShow;
     if (shouldShow) {
       visibleCount += 1;
