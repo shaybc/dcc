@@ -7,6 +7,14 @@ import { detectCnExecutable, createSpawnSpec } from "./commandLaunch.js";
 import { buildArgs, normalizeRunOptions } from "./runOptions.js";
 import { nowIso, normalizeStatus, parseJson, parseJsonArray } from "./utils.js";
 
+function normalizeOptionalDefinitionId(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  if (!Number.isInteger(numeric) || numeric <= 0) return null;
+  return numeric;
+}
+
 export class AgentRunManager {
   constructor() {
     this.runs = new Map();
@@ -56,8 +64,8 @@ export class AgentRunManager {
 
         const run = {
           runId: row.runId,
-          agentId: Number.isFinite(Number(row.agentId)) ? Number(row.agentId) : null,
-          configId: Number.isFinite(Number(row.configId)) ? Number(row.configId) : null,
+          agentId: normalizeOptionalDefinitionId(row.agentId),
+          configId: normalizeOptionalDefinitionId(row.configId),
           projectPath: row.projectPath,
           agentPath: row.agentPath,
           configPath: row.configPath,
@@ -197,8 +205,8 @@ export class AgentRunManager {
   buildRunPersistValues(run) {
     return [
       run.runId,
-      Number.isFinite(Number(run.agentId)) ? Number(run.agentId) : null,
-      Number.isFinite(Number(run.configId)) ? Number(run.configId) : null,
+      normalizeOptionalDefinitionId(run.agentId),
+      normalizeOptionalDefinitionId(run.configId),
       run.projectPath,
       run.agentPath,
       run.configPath,
@@ -247,8 +255,8 @@ export class AgentRunManager {
 
     const run = {
       runId,
-      agentId: Number.isFinite(Number(agentId)) ? Number(agentId) : null,
-      configId: Number.isFinite(Number(configId)) ? Number(configId) : null,
+      agentId: normalizeOptionalDefinitionId(agentId),
+      configId: normalizeOptionalDefinitionId(configId),
       projectPath,
       agentPath,
       configPath,
@@ -388,8 +396,8 @@ export class AgentRunManager {
     if (!run) return null;
     return {
       runId: run.runId,
-      agentId: Number.isFinite(Number(run.agentId)) ? Number(run.agentId) : null,
-      configId: Number.isFinite(Number(run.configId)) ? Number(run.configId) : null,
+      agentId: normalizeOptionalDefinitionId(run.agentId),
+      configId: normalizeOptionalDefinitionId(run.configId),
       pid: run.pid,
       status: normalizeStatus(run),
       projectPath: run.projectPath,

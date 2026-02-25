@@ -702,6 +702,48 @@ function findDefinitionById(definitionId) {
   return definitions.find((definition) => String(definition?.id || "").trim() === normalizedId) || null;
 }
 
+
+function normalizeRunDefinitionPath(pathValue) {
+  return String(pathValue || "")
+    .replace(/\\+/g, "/")
+    .toLowerCase()
+    .trim();
+}
+
+function getPathBaseName(pathValue) {
+  const normalizedPath = normalizeRunDefinitionPath(pathValue);
+  if (!normalizedPath) return "";
+  return normalizedPath.split("/").pop() || "";
+}
+
+function findDefinitionByRunInstalledPath(pathValue, definitionType) {
+  const targetBaseName = getPathBaseName(pathValue);
+  const normalizedPath = normalizeRunDefinitionPath(pathValue);
+  if (!targetBaseName) return null;
+
+  const normalizedType = normalizeFilterType(definitionType);
+  const typedCandidates = definitions.filter((definition) => {
+    const definitionNormalizedType = normalizeFilterType(definition?.type);
+    return !normalizedType || definitionNormalizedType === normalizedType;
+  });
+
+  const basenameCandidate = typedCandidates.find((definition) => {
+    const definitionBaseName = getPathBaseName(definition?.filePath || definition?.path || "");
+    return definitionBaseName && definitionBaseName === targetBaseName;
+  });
+  if (basenameCandidate) return basenameCandidate;
+
+  const dccRelative = normalizedPath.includes("/.continue/agents/")
+    ? normalizedPath.split("/.continue/agents/").pop()
+    : "";
+  if (!dccRelative) return null;
+
+  return typedCandidates.find((definition) => {
+    const definitionPath = normalizeRunDefinitionPath(definition?.filePath || definition?.path || "");
+    return definitionPath.endsWith(dccRelative);
+  }) || null;
+}
+
 async function emitRerunDebugLog(payload) {
   try {
     await fetch(`${AGENT_RUNS_ENDPOINT}/debug`, {
@@ -719,11 +761,13 @@ function resolveRunBuilderDefinitionsFromRun(run) {
   const configDefinitionById = findDefinitionById(run.configId);
   const agentDefinitionByPath = findDefinitionByPath(run.agentPath);
   const configDefinitionByPath = findDefinitionByPath(run.configPath);
+  const agentDefinitionByInstalledPath = findDefinitionByRunInstalledPath(run.agentPath, "agents");
+  const configDefinitionByInstalledPath = findDefinitionByRunInstalledPath(run.configPath, "configs");
   return {
-    agentDefinition: agentDefinitionById || agentDefinitionByPath,
-    configDefinition: configDefinitionById || configDefinitionByPath,
-    matchedAgentBy: agentDefinitionById ? "id" : (agentDefinitionByPath ? "path" : "none"),
-    matchedConfigBy: configDefinitionById ? "id" : (configDefinitionByPath ? "path" : "none")
+    agentDefinition: agentDefinitionById || agentDefinitionByPath || agentDefinitionByInstalledPath,
+    configDefinition: configDefinitionById || configDefinitionByPath || configDefinitionByInstalledPath,
+    matchedAgentBy: agentDefinitionById ? "id" : (agentDefinitionByPath ? "path" : (agentDefinitionByInstalledPath ? "installed_path" : "none")),
+    matchedConfigBy: configDefinitionById ? "id" : (configDefinitionByPath ? "path" : (configDefinitionByInstalledPath ? "installed_path" : "none"))
   };
 }
 
