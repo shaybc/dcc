@@ -42,6 +42,7 @@ export function setupEventListeners(ctx) {
     suggestTagsForDefinitionContent,
     getCurrentDetailDefinitionContent,
     applyDefinitionTags,
+    renderDetailTags,
     copyDefinitionButton,
     copyDefinitionToClipboard,
     duplicateDefinitionButton,
@@ -231,7 +232,9 @@ export function setupEventListeners(ctx) {
     }
 
     try {
-      const suggestedTags = await suggestTagsForDefinitionContent(getCurrentDetailDefinitionContent(), {
+      const suggestedTags = await suggestTagsForDefinitionContent({
+        definitionContent: getCurrentDetailDefinitionContent(),
+        existingTags,
         availableTags: await (ctx.loadAvailableDefinitionTags || (() => Promise.resolve([])))(),
       });
       if (!Array.isArray(suggestedTags) || suggestedTags.length === 0) {
@@ -239,6 +242,8 @@ export function setupEventListeners(ctx) {
         return;
       }
       await applyDefinitionTags(currentDetailDefinitionId, suggestedTags);
+      renderDetailTags(suggestedTags);
+      renderCards();
       window.alert("Definition tags updated.");
     } catch (error) {
       window.alert(error.message || "Unable to auto-tag definition.");
