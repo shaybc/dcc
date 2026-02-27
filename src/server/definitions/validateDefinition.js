@@ -208,6 +208,46 @@ function lintMarkdown(markdownBody, checks) {
   }
 }
 
+
+const MODEL_CAPABILITY_OPTIONS = ["tool_use", "image_input"];
+
+function collectInvalidModelCapabilities(capabilities) {
+  return (Array.isArray(capabilities) ? capabilities : [])
+    .map((value) => String(value || "").trim())
+    .filter((value) => value && !MODEL_CAPABILITY_OPTIONS.includes(value));
+}
+
+function runModelCapabilityChecks(type, normalized, checks) {
+  if (type !== "models") return;
+
+  const topLevelInvalidCapabilities = collectInvalidModelCapabilities(normalized?.capabilities);
+  topLevelInvalidCapabilities.forEach((capability) => {
+    addCheck(checks, {
+      id: "schema.model.capabilities",
+      category: "schema",
+      severity: "error",
+      passed: false,
+      message: `Invalid model capability '${capability}'. Allowed values: ${MODEL_CAPABILITY_OPTIONS.join(", ")}.`,
+      path: "capabilities",
+    });
+  });
+
+  const entries = Array.isArray(normalized?.models) ? normalized.models : [];
+  entries.forEach((entry, index) => {
+    const invalidCapabilities = collectInvalidModelCapabilities(entry?.capabilities);
+    invalidCapabilities.forEach((capability) => {
+      addCheck(checks, {
+        id: "schema.model.capabilities",
+        category: "schema",
+        severity: "error",
+        passed: false,
+        message: `Invalid model capability '${capability}'. Allowed values: ${MODEL_CAPABILITY_OPTIONS.join(", ")}.`,
+        path: `models.${index}.capabilities`,
+      });
+    });
+  });
+}
+
 function checkReferenceExists(reference, knownDefinitions, expectedTypes) {
   if (!reference) return true;
   const candidate = String(reference).trim();
@@ -406,6 +446,8 @@ export function validateDefinition({ definition, options = {}, knownDefinitions 
       });
     }
   }
+
+  runModelCapabilityChecks(normalizedDefinitionType, normalized, checks);
 
   if (referencesEnabled) {
     runReferenceChecks(normalizedDefinitionType, normalized, knownDefinitions, checks);

@@ -11,6 +11,7 @@ import { createDocForm } from "./forms/docForm.js";
 import { createConfigForm } from "./forms/configForm.js";
 
 export const YAML_HEADER_KEYS = ["name", "dcc_uri", "dcc_definition_type", "version", "schema", "description", "dcc_tags"];
+const MODEL_CAPABILITY_OPTIONS = ["tool_use", "image_input"];
 
 export function normalizeStringArray(value) {
   if (Array.isArray(value)) return value;
@@ -20,7 +21,19 @@ export function normalizeStringArray(value) {
     .filter(Boolean);
 }
 
-function normalizeModelEntries(models) { return (Array.isArray(models) ? models : []).map((entry) => ({ ...entry, roles: Array.isArray(entry?.roles) ? entry.roles : [], contextLength: entry?.defaultCompletionOptions?.contextLength ?? "" })); }
+function normalizeModelCapabilities(capabilities) {
+  return (Array.isArray(capabilities) ? capabilities : [])
+    .map((capability) => String(capability || "").trim())
+    .filter((capability) => MODEL_CAPABILITY_OPTIONS.includes(capability));
+}
+function normalizeModelEntries(models) {
+  return (Array.isArray(models) ? models : []).map((entry) => ({
+    ...entry,
+    roles: Array.isArray(entry?.roles) ? entry.roles : [],
+    capabilities: normalizeModelCapabilities(entry?.capabilities),
+    contextLength: entry?.defaultCompletionOptions?.contextLength ?? ""
+  }));
+}
 function normalizeMcpServers(servers) { return (Array.isArray(servers) ? servers : []).map((entry) => ({ ...entry, args: Array.isArray(entry?.args) ? entry.args : [] })); }
 function normalizeWorkflowModels(models) { return (Array.isArray(models) ? models : []).map((entry) => ({ ...entry, with: entry?.with && typeof entry.with === "object" ? Object.entries(entry.with).map(([key, value]) => ({ key, value: String(value ?? "") })) : [], roles: Array.isArray(entry?.override?.roles) ? entry.override.roles : [] })); }
 function normalizeUsesArray(items) { return (Array.isArray(items) ? items : []).map((entry) => (typeof entry === "string" ? { uses: entry } : { ...entry, uses: entry?.uses || "" })); }
@@ -167,7 +180,7 @@ export function createHandlers({ getUnknown, getPromptContentFormat, getRuleCont
         return stringifyYamlDefinition({ ...getUnknown(), ...rest, dcc_definition_type: dccDefinitionTypeForEditorType("prompt"), invokable, dcc_tags: normalizeStringArray(tags), prompts: Array.isArray(state.prompts) ? state.prompts : [] });
       } },
     mcpServer: { createForm: createMcpServerForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => { const { tags, ...rest } = state; return stringifyYamlDefinition({ ...getUnknown(), ...rest, dcc_definition_type: dccDefinitionTypeForEditorType("mcpServer"), dcc_tags: normalizeStringArray(tags), mcpServers: normalizeMcpServers(state.mcpServers) }); } },
-    model: { createForm: createModelForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => { const normalizedModels = (state.models || []).map((entry) => ({ ...entry, ...(entry.apiKey == null || String(entry.apiKey).trim() === "" ? {} : { apiKey: String(entry.apiKey) }), roles: Array.isArray(entry.roles) ? entry.roles : [], defaultCompletionOptions: { ...(entry.defaultCompletionOptions || {}), ...(entry.contextLength ? { contextLength: Number(entry.contextLength) || entry.contextLength } : {}) } })).map((entry) => { const { contextLength, ...rest } = entry; if (rest.apiKey == null || String(rest.apiKey).trim() === "") delete rest.apiKey; if (!rest.defaultCompletionOptions || Object.keys(rest.defaultCompletionOptions).length === 0) delete rest.defaultCompletionOptions; return rest; }); const { tags, ...rest } = state; return stringifyYamlDefinition({ ...getUnknown(), ...rest, dcc_definition_type: dccDefinitionTypeForEditorType("model"), dcc_tags: normalizeStringArray(tags), models: normalizedModels }); } },
+    model: { createForm: createModelForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => { const normalizedModels = (state.models || []).map((entry) => ({ ...entry, ...(entry.apiKey == null || String(entry.apiKey).trim() === "" ? {} : { apiKey: String(entry.apiKey) }), roles: Array.isArray(entry.roles) ? entry.roles : [], capabilities: normalizeModelCapabilities(entry.capabilities), defaultCompletionOptions: { ...(entry.defaultCompletionOptions || {}), ...(entry.contextLength ? { contextLength: Number(entry.contextLength) || entry.contextLength } : {}) } })).map((entry) => { const { contextLength, ...rest } = entry; if (rest.apiKey == null || String(rest.apiKey).trim() === "") delete rest.apiKey; if (!Array.isArray(rest.capabilities) || rest.capabilities.length === 0) delete rest.capabilities; if (!rest.defaultCompletionOptions || Object.keys(rest.defaultCompletionOptions).length === 0) delete rest.defaultCompletionOptions; return rest; }); const { tags, ...rest } = state; return stringifyYamlDefinition({ ...getUnknown(), ...rest, dcc_definition_type: dccDefinitionTypeForEditorType("model"), dcc_tags: normalizeStringArray(tags), models: normalizedModels }); } },
     workflow: { createForm: createWorkflowForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => { const { tags, ...rest } = state; return stringifyYamlDefinition({ ...getUnknown(), ...rest, dcc_definition_type: dccDefinitionTypeForEditorType("workflow"), dcc_tags: normalizeStringArray(tags), models: serializeWorkflowModels(state.models), context: normalizeUsesArray(state.context), mcpServers: normalizeUsesArray(state.mcpServers), rules: normalizeUsesArray(state.rules) }); } },
     context: { createForm: createContextForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => { const { tags, ...rest } = state; return stringifyYamlDefinition({ ...getUnknown(), ...rest, dcc_definition_type: dccDefinitionTypeForEditorType("context"), dcc_tags: normalizeStringArray(tags), context: serializeContextEntries(state.context) }); } },
     doc: { createForm: createDocForm, parse: (txt) => YAML.parse(txt || "") || {}, serialize: (state) => { const { tags, ...rest } = state; return stringifyYamlDefinition({ ...getUnknown(), ...rest, dcc_definition_type: dccDefinitionTypeForEditorType("doc"), dcc_tags: normalizeStringArray(tags), docs: Array.isArray(state.docs) ? state.docs : [] }); } },
