@@ -13,7 +13,7 @@ Supported model fields include:
 - `env` - optional provider environment/auth configuration object.
 - `roles` - optional list of supported roles (for example: `chat`, `edit`, `apply`).
 - `defaultCompletionOptions` - optional default completion config (for example: `contextLength`, `maxTokens`).
-- `capabilities` - optional list of model capabilities (for example: `tool_use`, `image_input`).
+- `capabilities` - optional list of model capabilities. Allowed values: `tool_use`, `image_input`.
 
 ### Single model definition example
 

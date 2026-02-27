@@ -1,5 +1,7 @@
 import { createArrayEditor } from "../components/arrayEditor.js";
 
+const MODEL_CAPABILITY_OPTIONS = ["tool_use", "image_input"];
+
 function createTextInput({ mount, label, state, key, placeholder, onChange, multiline = false }) {
   const row = document.createElement("label");
   row.className = "editor-field";
@@ -54,6 +56,12 @@ export function createModelForm({ mount, onChange, availableTags = [] }) {
       { name: "model", label: "model", placeholder: "e.g., 'mistral-large-2411'" },
       { name: "apiKey", label: "API key", placeholder: "e.g., '${{ inputs.MISTRAL_API_KEY }}'" },
       { name: "roles", label: "roles", kind: "array", nestedFields: [{ name: "value", label: "role", placeholder: "e.g., 'chat'" }] },
+      {
+        name: "capabilities",
+        label: "capabilities",
+        kind: "array",
+        nestedFields: [{ name: "value", label: "capability", placeholder: "e.g., 'tool_use'", autocompleteOptions: MODEL_CAPABILITY_OPTIONS }]
+      },
       { name: "contextLength", label: "context length", placeholder: "e.g., '131000'" }
     ],
     onChange: (nextItems) => {
