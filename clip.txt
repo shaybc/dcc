@@ -1,0 +1,13 @@
+// put this BEFORE setting NODE_TLS_REJECT_UNAUTHORIZED=0
+const origEmitWarning = process.emitWarning.bind(process);
+
+process.emitWarning = (warning, ...args) => {
+  const msg = typeof warning === "string" ? warning : warning?.message;
+
+  // Filter Node's TLS warning when NODE_TLS_REJECT_UNAUTHORIZED=0
+  if (msg?.includes("NODE_TLS_REJECT_UNAUTHORIZED")) return;
+
+  return origEmitWarning(warning, ...args);
+};
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
