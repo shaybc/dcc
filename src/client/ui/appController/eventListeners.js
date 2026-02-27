@@ -231,7 +231,9 @@ export function setupEventListeners(ctx) {
     }
 
     try {
-      const suggestedTags = await suggestTagsForDefinitionContent(getCurrentDetailDefinitionContent(), {
+      const suggestedTags = await suggestTagsForDefinitionContent({
+        definitionContent: getCurrentDetailDefinitionContent(),
+        existingTags,
         availableTags: await (ctx.loadAvailableDefinitionTags || (() => Promise.resolve([])))(),
       });
       if (!Array.isArray(suggestedTags) || suggestedTags.length === 0) {
