@@ -335,6 +335,7 @@ let runBuilderPickerFilter = "installed";
 let runBuilderSearchQuery = "";
 let runBuilderPendingSelection = null;
 let runBuilderSelection = { agent: null, config: null };
+const DEFAULT_RUN_PROMPT = "run";
 let recentAgentRunPacks = getStoredRecentAgentRunPacks(RECENT_AGENT_RUNS_STORAGE_KEY);
 let activeRunId = "";
 let activeRunPollTimer = null;
@@ -758,6 +759,11 @@ function clearRunBuilderStage(mode) {
   renderRunBuilderStage(mode);
 }
 
+function getEffectiveRunPrompt() {
+  const promptValue = String(runPromptInput?.value || "");
+  return promptValue.trim() ? promptValue : DEFAULT_RUN_PROMPT;
+}
+
 function resetRunAgentForm() {
   runBuilderSelection = { agent: null, config: null };
   runBuilderPendingSelection = null;
@@ -903,7 +909,7 @@ async function prefillRunBuilderFromActivityRun(runId) {
   runBuilderPendingSelection = null;
 
   if (runPromptInput) {
-    runPromptInput.value = String(run.prompt || "");
+    runPromptInput.value = "";
     handleRunBuilderPromptInput();
   }
   applyRunBuilderParams(run.runOptions || {});
@@ -1001,7 +1007,9 @@ async function handleRunAgentClick() {
     return;
   }
 
-  const runSummary = `Launching ${runBuilderSelection.agent.name} with ${runBuilderSelection.config.name}${runPromptInput?.value ? " and custom prompt" : ""}.`;
+  const hasCustomPrompt = Boolean(String(runPromptInput?.value || "").trim());
+  const effectivePrompt = getEffectiveRunPrompt();
+  const runSummary = `Launching ${runBuilderSelection.agent.name} with ${runBuilderSelection.config.name}${hasCustomPrompt ? " and custom prompt" : ""}.`;
   runAgentButton.textContent = "Launching…";
   runAgentButton.disabled = true;
 
@@ -1024,7 +1032,7 @@ async function handleRunAgentClick() {
     const launchPayload = {
       agentId: Number(runBuilderSelection.agent.id),
       configId: Number(runBuilderSelection.config.id),
-      prompt: String(runPromptInput?.value || ""),
+      prompt: effectivePrompt,
       projectPath: selectedProject,
       runOptions: collectRunBuilderParams()
     };
