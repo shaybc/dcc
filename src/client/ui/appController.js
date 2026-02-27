@@ -2702,17 +2702,7 @@ async function showDetails(id) {
     detailDccUri.textContent = "";
   }
 
-  const tags = parseDefinitionTags(def.tags);
-  currentDetailDefinitionTags = [...tags];
-  detailTags.innerHTML = tags.length > 0 ? `<div class="tag-pills">${renderTagPills(tags)}</div>` : "";
-  detailTags.querySelectorAll("[data-tag]").forEach((element) => {
-    element.addEventListener("click", () => {
-      showHubPage();
-      updateRouteForHub();
-      setSearchValue(element.getAttribute("data-tag") || "");
-      renderCards();
-    });
-  });
+  renderDetailTags(def.tags);
 
   const format = inferDefinitionFormat(def);
   const tabLabel = formatTabLabel(format);
@@ -3038,6 +3028,24 @@ function showHubPage() {
   renderTopNavigation();
 }
 
+function bindDetailTagInteractions() {
+  detailTags.querySelectorAll("[data-tag]").forEach((element) => {
+    element.addEventListener("click", () => {
+      showHubPage();
+      updateRouteForHub();
+      setSearchValue(element.getAttribute("data-tag") || "");
+      renderCards();
+    });
+  });
+}
+
+function renderDetailTags(tags = []) {
+  const normalizedTags = parseDefinitionTags(tags);
+  currentDetailDefinitionTags = [...normalizedTags];
+  detailTags.innerHTML = normalizedTags.length > 0 ? `<div class="tag-pills">${renderTagPills(normalizedTags)}</div>` : "";
+  bindDetailTagInteractions();
+}
+
 function updateRouteForDetails(id) {
   const url = new URL(window.location.href);
   url.searchParams.set("definition", String(id));
@@ -3344,7 +3352,7 @@ function setupEventListeners() {
     favoriteDefinitionButton, toggleFavoriteDefinition, updateFavoriteDefinitionButton,
     autoTagDefinitionButton, getCurrentDetailDefinitionTags: () => currentDetailDefinitionTags,
     suggestTagsForDefinitionContent, loadAvailableDefinitionTags, getCurrentDetailDefinitionContent: () => currentDetailDefinitionContent,
-    applyDefinitionTags, copyDefinitionButton, copyDefinitionToClipboard,
+    applyDefinitionTags, renderDetailTags, copyDefinitionButton, copyDefinitionToClipboard,
     duplicateDefinitionButton, createDuplicateDefaults, getCurrentDetailDefinitionPath: () => currentDetailDefinitionPath,
     getCurrentDetailDefinitionDccUri: () => currentDetailDefinitionDccUri, openDuplicateDefinitionModal,
     getCurrentDetailDefinitionContentValue: () => currentDetailDefinitionContent, duplicateDefinition, updateRouteForDetails,

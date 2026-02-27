@@ -42,6 +42,7 @@ export function setupEventListeners(ctx) {
     suggestTagsForDefinitionContent,
     getCurrentDetailDefinitionContent,
     applyDefinitionTags,
+    renderDetailTags,
     copyDefinitionButton,
     copyDefinitionToClipboard,
     duplicateDefinitionButton,
@@ -241,6 +242,8 @@ export function setupEventListeners(ctx) {
         return;
       }
       await applyDefinitionTags(currentDetailDefinitionId, suggestedTags);
+      renderDetailTags(suggestedTags);
+      renderCards();
       window.alert("Definition tags updated.");
     } catch (error) {
       window.alert(error.message || "Unable to auto-tag definition.");
