@@ -40,6 +40,16 @@ function formatDate(now) {
 }
 
 function formatTimestamp(now) {
+  const yyyy = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const minute = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+  return `${yyyy}-${month}-${day} ${hh}:${minute}:${ss}`;
+}
+
+function formatFilenameTimestamp(now) {
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
   const ss = String(now.getSeconds()).padStart(2, "0");
@@ -80,7 +90,7 @@ function findReusableFile(datePart) {
 
 function createNewLogFile(now) {
   const datePart = formatDate(now);
-  const timestamp = formatTimestamp(now);
+  const timestamp = formatFilenameTimestamp(now);
   let filename = `dcc_${datePart}_${timestamp}.log`;
   let filepath = path.join(LOG_DIR, filename);
   let counter = 1;
@@ -127,14 +137,15 @@ function rotateIfNeeded(entryBytes, now) {
   }
 }
 
-function formatEntry(level, msg, meta) {
+function formatEntry(level, msg, meta, now) {
   const metaSuffix = meta ? ` ${JSON.stringify(meta)}` : "";
-  return `[${level}] ${msg}${metaSuffix}\n\n`;
+  const timestamp = formatTimestamp(now);
+  return `${timestamp} [${level}] ${msg}${metaSuffix}\n`;
 }
 
 function writeLog(level, msg, meta) {
   const now = new Date();
-  const entry = formatEntry(level, msg, meta);
+  const entry = formatEntry(level, msg, meta, now);
   const entryBytes = Buffer.byteLength(entry);
   rotateIfNeeded(entryBytes, now);
   currentSize += entryBytes;
