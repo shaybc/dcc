@@ -83,6 +83,7 @@ const ChatSchema = z.object({
   })).min(1),
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().min(1).max(65536).optional(),
+  max_thinking_tokens: z.number().optional(),
   tools: z.array(z.any()).optional(),
   tool_choice: z.any().optional(),
   stream_options: z.any().optional()
@@ -94,7 +95,8 @@ const CompletionSchema = z.object({
   prompt: z.string().min(1),
   stop: z.union([z.string(), z.array(z.string())]).optional(),
   temperature: z.number().min(0).max(2).optional(),
-  max_tokens: z.number().min(1).max(65536).optional()
+  max_tokens: z.number().min(1).max(65536).optional(),
+  max_thinking_tokens: z.number().optional()
 });
 
 openaiRouter.post("/completions", async (req, res) => {
@@ -120,7 +122,9 @@ openaiRouter.post("/completions", async (req, res) => {
     const generationConfig = cleanUndefined({
       temperature: parsed.temperature,
       maxOutputTokens: parsed.max_tokens,
-      thinkingConfig: { thinkingBudget: parsed.max_thinking_tokens || 0 }
+      ...(parsed.max_thinking_tokens > 0
+        ? { thinkingConfig: { thinkingBudget: parsed.max_thinking_tokens } }
+        : {})
     });
 
     const fimPrompt = parseFimPrompt(parsed.prompt);
@@ -267,7 +271,9 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     const generationConfig = cleanUndefined({
       temperature: parsed.temperature,
       maxOutputTokens: parsed.max_tokens,
-      thinkingConfig: { thinkingBudget: parsed.max_thinking_tokens || 0 }
+      ...(parsed.max_thinking_tokens > 0
+        ? { thinkingConfig: { thinkingBudget: parsed.max_thinking_tokens } }
+        : {})
     });
 
     const requestPayload = {
