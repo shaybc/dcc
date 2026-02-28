@@ -17,7 +17,7 @@ export function getProjectDestinationInfo(projectPath, type, filePath) {
     agents: [".continue", "agents", "team", "agents"],
     mcpservers: [".continue", "mcpServers", "team", "mcpServers"],
     docs: [".continue", "docs", "team", "docs"],
-    configs: [".continue", "agents", "configs", "team"]
+    configs: [".continue", "agents", "team", "configs"]
   };
   const destinationSegments = mappings[normalizedType];
   if (!destinationSegments) return null;
