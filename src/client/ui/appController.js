@@ -908,8 +908,17 @@ async function prefillRunBuilderFromActivityRun(runId) {
   };
   runBuilderPendingSelection = null;
 
+  const storedPromptInput = String(run?.runOptions?.promptInput || "");
+  const promptWasAutofilled = Boolean(run?.runOptions?.promptWasAutofilled);
+  const fallbackPrompt = String(run?.prompt || "");
+  const rerunPrompt = promptWasAutofilled
+    ? ""
+    : (storedPromptInput.trim()
+      ? storedPromptInput
+      : (fallbackPrompt && fallbackPrompt !== DEFAULT_RUN_PROMPT ? fallbackPrompt : ""));
+
   if (runPromptInput) {
-    runPromptInput.value = "";
+    runPromptInput.value = rerunPrompt;
     handleRunBuilderPromptInput();
   }
   applyRunBuilderParams(run.runOptions || {});
@@ -1008,6 +1017,7 @@ async function handleRunAgentClick() {
   }
 
   const hasCustomPrompt = Boolean(String(runPromptInput?.value || "").trim());
+  const promptInput = String(runPromptInput?.value || "");
   const effectivePrompt = getEffectiveRunPrompt();
   const runSummary = `Launching ${runBuilderSelection.agent.name} with ${runBuilderSelection.config.name}${hasCustomPrompt ? " and custom prompt" : ""}.`;
   runAgentButton.textContent = "Launching…";
@@ -1021,7 +1031,7 @@ async function handleRunAgentClick() {
       {
         agentId: runBuilderSelection.agent.id,
         configId: runBuilderSelection.config.id,
-        prompt: String(runPromptInput?.value || ""),
+        prompt: promptInput,
         runOptions: collectRunBuilderParams()
       },
       ...recentAgentRunPacks.filter((pack) => pack.agentId !== idsToPromote[0] || pack.configId !== idsToPromote[1])
@@ -1034,7 +1044,11 @@ async function handleRunAgentClick() {
       configId: Number(runBuilderSelection.config.id),
       prompt: effectivePrompt,
       projectPath: selectedProject,
-      runOptions: collectRunBuilderParams()
+      runOptions: {
+        ...collectRunBuilderParams(),
+        promptInput,
+        promptWasAutofilled: !hasCustomPrompt
+      }
     };
     const response = await fetch(AGENT_RUNS_ENDPOINT, {
       method: "POST",

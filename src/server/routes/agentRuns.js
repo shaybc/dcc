@@ -40,7 +40,9 @@ function normalizePayload(payload) {
         : [],
       denyTerminalCommands: Array.isArray(runOptions.denyTerminalCommands)
         ? runOptions.denyTerminalCommands.map((entry) => String(entry || "").trim()).filter(Boolean)
-        : []
+        : [],
+      promptInput: String(runOptions.promptInput || ""),
+      promptWasAutofilled: Boolean(runOptions.promptWasAutofilled)
     }
   };
 }
