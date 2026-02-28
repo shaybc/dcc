@@ -46,7 +46,7 @@ export function buildArgs({ configPath, prompt, agentPath, runOptions = {} }) {
 
   const deniedCommands = Array.isArray(runOptions.denyTerminalCommands) ? runOptions.denyTerminalCommands : [];
   if (deniedCommands.length) {
-    if (!runOptions.allowTerminal) args.push("--allow", "Bash");
+    if (!runOptions.allowTerminal) args.push("--allow", "Bash(*)");
     for (const command of deniedCommands) {
       const normalizedCommand = String(command || "").trim();
       if (!normalizedCommand) continue;

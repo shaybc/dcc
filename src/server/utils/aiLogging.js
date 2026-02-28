@@ -22,7 +22,7 @@ function parseBoolean(value, fallback = false) {
 function normalizeMaxLength(value, fallback = DEFAULT_MAX_LENGTH) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return fallback;
-  return Math.max(50, Math.min(5000, Math.round(numeric)));
+  return Math.max(50, Math.min(99999, Math.round(numeric)));
 }
 
 export function getAiLogConfigSync() {

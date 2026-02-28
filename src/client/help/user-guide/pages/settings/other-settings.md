@@ -54,7 +54,7 @@ Use **AI Logging** to control whether DCC records AI request/response logs for t
 
 - **Log OpenAI response**: enables response logging for OpenAI-compatible facade calls.
 - **Log Gemini client**: enables request/response logging for Gemini client traffic.
-- **Max response length**: limits how many characters are stored for each logged response (**50** to **5000**).
+- **Max response length**: limits how many characters are stored for each logged response (**50** to **99999**).
 
 ### How to use
 

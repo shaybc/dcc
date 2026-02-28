@@ -48,7 +48,7 @@ export async function loadRecommendationSettings(domRefs) {
 
   if (aiResponseLogMaxLengthInput) {
     const rawLogLength = Number(data?.aiResponseLogMaxLength);
-    const normalizedLogLength = Number.isFinite(rawLogLength) ? Math.max(50, Math.min(5000, Math.round(rawLogLength))) : 300;
+    const normalizedLogLength = Number.isFinite(rawLogLength) ? Math.max(50, Math.min(99999, Math.round(rawLogLength))) : 300;
     aiResponseLogMaxLengthInput.value = String(normalizedLogLength);
   }
   if (logFileMaxSizeMbInput) {
@@ -132,8 +132,8 @@ export function initRecommendationSettings(domRefs, { setNotice, getDefaultTimeo
     const logFileMaxSizeMb = Number(logFileMaxSizeMbInput?.value || 0);
     const logFileMaxFiles = Number(logFileMaxFilesInput?.value || 0);
 
-    if (!Number.isFinite(aiResponseLogMaxLength) || aiResponseLogMaxLength < 50 || aiResponseLogMaxLength > 5000) {
-      setNotice("Log max response length must be between 50 and 5000.", true);
+    if (!Number.isFinite(aiResponseLogMaxLength) || aiResponseLogMaxLength < 50 || aiResponseLogMaxLength > 99999) {
+      setNotice("Log max response length must be between 50 and 99999.", true);
       return;
     }
     if (!Number.isFinite(logFileMaxSizeMb) || logFileMaxSizeMb < 10 || logFileMaxSizeMb > 1024) {
