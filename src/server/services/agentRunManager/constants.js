@@ -10,7 +10,7 @@ export const RUN_OPTION_FLAG_MAP = [
   ["allowWrite", "--allow", "Write"],
   ["allowEdit", "--allow", "Edit"],
   ["allowMultiEdit", "--allow", "MultiEdit"],
-  ["allowTerminal", "--allow", "Bash"]
+  ["allowTerminal", "--allow", "Bash(*)"]
 ];
 
 export const RUN_STATUS_LAUNCHING = new Set(["running", "launched", "preparing_to_launch"]);

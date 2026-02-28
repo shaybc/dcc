@@ -207,14 +207,14 @@ export function createRunBuilderParamsController({
     if (options.allowWrite) labels.push("--allow Write");
     if (options.allowEdit) labels.push("--allow Edit");
     if (options.allowMultiEdit) labels.push("--allow MultiEdit");
-    if (options.allowTerminal) labels.push("--allow Bash");
+    if (options.allowTerminal) labels.push("--allow Bash(*)");
 
     for (const pattern of Array.isArray(options.allowOnly) ? options.allowOnly : []) {
       labels.push(`--allow Write(**/${String(pattern)})`);
     }
     const denied = Array.isArray(options.denyTerminalCommands) ? options.denyTerminalCommands : [];
     if (denied.length) {
-      if (!options.allowTerminal) labels.push("--allow Bash");
+      if (!options.allowTerminal) labels.push("--allow Bash(*)");
       for (const command of denied) {
         labels.push(`--exclude Bash(${String(command)}*)`);
       }
