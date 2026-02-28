@@ -251,7 +251,7 @@ export class AgentRunManager {
     const commandPath = detectCnExecutable(process.cwd());
     const normalizedRunOptions = normalizeRunOptions(runOptions);
     const args = buildArgs({ configPath, prompt, agentPath, runOptions: normalizedRunOptions });
-    const spawnSpec = createSpawnSpec(commandPath, args, process.cwd());
+    const spawnSpec = createSpawnSpec(commandPath, args, process.cwd(), projectPath);
 
     const run = {
       runId,

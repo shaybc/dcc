@@ -77,6 +77,12 @@ router.post("/api/agent-runs", async (req, res) => {
       return;
     }
 
+    const projectStat = await fs.stat(payload.projectPath).catch(() => null);
+    if (!projectStat?.isDirectory()) {
+      res.status(400).json({ error: `Selected project is invalid or not accessible: ${payload.projectPath}` });
+      return;
+    }
+
     const [agentPath, configPath] = await Promise.all([
       resolveInstalledDefinitionPath(payload.agentId, "agents", payload.projectPath),
       resolveInstalledDefinitionPath(payload.configId, "configs", payload.projectPath)
