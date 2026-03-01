@@ -129,13 +129,12 @@ export class GeminiAIStudioClient {
       throw new Error(`Gemini streamGenerateContent failed: ${r.status} ${t}`);
     }
 
-    logGeminiHttpResponse({ method: "POST", url, status: r.status, body: "[stream opened]" });
-
     if (!r.body) return;
 
     const reader = r.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
+    const streamPayloads = [];
 
     while (true) {
       const { done, value } = await reader.read();
@@ -149,6 +148,7 @@ export class GeminiAIStudioClient {
         const trimmed = line.trim();
         if (!trimmed || trimmed === "data: [DONE]") continue;
         const payload = trimmed.startsWith("data: ") ? trimmed.slice(6) : trimmed;
+        streamPayloads.push(payload);
         let parsed;
         try {
           parsed = JSON.parse(payload);
@@ -161,6 +161,13 @@ export class GeminiAIStudioClient {
         }
       }
     }
+
+    logGeminiHttpResponse({
+      method: "POST",
+      url,
+      status: r.status,
+      body: streamPayloads.length ? streamPayloads.join("\n") : "[stream opened]"
+    });
   }
 }
 
