@@ -255,11 +255,68 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
     const contents = parsed.messages
       .filter(m => m.role !== "system")
-      .map(m => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: normalizeContentText(m.content) }]
-      }))
-      .filter(m => m.parts[0].text.trim().length > 0);
+      .flatMap(m => {
+        // OpenAI -> Gemini message mapping
+        // - assistant -> role "model"
+        // - user/system -> role "user" (system is filtered above)
+        // - tool -> role "user" with a functionResponse part (so Gemini can associate the result to the prior functionCall)
+        //
+        // NOTE: Continue/OpenAI tool messages usually contain only tool_call_id + content.
+        // We therefore encode the function name into the tool_call_id we emit (see response mapping below),
+        // and decode it here.
+        if (m.role === "tool") {
+          const toolCallId = m.tool_call_id || "";
+          const match = /^call_([^_]+)_/.exec(toolCallId); // call_<name>_<index>
+          const name = match ? match[1] : (m.name || "tool");
+
+          let responseObj;
+          if (typeof m.content === "object" && m.content !== null) {
+            responseObj = m.content;
+          } else {
+            const txt = normalizeContentText(m.content);
+            try {
+              responseObj = JSON.parse(txt);
+            } catch {
+              responseObj = { content: txt };
+            }
+          }
+
+          return [{
+            role: "user",
+            parts: [{ functionResponse: { name, response: responseObj } }]
+          }];
+        }
+
+        // If the client re-sends prior assistant tool_calls in history (OpenAI format),
+        // include them as Gemini functionCall parts so Gemini knows a tool was already called.
+        if (m.role === "assistant" && Array.isArray(m.tool_calls) && m.tool_calls.length > 0) {
+          const callParts = m.tool_calls
+            .filter(tc => tc && tc.type === "function" && tc.function && tc.function.name)
+            .map(tc => {
+              let argsObj = {};
+              try {
+                argsObj = typeof tc.function.arguments === "string"
+                  ? JSON.parse(tc.function.arguments)
+                  : (tc.function.arguments || {});
+              } catch {
+                argsObj = { __raw: String(tc.function.arguments ?? "") };
+              }
+              return { functionCall: { name: tc.function.name, args: argsObj } };
+            });
+
+          const text = normalizeContentText(m.content);
+          const parts = [];
+          if (text.trim().length > 0) parts.push({ text });
+          parts.push(...callParts);
+
+          return parts.length ? [{ role: "model", parts }] : [];
+        }
+
+        const role = m.role === "assistant" ? "model" : "user";
+        const text = normalizeContentText(m.content);
+        if (!text.trim()) return [];
+        return [{ role, parts: [{ text }] }];
+      });
 
     const client = await getClientForModel(parsed.model);
     logInfo(`[OPENAI] id=${reqId} chat.completions stream=${Boolean(parsed.stream)} model=${parsed.model || client.model}`);
@@ -318,7 +375,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
             sawToolCalls = true;
             const toolCalls = functionCalls.map(call => {
               const currentIndex = toolCallIndex++;
-              const id = `call_${Date.now()}_${currentIndex}`;
+              const id = `call_${call.name}_${currentIndex}`;
               return {
                 index: currentIndex,
                 id,
@@ -558,7 +615,7 @@ function extractGeminiTextAndCalls(rawResponse) {
 
 function toOpenAiToolCalls(functionCalls) {
   return functionCalls.map((call, index) => ({
-    id: `call_${Date.now()}_${index}`,
+    id: `call_${call.name}_${index}`,
     type: "function",
     function: {
       name: call.name,
