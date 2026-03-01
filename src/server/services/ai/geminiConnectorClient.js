@@ -111,6 +111,8 @@ export class GeminiConnectorClient {
     const raw = await this.generateText({ prompt, contents, generationConfig, system, tools, toolConfig });
 
     const { text, functionCalls } = extractGeminiParts(raw?.candidates?.[0]?.content);
+    const streamBody = text || functionCalls.length ? { text, functionCalls } : "[stream opened]";
+    logConnectorStreamResponseBody(streamBody);
 
     if (text || functionCalls.length) {
       yield { text, functionCalls };
@@ -210,6 +212,14 @@ function extractGeminiParts(content) {
   }
 
   return { text, functionCalls };
+}
+
+function logConnectorStreamResponseBody(body) {
+  const aiLogConfig = getAiLogConfigSync();
+  if (!aiLogConfig.aiClientTrafficEnabled) {
+    return;
+  }
+  logInfo(`[CONNECTOR] response_body=${truncateAiLogPayload(body, aiLogConfig.responseMaxLength)}`);
 }
 
 function logConnectorHttpRequest({ method, url, body }) {
