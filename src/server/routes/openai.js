@@ -114,6 +114,7 @@ openaiRouter.post("/completions", async (req, res) => {
     }
 
     const parsed = CompletionSchema.parse(req.body);
+    logInfo(`[OPENAI] id=${reqId} ---------- /completions Request Start -------`);
     logInfo(`[OPENAI] id=${reqId} incoming max_tokens=${parsed.max_tokens} parsed.max_thinking_tokens=${parsed.max_thinking_tokens || 0} temperature=${parsed.temperature}`);
 
     const client = await getClientForModel(parsed.model);
@@ -248,6 +249,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
 
   try {
     const parsed = ChatSchema.parse(req.body);
+    logInfo(`[OPENAI] id=${reqId} ---------- /chat/completions Request Start -------`);
     logInfo(`[OPENAI] id=${reqId} incoming max_tokens=${parsed.max_tokens} parsed.max_thinking_tokens=${parsed.max_thinking_tokens || 0} temperature=${parsed.temperature}`);
 
     const system = parsed.messages.find(m => m.role === "system")?.content;
@@ -416,6 +418,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     }
 
     const rawResponse = await client.generateText(requestPayload);
+    logInfo(`[OPENAI] id=${reqId} ai raw response: ${JSON.stringify(rawResponse)}`);
 
     const { text, functionCalls } = extractGeminiTextAndCalls(rawResponse);
 
@@ -626,7 +629,7 @@ function toOpenAiToolCalls(functionCalls) {
 
 function handleStreamError(res, reqId, err) {
   const msg = String(err?.message || err);
-  logError(`[OPENAI] id=${reqId} ERROR ${msg}`);
+  logError(`[OPENAI] id=${reqId} Stream ERROR ${msg}`);
   if (!res.headersSent) {
     res.status(400).json({ error: { message: msg, type: "invalid_request_error" } });
     return;
