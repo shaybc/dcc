@@ -34,9 +34,9 @@ function extractPromptItemsFromBlock(blockContent) {
     .filter(Boolean);
 
   return chunks.map((chunk, index) => {
-    const dccUriMatch = chunk.match(/(?:^|\n)\s*dcc_uri\s*:\s*([^\n]+)/i);
-    const dccUseMatch = chunk.match(/(?:^|\n)\s*dcc_use\s*:\s*([^\n]+)/i);
-    const nameMatch = chunk.match(/(?:^|\n)\s*name\s*:\s*([^\n]+)/i);
+    const dccUriMatch = chunk.match(/(?:^|\n)\s*(?:-\s*)?dcc_uri\s*:\s*([^\n]+)/i);
+    const dccUseMatch = chunk.match(/(?:^|\n)\s*(?:-\s*)?dcc_use\s*:\s*([^\n]+)/i);
+    const nameMatch = chunk.match(/(?:^|\n)\s*(?:-\s*)?name\s*:\s*([^\n]+)/i);
     const uriPart = getLastUriPart(dccUriMatch?.[1] || dccUseMatch?.[1]);
     const label = cleanPromptName(uriPart || nameMatch?.[1], "Prompt");
 
