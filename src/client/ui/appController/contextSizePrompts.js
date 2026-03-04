@@ -77,7 +77,26 @@ function extractReferencedUrisFromBlock(blockContent) {
 
 function extractRulesBodyChars(content) {
   const rulesBlock = extractSectionBlock(content, "rules");
-  return String(rulesBlock || "").length;
+  if (String(rulesBlock || "").trim()) {
+    return String(rulesBlock || "").length;
+  }
+
+  const raw = String(content || "");
+
+  // Markdown rule definitions commonly use frontmatter + markdown body.
+  // When no top-level `rules:` block exists, count the markdown body.
+  const frontmatterMatch = raw.match(/^---\s*\n[\s\S]*?\n---\s*\n?([\s\S]*)$/);
+  if (frontmatterMatch?.[1]) {
+    return String(frontmatterMatch[1] || "").trim().length;
+  }
+
+  // YAML rule definitions may use a top-level `rule:` scalar body.
+  const singleRuleMatch = raw.match(/(?:^|\n)\s*rule\s*:\s*\|?-?\s*\n([\s\S]*)$/i);
+  if (singleRuleMatch?.[1]) {
+    return String(singleRuleMatch[1] || "").trim().length;
+  }
+
+  return 0;
 }
 
 export function extractPromptOptionsFromDefinition({ definition, normalizedType }) {
