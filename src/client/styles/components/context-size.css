@@ -19,7 +19,7 @@
 }
 
 .context-size-summary {
-  color: var(--text-secondary);
+  color: var(--muted);
   display: grid;
   gap: 0.2rem;
 }
@@ -36,15 +36,15 @@
   gap: 0.35rem;
   padding: 1rem;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--panel-bg) 85%, transparent);
-  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  border: 1px solid var(--border);
 }
 
 .context-size-cell {
   width: 100%;
   aspect-ratio: 1;
   border-radius: 3px;
-  border: 1px solid color-mix(in srgb, var(--border-color) 65%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
   background: transparent;
 }
 
@@ -57,7 +57,7 @@
 .context-size-cell.metadata,
 .context-size-dot.metadata { background: #ff8f5e; }
 .context-size-cell.free,
-.context-size-dot.free { background: color-mix(in srgb, var(--text-secondary) 20%, transparent); }
+.context-size-dot.free { background: color-mix(in srgb, var(--muted) 20%, transparent); }
 
 .context-size-breakdown {
   display: grid;
@@ -84,10 +84,10 @@
 }
 
 .context-size-detail-card {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.75rem;
-  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
 }
 
 .context-size-detail-card h4 {
@@ -96,5 +96,5 @@
 
 .context-size-detail-card p {
   margin: 0 0 0.35rem;
-  color: var(--text-secondary);
+  color: var(--muted);
 }
