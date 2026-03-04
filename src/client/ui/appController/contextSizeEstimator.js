@@ -9,6 +9,10 @@ const TOKEN_OPTIONS = Object.freeze([
   { label: "8K", value: 8_000 },
 ]);
 
+const DEFAULT_CONTEXT_LIMIT = 8_000;
+const CONTEXT_MATRIX_WIDTH = 20;
+const CONTEXT_MATRIX_HEIGHT = 15;
+
 const CATEGORY_META = Object.freeze({
   instructions: { label: "Instructions", colorClass: "instructions", description: "Prompt and instruction content sent to the model." },
   mcp: { label: "MCP definitions", colorClass: "mcp", description: "MCP server/tool definitions and protocol metadata." },
@@ -59,8 +63,8 @@ function formatPercent(value) {
   return `${value.toFixed(1)}%`;
 }
 
-function computeContextUsage({ content = "", normalizedType = "unknown", limitTokens = 1_000_000, selectedPromptTokens = 0 }) {
-  const safeLimit = Number.isFinite(limitTokens) && limitTokens > 0 ? Math.floor(limitTokens) : 1_000_000;
+function computeContextUsage({ content = "", normalizedType = "unknown", limitTokens = DEFAULT_CONTEXT_LIMIT, selectedPromptTokens = 0 }) {
+  const safeLimit = Number.isFinite(limitTokens) && limitTokens > 0 ? Math.floor(limitTokens) : DEFAULT_CONTEXT_LIMIT;
   const totalDefinitionTokens = estimateTokens(content);
   const metadataTokens = Math.max(10, Math.ceil(totalDefinitionTokens * 0.08));
   const primaryTokens = Math.max(0, totalDefinitionTokens - metadataTokens);
@@ -94,7 +98,7 @@ function computeContextUsage({ content = "", normalizedType = "unknown", limitTo
     .filter((entry) => entry.tokens > 0)
     .sort((a, b) => b.tokens - a.tokens);
 
-  const matrixCells = 100;
+  const matrixCells = CONTEXT_MATRIX_WIDTH * CONTEXT_MATRIX_HEIGHT;
   const assigned = [];
   let consumedCells = 0;
   sortedForMatrix.forEach((entry, index) => {
@@ -122,6 +126,9 @@ function computeContextUsage({ content = "", normalizedType = "unknown", limitTo
 
 export {
   TOKEN_OPTIONS,
+  DEFAULT_CONTEXT_LIMIT,
+  CONTEXT_MATRIX_WIDTH,
+  CONTEXT_MATRIX_HEIGHT,
   estimateTokens,
   extractContextLengthCandidate,
   computeContextUsage,

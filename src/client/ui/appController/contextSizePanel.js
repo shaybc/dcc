@@ -1,5 +1,6 @@
 import {
   TOKEN_OPTIONS,
+  DEFAULT_CONTEXT_LIMIT,
   extractContextLengthCandidate,
   computeContextUsage,
   formatTokenCount,
@@ -94,7 +95,9 @@ export function createContextSizePanelController({
   }
 
   function selectOptionByValue(value) {
-    const selected = TOKEN_OPTIONS.find((option) => option.value === value) || TOKEN_OPTIONS[1];
+    const selected = TOKEN_OPTIONS.find((option) => option.value === value)
+      || TOKEN_OPTIONS.find((option) => option.value === DEFAULT_CONTEXT_LIMIT)
+      || TOKEN_OPTIONS[TOKEN_OPTIONS.length - 1];
     contextSizeLimitSelect.value = String(selected.value);
     return selected.value;
   }
@@ -117,7 +120,7 @@ export function createContextSizePanelController({
       }
     }
 
-    return 1_000_000;
+    return DEFAULT_CONTEXT_LIMIT;
   }
 
   function initializeDropdowns() {
@@ -126,13 +129,13 @@ export function createContextSizePanelController({
       .join("");
 
     contextSizeLimitSelect.addEventListener("change", () => {
-      const selected = Number(contextSizeLimitSelect.value || 1_000_000);
+      const selected = Number(contextSizeLimitSelect.value || DEFAULT_CONTEXT_LIMIT);
       renderReport(selected);
     });
 
     contextSizePromptSelect?.addEventListener("change", () => {
       selectedPromptId = String(contextSizePromptSelect.value || "");
-      const selected = Number(contextSizeLimitSelect.value || 1_000_000);
+      const selected = Number(contextSizeLimitSelect.value || DEFAULT_CONTEXT_LIMIT);
       renderReport(selected);
     });
   }

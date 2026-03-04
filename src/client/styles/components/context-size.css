@@ -54,8 +54,8 @@
 
 .context-size-matrix {
   display: grid;
-  grid-template-columns: repeat(10, minmax(12px, 1fr));
-  gap: 0.35rem;
+  grid-template-columns: repeat(20, minmax(8px, 1fr));
+  gap: 0.25rem;
   padding: 1rem;
   border-radius: 12px;
   background: color-mix(in srgb, var(--card) 85%, transparent);
