@@ -2407,6 +2407,59 @@ const validationController = createValidationController({
 
 const { renderValidationResult, runValidationForCurrentDefinition, scheduleValidationRun, setDefinitionTab } = validationController;
 
+const definitionContentCacheById = new Map();
+
+function normalizeReferenceUri(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function findDefinitionRowByReference({ type, reference }) {
+  const normalizedType = normalizeFilterType(type || "unknown");
+  const normalizedRef = normalizeReferenceUri(reference);
+  if (!normalizedRef) return null;
+
+  const exactKey = `${normalizedType}::${normalizedRef}`;
+  const exact = definitions.find((definition) => String(definition?.key || "").toLowerCase() === exactKey);
+  if (exact?.id) return exact;
+
+  const typePrefix = `${normalizedType}::`;
+  const suffix = normalizedRef.startsWith("/") ? normalizedRef : `/${normalizedRef}`;
+  const suffixMatch = definitions.find((definition) => {
+    const candidateKey = String(definition?.key || "").toLowerCase();
+    if (!candidateKey.startsWith(typePrefix)) return false;
+    return candidateKey.endsWith(suffix) || candidateKey.endsWith(`::${normalizedRef}`);
+  });
+  if (suffixMatch?.id) return suffixMatch;
+
+  const normalizedFileSuffix = `${normalizedRef}`.replace(/^\/+/, "");
+  const filePathMatch = definitions.find((definition) => {
+    if (normalizeFilterType(definition?.type || "unknown") !== normalizedType) return false;
+    const filePath = String(definition?.filePath || "").replace(/\\/g, "/").toLowerCase();
+    return filePath.includes(normalizedFileSuffix);
+  });
+  if (filePathMatch?.id) return filePathMatch;
+
+  return null;
+}
+
+async function fetchDefinitionContentByReference({ type, reference }) {
+  const row = findDefinitionRowByReference({ type, reference });
+  if (!row?.id) return "";
+
+  if (definitionContentCacheById.has(row.id)) {
+    return String(definitionContentCacheById.get(row.id) || "");
+  }
+
+  const response = await fetch(`/api/definitions/${row.id}`);
+  if (!response.ok) {
+    return "";
+  }
+  const payload = await response.json();
+  const content = String(payload?.content || "");
+  definitionContentCacheById.set(row.id, content);
+  return content;
+}
+
 const contextSizePanelController = createContextSizePanelController({
   contextSizeLimitSelect,
   contextSizePromptSelector,
@@ -2424,6 +2477,7 @@ const contextSizePanelController = createContextSizePanelController({
     const payload = await response.json();
     return Number(payload?.contextWindowTokens || 0) || null;
   },
+  resolveDefinitionContentByReference: fetchDefinitionContentByReference,
   normalizeFilterType,
   escapeHtml,
 });
