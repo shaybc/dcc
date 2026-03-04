@@ -6,7 +6,11 @@ import {
   formatTokenCount,
   formatPercent,
 } from "./contextSizeEstimator.js";
-import { extractPromptOptionsFromDefinition } from "./contextSizePrompts.js";
+import {
+  extractPromptOptionsFromDefinition,
+  extractRuleReferencesFromDefinition,
+  estimateRuleTokensFromDefinitionContent,
+} from "./contextSizePrompts.js";
 
 export function createContextSizePanelController({
   contextSizeLimitSelect,
@@ -18,6 +22,7 @@ export function createContextSizePanelController({
   contextSizeDetails,
   getCurrentDevProjectPath,
   fetchProjectContextWindow,
+  resolveDefinitionContentByReference,
   normalizeFilterType,
   escapeHtml,
 }) {
@@ -25,6 +30,8 @@ export function createContextSizePanelController({
   let currentNormalizedType = "unknown";
   let promptOptions = [];
   let selectedPromptId = "";
+  let resolvedPromptTokensById = new Map();
+  let resolvedRuleTokens = null;
 
   function getSelectedPromptOption() {
     return promptOptions.find((option) => option.id === selectedPromptId) || null;
@@ -50,18 +57,28 @@ export function createContextSizePanelController({
     contextSizePromptSelect.value = selectedPromptId;
   }
 
+  function getResolvedPromptTokens(selectedPrompt) {
+    if (!selectedPrompt) return 0;
+    if (resolvedPromptTokensById.has(selectedPrompt.id)) {
+      return Number(resolvedPromptTokensById.get(selectedPrompt.id) || 0);
+    }
+    return Number(selectedPrompt.tokens || 0);
+  }
+
   function renderReport(limitTokens) {
     if (!currentDefinition) {
       return;
     }
 
     const selectedPrompt = getSelectedPromptOption();
-    const selectedPromptTokens = selectedPrompt ? Number(selectedPrompt.tokens || 0) : 0;
+    const selectedPromptTokens = getResolvedPromptTokens(selectedPrompt);
     const report = computeContextUsage({
       content: currentDefinition.content || "",
       normalizedType: currentNormalizedType,
       limitTokens,
       selectedPromptTokens,
+      resolvedInstructionTokens: resolvedRuleTokens,
+      resolvedPromptTokens: selectedPrompt ? selectedPromptTokens : null,
     });
 
     contextSizeSummary.innerHTML = `
@@ -147,7 +164,38 @@ export function createContextSizePanelController({
     currentNormalizedType = normalizeFilterType(definition?.type || "unknown");
     promptOptions = extractPromptOptionsFromDefinition({ definition, normalizedType: currentNormalizedType });
     selectedPromptId = promptOptions[0]?.id || "";
+    resolvedPromptTokensById = new Map();
+    resolvedRuleTokens = null;
     renderPromptSelector();
+
+    if (typeof resolveDefinitionContentByReference === "function") {
+      await Promise.all(promptOptions.map(async (option) => {
+        if (!option?.reference) return;
+        try {
+          const content = await resolveDefinitionContentByReference({ type: "prompts", reference: option.reference });
+          if (typeof content === "string" && content.trim()) {
+            resolvedPromptTokensById.set(option.id, Math.ceil(content.length / 4));
+          }
+        } catch (_error) {
+          // Ignore and fallback to local estimate.
+        }
+      }));
+
+      try {
+        const definitionContent = String(definition?.content || "");
+        const referencedRules = extractRuleReferencesFromDefinition(definitionContent);
+        if (referencedRules.length > 0) {
+          const rulesContents = await Promise.all(
+            referencedRules.map((reference) => resolveDefinitionContentByReference({ type: "rules", reference }))
+          );
+          resolvedRuleTokens = rulesContents
+            .map((content) => estimateRuleTokensFromDefinitionContent(content))
+            .reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
+        }
+      } catch (_error) {
+        resolvedRuleTokens = null;
+      }
+    }
 
     const initialLimit = await getInitialLimitForDefinition(definition?.content || "");
     const selectedLimit = selectOptionByValue(initialLimit);
