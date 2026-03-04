@@ -6,16 +6,9 @@
 
 .context-size-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 1rem;
-}
-
-.context-size-limit-control {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.92rem;
 }
 
 .context-size-summary {
@@ -24,21 +17,24 @@
   gap: 0.2rem;
 }
 
-.context-size-prompt-selector {
+.context-size-controls-grid {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.6rem 0.75rem;
   display: grid;
-  gap: 0.5rem;
+  grid-template-columns: auto minmax(250px, 1fr);
+  gap: 0.5rem 0.8rem;
+  align-items: center;
   background: color-mix(in srgb, var(--card) 90%, transparent);
 }
 
-.context-size-prompt-title {
+.context-size-control-label {
   font-size: 0.86rem;
   color: var(--muted);
 }
 
-.context-size-prompt-select {
+.context-size-select {
+  min-width: 250px;
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--text);

@@ -635,13 +635,13 @@
               <section class="context-size-panel" aria-live="polite">
                 <div class="context-size-header">
                   <h3>Context Size Usage</h3>
-                  <label class="context-size-limit-control">Context window
-                    <select id="contextSizeLimitSelect"></select>
-                  </label>
                 </div>
-                <div class="context-size-prompt-selector" id="contextSizePromptSelector" hidden>
-                  <label class="context-size-prompt-title" for="contextSizePromptSelect">Include prompt in estimate</label>
-                  <select id="contextSizePromptSelect" class="context-size-prompt-select"></select>
+                <div class="context-size-controls-grid">
+                  <label class="context-size-control-label" for="contextSizeLimitSelect">Context window</label>
+                  <select id="contextSizeLimitSelect" class="context-size-select"></select>
+
+                  <label class="context-size-control-label" for="contextSizePromptSelect" id="contextSizePromptSelector" hidden>Include prompt in estimate</label>
+                  <select id="contextSizePromptSelect" class="context-size-select" hidden></select>
                 </div>
                 <div class="context-size-summary" id="contextSizeSummary"></div>
                 <div class="context-size-layout">

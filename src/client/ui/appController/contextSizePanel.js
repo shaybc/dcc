@@ -37,11 +37,13 @@ export function createContextSizePanelController({
 
     if (!Array.isArray(promptOptions) || promptOptions.length === 0) {
       contextSizePromptSelector.hidden = true;
+      contextSizePromptSelect.hidden = true;
       contextSizePromptSelect.innerHTML = "";
       return;
     }
 
     contextSizePromptSelector.hidden = false;
+    contextSizePromptSelect.hidden = false;
     contextSizePromptSelect.innerHTML = promptOptions
       .map((option) => `<option value="${escapeHtml(option.id)}">${escapeHtml(option.name)}</option>`)
       .join("");
