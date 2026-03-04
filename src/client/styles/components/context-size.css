@@ -1,0 +1,100 @@
+.context-size-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.context-size-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.context-size-limit-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+}
+
+.context-size-summary {
+  color: var(--text-secondary);
+  display: grid;
+  gap: 0.2rem;
+}
+
+.context-size-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+  gap: 1rem;
+}
+
+.context-size-matrix {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(12px, 1fr));
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel-bg) 85%, transparent);
+  border: 1px solid var(--border-color);
+}
+
+.context-size-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 65%, transparent);
+  background: transparent;
+}
+
+.context-size-cell.instructions,
+.context-size-dot.instructions { background: #7c4dff; }
+.context-size-cell.prompt,
+.context-size-dot.prompt { background: #5f9dff; }
+.context-size-cell.mcp,
+.context-size-dot.mcp { background: #0fa3b1; }
+.context-size-cell.metadata,
+.context-size-dot.metadata { background: #ff8f5e; }
+.context-size-cell.free,
+.context-size-dot.free { background: color-mix(in srgb, var(--text-secondary) 20%, transparent); }
+
+.context-size-breakdown {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.context-size-breakdown-row {
+  display: grid;
+  grid-template-columns: 12px auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.context-size-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.context-size-details {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.context-size-detail-card {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+}
+
+.context-size-detail-card h4 {
+  margin: 0 0 0.25rem;
+}
+
+.context-size-detail-card p {
+  margin: 0 0 0.35rem;
+  color: var(--text-secondary);
+}
