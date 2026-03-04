@@ -59,7 +59,7 @@ function formatPercent(value) {
   return `${value.toFixed(1)}%`;
 }
 
-function computeContextUsage({ content = "", normalizedType = "unknown", limitTokens = 1_000_000 }) {
+function computeContextUsage({ content = "", normalizedType = "unknown", limitTokens = 1_000_000, selectedPromptTokens = 0 }) {
   const safeLimit = Number.isFinite(limitTokens) && limitTokens > 0 ? Math.floor(limitTokens) : 1_000_000;
   const totalDefinitionTokens = estimateTokens(content);
   const metadataTokens = Math.max(10, Math.ceil(totalDefinitionTokens * 0.08));
@@ -73,6 +73,8 @@ function computeContextUsage({ content = "", normalizedType = "unknown", limitTo
     metadata: metadataTokens,
   };
   buckets[primaryCategory] += primaryTokens;
+  const extraPromptTokens = Number.isFinite(Number(selectedPromptTokens)) ? Math.max(0, Math.floor(Number(selectedPromptTokens))) : 0;
+  buckets.prompt += extraPromptTokens;
 
   const usedTokens = Math.min(safeLimit, Object.values(buckets).reduce((sum, value) => sum + value, 0));
   const freeTokens = Math.max(0, safeLimit - usedTokens);
@@ -120,6 +122,7 @@ function computeContextUsage({ content = "", normalizedType = "unknown", limitTo
 
 export {
   TOKEN_OPTIONS,
+  estimateTokens,
   extractContextLengthCandidate,
   computeContextUsage,
   formatTokenCount,

@@ -24,6 +24,33 @@
   gap: 0.2rem;
 }
 
+.context-size-prompt-selector {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  display: grid;
+  gap: 0.5rem;
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+}
+
+.context-size-prompt-title {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.context-size-prompt-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+}
+
+.context-size-prompt-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
 .context-size-layout {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
