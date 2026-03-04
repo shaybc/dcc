@@ -10,9 +10,11 @@ export function createValidationController({
   validationAutoRunToggle,
   definitionTabPreview,
   definitionTabSource,
+  definitionTabContextSize,
   definitionTabTest,
   definitionPreviewPanel,
   definitionSourcePanel,
+  definitionContextSizePanel,
   definitionTestPanel,
   fetchWithErrorHandling,
   getCurrentDetailDefinitionId,
@@ -123,15 +125,19 @@ export function createValidationController({
   function setDefinitionTab(activeTab) {
     const isPreview = activeTab === "preview";
     const isSource = activeTab === "source";
+    const isContextSize = activeTab === "contextSize";
     const isTest = activeTab === "test";
     definitionTabPreview.classList.toggle("active", isPreview);
     definitionTabSource.classList.toggle("active", isSource);
+    definitionTabContextSize.classList.toggle("active", isContextSize);
     definitionTabTest.classList.toggle("active", isTest);
     definitionTabPreview.setAttribute("aria-selected", String(isPreview));
     definitionTabSource.setAttribute("aria-selected", String(isSource));
+    definitionTabContextSize.setAttribute("aria-selected", String(isContextSize));
     definitionTabTest.setAttribute("aria-selected", String(isTest));
     definitionPreviewPanel.hidden = !isPreview;
     definitionSourcePanel.hidden = !isSource;
+    definitionContextSizePanel.hidden = !isContextSize;
     definitionTestPanel.hidden = !isTest;
 
     if (isTest && validationAutoRunToggle?.checked) {
