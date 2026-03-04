@@ -50,7 +50,7 @@
 
 .context-size-matrix {
   display: grid;
-  grid-template-columns: repeat(20, minmax(8px, 1fr));
+  grid-template-columns: repeat(20, 25px);
   gap: 0.25rem;
   padding: 1rem;
   border-radius: 12px;
