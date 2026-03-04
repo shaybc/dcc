@@ -2413,17 +2413,37 @@ function normalizeReferenceUri(value) {
   return String(value || "").trim().toLowerCase();
 }
 
-function buildDefinitionKey(type, reference) {
+function findDefinitionRowByReference({ type, reference }) {
   const normalizedType = normalizeFilterType(type || "unknown");
   const normalizedRef = normalizeReferenceUri(reference);
-  if (!normalizedRef) return "";
-  return `${normalizedType}::${normalizedRef}`;
+  if (!normalizedRef) return null;
+
+  const exactKey = `${normalizedType}::${normalizedRef}`;
+  const exact = definitions.find((definition) => String(definition?.key || "").toLowerCase() === exactKey);
+  if (exact?.id) return exact;
+
+  const typePrefix = `${normalizedType}::`;
+  const suffix = normalizedRef.startsWith("/") ? normalizedRef : `/${normalizedRef}`;
+  const suffixMatch = definitions.find((definition) => {
+    const candidateKey = String(definition?.key || "").toLowerCase();
+    if (!candidateKey.startsWith(typePrefix)) return false;
+    return candidateKey.endsWith(suffix) || candidateKey.endsWith(`::${normalizedRef}`);
+  });
+  if (suffixMatch?.id) return suffixMatch;
+
+  const normalizedFileSuffix = `${normalizedRef}`.replace(/^\/+/, "");
+  const filePathMatch = definitions.find((definition) => {
+    if (normalizeFilterType(definition?.type || "unknown") !== normalizedType) return false;
+    const filePath = String(definition?.filePath || "").replace(/\\/g, "/").toLowerCase();
+    return filePath.includes(normalizedFileSuffix);
+  });
+  if (filePathMatch?.id) return filePathMatch;
+
+  return null;
 }
 
 async function fetchDefinitionContentByReference({ type, reference }) {
-  const key = buildDefinitionKey(type, reference);
-  if (!key) return "";
-  const row = definitions.find((definition) => String(definition?.key || "").toLowerCase() === key);
+  const row = findDefinitionRowByReference({ type, reference });
   if (!row?.id) return "";
 
   if (definitionContentCacheById.has(row.id)) {
