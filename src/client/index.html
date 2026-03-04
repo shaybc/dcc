@@ -533,6 +533,7 @@
               <div class="definition-tab-buttons" role="tablist" aria-label="Definition view tabs">
                 <button class="definition-tab" id="definitionTabPreview" type="button" role="tab" aria-selected="false">Preview</button>
                 <button class="definition-tab active" id="definitionTabSource" type="button" role="tab" aria-selected="true"></button>
+                <button class="definition-tab" id="definitionTabContextSize" type="button" role="tab" aria-selected="false">Context Size</button>
                 <button class="definition-tab" id="definitionTabTest" type="button" role="tab" aria-selected="false">Test</button>
               </div>
               <div class="definition-actions">
@@ -629,6 +630,26 @@
               </section>
               <div id="diffContainer" class="diff-container" hidden></div>
               <pre id="detailContent"></pre>
+            </div>
+            <div class="definition-tab-panel" id="definitionContextSizePanel" role="tabpanel" aria-labelledby="definitionTabContextSize" hidden>
+              <section class="context-size-panel" aria-live="polite">
+                <div class="context-size-header">
+                  <h3>Context Size Usage</h3>
+                  <label class="context-size-limit-control">Context window
+                    <select id="contextSizeLimitSelect"></select>
+                  </label>
+                </div>
+                <div class="context-size-prompt-selector" id="contextSizePromptSelector" hidden>
+                  <div class="context-size-prompt-title">Include prompt in estimate</div>
+                  <div class="context-size-prompt-options" id="contextSizePromptOptions"></div>
+                </div>
+                <div class="context-size-summary" id="contextSizeSummary"></div>
+                <div class="context-size-layout">
+                  <div class="context-size-matrix" id="contextSizeMatrix"></div>
+                  <aside class="context-size-breakdown" id="contextSizeBreakdown"></aside>
+                </div>
+                <div class="context-size-details" id="contextSizeDetails"></div>
+              </section>
             </div>
             <div class="definition-tab-panel" id="definitionTestPanel" role="tabpanel" aria-labelledby="definitionTabTest" hidden>
               <div class="validation-layout">
