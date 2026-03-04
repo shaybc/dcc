@@ -63,7 +63,14 @@ function formatPercent(value) {
   return `${value.toFixed(1)}%`;
 }
 
-function computeContextUsage({ content = "", normalizedType = "unknown", limitTokens = DEFAULT_CONTEXT_LIMIT, selectedPromptTokens = 0 }) {
+function computeContextUsage({
+  content = "",
+  normalizedType = "unknown",
+  limitTokens = DEFAULT_CONTEXT_LIMIT,
+  selectedPromptTokens = 0,
+  resolvedInstructionTokens = null,
+  resolvedPromptTokens = null,
+}) {
   const safeLimit = Number.isFinite(limitTokens) && limitTokens > 0 ? Math.floor(limitTokens) : DEFAULT_CONTEXT_LIMIT;
   const totalDefinitionTokens = estimateTokens(content);
   const metadataTokens = Math.max(10, Math.ceil(totalDefinitionTokens * 0.08));
@@ -79,6 +86,13 @@ function computeContextUsage({ content = "", normalizedType = "unknown", limitTo
   buckets[primaryCategory] += primaryTokens;
   const extraPromptTokens = Number.isFinite(Number(selectedPromptTokens)) ? Math.max(0, Math.floor(Number(selectedPromptTokens))) : 0;
   buckets.prompt += extraPromptTokens;
+
+  if (Number.isFinite(Number(resolvedPromptTokens))) {
+    buckets.prompt = Math.max(0, Math.floor(Number(resolvedPromptTokens)));
+  }
+  if (Number.isFinite(Number(resolvedInstructionTokens))) {
+    buckets.instructions = Math.max(0, Math.floor(Number(resolvedInstructionTokens)));
+  }
 
   const usedTokens = Math.min(safeLimit, Object.values(buckets).reduce((sum, value) => sum + value, 0));
   const freeTokens = Math.max(0, safeLimit - usedTokens);
