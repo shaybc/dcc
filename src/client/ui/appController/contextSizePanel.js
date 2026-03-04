@@ -10,7 +10,7 @@ import { extractPromptOptionsFromDefinition } from "./contextSizePrompts.js";
 export function createContextSizePanelController({
   contextSizeLimitSelect,
   contextSizePromptSelector,
-  contextSizePromptOptions,
+  contextSizePromptSelect,
   contextSizeSummary,
   contextSizeMatrix,
   contextSizeBreakdown,
@@ -30,33 +30,21 @@ export function createContextSizePanelController({
   }
 
   function renderPromptSelector() {
-    if (!contextSizePromptSelector || !contextSizePromptOptions) {
+    if (!contextSizePromptSelector || !contextSizePromptSelect) {
       return;
     }
 
     if (!Array.isArray(promptOptions) || promptOptions.length === 0) {
       contextSizePromptSelector.hidden = true;
-      contextSizePromptOptions.innerHTML = "";
+      contextSizePromptSelect.innerHTML = "";
       return;
     }
 
     contextSizePromptSelector.hidden = false;
-    contextSizePromptOptions.innerHTML = promptOptions
-      .map((option) => `
-        <label class="context-size-prompt-option">
-          <input type="radio" name="contextSizePromptRadio" value="${escapeHtml(option.id)}" ${option.id === selectedPromptId ? "checked" : ""}>
-          <span>${escapeHtml(option.name)}</span>
-        </label>
-      `)
+    contextSizePromptSelect.innerHTML = promptOptions
+      .map((option) => `<option value="${escapeHtml(option.id)}">${escapeHtml(option.name)}</option>`)
       .join("");
-
-    contextSizePromptOptions.querySelectorAll('input[name="contextSizePromptRadio"]').forEach((radio) => {
-      radio.addEventListener("change", () => {
-        selectedPromptId = String(radio.value || "");
-        const selected = Number(contextSizeLimitSelect.value || 1_000_000);
-        renderReport(selected);
-      });
-    });
+    contextSizePromptSelect.value = selectedPromptId;
   }
 
   function renderReport(limitTokens) {
@@ -132,12 +120,18 @@ export function createContextSizePanelController({
     return 1_000_000;
   }
 
-  function initializeDropdown() {
+  function initializeDropdowns() {
     contextSizeLimitSelect.innerHTML = TOKEN_OPTIONS
       .map((option) => `<option value="${option.value}">${option.label}</option>`)
       .join("");
 
     contextSizeLimitSelect.addEventListener("change", () => {
+      const selected = Number(contextSizeLimitSelect.value || 1_000_000);
+      renderReport(selected);
+    });
+
+    contextSizePromptSelect?.addEventListener("change", () => {
+      selectedPromptId = String(contextSizePromptSelect.value || "");
       const selected = Number(contextSizeLimitSelect.value || 1_000_000);
       renderReport(selected);
     });
@@ -149,12 +143,13 @@ export function createContextSizePanelController({
     promptOptions = extractPromptOptionsFromDefinition({ definition, normalizedType: currentNormalizedType });
     selectedPromptId = promptOptions[0]?.id || "";
     renderPromptSelector();
+
     const initialLimit = await getInitialLimitForDefinition(definition?.content || "");
     const selectedLimit = selectOptionByValue(initialLimit);
     renderReport(selectedLimit);
   }
 
-  initializeDropdown();
+  initializeDropdowns();
 
   return {
     renderForDefinition,

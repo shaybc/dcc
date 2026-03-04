@@ -38,17 +38,12 @@
   color: var(--muted);
 }
 
-.context-size-prompt-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem 1rem;
-}
-
-.context-size-prompt-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
+.context-size-prompt-select {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
 }
 
 .context-size-layout {
@@ -59,7 +54,7 @@
 
 .context-size-matrix {
   display: grid;
-  grid-template-columns: repeat(10, 25px);
+  grid-template-columns: repeat(10, minmax(12px, 1fr));
   gap: 0.35rem;
   padding: 1rem;
   border-radius: 12px;

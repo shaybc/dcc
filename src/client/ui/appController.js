@@ -240,7 +240,7 @@ import {
   definitionTestPanel,
   contextSizeLimitSelect,
   contextSizePromptSelector,
-  contextSizePromptOptions,
+  contextSizePromptSelect,
   contextSizeSummary,
   contextSizeMatrix,
   contextSizeBreakdown,
@@ -2410,7 +2410,7 @@ const { renderValidationResult, runValidationForCurrentDefinition, scheduleValid
 const contextSizePanelController = createContextSizePanelController({
   contextSizeLimitSelect,
   contextSizePromptSelector,
-  contextSizePromptOptions,
+  contextSizePromptSelect,
   contextSizeSummary,
   contextSizeMatrix,
   contextSizeBreakdown,

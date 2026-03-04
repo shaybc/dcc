@@ -135,7 +135,7 @@ const definitionContextSizePanel = document.getElementById("definitionContextSiz
 const definitionTestPanel = document.getElementById("definitionTestPanel");
 const contextSizeLimitSelect = document.getElementById("contextSizeLimitSelect");
 const contextSizePromptSelector = document.getElementById("contextSizePromptSelector");
-const contextSizePromptOptions = document.getElementById("contextSizePromptOptions");
+const contextSizePromptSelect = document.getElementById("contextSizePromptSelect");
 const contextSizeSummary = document.getElementById("contextSizeSummary");
 const contextSizeMatrix = document.getElementById("contextSizeMatrix");
 const contextSizeBreakdown = document.getElementById("contextSizeBreakdown");
@@ -320,7 +320,7 @@ export {
   definitionTestPanel,
   contextSizeLimitSelect,
   contextSizePromptSelector,
-  contextSizePromptOptions,
+  contextSizePromptSelect,
   contextSizeSummary,
   contextSizeMatrix,
   contextSizeBreakdown,
