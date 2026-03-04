@@ -19,6 +19,7 @@ import {
   openConfirmationDialog,
 } from "./appController/definitionDialogs.js";
 import { createValidationController } from "./appController/validationController.js";
+import { createContextSizePanelController } from "./appController/contextSizePanel.js";
 import { createFavoritesStorage } from "./appController/favoritesStorage.js";
 import {
   createFetchWithErrorHandling,
@@ -231,10 +232,17 @@ import {
   versionBanner,
   definitionTabPreview,
   definitionTabSource,
+  definitionTabContextSize,
   definitionTabTest,
   definitionPreviewPanel,
   definitionSourcePanel,
+  definitionContextSizePanel,
   definitionTestPanel,
+  contextSizeLimitSelect,
+  contextSizeSummary,
+  contextSizeMatrix,
+  contextSizeBreakdown,
+  contextSizeDetails,
   definitionPreviewContent,
   diffControls,
   enableDiffMode,
@@ -2382,9 +2390,11 @@ const validationController = createValidationController({
   validationAutoRunToggle,
   definitionTabPreview,
   definitionTabSource,
+  definitionTabContextSize,
   definitionTabTest,
   definitionPreviewPanel,
   definitionSourcePanel,
+  definitionContextSizePanel,
   definitionTestPanel,
   fetchWithErrorHandling,
   getCurrentDetailDefinitionId: () => currentDetailDefinitionId,
@@ -2394,6 +2404,25 @@ const validationController = createValidationController({
 });
 
 const { renderValidationResult, runValidationForCurrentDefinition, scheduleValidationRun, setDefinitionTab } = validationController;
+
+const contextSizePanelController = createContextSizePanelController({
+  contextSizeLimitSelect,
+  contextSizeSummary,
+  contextSizeMatrix,
+  contextSizeBreakdown,
+  contextSizeDetails,
+  getCurrentDevProjectPath: () => devProjectInput?.value || "",
+  fetchProjectContextWindow: async (projectPath) => {
+    const response = await fetch(`/api/current-dev-project/context-window?path=${encodeURIComponent(projectPath)}`);
+    if (!response.ok) {
+      return null;
+    }
+    const payload = await response.json();
+    return Number(payload?.contextWindowTokens || 0) || null;
+  },
+  normalizeFilterType,
+  escapeHtml,
+});
 
 function formatVersionCommitDate(value) {
   if (!value) return "";
@@ -2731,6 +2760,7 @@ async function showDetails(id) {
   definitionTabSource.textContent = tabLabel;
 
   definitionPreviewContent.innerHTML = renderDefinitionPreview(definitionContent, def);
+  await contextSizePanelController.renderForDefinition(def);
   await refreshDiffVersions();
   const isUntrackedDefinition = currentDetailDefinitionSource === "untracked";
   const canDeleteDefinition = currentDetailDefinitionSource === "repo" || isUntrackedDefinition;
@@ -3378,7 +3408,7 @@ function setupEventListeners() {
     duplicateDefinitionButton, createDuplicateDefaults, getCurrentDetailDefinitionPath: () => currentDetailDefinitionPath,
     getCurrentDetailDefinitionDccUri: () => currentDetailDefinitionDccUri, openDuplicateDefinitionModal,
     getCurrentDetailDefinitionContentValue: () => currentDetailDefinitionContent, duplicateDefinition, updateRouteForDetails,
-    definitionTabPreview, setDefinitionTab, definitionTabSource, definitionTabTest,
+    definitionTabPreview, setDefinitionTab, definitionTabSource, definitionTabContextSize, definitionTabTest,
     runValidationButton, runValidationForCurrentDefinition, copyValidationReportButton,
     getLastValidationResult: () => lastValidationResult, validationSeverityFilter, renderValidationResult,
     closeModal, updateRouteForHubNoReplace: updateRouteForHub, handleRoute,
