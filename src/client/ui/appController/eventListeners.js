@@ -56,6 +56,7 @@ export function setupEventListeners(ctx) {
     definitionTabPreview,
     setDefinitionTab,
     definitionTabSource,
+    definitionTabContextSize,
     definitionTabTest,
     runValidationButton,
     runValidationForCurrentDefinition,
@@ -312,6 +313,10 @@ export function setupEventListeners(ctx) {
 
   definitionTabSource.addEventListener("click", () => {
     setDefinitionTab("source");
+  });
+
+  definitionTabContextSize.addEventListener("click", () => {
+    setDefinitionTab("contextSize");
   });
 
   definitionTabTest.addEventListener("click", () => {

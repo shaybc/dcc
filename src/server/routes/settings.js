@@ -14,6 +14,7 @@ import {
 } from "../utils/assetRepos.js";
 import { getAiLogConfigSync, saveAiLogConfigToSettings } from "../utils/aiLogging.js";
 import { getLoggerFileConfigSync, saveLoggerFileConfigToSettings } from "../utils/logger.js";
+import { resolveProjectContextWindow } from "../projects/contextWindow.js";
 
 const router = express.Router();
 
@@ -167,6 +168,21 @@ router.post("/api/current-dev-project", async (req, res) => {
     const path = String(req.body?.path || "").trim();
     await setSetting("currentDevProject", path);
     res.json({ ok: true, path });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+router.get("/api/current-dev-project/context-window", async (req, res) => {
+  try {
+    const queryPath = String(req.query?.path || "").trim();
+    const activePath = queryPath || String(await getSetting("currentDevProject") || "").trim();
+    const contextWindowTokens = await resolveProjectContextWindow(activePath);
+    res.json({
+      path: activePath,
+      contextWindowTokens: Number.isFinite(contextWindowTokens) ? contextWindowTokens : null,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,0 +1,118 @@
+.context-size-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.context-size-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 1rem;
+}
+
+.context-size-summary {
+  color: var(--muted);
+  display: grid;
+  gap: 0.2rem;
+}
+
+.context-size-controls-grid {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  display: grid;
+  grid-template-columns: auto minmax(250px, 1fr);
+  gap: 0.5rem 0.8rem;
+  align-items: center;
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+}
+
+.context-size-control-label {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.context-size-select {
+  min-width: 250px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+}
+
+.context-size-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+  gap: 1rem;
+}
+
+.context-size-matrix {
+  display: grid;
+  grid-template-columns: repeat(20, minmax(8px, 1fr));
+  gap: 0.25rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  border: 1px solid var(--border);
+}
+
+.context-size-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  background: transparent;
+}
+
+.context-size-cell.instructions,
+.context-size-dot.instructions { background: #7c4dff; }
+.context-size-cell.prompt,
+.context-size-dot.prompt { background: #5f9dff; }
+.context-size-cell.mcp,
+.context-size-dot.mcp { background: #0fa3b1; }
+.context-size-cell.metadata,
+.context-size-dot.metadata { background: #ff8f5e; }
+.context-size-cell.free,
+.context-size-dot.free { background: color-mix(in srgb, var(--muted) 20%, transparent); }
+
+.context-size-breakdown {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.context-size-breakdown-row {
+  display: grid;
+  grid-template-columns: 12px auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.context-size-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.context-size-details {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.context-size-detail-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+.context-size-detail-card h4 {
+  margin: 0 0 0.25rem;
+}
+
+.context-size-detail-card p {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+}

@@ -127,10 +127,19 @@ const activityStatCancelled = document.getElementById("activityStatCancelled");
 const versionBanner = document.getElementById("versionBanner");
 const definitionTabPreview = document.getElementById("definitionTabPreview");
 const definitionTabSource = document.getElementById("definitionTabSource");
+const definitionTabContextSize = document.getElementById("definitionTabContextSize");
 const definitionTabTest = document.getElementById("definitionTabTest");
 const definitionPreviewPanel = document.getElementById("definitionPreviewPanel");
 const definitionSourcePanel = document.getElementById("definitionSourcePanel");
+const definitionContextSizePanel = document.getElementById("definitionContextSizePanel");
 const definitionTestPanel = document.getElementById("definitionTestPanel");
+const contextSizeLimitSelect = document.getElementById("contextSizeLimitSelect");
+const contextSizePromptSelector = document.getElementById("contextSizePromptSelector");
+const contextSizePromptSelect = document.getElementById("contextSizePromptSelect");
+const contextSizeSummary = document.getElementById("contextSizeSummary");
+const contextSizeMatrix = document.getElementById("contextSizeMatrix");
+const contextSizeBreakdown = document.getElementById("contextSizeBreakdown");
+const contextSizeDetails = document.getElementById("contextSizeDetails");
 const definitionPreviewContent = document.getElementById("definitionPreviewContent");
 const diffControls = document.getElementById("diffControls");
 const enableDiffMode = document.getElementById("enableDiffMode");
@@ -303,10 +312,19 @@ export {
   versionBanner,
   definitionTabPreview,
   definitionTabSource,
+  definitionTabContextSize,
   definitionTabTest,
   definitionPreviewPanel,
   definitionSourcePanel,
+  definitionContextSizePanel,
   definitionTestPanel,
+  contextSizeLimitSelect,
+  contextSizePromptSelector,
+  contextSizePromptSelect,
+  contextSizeSummary,
+  contextSizeMatrix,
+  contextSizeBreakdown,
+  contextSizeDetails,
   definitionPreviewContent,
   diffControls,
   enableDiffMode,
