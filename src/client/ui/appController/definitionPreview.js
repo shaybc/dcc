@@ -3,7 +3,8 @@ const PREVIEW_SECTION_CONFIG = [
   { key: "mcpServers", label: "MCP Servers", empty: "No MCP Servers configured", learnMore: "https://docs.continue.dev/reference#mcpservers" },
   { key: "rules", label: "Rules", empty: "No Rules configured", learnMore: "https://docs.continue.dev/reference#rules" },
   { key: "prompts", label: "Prompts", empty: "No Prompts configured", learnMore: "https://docs.continue.dev/reference#prompts" },
-  { key: "context", label: "Context", empty: "No Context configured", learnMore: "https://docs.continue.dev/reference#context" }
+  { key: "context", label: "Context", empty: "No Context configured", learnMore: "https://docs.continue.dev/reference#context" },
+  { key: "docs", label: "Docs", empty: "No Docs configured", learnMore: "https://docs.continue.dev/reference#docs" }
 ];
 
 export function formatCreatedDate(value) {
@@ -146,6 +147,7 @@ function getFallbackPreviewSectionKey(normalizedType) {
   if (normalizedType === "context") return "context";
   if (normalizedType === "models") return "models";
   if (normalizedType === "mcp servers") return "mcpServers";
+  if (normalizedType === "docs") return "docs";
   return null;
 }
 
@@ -163,7 +165,8 @@ export function createDefinitionPreviewRenderer({ normalizeFilterType, escapeHtm
       mcpServers: ["mcpServers"],
       rules: ["rules"],
       prompts: ["prompts"],
-      context: ["context"]
+      context: ["context"],
+      docs: ["docs"]
     };
 
     const normalizedType = normalizeFilterType(definitionMeta?.type);
