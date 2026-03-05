@@ -86,3 +86,103 @@
   gap: 8px;
   margin-top: 8px;
 }
+
+.about-dcc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: color-mix(in oklab, var(--bg) 40%, black 60%);
+}
+
+.about-dcc-overlay[hidden] {
+  display: none;
+}
+
+.about-dcc-modal {
+  width: min(720px, 95vw);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  position: relative;
+}
+
+.about-dcc-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.about-dcc-content {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+
+.about-dcc-logo {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--bg-alt) 88%, transparent);
+  padding: 12px;
+}
+
+.about-dcc-info h2 {
+  margin: 0 0 10px;
+  font-size: 52px;
+}
+
+.about-dcc-meta {
+  margin: 0 0 6px;
+  color: var(--text);
+}
+
+.about-dcc-status {
+  margin: 14px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.about-dcc-status-icon {
+  font-size: 18px;
+}
+
+.about-dcc-status.is-up-to-date {
+  color: #22c55e;
+}
+
+.about-dcc-status.has-update {
+  color: #60a5fa;
+}
+
+@media (max-width: 780px) {
+  .about-dcc-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .about-dcc-logo {
+    width: 120px;
+    height: 120px;
+  }
+
+  .about-dcc-info h2 {
+    font-size: 40px;
+  }
+}

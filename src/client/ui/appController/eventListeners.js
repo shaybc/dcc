@@ -86,6 +86,13 @@ export function setupEventListeners(ctx) {
     persistHideInstalledDefinitions,
     installGuideMenuItem,
     settingsMenuItem,
+    aboutMenuItem,
+    openAboutModal,
+    closeAboutModal,
+    aboutDccOverlay,
+    aboutDccCloseButton,
+    aboutDccUpdateButton,
+    triggerDccUpdate,
     openEditorForCurrentDefinition,
     editDefinitionButton,
     versionHistoryButton,
@@ -444,9 +451,40 @@ export function setupEventListeners(ctx) {
     });
   }
 
+  if (aboutMenuItem) {
+    aboutMenuItem.addEventListener("click", async () => {
+      closeHubMenu({ animate: false });
+      await openAboutModal();
+    });
+  }
+
+  if (aboutDccCloseButton) {
+    aboutDccCloseButton.addEventListener("click", () => {
+      closeAboutModal();
+    });
+  }
+
+  if (aboutDccOverlay) {
+    aboutDccOverlay.addEventListener("click", (event) => {
+      if (event.target === aboutDccOverlay) {
+        closeAboutModal();
+      }
+    });
+  }
+
+  if (aboutDccUpdateButton) {
+    aboutDccUpdateButton.addEventListener("click", async () => {
+      await triggerDccUpdate();
+    });
+  }
+
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && hubMenu && !hubMenu.hidden) {
       closeHubMenu();
+      return;
+    }
+    if (event.key === "Escape" && aboutDccOverlay && !aboutDccOverlay.hidden) {
+      closeAboutModal();
     }
   });
 

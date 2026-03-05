@@ -1,6 +1,7 @@
 import { runWithLoading } from "../services/loadingService.js";
 import { createDiffService } from "../services/diffService.js";
 import { loadAvailableDefinitionTags, suggestTagsForDefinitionContent } from "../services/autoTagService.js";
+import { fetchAboutInfo, updateDcc } from "../api/aboutApi.js";
 import { definitionIconSvg } from "../utils/definitionIcons.js";
 import { createDefinitionGenerationController } from "./appController/definitionGeneration.js";
 import { createHubMenuController } from "./appController/hubMenuController.js";
@@ -142,6 +143,16 @@ import {
   userGuideSeparator,
   installGuideMenuItem,
   settingsMenuItem,
+  aboutMenuItem,
+  aboutDccOverlay,
+  aboutDccCloseButton,
+  aboutDccLogo,
+  aboutDccVersion,
+  aboutDccReleaseDate,
+  aboutDccStatus,
+  aboutDccStatusIcon,
+  aboutDccStatusText,
+  aboutDccUpdateButton,
   duplicateDefinitionButton,
   pushUpstreamDefinitionButton,
   versionHistoryButton,
@@ -3455,6 +3466,86 @@ const {
   toggleHubMenu,
 } = hubMenuController;
 
+function setAboutStatus({ icon, text, mode = "loading" }) {
+  if (!aboutDccStatus || !aboutDccStatusIcon || !aboutDccStatusText) {
+    return;
+  }
+  aboutDccStatus.classList.remove("is-up-to-date", "has-update");
+  if (mode === "up-to-date") {
+    aboutDccStatus.classList.add("is-up-to-date");
+  }
+  if (mode === "has-update") {
+    aboutDccStatus.classList.add("has-update");
+  }
+  aboutDccStatusIcon.textContent = icon;
+  aboutDccStatusText.textContent = text;
+}
+
+function closeAboutModal() {
+  if (!aboutDccOverlay) {
+    return;
+  }
+  aboutDccOverlay.hidden = true;
+}
+
+async function openAboutModal() {
+  if (!aboutDccOverlay) {
+    return;
+  }
+
+  aboutDccOverlay.hidden = false;
+  if (aboutDccLogo) {
+    const activeTheme = document.documentElement.getAttribute("data-theme");
+    aboutDccLogo.src = activeTheme === "light" ? "/img/dcc_black_logo.png" : "/img/dcc_white_logo.png";
+  }
+  setAboutStatus({ icon: "⌛", text: "Checking for updates..." });
+  if (aboutDccUpdateButton) {
+    aboutDccUpdateButton.hidden = true;
+    aboutDccUpdateButton.disabled = false;
+    aboutDccUpdateButton.textContent = "Update DCC";
+  }
+
+  try {
+    const about = await fetchAboutInfo();
+    if (aboutDccVersion) {
+      aboutDccVersion.textContent = about?.version || "Unknown";
+    }
+    if (aboutDccReleaseDate) {
+      aboutDccReleaseDate.textContent = about?.lastReleaseDate || "Unknown";
+    }
+
+    if (about?.hasUpdate) {
+      setAboutStatus({ icon: "↓", text: "Update is available", mode: "has-update" });
+      if (aboutDccUpdateButton) {
+        aboutDccUpdateButton.hidden = false;
+      }
+      return;
+    }
+
+    setAboutStatus({ icon: "✓", text: "DCC is up to date", mode: "up-to-date" });
+  } catch (error) {
+    setAboutStatus({ icon: "⚠", text: error.message || "Unable to check for updates." });
+  }
+}
+
+async function triggerDccUpdate() {
+  if (!aboutDccUpdateButton) {
+    return;
+  }
+
+  aboutDccUpdateButton.disabled = true;
+  aboutDccUpdateButton.textContent = "Updating...";
+  try {
+    await updateDcc();
+    aboutDccUpdateButton.hidden = true;
+    setAboutStatus({ icon: "✓", text: "DCC is up to date (needs Restart)", mode: "up-to-date" });
+  } catch (error) {
+    aboutDccUpdateButton.disabled = false;
+    aboutDccUpdateButton.textContent = "Update DCC";
+    setAboutStatus({ icon: "⚠", text: error.message || "Unable to update DCC." });
+  }
+}
+
 function setupEventListeners() {
   setupAppEventListeners({
     filterButton, filterMenu, hubMenu,
@@ -3489,7 +3580,9 @@ function setupEventListeners() {
     hubMenuToggleButton, toggleHubMenu, topNav, setActiveTopPage,
     localDefinitionsToggle, persistOnlyLocalDefinitions, hideInstalledMenuToggle,
     getStoredHideInstalledDefinitions, persistHideInstalledDefinitions,
-    installGuideMenuItem, settingsMenuItem, openEditorForCurrentDefinition, editDefinitionButton,
+    installGuideMenuItem, settingsMenuItem, aboutMenuItem,
+    openAboutModal, closeAboutModal, aboutDccOverlay, aboutDccCloseButton, aboutDccUpdateButton, triggerDccUpdate,
+    openEditorForCurrentDefinition, editDefinitionButton,
     versionHistoryButton, openVersionHistoryDropdown,
     setCurrentCardsPage: (value) => { currentCardsPage = value; },
   });

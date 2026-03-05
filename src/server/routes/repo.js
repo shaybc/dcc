@@ -6,6 +6,8 @@ import { ensureAssetRepoMigration, getEnabledAssetRepos } from "../utils/assetRe
 import { loadDefinitions } from "../definitions/index.js";
 
 const router = express.Router();
+const SERVER_ROOT = path.resolve(import.meta.dirname, "../../../");
+const PACKAGE_JSON_PATH = path.join(SERVER_ROOT, "package.json");
 
 function resolveLocalRepoPath(localPath) {
   const configuredPath = String(localPath || "").trim();
@@ -27,6 +29,69 @@ async function pullRepo(localPath) {
     await runCommand("git pull --rebase", { cwd: localPath });
   }
 }
+
+async function getRepoUpdateStatus(repoPath) {
+  await runCommand("git rev-parse --is-inside-work-tree", { cwd: repoPath });
+
+  try {
+    await runCommand("git fetch --quiet --all --prune", { cwd: repoPath });
+  } catch (_error) {
+    // Best effort fetch. We can still compare with currently known remote refs.
+  }
+
+  try {
+    const behindCountRaw = await runCommand("git rev-list --count HEAD..@{u}", { cwd: repoPath });
+    const behindCount = Number.parseInt(behindCountRaw, 10);
+    return {
+      hasUpdate: Number.isFinite(behindCount) && behindCount > 0,
+      behindCount: Number.isFinite(behindCount) ? behindCount : 0,
+    };
+  } catch (_error) {
+    return {
+      hasUpdate: false,
+      behindCount: 0,
+    };
+  }
+}
+
+router.get("/api/app/about", async (_req, res) => {
+  try {
+    const packageRaw = await fs.promises.readFile(PACKAGE_JSON_PATH, "utf8");
+    const packageJson = JSON.parse(packageRaw);
+    const appVersion = String(packageJson?.version || "0.0.0");
+
+    let lastReleaseDate = "Unknown";
+    try {
+      const commitDate = await runCommand("git log -1 --date=short --format=%cd", { cwd: SERVER_ROOT });
+      if (commitDate) {
+        lastReleaseDate = commitDate;
+      }
+    } catch (_error) {
+      // Leave fallback date.
+    }
+
+    const updateStatus = await getRepoUpdateStatus(SERVER_ROOT);
+
+    res.json({
+      appName: "DCC",
+      version: appVersion,
+      lastReleaseDate,
+      hasUpdate: updateStatus.hasUpdate,
+      behindCount: updateStatus.behindCount,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unable to load app information." });
+  }
+});
+
+router.post("/api/app/update", async (_req, res) => {
+  try {
+    await pullRepo(SERVER_ROOT);
+    res.json({ ok: true, upToDate: true, needsRestart: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Unable to update DCC." });
+  }
+});
 
 router.post("/api/asset-repos/sync", async (req, res) => {
   try {
