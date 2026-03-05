@@ -2135,7 +2135,7 @@ function setupRecommendationsSection() {
     }
 
     const recommendationDefinition = {
-      type: "prompt",
+      type: "prompts",
       installedDestinations: []
     };
     openInstallDestinationMenu(event.currentTarget, recommendationDefinition, {
