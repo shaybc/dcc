@@ -1894,6 +1894,17 @@ function updateRecommendationsToggleLabel() {
   recommendationsToggleButton.setAttribute("aria-expanded", String(recommendationsVisible));
 }
 
+function updateRecommendationsGridLayout(cardCount) {
+  const totalCards = Number(cardCount) || 0;
+  if (totalCards <= 0) {
+    recommendationsCards.style.removeProperty("grid-template-columns");
+    return;
+  }
+
+  const columns = Math.max(1, Math.ceil(totalCards / 2));
+  recommendationsCards.style.gridTemplateColumns = `repeat(${columns}, 240px)`;
+}
+
 function renderRecommendationSection() {
   const isDiscoveryPage = activeTopPage === "discover";
   recommendationsSection.hidden = !isDiscoveryPage;
@@ -1907,6 +1918,7 @@ function renderRecommendationSection() {
   recommendationsState.textContent = "";
   recommendationsState.hidden = true;
   recommendationsCards.innerHTML = "";
+  updateRecommendationsGridLayout(0);
   recommendationsInstallAllButton.hidden = true;
   recommendationsInstallAllButton.disabled = true;
 
@@ -1969,6 +1981,8 @@ function renderRecommendationSection() {
     recommendationsState.textContent = "No matching suggestions for available definitions.";
     return;
   }
+
+  updateRecommendationsGridLayout(recommendationsCards.childElementCount);
 
   const hasSelectedProject = Boolean(selectedProjectPath);
   recommendationsInstallAllButton.hidden = false;
