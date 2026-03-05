@@ -1,9 +1,9 @@
 const PREVIEW_SECTION_CONFIG = [
-  { key: "models", label: "Models", empty: "No Models configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#models" },
-  { key: "mcpServers", label: "MCP Servers", empty: "No MCP Servers configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#mcpServers" },
-  { key: "rules", label: "Rules", empty: "No Rules configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#rules" },
-  { key: "prompts", label: "Prompts", empty: "No Prompts configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#prompts" },
-  { key: "context", label: "Context", empty: "No Context configured", learnMore: "https://docs.continue.dev/hub/blocks/block-types#context" }
+  { key: "models", label: "Models", empty: "No Models configured", learnMore: "https://docs.continue.dev/reference#models" },
+  { key: "mcpServers", label: "MCP Servers", empty: "No MCP Servers configured", learnMore: "https://docs.continue.dev/reference#mcpservers" },
+  { key: "rules", label: "Rules", empty: "No Rules configured", learnMore: "https://docs.continue.dev/reference#rules" },
+  { key: "prompts", label: "Prompts", empty: "No Prompts configured", learnMore: "https://docs.continue.dev/reference#prompts" },
+  { key: "context", label: "Context", empty: "No Context configured", learnMore: "https://docs.continue.dev/reference#context" }
 ];
 
 export function formatCreatedDate(value) {
