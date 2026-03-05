@@ -150,6 +150,16 @@
                 </span>
                 <span class="hub-menu-item-text">Settings</span>
               </button>
+              <button class="hub-menu-item hub-menu-nav-item" id="aboutMenuItem" type="button" role="menuitem">
+                <span class="hub-menu-item-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 16v-4"></path>
+                    <path d="M12 8h.01"></path>
+                  </svg>
+                </span>
+                <span class="hub-menu-item-text">About</span>
+              </button>
             </div>
           </div>
         </div>
@@ -682,6 +692,25 @@
         </div>
       </div>
     </main>
+
+    <div class="about-dcc-overlay" id="aboutDccOverlay" hidden>
+      <div class="about-dcc-modal" role="dialog" aria-modal="true" aria-labelledby="aboutDccTitle">
+        <button class="about-dcc-close" id="aboutDccCloseButton" type="button" aria-label="Close About dialog">×</button>
+        <div class="about-dcc-content">
+          <img class="about-dcc-logo" id="aboutDccLogo" src="/img/dcc_white_logo.png" alt="DCC logo">
+          <div class="about-dcc-info">
+            <h2 id="aboutDccTitle">DCC</h2>
+            <p class="about-dcc-meta"><strong>Version:</strong> <span id="aboutDccVersion">-</span></p>
+            <p class="about-dcc-meta"><strong>Last release date:</strong> <span id="aboutDccReleaseDate">-</span></p>
+            <p class="about-dcc-status" id="aboutDccStatus">
+              <span class="about-dcc-status-icon" id="aboutDccStatusIcon" aria-hidden="true">⌛</span>
+              <span id="aboutDccStatusText">Checking for updates...</span>
+            </p>
+            <button class="btn" id="aboutDccUpdateButton" type="button" hidden>Update DCC</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="/app.js"></script>
   

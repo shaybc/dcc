@@ -37,6 +37,16 @@ const hideInstalledMenuToggle = document.getElementById("hideInstalledMenuToggle
 const userGuideSeparator = document.getElementById("userGuideSeparator");
 const installGuideMenuItem = document.getElementById("installGuideMenuItem");
 const settingsMenuItem = document.getElementById("settingsMenuItem");
+const aboutMenuItem = document.getElementById("aboutMenuItem");
+const aboutDccOverlay = document.getElementById("aboutDccOverlay");
+const aboutDccCloseButton = document.getElementById("aboutDccCloseButton");
+const aboutDccLogo = document.getElementById("aboutDccLogo");
+const aboutDccVersion = document.getElementById("aboutDccVersion");
+const aboutDccReleaseDate = document.getElementById("aboutDccReleaseDate");
+const aboutDccStatus = document.getElementById("aboutDccStatus");
+const aboutDccStatusIcon = document.getElementById("aboutDccStatusIcon");
+const aboutDccStatusText = document.getElementById("aboutDccStatusText");
+const aboutDccUpdateButton = document.getElementById("aboutDccUpdateButton");
 const duplicateDefinitionButton = document.getElementById("duplicateDefinition");
 const pushUpstreamDefinitionButton = document.getElementById("pushUpstreamDefinition");
 const versionHistoryButton = document.getElementById("versionHistoryButton");
@@ -222,6 +232,16 @@ export {
   userGuideSeparator,
   installGuideMenuItem,
   settingsMenuItem,
+  aboutMenuItem,
+  aboutDccOverlay,
+  aboutDccCloseButton,
+  aboutDccLogo,
+  aboutDccVersion,
+  aboutDccReleaseDate,
+  aboutDccStatus,
+  aboutDccStatusIcon,
+  aboutDccStatusText,
+  aboutDccUpdateButton,
   duplicateDefinitionButton,
   pushUpstreamDefinitionButton,
   versionHistoryButton,
