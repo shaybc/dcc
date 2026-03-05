@@ -142,9 +142,12 @@ import {
   hideInstalledMenuToggle,
   userGuideSeparator,
   installGuideMenuItem,
+  getIdeasMenuItem,
   settingsMenuItem,
   aboutMenuItem,
   aboutDccOverlay,
+  getIdeasOverlay,
+  getIdeasCloseButton,
   aboutDccCloseButton,
   aboutDccLogo,
   aboutDccVersion,
@@ -3481,6 +3484,21 @@ function setAboutStatus({ icon, text, mode = "loading" }) {
   aboutDccStatusText.textContent = text;
 }
 
+function closeGetIdeasModal() {
+  if (!getIdeasOverlay) {
+    return;
+  }
+  getIdeasOverlay.hidden = true;
+}
+
+function openGetIdeasModal() {
+  if (!getIdeasOverlay) {
+    return;
+  }
+
+  getIdeasOverlay.hidden = false;
+}
+
 function closeAboutModal() {
   if (!aboutDccOverlay) {
     return;
@@ -3580,7 +3598,8 @@ function setupEventListeners() {
     hubMenuToggleButton, toggleHubMenu, topNav, setActiveTopPage,
     localDefinitionsToggle, persistOnlyLocalDefinitions, hideInstalledMenuToggle,
     getStoredHideInstalledDefinitions, persistHideInstalledDefinitions,
-    installGuideMenuItem, settingsMenuItem, aboutMenuItem,
+    installGuideMenuItem, getIdeasMenuItem, settingsMenuItem, aboutMenuItem,
+    openGetIdeasModal, closeGetIdeasModal, getIdeasOverlay, getIdeasCloseButton,
     openAboutModal, closeAboutModal, aboutDccOverlay, aboutDccCloseButton, aboutDccUpdateButton, triggerDccUpdate,
     openEditorForCurrentDefinition, editDefinitionButton,
     versionHistoryButton, openVersionHistoryDropdown,

@@ -85,8 +85,13 @@ export function setupEventListeners(ctx) {
     getStoredHideInstalledDefinitions,
     persistHideInstalledDefinitions,
     installGuideMenuItem,
+    getIdeasMenuItem,
     settingsMenuItem,
     aboutMenuItem,
+    openGetIdeasModal,
+    closeGetIdeasModal,
+    getIdeasOverlay,
+    getIdeasCloseButton,
     openAboutModal,
     closeAboutModal,
     aboutDccOverlay,
@@ -444,6 +449,14 @@ export function setupEventListeners(ctx) {
     });
   }
 
+
+  if (getIdeasMenuItem) {
+    getIdeasMenuItem.addEventListener("click", () => {
+      closeHubMenu({ animate: false });
+      openGetIdeasModal();
+    });
+  }
+
   if (settingsMenuItem) {
     settingsMenuItem.addEventListener("click", () => {
       closeHubMenu({ animate: false });
@@ -455,6 +468,21 @@ export function setupEventListeners(ctx) {
     aboutMenuItem.addEventListener("click", async () => {
       closeHubMenu({ animate: false });
       await openAboutModal();
+    });
+  }
+
+
+  if (getIdeasCloseButton) {
+    getIdeasCloseButton.addEventListener("click", () => {
+      closeGetIdeasModal();
+    });
+  }
+
+  if (getIdeasOverlay) {
+    getIdeasOverlay.addEventListener("click", (event) => {
+      if (event.target === getIdeasOverlay) {
+        closeGetIdeasModal();
+      }
     });
   }
 
@@ -481,6 +509,10 @@ export function setupEventListeners(ctx) {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && hubMenu && !hubMenu.hidden) {
       closeHubMenu();
+      return;
+    }
+    if (event.key === "Escape" && getIdeasOverlay && !getIdeasOverlay.hidden) {
+      closeGetIdeasModal();
       return;
     }
     if (event.key === "Escape" && aboutDccOverlay && !aboutDccOverlay.hidden) {
