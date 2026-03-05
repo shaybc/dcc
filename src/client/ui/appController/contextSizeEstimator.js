@@ -14,7 +14,7 @@ const CONTEXT_MATRIX_WIDTH = 20;
 const CONTEXT_MATRIX_HEIGHT = 15;
 
 const CATEGORY_META = Object.freeze({
-  instructions: { label: "Instructions", colorClass: "instructions", description: "Prompt and instruction content sent to the model." },
+  instructions: { label: "Rules", colorClass: "instructions", description: "Prompt and instruction content sent to the model." },
   mcp: { label: "MCP definitions", colorClass: "mcp", description: "MCP server/tool definitions and protocol metadata." },
   prompt: { label: "Prompt", colorClass: "prompt", description: "Primary prompt body for this definition." },
   metadata: { label: "Metadata", colorClass: "metadata", description: "Definition schema/header fields and operational metadata." },
