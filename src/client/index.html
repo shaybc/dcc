@@ -140,6 +140,16 @@
                 </span>
                 <span class="hub-menu-item-text">User Guide</span>
               </button>
+              <button class="hub-menu-item hub-menu-nav-item" id="getIdeasMenuItem" type="button" role="menuitem">
+                <span class="hub-menu-item-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 18h6"></path>
+                    <path d="M10 22h4"></path>
+                    <path d="M12 2a7 7 0 0 0-4 12.7c.77.55 1.25 1.42 1.25 2.36V18h5.5v-.94c0-.94.48-1.81 1.25-2.36A7 7 0 0 0 12 2z"></path>
+                  </svg>
+                </span>
+                <span class="hub-menu-item-text">Get Ideas</span>
+              </button>
               <div class="hub-menu-divider" role="separator" aria-hidden="true"></div>
               <button class="hub-menu-item hub-menu-nav-item" id="settingsMenuItem" type="button" role="menuitem">
                 <span class="hub-menu-item-icon" aria-hidden="true">
@@ -708,6 +718,21 @@
             </p>
             <button class="btn" id="aboutDccUpdateButton" type="button" hidden>Update DCC</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="get-ideas-overlay" id="getIdeasOverlay" hidden>
+      <div class="get-ideas-modal" role="dialog" aria-modal="true" aria-labelledby="getIdeasTitle">
+        <button class="get-ideas-close" id="getIdeasCloseButton" type="button" aria-label="Close Get Ideas dialog">×</button>
+        <h2 id="getIdeasTitle">Get more Ideas</h2>
+        <p class="get-ideas-text">Get Ideas for definitions from other Hubs</p>
+        <div class="get-ideas-links">
+          <a href="https://www.continue.dev/hub" target="_blank" rel="noreferrer noopener">https://www.continue.dev/hub</a>
+          <a href="https://cursor.directory" target="_blank" rel="noreferrer noopener">https://cursor.directory</a>
+          <a href="https://cline.bot/prompts" target="_blank" rel="noreferrer noopener">https://cline.bot/prompts</a>
+          <a href="https://glama.ai/mcp/servers" target="_blank" rel="noreferrer noopener">https://glama.ai/mcp/servers</a>
+          <a href="https://skillsmp.com" target="_blank" rel="noreferrer noopener">https://skillsmp.com</a>
         </div>
       </div>
     </div>

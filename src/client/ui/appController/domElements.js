@@ -36,9 +36,12 @@ const localDefinitionsToggle = document.getElementById("localDefinitionsToggle")
 const hideInstalledMenuToggle = document.getElementById("hideInstalledMenuToggle");
 const userGuideSeparator = document.getElementById("userGuideSeparator");
 const installGuideMenuItem = document.getElementById("installGuideMenuItem");
+const getIdeasMenuItem = document.getElementById("getIdeasMenuItem");
 const settingsMenuItem = document.getElementById("settingsMenuItem");
 const aboutMenuItem = document.getElementById("aboutMenuItem");
 const aboutDccOverlay = document.getElementById("aboutDccOverlay");
+const getIdeasOverlay = document.getElementById("getIdeasOverlay");
+const getIdeasCloseButton = document.getElementById("getIdeasCloseButton");
 const aboutDccCloseButton = document.getElementById("aboutDccCloseButton");
 const aboutDccLogo = document.getElementById("aboutDccLogo");
 const aboutDccVersion = document.getElementById("aboutDccVersion");
@@ -231,9 +234,12 @@ export {
   hideInstalledMenuToggle,
   userGuideSeparator,
   installGuideMenuItem,
+  getIdeasMenuItem,
   settingsMenuItem,
   aboutMenuItem,
   aboutDccOverlay,
+  getIdeasOverlay,
+  getIdeasCloseButton,
   aboutDccCloseButton,
   aboutDccLogo,
   aboutDccVersion,

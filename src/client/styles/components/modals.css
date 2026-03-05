@@ -186,3 +186,66 @@
     font-size: 40px;
   }
 }
+
+
+.get-ideas-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: color-mix(in oklab, var(--bg) 40%, black 60%);
+}
+
+.get-ideas-overlay[hidden] {
+  display: none;
+}
+
+.get-ideas-modal {
+  width: min(620px, 95vw);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  position: relative;
+}
+
+.get-ideas-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.get-ideas-modal h2 {
+  margin: 0 0 8px;
+}
+
+.get-ideas-text {
+  margin: 0 0 16px;
+}
+
+.get-ideas-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.get-ideas-links a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.get-ideas-links a:hover {
+  text-decoration: underline;
+}
