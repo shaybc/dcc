@@ -160,7 +160,7 @@ export function createDefinitionPreviewRenderer({ normalizeFilterType, escapeHtm
   function collectPreviewSections(definitionContent, definitionMeta = {}) {
     const mappings = {
       models: ["models"],
-      mcpServers: ["mcpServers", "mcp_servers", "mcpservers"],
+      mcpServers: ["mcpServers"],
       rules: ["rules"],
       prompts: ["prompts"],
       context: ["context"]
