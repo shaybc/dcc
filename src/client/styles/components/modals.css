@@ -95,7 +95,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: color-mix(in oklab, var(--bg) 40%, black 60%);
+  background: color-mix(in oklab, var(--bg) 20%, black 60%);
 }
 
 .about-dcc-overlay[hidden] {
@@ -104,12 +104,14 @@
 
 .about-dcc-modal {
   width: min(720px, 95vw);
+  height: 50%;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--card);
   box-shadow: var(--shadow);
   padding: 20px;
   position: relative;
+  align-content: center;
 }
 
 .about-dcc-close {
@@ -133,12 +135,13 @@
 }
 
 .about-dcc-logo {
-  width: 180px;
-  height: 180px;
+  width: 250px;
+  height: 250px;
   object-fit: contain;
   border-radius: 14px;
   background: color-mix(in oklab, var(--bg-alt) 88%, transparent);
   padding: 12px;
+  margin-left: 10%;
 }
 
 .about-dcc-info h2 {
@@ -196,7 +199,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: color-mix(in oklab, var(--bg) 40%, black 60%);
+  background: color-mix(in oklab, var(--bg) 20%, black 60%);
 }
 
 .get-ideas-overlay[hidden] {
@@ -228,17 +231,19 @@
 }
 
 .get-ideas-modal h2 {
-  margin: 0 0 8px;
+  text-align: center;
 }
 
 .get-ideas-text {
-  margin: 0 0 16px;
+  text-align: center;
+  margin-bottom: 25px;
 }
 
 .get-ideas-links {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  margin-bottom: 25px;
 }
 
 .get-ideas-links a {
