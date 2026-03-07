@@ -11,7 +11,7 @@ import { ensureAssetRepoMigration, getAssetRepo, getEnabledAssetRepos } from "..
 import { getProjectDestinationInfo, deriveConfigOutputFileName } from "../definitions/install.js";
 import { upsertContextProviders, removeContextProviders, buildMergedConfigContent } from "../definitions/context.js";
 import { stripDccProjectMetadata, extractDccUriFromDefinitionContent } from "../definitions/metadata.js";
-import { updateDefinitionNameInContent, updateDefinitionMetadataInContent, sanitizeDuplicateFileName, sanitizeYamlHeaderScalars, bumpPatchVersion, applyVersionToContent } from "../definitions/content.js";
+import { updateDefinitionNameInContent, updateDefinitionMetadataInContent, sanitizeDuplicateFileName, sanitizeYamlHeaderScalars, bumpPatchVersion, applyVersionToContent, stringifyYamlWithMultilineDescriptions } from "../definitions/content.js";
 import { loadDefinitions } from "../definitions/index.js";
 import { normalizeDefinitionType, buildKey, deriveType } from "../definitions/parse.js";
 import { refreshDefinitionVersionCache } from "../versions/cache.js";
@@ -29,7 +29,7 @@ function normalizeDefinitionTags(tags = []) {
     .filter(Boolean)));
 }
 
-function applyTagsToDefinitionContent(content, filePath, nextTags) {
+export function applyTagsToDefinitionContent(content, filePath, nextTags) {
   const normalizedPath = String(filePath || "").toLowerCase();
   const ext = path.extname(normalizedPath);
 
@@ -37,12 +37,17 @@ function applyTagsToDefinitionContent(content, filePath, nextTags) {
     const parsed = matter(String(content || ""));
     parsed.data = parsed.data || {};
     parsed.data.dcc_tags = nextTags;
-    return matter.stringify(parsed.content || "", parsed.data);
+    const frontmatter = stringifyYamlWithMultilineDescriptions(parsed.data).trimEnd();
+    const body = String(parsed.content || "");
+    return `---
+${frontmatter}
+---
+${body}`;
   }
 
   const parsed = YAML.parse(String(content || "")) || {};
   parsed.dcc_tags = nextTags;
-  return YAML.stringify(parsed);
+  return stringifyYamlWithMultilineDescriptions(parsed);
 }
 
 

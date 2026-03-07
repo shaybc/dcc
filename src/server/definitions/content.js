@@ -18,7 +18,7 @@ function enforceDescriptionMultilineStyle(node) {
   if (Array.isArray(node?.items) && node.constructor?.name === "YAMLSeq") node.items.forEach((item) => enforceDescriptionMultilineStyle(item));
 }
 
-function stringifyYamlWithMultilineDescriptions(data) {
+export function stringifyYamlWithMultilineDescriptions(data) {
   const document = new YAML.Document(data);
   enforceDescriptionMultilineStyle(document.contents);
   return document.toString();
