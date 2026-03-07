@@ -1,0 +1,180 @@
+<main class="detail-page" id="detailPage" aria-labelledby="detailTitle" hidden>
+      <div class="detail-page-shell">
+        <div class="detail-page-content">
+          <div class="modal-topbar">
+            <div class="modal-kicker">Definition details</div>
+            <button class="btn" id="closeModal" type="button">← Back to Hub</button>
+          </div>
+          <div class="detail-hero">
+            <div class="detail-hero-icon" id="detailTypeIcon" aria-hidden="true"></div>
+            <div class="detail-hero-content">
+              <div class="detail-hero-meta-row">
+                <div class="detail-hero-type">
+                  <span class="detail-hero-type-icon" id="detailTypeMetaIcon" aria-hidden="true"></span>
+                  <span id="detailTypeText"></span>
+                </div>
+                <div class="detail-hero-date" id="detailCreatedDate"></div>
+              </div>
+              <div class="detail-repo-origin" id="detailRepoOrigin"></div>
+              <div class="detail-dcc-uri" id="detailDccUri" hidden></div>
+              <div class="detail-tags" id="detailTags"></div>
+              <h2 id="detailTitle"></h2>
+              <div class="detail-version-meta" id="detailVersionMeta"></div>
+              <div class="detail-description" id="detailDescription"></div>
+              <div class="status-pill" id="detailStatus"></div>
+            </div>
+          </div>
+          <div class="definition-tabs" id="definitionTabs">
+            <div class="definition-tabs-header">
+              <div class="definition-tab-buttons" role="tablist" aria-label="Definition view tabs">
+                <button class="definition-tab" id="definitionTabPreview" type="button" role="tab" aria-selected="false">Preview</button>
+                <button class="definition-tab active" id="definitionTabSource" type="button" role="tab" aria-selected="true"></button>
+                <button class="definition-tab" id="definitionTabContextSize" type="button" role="tab" aria-selected="false">Context Size</button>
+                <button class="definition-tab" id="definitionTabTest" type="button" role="tab" aria-selected="false">Test</button>
+              </div>
+              <div class="definition-actions">
+                <button class="copy-btn" id="deleteDefinition" type="button" aria-label="Delete definition" title="Delete definition" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path>
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="versionHistoryButton" type="button" aria-label="Version history" title="Version History">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="duplicateDefinition" type="button" aria-label="Duplicate definition" title="Duplicate definition">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                    <rect x="2" y="2" width="13" height="13" rx="2"></rect>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="autoTagDefinition" type="button" aria-label="Auto-tag definition with AI" title="Auto-tag definition with AI">
+                  <span aria-hidden="true">✨</span>
+                </button>
+                <button class="copy-btn" id="editDefinition" type="button" aria-label="Edit definition" title="Edit definition">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="copyDefinition" type="button" aria-label="Copy definition" title="Copy definition">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="favoriteDefinition" type="button" aria-label="Add to favorites" title="Add to favorites">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m12 2.6 2.81 5.95 6.49.99-4.69 4.81 1.11 6.79L12 17.99l-5.72 3.15 1.1-6.79-4.68-4.81 6.49-.99L12 2.6z"></path>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="pushUpstreamDefinition" type="button" aria-label="Push definition to upstream" title="Push definition to upstream" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 19V5"></path>
+                    <path d="m5 12 7-7 7 7"></path>
+                  </svg>
+                </button>
+                <button class="copy-btn" id="installDefinition" type="button" aria-label="Install definition in current project" title="Install definition in current project" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="definition-tab-panel" id="definitionPreviewPanel" role="tabpanel" aria-labelledby="definitionTabPreview" hidden>
+              <div class="detail-description definition-preview-content" id="definitionPreviewContent"></div>
+            </div>
+            <div class="definition-tab-panel active" id="definitionSourcePanel" role="tabpanel" aria-labelledby="definitionTabSource">
+              <div class="version-banner" id="versionBanner" hidden></div>
+              <section class="diff-controls" id="diffControls" hidden>
+                <div class="diff-controls-row">
+                  <label class="diff-toggle"><input type="checkbox" id="enableDiffMode"> Compare versions</label>
+                </div>
+                <div id="diffCompareBar" hidden>
+                  <div class="diff-controls-row">
+                    <label class="diff-option"><input type="checkbox" id="diffIgnoreWhitespace"> Ignore whitespace</label>
+                  </div>
+                  <div class="diff-controls-row diff-version-row" id="diffVersionMode" hidden>
+                    <label>From
+                      <select id="versionSelectA"></select>
+                    </label>
+                    <label>To
+                      <select id="versionSelectB"></select>
+                    </label>
+                    <div class="diff-view-mode">
+                      <button class="btn btn-sm diff-mode-btn active" type="button" data-mode="side-by-side">Side-by-side</button>
+                      <button class="btn btn-sm diff-mode-btn" type="button" data-mode="inline">Inline</button>
+                    </div>
+                  </div>
+                  <div class="diff-statistics" id="diffStatistics" hidden>
+                    <span class="diff-stat diff-stat-added">+<strong id="diffAddedLines">0</strong></span>
+                    <span class="diff-stat diff-stat-removed">-<strong id="diffRemovedLines">0</strong></span>
+                    <span class="diff-stat diff-stat-modified">±<strong id="diffModifiedLines">0</strong></span>
+                  </div>
+                  <div class="diff-navigation" id="diffNavigation" hidden>
+                    <button class="btn btn-sm" id="prevChangeBtn" type="button">Previous</button>
+                    <span><span id="currentChangeIndex">0</span>/<span id="totalChanges">0</span></span>
+                    <button class="btn btn-sm" id="nextChangeBtn" type="button">Next</button>
+                  </div>
+                </div>
+              </section>
+              <div id="diffContainer" class="diff-container" hidden></div>
+              <pre id="detailContent"></pre>
+            </div>
+            <div class="definition-tab-panel" id="definitionContextSizePanel" role="tabpanel" aria-labelledby="definitionTabContextSize" hidden>
+              <section class="context-size-panel" aria-live="polite">
+                <div class="context-size-header">
+                  <h3>Context Size Usage</h3>
+                </div>
+                <div class="context-size-controls-grid">
+                  <label class="context-size-control-label" for="contextSizeLimitSelect">Context window</label>
+                  <select id="contextSizeLimitSelect" class="context-size-select"></select>
+
+                  <label class="context-size-control-label" for="contextSizePromptSelect" id="contextSizePromptSelector" hidden>Include prompt in estimate</label>
+                  <select id="contextSizePromptSelect" class="context-size-select" hidden></select>
+                </div>
+                <div class="context-size-summary" id="contextSizeSummary"></div>
+                <div class="context-size-layout">
+                  <div class="context-size-matrix" id="contextSizeMatrix"></div>
+                  <aside class="context-size-breakdown" id="contextSizeBreakdown"></aside>
+                </div>
+                <div class="context-size-details" id="contextSizeDetails"></div>
+              </section>
+            </div>
+            <div class="definition-tab-panel" id="definitionTestPanel" role="tabpanel" aria-labelledby="definitionTabTest" hidden>
+              <div class="validation-layout">
+                <aside class="validation-controls">
+                  <h3>Validation Controls</h3>
+                  <label class="validation-option validation-option-inline"><span>Strict mode</span><input type="checkbox" id="validationStrictToggle"></label>
+                  <label class="validation-option validation-option-inline"><span>Lint checks</span><input type="checkbox" id="validationLintToggle" checked></label>
+                  <label class="validation-option validation-option-inline"><span>Reference checks</span><input type="checkbox" id="validationReferencesToggle" checked></label>
+                  <label class="validation-option validation-option-inline"><span>Auto-run on open</span><input type="checkbox" id="validationAutoRunToggle"></label>
+                  <label class="validation-option">Severity filter
+                    <select id="validationSeverityFilter">
+                      <option value="all">All severities</option>
+                      <option value="error">Errors</option>
+                      <option value="warning">Warnings</option>
+                      <option value="info">Info</option>
+                    </select>
+                  </label>
+                  <div class="validation-actions">
+                    <button class="btn" id="runValidationButton" type="button">Run Validation</button>
+                    <button class="btn" id="copyValidationReportButton" type="button">Copy JSON report</button>
+                  </div>
+                  <div class="validation-last-run" id="validationLastRun"></div>
+                </aside>
+                <section class="validation-results" id="validationResults">
+                  <div class="validation-empty">Run validation to see schema, lint, and reference checks.</div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>

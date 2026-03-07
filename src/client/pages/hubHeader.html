@@ -1,0 +1,140 @@
+<header id="hubHeader">
+      <div class="header-left">
+        <div class="dev-project-picker">
+          <label for="devProjectSelect">Dev project</label>
+          <input
+            id="devProjectSelect"
+            name="devProjectSelect"
+            type="text"
+            list="devProjectOptions"
+            placeholder="Select a dev project"
+          />
+          <datalist id="devProjectOptions"></datalist>
+        </div>
+      </div>
+      <div class="title-block">
+        <div class="main-title">
+          <img src="img/dcc_white_logo.png" width="10%">
+          <h1>Developer Control Center</h1>
+        </div>
+        <p>Discover, sync, and deploy Continue definitions from your team hub.</p>
+      </div>
+      <div class="actions">
+        <div class="header-action-buttons">
+          <button class="btn recommendations-header-toggle" id="recommendationsToggleButton" type="button" aria-controls="recommendations-content" aria-expanded="false" aria-label="Show Recommendations">
+            <svg class="recommendations-star recommendations-star-outline" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m12 2.6 2.81 5.95 6.49.99-4.69 4.81 1.11 6.79L12 17.99l-5.72 3.15 1.1-6.79-4.68-4.81 6.49-.99L12 2.6z"></path>
+            </svg>
+          </button>
+          <div class="new-menu-wrap">
+            <button class="btn new-definition-btn" id="newDefinitionButton" type="button" aria-haspopup="menu" aria-expanded="false">
+              <svg class="new-definition-btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M7 3.8h7.2L18.2 7.8V18a2.2 2.2 0 0 1-2.2 2.2H7A2.2 2.2 0 0 1 4.8 18V6A2.2 2.2 0 0 1 7 3.8z"></path>
+                <path d="M14.2 3.8V8h4"></path>
+                <path d="M8.2 10.2h5.8"></path>
+                <path d="M8.2 13.1h4.6"></path>
+                <circle cx="16.6" cy="16.7" r="3.5"></circle>
+                <path d="M16.6 15.2v3"></path>
+                <path d="M15.1 16.7h3"></path>
+              </svg>
+              <span>New</span>
+            </button>
+            <div class="new-menu" id="newDefinitionMenu" hidden>
+              <button type="button" id="generateDefinitionMenuItem" data-new-action="generate-definition">Generate Definition</button>
+              <button type="button" data-new-type="prompt" data-type-label="Prompt"></button>
+              <button type="button" data-new-type="mcpServer" data-type-label="MCP Server"></button>
+              <button type="button" data-new-type="agent" data-type-label="Agent"></button>
+              <button type="button" data-new-type="rule" data-type-label="Rule"></button>
+              <button type="button" data-new-type="model" data-type-label="Model"></button>
+              <button type="button" data-new-type="workflow" data-type-label="Workflow"></button>
+              <button type="button" data-new-type="context" data-type-label="Context"></button>
+              <button type="button" data-new-type="doc" data-type-label="Doc"></button>
+              <button type="button" data-new-type="config" data-type-label="Config"></button>
+            </div>
+          </div>
+          <div class="header-menu-wrap">
+            <button class="btn header-menu-toggle" id="hubMenuToggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="hubMenu" aria-label="Open main menu">
+              <span class="hamburger-icon" aria-hidden="true">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+              </span>
+            </button>
+            <div class="hub-menu" id="hubMenu" role="menu" aria-label="Main hub menu" hidden>
+              <button class="hub-menu-item" id="localDefinitionsToggle" type="button" role="menuitemcheckbox" aria-checked="false">
+                <span class="hub-menu-item-icon" aria-hidden="true">
+                  <svg class="icon-eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.8 12s3.5-6 9.2-6 9.2 6 9.2 6-3.5 6-9.2 6-9.2-6-9.2-6z"></path>
+                    <circle cx="12" cy="12" r="2.8"></circle>
+                  </svg>
+                  <svg class="icon-eye-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.8 12s3.5-6 9.2-6 9.2 6 9.2 6-3.5 6-9.2 6-9.2-6-9.2-6z"></path>
+                    <circle cx="12" cy="12" r="2.8"></circle>
+                    <path d="M4 20 20 4"></path>
+                  </svg>
+                </span>
+                <span class="hub-menu-item-text">Only Local Definitions</span>
+              </button>
+              <button class="hub-menu-item" id="hideInstalledMenuToggle" type="button" role="menuitemcheckbox" aria-checked="false">
+                <span class="hub-menu-item-icon" aria-hidden="true">
+                  <svg class="icon-eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.8 12s3.5-6 9.2-6 9.2 6 9.2 6-3.5 6-9.2 6-9.2-6-9.2-6z"></path>
+                    <circle cx="12" cy="12" r="2.8"></circle>
+                  </svg>
+                  <svg class="icon-eye-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2.8 12s3.5-6 9.2-6 9.2 6 9.2 6-3.5 6-9.2 6-9.2-6-9.2-6z"></path>
+                    <circle cx="12" cy="12" r="2.8"></circle>
+                    <path d="M4 20 20 4"></path>
+                  </svg>
+                </span>
+                <span class="hub-menu-item-text">Hide Installed Definitions</span>
+              </button>
+              <div class="hub-menu-divider" role="separator" id="userGuideSeparator" aria-hidden="true"></div>
+              <button class="hub-menu-item hub-menu-nav-item" id="installGuideMenuItem" type="button" role="menuitem">
+                <span class="hub-menu-item-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 6h12"></path>
+                    <path d="M8 12h12"></path>
+                    <path d="M8 18h12"></path>
+                    <path d="M3 6h.01"></path>
+                    <path d="M3 12h.01"></path>
+                    <path d="M3 18h.01"></path>
+                  </svg>
+                </span>
+                <span class="hub-menu-item-text">User Guide</span>
+              </button>
+              <button class="hub-menu-item hub-menu-nav-item" id="getIdeasMenuItem" type="button" role="menuitem">
+                <span class="hub-menu-item-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 18h6"></path>
+                    <path d="M10 22h4"></path>
+                    <path d="M12 2a7 7 0 0 0-4 12.7c.77.55 1.25 1.42 1.25 2.36V18h5.5v-.94c0-.94.48-1.81 1.25-2.36A7 7 0 0 0 12 2z"></path>
+                  </svg>
+                </span>
+                <span class="hub-menu-item-text">Get Ideas</span>
+              </button>
+              <div class="hub-menu-divider" role="separator" aria-hidden="true"></div>
+              <button class="hub-menu-item hub-menu-nav-item" id="settingsMenuItem" type="button" role="menuitem">
+                <span class="hub-menu-item-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.66.27 1.18.82 1.4 1.5.09.28.14.58.14.9s-.05.62-.14.9c-.22.68-.74 1.23-1.4 1.5z"></path>
+                  </svg>
+                </span>
+                <span class="hub-menu-item-text">Settings</span>
+              </button>
+              <button class="hub-menu-item hub-menu-nav-item" id="aboutMenuItem" type="button" role="menuitem">
+                <span class="hub-menu-item-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 16v-4"></path>
+                    <path d="M12 8h.01"></path>
+                  </svg>
+                </span>
+                <span class="hub-menu-item-text">About</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
