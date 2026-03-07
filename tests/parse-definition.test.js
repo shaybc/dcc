@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { parseDefinitionContent } from "../src/server/definitions/parse.js";
-import { sanitizeYamlHeaderScalars, sanitizeMarkdownFrontmatterHeaderScalars } from "../src/server/definitions/content.js";
+import { sanitizeYamlHeaderScalars, sanitizeMarkdownFrontmatterHeaderScalars, updateDefinitionMetadataInContent } from "../src/server/definitions/content.js";
 
 test("parseDefinitionContent exposes dccUri when provided", () => {
   const parsed = parseDefinitionContent("name: Test\ndcc_uri: prompts/my-prompt\ndcc_definition_type: prompt\n", "prompts/test.yaml");
@@ -104,4 +104,43 @@ test("sanitizeMarkdownFrontmatterHeaderScalars only sanitizes frontmatter header
 
   assert.match(sanitized, /^---\nname:\s+"Debugging rules"\ndescription:\s+"A description: with colon"\n---/m);
   assert.match(sanitized, /Body: should stay untouched/);
+});
+
+
+test("updateDefinitionMetadataInContent emits multiline block style for YAML description", () => {
+  const original = `name: Original
+description: short description
+dcc_uri: rules/original
+`;
+  const updated = updateDefinitionMetadataInContent(original, "rules/new-rule.yaml", { name: "Updated" });
+
+  assert.match(updated, /^description:\s*\|-/m);
+  assert.match(updated, /^\s+short description$/m);
+});
+
+test("updateDefinitionMetadataInContent emits multiline block style for markdown frontmatter description", () => {
+  const original = `---
+name: Original
+description: short description
+dcc_uri: rules/original
+---
+
+# Body
+`;
+  const updated = updateDefinitionMetadataInContent(original, "rules/new-rule.md", { name: "Updated" });
+
+  assert.match(updated, /^description:\s*\|-/m);
+  assert.match(updated, /^\s+short description$/m);
+});
+
+
+test("updateDefinitionMetadataInContent normalizes description chomp indicator to strip", () => {
+  const original = `name: Original
+description: |
+  line one
+  line two
+`;
+  const updated = updateDefinitionMetadataInContent(original, "rules/new-rule.yaml", { name: "Updated" });
+
+  assert.match(updated, /^description:\s*\|-/m);
 });
