@@ -97,7 +97,23 @@ function injectBlankLineAfterHeader(yamlText) {
   lines.splice(bodyStartIndex, 0, "");
   return lines.join("\n");
 }
-function stringifyYamlDefinition(data) { return injectBlankLineAfterHeader(new YAML.Document(orderYamlDefinitionFields(data)).toString()); }
+function enforceDescriptionMultilineStyle(node) {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node?.items) && node.constructor?.name === "YAMLMap") {
+    node.items.forEach((item) => {
+      const key = String(item?.key?.value ?? "");
+      if (key === "description" && typeof item?.value?.value === "string") item.value.type = "BLOCK_LITERAL";
+      enforceDescriptionMultilineStyle(item?.value);
+    });
+    return;
+  }
+  if (Array.isArray(node?.items) && node.constructor?.name === "YAMLSeq") node.items.forEach((item) => enforceDescriptionMultilineStyle(item));
+}
+function stringifyYamlDefinition(data) {
+  const document = new YAML.Document(orderYamlDefinitionFields(data));
+  enforceDescriptionMultilineStyle(document.contents);
+  return injectBlankLineAfterHeader(document.toString());
+}
 function isMarkdownPath(filePath = "") { const normalized = String(filePath || "").toLowerCase(); return normalized.endsWith(".md") || normalized.endsWith(".markdown") || normalized.endsWith(".mdx"); }
 export function detectPromptFormatFromRawInput(text = "") { return String(text || "").trimStart().startsWith("---") ? "markdown" : "yaml"; }
 export function detectRuleFormatFromRawInput(text = "") { return String(text || "").trimStart().startsWith("---") ? "markdown" : "yaml"; }
