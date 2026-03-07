@@ -114,7 +114,7 @@ dcc_uri: rules/original
 `;
   const updated = updateDefinitionMetadataInContent(original, "rules/new-rule.yaml", { name: "Updated" });
 
-  assert.match(updated, /^description:\s*\|/m);
+  assert.match(updated, /^description:\s*\|-/m);
   assert.match(updated, /^\s+short description$/m);
 });
 
@@ -129,6 +129,18 @@ dcc_uri: rules/original
 `;
   const updated = updateDefinitionMetadataInContent(original, "rules/new-rule.md", { name: "Updated" });
 
-  assert.match(updated, /^description:\s*\|/m);
+  assert.match(updated, /^description:\s*\|-/m);
   assert.match(updated, /^\s+short description$/m);
+});
+
+
+test("updateDefinitionMetadataInContent normalizes description chomp indicator to strip", () => {
+  const original = `name: Original
+description: |
+  line one
+  line two
+`;
+  const updated = updateDefinitionMetadataInContent(original, "rules/new-rule.yaml", { name: "Updated" });
+
+  assert.match(updated, /^description:\s*\|-/m);
 });

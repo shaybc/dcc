@@ -102,7 +102,10 @@ function enforceDescriptionMultilineStyle(node) {
   if (Array.isArray(node?.items) && node.constructor?.name === "YAMLMap") {
     node.items.forEach((item) => {
       const key = String(item?.key?.value ?? "");
-      if (key === "description" && typeof item?.value?.value === "string") item.value.type = "BLOCK_LITERAL";
+      if (key === "description" && typeof item?.value?.value === "string") {
+        item.value.type = "BLOCK_LITERAL";
+        item.value.value = item.value.value.replace(/\n+$/u, "");
+      }
       enforceDescriptionMultilineStyle(item?.value);
     });
     return;
