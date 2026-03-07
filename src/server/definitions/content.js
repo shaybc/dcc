@@ -2,6 +2,28 @@ import path from "path";
 import matter from "gray-matter";
 import YAML from "yaml";
 
+function enforceDescriptionMultilineStyle(node) {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node?.items) && node.constructor?.name === "YAMLMap") {
+    node.items.forEach((item) => {
+      const key = String(item?.key?.value ?? "");
+      if (key === "description" && typeof item?.value?.value === "string") {
+        item.value.type = "BLOCK_LITERAL";
+        item.value.value = item.value.value.replace(/\n+$/u, "");
+      }
+      enforceDescriptionMultilineStyle(item?.value);
+    });
+    return;
+  }
+  if (Array.isArray(node?.items) && node.constructor?.name === "YAMLSeq") node.items.forEach((item) => enforceDescriptionMultilineStyle(item));
+}
+
+function stringifyYamlWithMultilineDescriptions(data) {
+  const document = new YAML.Document(data);
+  enforceDescriptionMultilineStyle(document.contents);
+  return document.toString();
+}
+
 export function sanitizeDuplicateFileName(fileName) {
   const normalized = path.basename(String(fileName || "").trim());
   if (!normalized || normalized === "." || normalized === "..") return "";
@@ -33,13 +55,18 @@ export function updateDefinitionMetadataInContent(content, fileName, { name = ""
     const parsed = YAML.parse(sanitizeYamlHeaderScalars(content || "")) || {};
     if (trimmedName) parsed.name = trimmedName;
     if (trimmedDccUri) parsed.dcc_uri = trimmedDccUri;
-    return YAML.stringify(parsed);
+    return stringifyYamlWithMultilineDescriptions(parsed);
   }
 
   const parsed = matter(String(content || ""));
   if (trimmedName) parsed.data.name = trimmedName;
   if (trimmedDccUri) parsed.data.dcc_uri = trimmedDccUri;
-  return matter.stringify(parsed.content, parsed.data);
+  const frontmatter = stringifyYamlWithMultilineDescriptions(parsed.data || {}).trimEnd();
+  const body = String(parsed.content || "");
+  return `---
+${frontmatter}
+---
+${body}`;
 }
 
 export function bumpPatchVersion(version) {
@@ -53,7 +80,7 @@ export function applyVersionToContent(content, filePath, version) {
   if ([".yml", ".yaml"].includes(ext)) {
     const parsed = YAML.parse(content) || {};
     parsed.version = version;
-    return YAML.stringify(parsed);
+    return stringifyYamlWithMultilineDescriptions(parsed);
   }
   const parsed = matter(content || "");
   parsed.data.version = version;
