@@ -86,6 +86,7 @@ export function setupEventListeners(ctx) {
     persistHideInstalledDefinitions,
     installGuideMenuItem,
     getIdeasMenuItem,
+    quickIntroMenuItem,
     settingsMenuItem,
     aboutMenuItem,
     openGetIdeasModal,
@@ -102,6 +103,7 @@ export function setupEventListeners(ctx) {
     editDefinitionButton,
     versionHistoryButton,
     openVersionHistoryDropdown,
+    maybeRunOnboardingTour,
   } = ctx;
 
   filterButton.addEventListener("click", () => {
@@ -454,6 +456,14 @@ export function setupEventListeners(ctx) {
     getIdeasMenuItem.addEventListener("click", () => {
       closeHubMenu({ animate: false });
       openGetIdeasModal();
+    });
+  }
+
+
+  if (quickIntroMenuItem) {
+    quickIntroMenuItem.addEventListener("click", async () => {
+      closeHubMenu({ animate: false });
+      await maybeRunOnboardingTour({ force: true });
     });
   }
 

@@ -147,7 +147,8 @@ function highlightTarget(spotlight, target) {
   return rect;
 }
 
-export async function maybeRunOnboardingTour() {
+export async function maybeRunOnboardingTour(options = {}) {
+  const force = options.force === true;
   let status;
   try {
     status = await fetchOnboardingStatus();
@@ -156,7 +157,7 @@ export async function maybeRunOnboardingTour() {
     return;
   }
 
-  if (status?.seen) {
+  if (status?.seen && !force) {
     return;
   }
 

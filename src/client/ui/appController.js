@@ -144,6 +144,7 @@ import {
   userGuideSeparator,
   installGuideMenuItem,
   getIdeasMenuItem,
+  quickIntroMenuItem,
   settingsMenuItem,
   aboutMenuItem,
   aboutDccOverlay,
@@ -3599,11 +3600,12 @@ function setupEventListeners() {
     hubMenuToggleButton, toggleHubMenu, topNav, setActiveTopPage,
     localDefinitionsToggle, persistOnlyLocalDefinitions, hideInstalledMenuToggle,
     getStoredHideInstalledDefinitions, persistHideInstalledDefinitions,
-    installGuideMenuItem, getIdeasMenuItem, settingsMenuItem, aboutMenuItem,
+    installGuideMenuItem, getIdeasMenuItem, quickIntroMenuItem, settingsMenuItem, aboutMenuItem,
     openGetIdeasModal, closeGetIdeasModal, getIdeasOverlay, getIdeasCloseButton,
     openAboutModal, closeAboutModal, aboutDccOverlay, aboutDccCloseButton, aboutDccUpdateButton, triggerDccUpdate,
     openEditorForCurrentDefinition, editDefinitionButton,
     versionHistoryButton, openVersionHistoryDropdown,
+    maybeRunOnboardingTour,
     setCurrentCardsPage: (value) => { currentCardsPage = value; },
   });
 }
