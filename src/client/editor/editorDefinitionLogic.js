@@ -98,20 +98,22 @@ function injectBlankLineAfterHeader(yamlText) {
   return lines.join("\n");
 }
 function enforceDescriptionMultilineStyle(node) {
-  if (!node || typeof node !== "object") return;
-  if (Array.isArray(node?.items) && node.constructor?.name === "YAMLMap") {
-    node.items.forEach((item) => {
-      const key = String(item?.key?.value ?? "");
+  if (!node || typeof node !== "object" || !Array.isArray(node.items)) return;
+  node.items.forEach((item) => {
+    const isMapItem = item && typeof item === "object" && Object.prototype.hasOwnProperty.call(item, "key") && Object.prototype.hasOwnProperty.call(item, "value");
+    if (isMapItem) {
+      const key = String(item?.key?.value ?? item?.key ?? "");
       if (key === "description" && typeof item?.value?.value === "string") {
         item.value.type = "BLOCK_LITERAL";
         item.value.value = item.value.value.replace(/\n+$/u, "");
       }
       enforceDescriptionMultilineStyle(item?.value);
-    });
-    return;
-  }
-  if (Array.isArray(node?.items) && node.constructor?.name === "YAMLSeq") node.items.forEach((item) => enforceDescriptionMultilineStyle(item));
+      return;
+    }
+    enforceDescriptionMultilineStyle(item);
+  });
 }
+
 function stringifyYamlDefinition(data) {
   const document = new YAML.Document(orderYamlDefinitionFields(data));
   enforceDescriptionMultilineStyle(document.contents);
