@@ -275,7 +275,8 @@
   left: var(--tooltip-x, 50%);
   top: var(--tooltip-y, 0px);
   width: min(320px, calc(100vw - 40px));
-  border-radius: 12px;
+  border-top-right-radius: .375rem;
+  border-bottom-right-radius: .375rem;
   border: var(--recommended-tooltip-border);
   background: var(--recommended-tooltip-bg);
   color: var(--recommended-tooltip-text);
