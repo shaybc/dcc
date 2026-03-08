@@ -85,6 +85,9 @@ function ensureHubMenuClosed() {
 function buildOverlay() {
   const overlay = document.createElement("div");
   overlay.className = "onboarding-overlay";
+  overlay.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
 
   const spotlight = document.createElement("div");
   spotlight.className = "onboarding-spotlight";
