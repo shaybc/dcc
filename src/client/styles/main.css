@@ -35,6 +35,7 @@
 @import "./components/loading-overlay.css";
 @import "./components/notifications.css";
 @import "./components/diff-view.css";
+@import "./components/onboarding.css";
 
 /* Sections */
 @import "./sections/detail-page.css";

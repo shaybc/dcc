@@ -1,0 +1,50 @@
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  pointer-events: auto;
+}
+
+.onboarding-spotlight {
+  position: fixed;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(5, 8, 12, 0.76);
+  border: 2px solid rgba(120, 199, 255, 0.9);
+  background: transparent;
+  pointer-events: none;
+  transition: top 120ms ease, left 120ms ease, width 120ms ease, height 120ms ease;
+}
+
+.onboarding-popover {
+  position: fixed;
+  z-index: 1501;
+  width: min(380px, calc(100vw - 2rem));
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  box-shadow: var(--shadow-lg);
+}
+
+.onboarding-step {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted-color);
+}
+
+.onboarding-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.onboarding-description {
+  margin: 0.6rem 0 0;
+  color: var(--text-secondary-color);
+}
+
+.onboarding-actions {
+  margin-top: 0.9rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
