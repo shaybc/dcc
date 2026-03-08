@@ -37,6 +37,7 @@ const hideInstalledMenuToggle = document.getElementById("hideInstalledMenuToggle
 const userGuideSeparator = document.getElementById("userGuideSeparator");
 const installGuideMenuItem = document.getElementById("installGuideMenuItem");
 const getIdeasMenuItem = document.getElementById("getIdeasMenuItem");
+const quickIntroMenuItem = document.getElementById("quickIntroMenuItem");
 const settingsMenuItem = document.getElementById("settingsMenuItem");
 const aboutMenuItem = document.getElementById("aboutMenuItem");
 const aboutDccOverlay = document.getElementById("aboutDccOverlay");
@@ -235,6 +236,7 @@ export {
   userGuideSeparator,
   installGuideMenuItem,
   getIdeasMenuItem,
+  quickIntroMenuItem,
   settingsMenuItem,
   aboutMenuItem,
   aboutDccOverlay,
