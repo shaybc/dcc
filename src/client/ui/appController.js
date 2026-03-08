@@ -5,6 +5,7 @@ import { fetchAboutInfo, updateDcc } from "../api/aboutApi.js";
 import { definitionIconSvg } from "../utils/definitionIcons.js";
 import { createDefinitionGenerationController } from "./appController/definitionGeneration.js";
 import { createHubMenuController } from "./appController/hubMenuController.js";
+import { maybeRunOnboardingTour } from "./appController/onboardingTour.js";
 import { createPreferencesStorage } from "./appController/preferencesStorage.js";
 import { setupEventListeners as setupAppEventListeners } from "./appController/eventListeners.js";
 import {
@@ -3618,5 +3619,6 @@ export function initializeApp() {
   loadCurrentDevProject()
     .then(loadSuggestionsForCurrentProject)
     .then(fetchDefinitions)
-    .then(handleRoute);
+    .then(handleRoute)
+    .then(maybeRunOnboardingTour);
 }

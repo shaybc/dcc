@@ -26,6 +26,7 @@ function normalizeMaxRecommendedDefinitions(value, fallback = 8) {
 
 
 const DB_PATH = process.env.DCC_DB_PATH || path.join(import.meta.dirname, "../../../data", "dcc.sqlite");
+const ONBOARDING_SEEN_KEY = "hubOnboardingSeen";
 
 router.get("/api/settings", async (req, res) => {
   try {
@@ -99,6 +100,25 @@ router.post("/api/settings", async (req, res) => {
       maxFiles: logFileMaxFiles,
     });
     res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/api/onboarding-status", async (req, res) => {
+  try {
+    const seen = String(await getSetting(ONBOARDING_SEEN_KEY) || "").toLowerCase() === "true";
+    res.json({ seen });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/api/onboarding-status", async (req, res) => {
+  try {
+    const seen = Boolean(req.body?.seen);
+    await setSetting(ONBOARDING_SEEN_KEY, seen ? "true" : "false");
+    res.json({ ok: true, seen });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
