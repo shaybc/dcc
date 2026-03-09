@@ -16,18 +16,18 @@ flowchart LR
   Browser[Browser UI\nHub + Editor + Settings + Help]
   Server[Express Server\nREST + /v1 facade + agent runs]
   DB[(SQLite)]
-  Repo[(Team Git Repository)]
+  Repos[(Asset Repos / Git)]
   Projects[(Local Dev Projects)]
   AI[(Gemini + Connector providers)]
 
   Browser --> Server
   Server --> DB
-  Server --> Repo
+  Server --> Repos
   Server --> Projects
   Server --> AI
 ```
 
-## Server composition
+## Frontend composition
 
 `src/server/server.js` wires middleware, static assets, and route modules.
 
@@ -54,24 +54,33 @@ flowchart LR
 
 ## Persistence model
 
-The database is created/migrated in `src/server/db/index.js`.
+SQLite schema is initialized/migrated in `src/server/db/index.js`.
 
-Primary tables:
+### Main tables
+
 - `settings`
+- `asset_repos`
 - `definitions`
 - `definition_versions`
 - `dev_project_roots`
 - `dev_projects`
 - `project_definition_copies`
+- `project_definition_destinations`
 - `validation_results`
+- `agent_run_packs`
+- `agent_runs`
+- `agent_run_logs`
 
-The `definitions` table is the central catalog; associated tables store:
-- historical versions,
-- where definitions were copied in local projects,
-- validation run outputs,
-- project scan metadata used for recommendation ranking.
+The `definitions` table remains the central catalog, while supporting tables track:
+- version snapshots and commit metadata,
+- install destinations per project,
+- validation reports over time,
+- project scan metadata for recommendation ranking,
+- agent run execution and logs.
 
-## Definition lifecycle flow
+## Key flows
+
+### Definition lifecycle flow
 
 ```mermaid
 sequenceDiagram
@@ -80,20 +89,26 @@ sequenceDiagram
   participant FS as Filesystem/Git
   participant DB as SQLite
 
-  UI->>API: Save/Publish/Remove action
-  API->>FS: Update files / run git commands
-  API->>DB: Refresh definitions + metadata
-  API-->>UI: Operation result
+  UI->>API: save/publish/remove/install/export action
+  API->>FS: write files and execute git operations
+  API->>DB: refresh/update indexed metadata
+  API-->>UI: normalized response payload
 ```
 
-Lifecycle routes refresh indexed definitions after write operations so UI state is consistent with on-disk truth.
+### Recommendation flow
 
-## Project recommendation flow
+1. User selects current dev project.
+2. Scanner persists project signals/type/technologies.
+3. Suggestions endpoint scores definitions against project context + tags/keywords.
+4. UI receives ranked results and explanation metadata.
 
-1. User selects a current dev project (`/api/current-dev-project`).
-2. Scanner stores project type/signals in `dev_projects`.
-3. `/api/definitions/suggestions` uses project type + path hints + definition tags/keywords.
-4. Response returns deterministic ranking + explainable reasons.
+### Agent run flow
+
+1. User chooses installed agent + config in a project.
+2. API validates payload and resolves file paths.
+3. AgentRunManager launches process and writes status/log rows.
+4. UI polls or subscribes to stream endpoint for live updates/log output.
+5. Optional kill endpoint requests cancellation.
 
 ## AI and agent-run flows
 
@@ -113,9 +128,10 @@ Supporting frontend layers:
 - `src/client/editor/forms/*` and `src/client/editor/components/*` — type-specific UI + source sync.
 - `src/client/state/*` and `src/client/services/*` — shared app state and reusable UI services.
 
-## Error handling strategy
+## Operational characteristics
 
-- Route-level `try/catch` returns JSON `{ error }` envelopes.
-- Git operations classify common failure categories.
-- Validation/history routes return explicit not-found semantics for missing definitions.
-- Editor save rejects duplicate DCC URIs to preserve catalog uniqueness.
+- **Single-process deployment:** one Node server hosts both static client and API.
+- **Local-first source of truth:** filesystem/git + SQLite, no required external DB/service.
+- **Progressive AI integration:** app remains usable without Gemini configuration.
+- **Deterministic recommendation + validation:** explainable scoring and persisted reports.
+- **Observability hooks:** configurable AI traffic logging and file logger settings loaded at startup.
