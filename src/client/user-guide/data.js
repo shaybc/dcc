@@ -114,6 +114,41 @@ const tocSections = [
     ]
   },
   {
+    sectionTitle: "Navigation & Productivity",
+    pages: [
+      {
+        id: "activity-page",
+        title: "Activity",
+        file: "usage/activity-page.md"
+      },
+      {
+        id: "run-agent-page",
+        title: "Run Agent",
+        file: "usage/run-agent-page.md"
+      },
+      {
+        id: "favorites-and-installed-tabs",
+        title: "Favorites & Installed tabs",
+        file: "usage/favorites-and-installed-tabs.md"
+      },
+      {
+        id: "onboarding-tour",
+        title: "Onboarding Tour",
+        file: "usage/onboarding-tour.md"
+      },
+      {
+        id: "about-dcc-and-updates",
+        title: "About DCC / Updates",
+        file: "usage/about-dcc-and-updates.md"
+      },
+      {
+        id: "get-more-ideas",
+        title: "Get More Ideas",
+        file: "usage/get-more-ideas.md"
+      }
+    ]
+  },
+  {
     sectionTitle: "Definitions",
     pages: [
           {
