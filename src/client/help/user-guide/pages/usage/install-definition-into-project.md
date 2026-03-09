@@ -21,8 +21,8 @@ When you switch projects, installation markers update so you can see what is alr
    - **Continue** (default)
    - **GitHub Copilot**
    - **Gemini CLI**
-2. Click the **+** button (**Install definition in current project**).
-3. DCC Hub installs the definition into the selected project.
+3. Click the **+** button (**Install definition in current project**).
+4. DCC Hub installs the definition into the selected project.
 
 ![Install definition button and installed markers per selected project](../images/usage-install-definition-into-project.png)
 
@@ -74,9 +74,10 @@ Reason: those types do not yet have stable destination-specific conversions, so 
 
 This keeps export safe to run repeatedly during normal iteration.
 
-For a focused walkthrough, see **Export to Copilot and Gemini**.
+For a focused walkthrough, see **[Export to Copilot and Gemini](/user-guide.html?page=export-to-copilot-and-gemini)**.
 
-to learn more on each AI system go to:
-[Continue.dev](https://docs.continue.dev/customize/overview)
-[Github Copilot](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions?tool=vscode)
-[Gemini CLI](https://geminicli.com/docs/cli/custom-commands/)
+To learn more about each AI system:
+
+- [Continue.dev](https://docs.continue.dev/customize/overview)
+- [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions?tool=vscode)
+- [Gemini CLI](https://geminicli.com/docs/cli/custom-commands/)
