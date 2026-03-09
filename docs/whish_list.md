@@ -7,13 +7,15 @@
 - ✅ Definition validation with history.
 - ✅ Project profiles + context-aware recommendations.
 - ✅ Prompt enhancement flow through `/v1/completions`.
+- ✅ Baseline catalog search/filter in Hub.
+- ✅ Definition reference resolution endpoint.
 
 ## High-value next candidates
 
-### 1) Dependency graph & relationship validation
-- Build explicit reference graph between definitions.
-- Show graph in UI.
-- Warn/block save when required dependencies are missing.
+### 1) Visual dependency graph + strict relationship checks
+- Build a navigable dependency graph UI from existing reference data.
+- Show inbound/outbound links per definition in the Hub/detail pane.
+- Add optional warn/block save checks when required dependencies are missing.
 
 ### 2) Bulk operations in Hub
 - Multi-select definitions.
@@ -24,10 +26,10 @@
 - Rich conflict workflow for git pull/publish collisions.
 - Side-by-side diff + guided accept/merge choices.
 
-### 4) Advanced search
+### 4) Semantic and similarity search
 - Semantic search using embeddings.
 - Similar-definition suggestions.
-- Saved search filters.
+- Saved search filters/profiles.
 
 ### 5) Usage analytics
 - Track definition usage frequency and recency by project.
