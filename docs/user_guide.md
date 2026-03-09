@@ -9,94 +9,127 @@ npm start
 
 Open `http://localhost:3000`.
 
-## 2. Configure AI asset repositories
+## 2. Add and sync AI asset repositories
 
-Go to **Settings** and add one or more asset repositories:
-- **Name**
-- **Remote URL** (`remoteUrl`)
-- **Clone Folder** (`localPath`)
-- **Enabled** toggle
+In **Settings → Asset Repositories**:
 
-Save each row to persist it.
+1. Click **Add Repository**.
+2. Fill **Repository Name**, **Repository Remote URL**, and **Clone Folder**.
+3. Save the entry.
+4. Run **Pull all / Clone missing**.
+5. Run **Load Definitions** to refresh the Hub catalog.
 
-## 3. Sync repositories and load definitions
+Sync behavior is automatic per enabled repo: missing folders are cloned, existing git repos are pulled.
 
-From **Settings**, run:
-1. **Pull all / Clone missing** (uses `/api/asset-repos/sync`)
-2. **Load Definitions** (uses `/api/load-definitions`)
+## 3. Configure development project roots
 
-This refreshes the catalog from all enabled repository files.
+In **Settings → Dev Project Roots**:
 
-## 4. Set up dev project discovery
+1. Add one or more root folders.
+2. Save roots.
+3. Click **Scan** to discover git projects.
+4. Confirm projects appear in **Detected Projects**.
 
-In Settings:
-1. Add one or more dev project root paths.
-2. Save roots to trigger scan.
-3. Review discovered projects and detected project types/signals.
-4. Choose a current dev project for save/remove operations.
+Detected projects are then available in the Hub project selector and are used for install/remove operations.
 
-## 5. Browse and find definitions
+## 4. Configure general settings
 
-In the Hub you can:
-- Search definitions by text.
-- Use semantic intent-search fallback when text search returns no matches ("Search with AI").
-- Filter by type.
-- Filter using tags.
-- Inspect full definition details.
+In **Settings** you can also configure:
 
-When text search returns zero results, DCC offers an AI prompt in the cards area. Selecting **Search with AI** sends your query plus definition metadata for ranking and shows results in the normal cards/pagination flow. Those AI-ranked results remain active until the search text changes.
+- **Theme** (light/dark toggle)
+- **Recommendations** (max suggested definitions: 3–8)
+- **Loading Timeout** (15–300 seconds)
+- **AI Logging** toggles and max response length
 
-## 6. Save/remove definitions in your local project
+These values are persisted and applied to runtime behavior.
 
-With current dev project selected:
-- **Save** adds/copies (or merges context providers) into the project.
-- **Remove** reverts the saved copy behavior.
+## 5. Configure AI API Service (optional)
 
-Saved status is reflected using project copy tracking.
+In **Settings → AI API Service**, select a Gemini backend for OpenAI-compatible routes:
 
-## 7. Validate definitions
+- **Gemini Connector**, or
+- **Gemini AI Studio**
 
-Open a definition and run validation.
-- View latest validation result.
-- Review validation history for prior runs.
-- Use strict/lint/reference options from the UI.
+Key endpoints include:
 
-## 8. Manage lifecycle operations
+- `GET /v1/models`
+- `POST /v1/chat/completions`
 
-Available actions include:
-- Duplicate definition (new name/path/dcc URI)
-- Push upstream (for local/untracked definitions)
-- Publish (commit and push with version bump)
-- Delete from repository
+Use **Save AI API settings** to persist credentials/model settings and **Get Models** to validate connectivity.
 
-## 9. Use version history
+## 6. Search and filter definitions
 
-For definitions tracked in git:
-- Open version list,
-- Inspect specific historical revisions,
-- Restore a selected revision.
+From the Hub:
 
-## 10. Use the editor workbench
+- Use text search for names/descriptions/metadata.
+- Use filters and tags to narrow results.
+- If text search has no matches, use **Search with AI** for semantic intent ranking.
 
-Create/edit definitions with:
-- Type-aware forms,
-- Raw source editing,
-- Type auto-detection,
-- DCC URI uniqueness checks on save.
+AI-ranked results remain active until search text changes.
 
-## 11. Export to GitHub Copilot and Gemini CLI (v1)
+## 7. Inspect definition details
 
-When installing a definition into a project, choose destination:
-- **Continue** (default install flow),
-- **GitHub Copilot**, or
-- **Gemini CLI**.
+Definition details include:
 
-In v1, destination export currently supports `rules` and `prompts` only.
+- **Preview** tab for rendered content
+- **Source** tab for raw definition content and comparisons
+- **Test** tab for validation runs and results
 
-## 12. Optional AI endpoints
+Use **Back to hub** to return to the grid.
 
-If Gemini credentials are configured, DCC exposes OpenAI-like endpoints under `/v1/*` for models/completions/chat/embeddings.
+## 8. Install definitions into a selected project
 
-## 13. Theme preferences
+First choose a project in the Hub header (**Dev project** selector), then install from definition details.
 
-Use the Settings theme toggle to switch light/dark mode. Preference is saved in browser storage.
+Supported destinations:
+
+- **Continue** (default install flow)
+- **GitHub Copilot** (export)
+- **Gemini CLI** (export)
+
+Installed definitions are marked per selected project. You can filter for installed items or hide installed definitions.
+
+### Export behavior for Copilot/Gemini (v1)
+
+Currently supported types:
+
+- `rules`
+- `prompts`
+
+Output locations:
+
+- **Copilot rules:** `.github/copilot-instructions.md`
+- **Copilot prompts:** `.github/prompts/<dcc-uri-slug>.prompt.md`
+- **Gemini rules:** `.gemini/instructions.md`
+- **Gemini prompts:** `.gemini/commands/<dcc-uri-slug>.md`
+
+Other definition types are skipped for Copilot/Gemini v1.
+
+## 9. Use definition action buttons
+
+From definition details, available actions include:
+
+- **Install / Uninstall** in current project
+- **Edit definition**
+- **Duplicate definition**
+- **Copy definition**
+- **Version history** (inspect/compare/restore)
+- **Push definition to upstream** (when available)
+- **Delete definition** (when permitted)
+
+## 10. Validate and test definitions
+
+Use the **Test** tab to run validation checks and review latest/history results.
+
+Use this before install/publish to catch schema or structure issues.
+
+## 11. Edit and create definitions
+
+The editor supports:
+
+- Type-aware forms
+- Raw source editing
+- Type detection
+- URI/path/name controls during create/duplicate flows
+
+Use **Create new Definition** for net-new assets and **Edit**/**Duplicate** for iterations.
