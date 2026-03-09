@@ -1,17 +1,17 @@
 # Definition Action Buttons
 
-These are the action buttons shown in **Definition details** next to the tab bar.
+These are the action buttons shown in **Definition details** near the tab bar.
 
-## Install definition in current project
-Click **Install definition in current project** to apply the current definition to the project currently selected in the Hub.
+## Install / uninstall definition in current project
+Click **Install definition in current project** to apply the current definition to the project selected in the Hub.
 
 - If no project is selected, the button is disabled.
-- If the definition is already installed in that project, the button will became the checkmark button that allow you to uninsrall the definition from the project.
+- If the definition is already installed in that project (for the currently selected destination), the button changes to the uninstall state.
+- For supported definition types, selecting destination is available from the install button menu.
 
 Use this after you verify the definition is the right one and ready to be used.
 
 ![Remove definition from current project](../images/add-remove-definition-from-project.png)
-
 
 ## Edit definition
 Click **Edit definition** to open the editor for this definition.
@@ -36,7 +36,7 @@ Click **Copy definition** to copy the full definition content to your clipboard.
 Use this for quick sharing, backup snippets, or external review.
 
 ## Version history
-Click **Version history** to open historical versions of the definition, it is fetched directly from the git repo.
+Click **Version history** to open historical versions of the definition fetched from the Git repository.
 
 From version history you can:
 

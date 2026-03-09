@@ -105,6 +105,11 @@ const tocSections = [
         id: "install-definition-into-project",
         title: "Install Definition into Project",
         file: "usage/install-definition-into-project.md"
+      },
+      {
+        id: "export-to-copilot-and-gemini",
+        title: "Export to Copilot and Gemini",
+        file: "usage/export-to-copilot-and-gemini.md"
       }
     ]
   },
