@@ -2,87 +2,55 @@
 
 ## Overview
 
-DCC (Developer Control Center) is a **local-first monolith** composed of:
-
-1. A static browser client served from `src/client`.
-2. A Node.js + Express API server in `src/server`.
-3. A SQLite datastore (`data/dcc.sqlite` by default).
-4. Local filesystem + git integration for definition lifecycle operations.
-5. Optional Gemini-backed inference exposed via an OpenAI-compatible `/v1` API.
-
-The app is designed to work offline/local for core workflows (cataloging, editing, installing, validating, versioning), with AI features activated only when configured.
+DCC (Developer Control Center) is a local-first monolith composed of:
+1. A static browser client (`src/client`) served by Express.
+2. A Node.js + Express API server (`src/server`).
+3. A SQLite data store (`data/dcc.sqlite` by default).
+4. Local filesystem + git integration for definition files and dev projects.
+5. Optional AI integrations for OpenAI-compatible chat endpoints and managed agent runs.
 
 ## Runtime topology
 
 ```mermaid
 flowchart LR
-  Browser[Browser UI\nHub + Activity + Agents + Editor + Settings]
-  Server[Express Server\nREST API + /v1 facade]
+  Browser[Browser UI\nHub + Editor + Settings + Help]
+  Server[Express Server\nREST + /v1 facade + agent runs]
   DB[(SQLite)]
   Repos[(Asset Repos / Git)]
   Projects[(Local Dev Projects)]
-  Gemini[(Gemini Connector or AI Studio)]
+  AI[(Gemini + Connector providers)]
 
   Browser --> Server
   Server --> DB
   Server --> Repos
   Server --> Projects
-  Server --> Gemini
+  Server --> AI
 ```
 
 ## Frontend composition
 
-- **Hub UI (`src/client/ui/appController.js`)** orchestrates definition browsing, filtering, install/export actions, recommendations, validation, and version-diff interactions.
-- **Activity UI** presents live and historical agent run status/logs and controls (stream, cancel, rerun).
-- **Agents workflow UI** prepares run packs and launch parameters for agent execution.
-- **Editor UI (`src/client/editor/*`)** handles type detection, form/source editing, schema-aware save, and helper actions.
-- **Settings UI (`src/client/settings/*`)** manages repository configuration, dev project roots, AI provider settings, backups, and import/export.
+`src/server/server.js` wires middleware, static assets, and route modules.
 
-All pages call server endpoints through modular API wrappers and update page-scoped/stateful controllers.
+- `routes/settings.js` — repository and active dev project settings.
+- `routes/projects.js` — dev root management + project scanning metadata.
+- `routes/repo.js` — clone/pull and load-definition sync.
+- `routes/definitions.js` — catalog, tags, references, suggestions, and export APIs.
+- `routes/lifecycle.js` — duplicate/save/remove/publish/delete/push-upstream operations.
+- `routes/validation.js` — validation execution and history retrieval.
+- `routes/versions.js` — git version history listing/fetch/restore.
+- `routes/editor.js` — editor load/detect/save endpoints.
+- `routes/openai.js` — OpenAI-compatible `/v1/*` endpoints backed by Gemini connectors.
+- `routes/agentRuns.js` and `routes/agentRunPacks.js` — managed local agent runs and reusable run-pack flows.
 
-## Server composition
+## Domain and infrastructure layers
 
-`src/server/server.js` bootstraps DB initialization, static hosting, middleware, and route modules.
-
-### Route modules
-
-- `routes/openai.js` — OpenAI-compatible `/v1/models`, `/v1/completions`, and `/v1/chat/completions` backed by Gemini clients.
-- `routes/definitions.js` — definition catalog listing, references, tags, and project-context suggestions.
-- `routes/lifecycle.js` — duplicate/save/publish/remove/delete/push/tag lifecycle actions.
-- `routes/editor.js` — load definition content, detect type, and save editor payloads.
-- `routes/validation.js` — validate definitions and persist validation history.
-- `routes/versions.js` — git-backed version history listing/fetch/restore.
-- `routes/projects.js` — dev project root management and project scanning APIs.
-- `routes/settings.js` — app settings, onboarding state, current dev project, asset repo CRUD, and DB backup/restore.
-- `routes/repo.js` — app update metadata and asset-repo sync/load operations.
-- `routes/agentRunPacks.js` — persisted run-pack templates per `(agentId, configId)`.
-- `routes/agentRuns.js` — launch/list/inspect/stream/kill agent runs.
-
-## Core backend domains
-
-- **Definitions domain (`src/server/definitions/*`)**
-  - parsing and metadata extraction,
-  - type detection and content normalization,
-  - installation logic for Continue/Copilot/Gemini destinations,
-  - export compatibility + request validation,
-  - recommendation scoring,
-  - validation helpers.
-
-- **Project scan domain (`src/server/projects/scan/*`)**
-  - filesystem signal collection,
-  - language/platform detection,
-  - technology inference and heuristic scoring.
-
-- **Agent run domain (`src/server/services/agentRunManager/*`)**
-  - process launch and lifecycle tracking,
-  - stdout/stderr persistence,
-  - stream subscriptions,
-  - cancellation/cleanup.
-
-- **AI domain (`src/server/services/ai/*`)**
-  - Gemini Connector client,
-  - Gemini AI Studio client,
-  - request/response adaptation to OpenAI-shaped payloads.
+- `src/server/definitions/*` — type detection, parse/serialize, metadata extraction, install/save, validation, recommendations, and export services.
+- `src/server/projects/scan/*` — project discovery, technology detection, AI signal enrichment, and repository signal extraction.
+- `src/server/services/agentRunManager/*` — lifecycle management for local agent subprocesses.
+- `src/server/services/ai/*` — Gemini connector and AI Studio clients.
+- `src/server/versions/*` — git history helpers plus version cache.
+- `src/server/db/*` — sqlite initialization and promise-based query helpers.
+- `src/server/utils/*` — shared utilities (git/files/settings/env/logging/AI settings).
 
 ## Persistence model
 
@@ -142,12 +110,23 @@ sequenceDiagram
 4. UI polls or subscribes to stream endpoint for live updates/log output.
 5. Optional kill endpoint requests cancellation.
 
-### AI facade flow
+## AI and agent-run flows
 
-1. `/v1/*` endpoint validates payloads with Zod.
-2. Runtime selects Gemini Connector or AI Studio based on settings.
-3. Response is normalized to OpenAI-compatible JSON/SSE.
-4. Optional request/response logging is applied via AI logging configuration.
+- `/v1/*` endpoints validate payloads, invoke Gemini clients, and return OpenAI-shaped responses (including SSE streaming).
+- Agent run endpoints orchestrate local subprocess execution through `agentRunManager`, with normalized run options and tracked run state.
+
+## Frontend composition
+
+Primary client entry points:
+- `src/client/app.js` — Hub bootstrap.
+- `src/client/settings.js` — Settings and project-root management.
+- `src/client/editor/editor.js` — Definition authoring/editor workbench.
+
+Supporting frontend layers:
+- `src/client/api/*` — API wrappers.
+- `src/client/ui/appController/*` — hub orchestration.
+- `src/client/editor/forms/*` and `src/client/editor/components/*` — type-specific UI + source sync.
+- `src/client/state/*` and `src/client/services/*` — shared app state and reusable UI services.
 
 ## Operational characteristics
 
