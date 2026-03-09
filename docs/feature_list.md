@@ -2,24 +2,49 @@
 
 This document reflects the currently implemented capabilities in DCC.
 
-## 1) Local-first web app
-- Express server serving a static browser client from `src/client`.
-- SQLite persistence initialized automatically on server startup.
-- All data and git operations are local to the developer machine.
+## 1) Local-first application runtime
+- Express server that serves the browser client and docs locally.
+- SQLite database initialized on startup for settings, catalog, validations, and activity state.
+- Local git/file operations against configured asset repositories and development projects.
 
-## 2) Repository settings and sync
-- Save/load repository settings (`repoUrl`, `repoPath`) via `/api/settings`.
-- Clone or pull the configured team repository via `/api/clone-pull`.
-- Load and index definitions from the repository via `/api/load-definitions`.
+## 2) App metadata, updates, and onboarding
+- App metadata endpoint: `GET /api/app/about`.
+- App self-update trigger endpoint: `POST /api/app/update`.
+- Onboarding completion state APIs:
+  - `GET /api/onboarding-status`
+  - `POST /api/onboarding-status`
 
-## 3) Definition catalog and metadata
-- Persist definitions in SQLite with key metadata (`type`, `name`, `tags`, `filePath`, `version`, `source`, `status`).
-- Retrieve catalog list via `/api/definitions`.
-- Get normalized tag list via `/api/definition-tags`.
-- Resolve DCC URI references via `/api/definitions/references`.
-- Fetch individual definition details (including best-effort live file content) via `/api/definitions/:id`.
+## 3) Settings and environment management
+- General settings read/write: `GET/POST /api/settings`.
+- Current development project selection:
+  - `GET /api/current-dev-project`
+  - `POST /api/current-dev-project`
+- Context window estimation for selected project:
+  - `GET /api/current-dev-project/context-window`
+- Settings backup/export and import:
+  - `POST /api/settings/export`
+  - `POST /api/settings/import`
+- Database backup/restore:
+  - `POST /api/database/backup`
+  - `POST /api/database/restore`
 
-## 4) Supported definition types
+## 4) Asset repository management and sync
+- CRUD for AI asset repositories:
+  - `GET /api/asset-repos`
+  - `POST /api/asset-repos`
+  - `PUT /api/asset-repos/:id`
+  - `DELETE /api/asset-repos/:id`
+- Repository sync (clone missing / pull existing): `POST /api/asset-repos/sync`.
+- Definition loading/indexing from configured repositories: `POST /api/load-definitions`.
+
+## 5) Definition catalog, search, and recommendations
+- Retrieve catalog tags: `GET /api/definition-tags`.
+- Resolve DCC URI references: `GET /api/definitions/references`.
+- Query definitions list: `GET /api/definitions`.
+- Retrieve single definition details: `GET /api/definitions/:id`.
+- AI-assisted/project-aware recommendation endpoint: `GET /api/definitions/suggestions`.
+
+## 6) Supported definition types
 Detected and handled definition types include:
 - `model`
 - `prompt`
@@ -30,56 +55,62 @@ Detected and handled definition types include:
 - `mcp server`
 - `doc`
 - `config`
-- `unknown` fallback
+- `unknown` (fallback)
 
-## 5) Recommendation engine
-- Project-aware recommendation endpoint: `/api/definitions/suggestions`.
-- Uses current selected dev project + detected project type metadata.
-- Produces deterministic ranked suggestions with transparent `score` and `reasons`.
+## 7) Development project discovery
+- Manage dev project scan roots:
+  - `GET /api/dev-project-roots`
+  - `POST /api/dev-project-roots`
+- List detected projects: `GET /api/dev-projects`.
+- Technology/signal-based project scanning for recommendation and install workflows.
 
-## 6) Dev project discovery
-- Configure scan roots using `/api/dev-project-roots`.
-- Recursively discover nested git projects and detect project type signals.
-- Store project metadata (`projectType`, `detectedSignals`, `projectTechnologies`, `lastScannedAt`).
-- List discovered projects via `/api/dev-projects`.
+## 8) Definition lifecycle and project install flows
+- Duplicate definitions: `POST /api/definitions/:id/duplicate`.
+- Push definition changes upstream: `POST /api/definitions/:id/push-upstream`.
+- Install definition into selected dev project: `POST /api/definitions/:id/save`.
+- Remove installed definition from selected project: `POST /api/definitions/:id/remove`.
+- Update persisted tags for a definition: `POST /api/definitions/:id/tags`.
+- Publish tracked definitions with versioning: `POST /api/definitions/:id/publish`.
+- Delete definition files from repository: `POST /api/definitions/:id/delete-repo`.
 
-## 7) Save/remove definitions to local projects
-- Save a definition to selected dev project: `/api/definitions/:id/save`.
-- Remove an installed definition: `/api/definitions/:id/remove`.
-- Track installed copies in `project_definition_copies`.
-- Context definitions merge provider entries into config files instead of simple copy.
+## 9) Validation and test history
+- Run validation: `POST /api/definitions/:id/validate`.
+- Read latest validation result: `GET /api/definitions/:id/validate/latest`.
+- Read validation history: `GET /api/definitions/:id/validate/history`.
 
-## 8) Definition lifecycle actions
-- Duplicate definitions with new name/file/path/dcc URI: `/api/definitions/:id/duplicate`.
-- Push local/untracked definitions upstream: `/api/definitions/:id/push-upstream`.
-- Publish tracked definitions with version bump support: `/api/definitions/:id/publish`.
-- Delete definition files from repo and refresh catalog: `/api/definitions/:id/delete-repo`.
+## 10) Version history and restore
+- List version history: `GET /api/definitions/:id/versions`.
+- Fetch a specific historical version: `GET /api/definitions/:id/versions/:version`.
+- Restore a historical version: `POST /api/definitions/:id/versions/:version/restore`.
 
-## 9) Validation
-- Run validation checks with configurable options: `/api/definitions/:id/validate`.
-- Read latest validation result: `/api/definitions/:id/validate/latest`.
-- Read validation history with limit control: `/api/definitions/:id/validate/history`.
-- Validation records are persisted in `validation_results`.
+## 11) Editor workbench APIs
+- Load definition file for editor: `GET /api/editor/definition`.
+- Detect definition type from content/path: `POST /api/editor/detect-type`.
+- Save created/edited definitions: `POST /api/editor/save`.
 
-## 10) Version history
-- Load cached git-backed version history: `/api/definitions/:id/versions`.
-- Fetch specific historical version content: `/api/definitions/:id/versions/:version`.
-- Restore a historical version into current file content: `/api/definitions/:id/versions/:version/restore`.
+## 12) Agent run packs and execution activity
+- Manage reusable agent run packs:
+  - `GET /api/agent-run-packs`
+  - `POST /api/agent-run-packs`
+- Start and inspect agent runs:
+  - `POST /api/agent-runs`
+  - `POST /api/agent-runs/debug`
+  - `GET /api/agent-runs`
+  - `GET /api/agent-runs/:runId`
+  - `GET /api/agent-runs/:runId/logs`
+  - `GET /api/agent-runs/:runId/stream`
+  - `POST /api/agent-runs/:runId/kill`
 
-## 11) Editor workbench API
-- Load a specific definition for editing: `/api/editor/definition?path=...`.
-- Detect type from content/path: `/api/editor/detect-type`.
-- Save create/edit operations with DCC URI uniqueness enforcement: `/api/editor/save`.
-
-## 12) OpenAI-compatible facade (Gemini backend)
+## 13) OpenAI-compatible AI API facade (Gemini-backed)
 - `GET /v1/models`
-- `POST /v1/completions` (JSON + SSE streaming)
-- `POST /v1/chat/completions` (JSON + SSE streaming with tool call mapping)
+- `POST /v1/completions` (JSON + SSE)
+- `POST /v1/chat/completions` (JSON + SSE, with tool-call mapping)
 - `POST /v1/embeddings`
 
-## 13) UI capabilities
-- Hub for browsing/searching/filtering definitions.
-- Definition detail panel with content/test/version actions.
-- Separate settings view for repo/project/theme controls.
-- Dedicated editor UI with structured forms + raw content sync.
-- Dark/light theme preference persisted in browser storage.
+## 14) Browser UI capabilities
+- Hub for searching/filtering definitions and viewing recommendation results.
+- Definition details experience with preview/source/test/version actions.
+- Create/edit/duplicate workflows with type-aware editor and raw mode.
+- Project-aware install/remove/export actions (including Continue/Copilot/Gemini flows).
+- Settings area for repositories, dev project roots, AI API service, theme, onboarding, and backup/restore.
+- Activity/agent-runs surfaces for execution monitoring.
