@@ -13,7 +13,9 @@ servers:
     description: Local default server
 
 tags:
+  - name: App
   - name: Settings
+  - name: Onboarding
   - name: Asset Repos
   - name: Dev Projects
   - name: Repository Sync
@@ -21,10 +23,50 @@ tags:
   - name: Definition Lifecycle
   - name: Validation
   - name: Versions
+  - name: Agent Runs
+  - name: Agent Run Packs
   - name: Editor
   - name: OpenAI Facade
 
 paths:
+  /api/app/about:
+    get:
+      tags: [App]
+      summary: Get DCC app metadata and update status
+      responses:
+        "200":
+          description: App information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  appName: { type: string }
+                  version: { type: string }
+                  lastReleaseDate: { type: string }
+                  hasUpdate: { type: boolean }
+                  behindCount: { type: integer }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/app/update:
+    post:
+      tags: [App]
+      summary: Pull latest DCC server code from git
+      responses:
+        "200":
+          description: Update operation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  upToDate: { type: boolean }
+                  needsRestart: { type: boolean }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/settings:
     get:
       tags: [Settings]
@@ -173,6 +215,45 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/onboarding-status:
+    get:
+      tags: [Onboarding]
+      summary: Get onboarding seen status
+      responses:
+        "200":
+          description: Onboarding status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  seen: { type: boolean }
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Onboarding]
+      summary: Set onboarding seen status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seen: { type: boolean }
+      responses:
+        "200":
+          description: Updated status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  seen: { type: boolean }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/current-dev-project:
     get:
       tags: [Settings]
@@ -210,6 +291,140 @@ paths:
                 properties:
                   ok: { type: boolean }
                   path: { type: string }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/current-dev-project/context-window:
+    get:
+      tags: [Settings]
+      summary: Resolve context window token size for the current or specified project
+      parameters:
+        - name: path
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Context window result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path: { type: string }
+                  contextWindowTokens: { type: integer, nullable: true }
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/settings/export:
+    post:
+      tags: [Settings]
+      summary: Export settings and related records to a file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filePath: { type: string }
+              required: [filePath]
+      responses:
+        "200":
+          description: Export completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  filePath: { type: string }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/settings/import:
+    post:
+      tags: [Settings]
+      summary: Import settings and related records from a file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filePath: { type: string }
+              required: [filePath]
+      responses:
+        "200":
+          description: Import completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  filePath: { type: string }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/database/backup:
+    post:
+      tags: [Settings]
+      summary: Backup SQLite database to a file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filePath: { type: string }
+              required: [filePath]
+      responses:
+        "200":
+          description: Backup completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  filePath: { type: string }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/database/restore:
+    post:
+      tags: [Settings]
+      summary: Restore SQLite database from a file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filePath: { type: string }
+              required: [filePath]
+      responses:
+        "200":
+          description: Restore completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  filePath: { type: string }
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -317,7 +532,12 @@ paths:
             application/json:
               schema:
                 type: array
-                items: { type: string }
+                items:
+                  type: object
+                  properties:
+                    type: { type: string }
+                    name: { type: string }
+                    dcc_uri: { type: string }
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -461,6 +681,41 @@ paths:
                 type: object
                 properties:
                   ok: { type: boolean }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/definitions/{id}/tags:
+    post:
+      tags: [Definition Lifecycle]
+      summary: Update tags for a definition
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200":
+          description: Tags updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  tags:
+                    type: array
+                    items: { type: string }
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -612,8 +867,11 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { type: object, additionalProperties: true }
+                type: object
+                properties:
+                  history:
+                    type: array
+                    items: { type: object, additionalProperties: true }
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -631,8 +889,12 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items: { type: object, additionalProperties: true }
+                type: object
+                properties:
+                  currentVersion: { type: string }
+                  versions:
+                    type: array
+                    items: { type: object, additionalProperties: true }
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -669,6 +931,14 @@ paths:
           in: path
           required: true
           schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                createNewVersion: { type: boolean }
       responses:
         "200":
           description: Restored
@@ -677,7 +947,9 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
+                  success: { type: boolean }
+                  newVersion: { type: string }
+                  message: { type: string }
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -741,11 +1013,16 @@ paths:
             schema:
               type: object
               properties:
-                mode: { type: string, enum: [create, update] }
+                mode: { type: string, enum: [create, edit] }
+                definitionId: { type: integer }
+                destinationRepoId: { type: integer }
+                definitionType: { type: string }
+                filename: { type: string }
+                targetPath: { type: string }
                 path: { type: string }
                 content: { type: string }
                 format: { type: string }
-              required: [mode, path, content]
+              required: [mode, content]
       responses:
         "200":
           description: Save result
@@ -763,6 +1040,213 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "500":
           $ref: "#/components/responses/ServerError"
+
+  /api/agent-run-packs:
+    get:
+      tags: [Agent Run Packs]
+      summary: List recent agent run pack combinations
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        "200":
+          description: Recent packs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  packs:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+        "500":
+          $ref: "#/components/responses/ServerError"
+    post:
+      tags: [Agent Run Packs]
+      summary: Save a recent agent run pack combination
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agentId: { type: string }
+                configId: { type: string }
+                prompt: { type: string }
+                runOptions: { type: object, additionalProperties: true }
+              required: [agentId, configId]
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/agent-runs:
+    get:
+      tags: [Agent Runs]
+      summary: List recent agent run snapshots
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 200 }
+      responses:
+        "200":
+          description: Agent runs list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runs:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+    post:
+      tags: [Agent Runs]
+      summary: Launch a new agent run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agentId: { type: integer }
+                configId: { type: integer }
+                prompt: { type: string }
+                projectPath: { type: string }
+                runOptions: { type: object, additionalProperties: true }
+              required: [agentId, configId, projectPath]
+      responses:
+        "201":
+          description: Run created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run: { type: object, additionalProperties: true }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/agent-runs/debug:
+    post:
+      tags: [Agent Runs]
+      summary: Send debug telemetry for rerun resolution
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        "200":
+          description: Logged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+
+  /api/agent-runs/{runId}:
+    get:
+      tags: [Agent Runs]
+      summary: Get a single agent run snapshot
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Run snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run: { type: object, additionalProperties: true }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/agent-runs/{runId}/logs:
+    get:
+      tags: [Agent Runs]
+      summary: Get logs for an agent run
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: since
+          in: query
+          required: false
+          schema: { type: number }
+      responses:
+        "200":
+          description: Run logs snapshot
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/agent-runs/{runId}/stream:
+    get:
+      tags: [Agent Runs]
+      summary: Stream agent run events via Server-Sent Events
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/agent-runs/{runId}/kill:
+    post:
+      tags: [Agent Runs]
+      summary: Terminate a running agent process
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Kill request accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /v1/models:
     get:
