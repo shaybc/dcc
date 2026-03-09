@@ -5,86 +5,113 @@
 ```text
 src/
   client/
-    index.html, app.js                 # Hub UI entry
-    settings.html, settings.js         # Settings page
-    editor/                            # Editor page + forms + sync helpers
-    api/                               # HTTP client wrappers
-    services/                          # UI services (diff/search/loading)
-    state/                             # shared client state
-    styles/                            # tokenized CSS architecture
+    index.html, app.js                 # Hub UI entry + service bootstrapping
+    ui/appController.js                # Main hub controller (modularized under ui/appController/*)
+    pages/                             # In-page HTML partials (hub, detail, activity, agents)
+    api/                               # Domain-specific HTTP client wrappers
+    services/                          # Shared UI services (loading, notifications, search, diff, auto-tag)
+    state/                             # Shared mutable client state
+    editor/                            # Editor page + forms + YAML sync components
+    settings/                          # Settings submodules (repos, projects, imports/exports, theme)
+    user-guide/                        # User-guide SPA assets and markdown rendering helpers
+    styles/                            # Tokenized CSS system (base/layout/sections/components/themes)
   server/
-    server.js                          # Express bootstrap
-    routes/                            # API modules
-    definitions/                       # parse/save/load/recommend/validate helpers
-    projects/scan.js                   # project discovery + type detection
-    versions/                          # version cache and git version helpers
-    db/                                # sqlite init + query helpers
-    services/ai/                       # Gemini adapter
-    utils/                             # env, logger, git, settings, file utils
+    server.js                          # Express bootstrap + route registration + static hosting
+    routes/                            # REST route modules (hub, lifecycle, editor, runs, validation)
+    definitions/                       # Definition domain logic + export adapters
+    projects/                          # Project scan + context window estimation
+    services/
+      ai/                              # Gemini AI Studio + Gemini Connector clients
+      agentRunManager/                 # Agent execution lifecycle, launch options, process controls
+    versions/                          # Version caching and git-backed history helpers
+    db/                                # SQLite schema init and query helpers
+    utils/                             # env, logger, settings, git, files, AI logging helpers
 tests/
-  *.test.js                            # node test runner suites
-  fixtures/                            # scan and parser fixtures
+  *.test.js                            # Node test runner suites
+  fixtures/                            # Parsing, project-scan, and recommendation fixtures
 docs/
-  *.md                                 # product + technical documentation
+  *.md                                 # Product and technical documentation
 ```
 
 ## Backend module boundaries
 
 ### Route layer (`src/server/routes/*`)
-Thin HTTP controllers responsible for:
-- request/response shape,
-- input extraction,
-- status code and error envelope handling,
-- delegating business logic.
+Routes remain thin HTTP controllers responsible for:
+- request parsing and validation,
+- response and status shaping,
+- delegating to domain/service helpers,
+- translating thrown errors into JSON envelopes.
 
-### Domain helpers (`src/server/definitions/*`)
-Core definition logic:
-- type detection and normalization,
-- metadata extraction (including DCC URI handling),
-- parsing/serialization helpers,
-- validation,
-- recommendation scoring,
-- save/install content transformations.
+In addition to core CRUD-style routes, the server now exposes dedicated endpoints for:
+- **agent run packs** (`agentRunPacks.js`) for discover/install metadata,
+- **agent runs** (`agentRuns.js`) for launching, polling, cancelling, and activity history,
+- **OpenAI-compatible facade** (`openai.js`) backed by Gemini clients.
 
-### Infra helpers
-- `db/*` abstracts sqlite callback APIs into promise helpers.
-- `utils/git.js` centralizes shell git calls and error parsing.
-- `projects/scan.js` contains filesystem traversal + project-type detection.
-- `services/ai/geminiAIStudioClient.js` encapsulates Gemini API calls.
+### Definition domain (`src/server/definitions/*`)
+The definitions package is the core business layer for:
+- type detection, normalization, and parsing,
+- metadata extraction and DCC URI handling,
+- validation and recommendation logic,
+- save/install/version bump operations,
+- destination export via adapter architecture (`export/adapters/*`) for Copilot and Gemini.
+
+### Project intelligence (`src/server/projects/*`)
+Project logic is split between:
+- `scan.js` orchestration,
+- `scan/*` analyzers (filesystem signals, repo signals, AI metadata hints, tech inference),
+- `contextWindow.js` utilities used for prompt/context sizing flows.
+
+### Infrastructure/services
+- `db/*` owns SQLite initialization and helper wrappers.
+- `services/agentRunManager/*` encapsulates subprocess lifecycle management and run-option shaping.
+- `services/ai/*` encapsulates provider-specific Gemini integrations (AI Studio + Connector).
+- `utils/*` centralizes cross-cutting behavior (settings reads/writes, logging configuration, git shells, file ops).
 
 ## Frontend architecture
 
 ### Page-level entry points
-- `src/client/app.js`: main hub app bootstrap.
-- `src/client/settings.js`: settings/project-root management UI.
-- `src/client/editor/editor.js`: create/edit definition workbench.
+- `src/client/app.js`: boots the hub app and global loading/notification services.
+- `src/client/editor/editor.js`: boots the dedicated editor workbench.
+- `src/client/settings.js`: boots settings UI.
+- `src/client/user-guide/app.js`: boots the in-app user guide experience.
+
+### Hub composition (`src/client/ui/appController*`)
+The hub controller is organized as a composition root (`appController.js`) plus focused modules in `ui/appController/` for:
+- definition preview/rendering utilities,
+- filters, search, pagination, and favorites/preferences persistence,
+- activity dashboard + run-stream UI behavior,
+- onboarding and hub menu orchestration,
+- validation and context-size panel workflows,
+- install/export destination compatibility helpers.
 
 ### Supporting layers
-- `src/client/api/*`: fetch wrappers per domain.
-- `src/client/ui/appController.js`: hub page orchestration.
-- `src/client/editor/forms/*`: type-specific form rendering/collection.
-- `src/client/editor/components/yamlEditorSync.js`: form/source synchronization.
-- `src/client/state/appState.js`: mutable app state container.
-- `src/client/services/*`: reusable UI services.
+- `src/client/api/*`: domain API wrappers around shared fetch client.
+- `src/client/editor/forms/*`: type-specific form builders/serializers.
+- `src/client/editor/components/*`: specialized UI widgets (array editors, YAML sync).
+- `src/client/services/*`: reusable app services.
+- `src/client/state/appState.js`: shared app-level state container.
 
 ## Data flow patterns
 
-1. UI event triggers API call.
-2. Route delegates to domain helper(s).
-3. Helpers interact with DB/filesystem/git/Gemini as needed.
-4. Route returns normalized JSON.
-5. UI updates state and re-renders.
+1. UI interaction triggers a controller action.
+2. Controller invokes API wrapper(s).
+3. Server route delegates to domain/services layer.
+4. Domain logic may call DB, filesystem/git, project scanners, or Gemini services.
+5. Route returns normalized JSON/SSE payload.
+6. UI updates local state and re-renders cards, detail panes, activity logs, or editor forms.
 
 ## Testing organization
 
-- Uses Node's built-in test runner (`node --test`).
-- Route-level and helper-level tests live in `tests/*.test.js`.
-- Project scan behavior validated with fixture directories under `tests/fixtures/project-scan`.
+- Test runner: Node built-in test runner (`node --test`).
+- Tests emphasize route and domain behavior under `tests/*.test.js`.
+- Fixtures cover parsing/validation definitions and multi-language project-scan scenarios under `tests/fixtures/*`.
+- Dedicated suites validate export compatibility, OpenAI/Gemini streaming adapters, and agent-run command launch behavior.
 
 ## Architectural characteristics
 
-- **Single deployable process**: one Node process serves UI and API.
-- **Local-first persistence**: SQLite + filesystem as source of truth.
-- **Stateless HTTP layer**: sessionless REST patterns, settings persisted in DB.
-- **Explainable recommendation logic**: deterministic score + reasons.
-- **Progressive enhancement for AI**: app works without Gemini unless `/v1` endpoints are used.
+- **Single-process monolith**: one Node server hosts static assets and API endpoints.
+- **Local-first state**: SQLite + local filesystem/git are primary persistence layers.
+- **Service-oriented internals**: routes are thin; reusable domain/services modules hold behavior.
+- **Deterministic recommendation + export logic**: explainable ranking and adapter-driven destination mapping.
+- **Optional AI integration**: Gemini-backed endpoints enhance workflows without blocking core local features.
+- **Operational observability in-product**: activity dashboard and run logs expose agent execution state in the UI.
