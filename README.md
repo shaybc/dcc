@@ -12,7 +12,9 @@ This is the primary workflow for applying Continue definitions locally and keepi
 
 In addition to Continue install, DCC supports destination-aware export for external AI tooling.
 
-- **Supported types in v1:** `rules`, `prompts`
+- **Supported types in v1:**
+  - Copilot: `rules`, `prompts`, `agents`
+  - Gemini CLI: `rules`, `prompts`
 - **Destinations:**
   - **GitHub Copilot:** files under `.github/...`
   - **Gemini CLI:** files under `.gemini/...`
@@ -25,10 +27,12 @@ In addition to Continue install, DCC supports destination-aware export for exter
 - **Prompts**
   - Copilot: `.github/prompts/<dcc-uri-slug>.prompt.md`
   - Gemini CLI: `.gemini/commands/<dcc-uri-slug>.md`
+- **Agents**
+  - Copilot: `.github/agents/<dcc-uri-slug>.md`
 
 #### Skipped definition types (v1)
 
-Definition types outside of `rules` and `prompts` are skipped for Copilot/Gemini export in v1 because destination-specific mappings are not finalized yet.
+Definition types outside each destination's supported set are skipped for Copilot/Gemini export in v1 because destination-specific mappings are not finalized yet.
 This avoids writing ambiguous or lossy conversions and keeps exports predictable.
 
 #### Idempotent update behavior

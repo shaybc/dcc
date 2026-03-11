@@ -7,7 +7,7 @@ import { CopilotAdapter } from "../src/server/definitions/export/adapters/copilo
 const fixturePromptPath = "tests/fixtures/definitions/prompts/code-review.md";
 const fixtureRulePath = "tests/fixtures/definitions/rules/documentation-standards.md";
 
-test("copilot adapter converts rules and prompts to expected managed paths", async () => {
+test("copilot adapter converts rules, prompts, and agents to expected managed paths", async () => {
   const adapter = new CopilotAdapter();
   const promptContent = await fs.readFile(fixturePromptPath, "utf8");
   const ruleContent = await fs.readFile(fixtureRulePath, "utf8");
@@ -24,11 +24,20 @@ test("copilot adapter converts rules and prompts to expected managed paths", asy
     version: "1.0.0",
     content: promptContent
   });
+  const agentArtifact = adapter.convertDefinition({
+    type: "agents",
+    dccUri: "agents/large-file-reviewer",
+    version: "1.0.0",
+    content: "---\ndescription: 'this agent finds large files where there are more then 500 lines of code'\ntools: [execute, read]\n---\nFind all files in the current directory and its subdirectories that have more than 500 lines of code."
+  });
 
   assert.equal(ruleArtifact.relativePath, ".github/copilot-instructions.md");
   assert.equal(ruleArtifact.mergeStrategy, "dcc_marked_block");
   assert.equal(promptArtifact.relativePath, ".github/prompts/prompts-code-review.prompt.md");
   assert.equal(promptArtifact.mergeStrategy, "replace_file");
+  assert.equal(agentArtifact.relativePath, ".github/agents/agents-large-file-reviewer.md");
+  assert.equal(agentArtifact.mergeStrategy, "replace_file");
+  assert.match(agentArtifact.content, /^---/);
 });
 
 test("copilot remove plan retracts only DCC-managed files/sections", () => {
@@ -56,5 +65,15 @@ test("copilot remove plan retracts only DCC-managed files/sections", () => {
   assert.deepEqual(promptRemovePlan, [{
     op: "delete_file",
     relativePath: ".github/prompts/prompts-code-review.prompt.md"
+  }]);
+
+  const agentRemovePlan = adapter.getRemovePlan({
+    type: "agents",
+    dccUri: "agents/large-file-reviewer"
+  });
+
+  assert.deepEqual(agentRemovePlan, [{
+    op: "delete_file",
+    relativePath: ".github/agents/agents-large-file-reviewer.md"
   }]);
 });
