@@ -1,4 +1,12 @@
+import { isAgentEnabled } from "../runtimeConfig.js";
+
 const HELP_PAGES_BASE = "/help/user-guide/pages";
+
+const AGENT_PAGE_IDS = new Set([
+  "activity-page",
+  "run-agent-page",
+  "definition-details-actions-test-schema-agent",
+]);
 
 const tocSections = [
   {
@@ -227,13 +235,22 @@ function buildPagesById(sections) {
   );
 }
 
-const pagesById = buildPagesById(tocSections);
+const filteredTocSections = isAgentEnabled()
+  ? tocSections
+  : tocSections
+      .map((section) => ({
+        ...section,
+        pages: section.pages.filter((page) => !AGENT_PAGE_IDS.has(page.id))
+      }))
+      .filter((section) => section.pages.length > 0);
+
+const pagesById = buildPagesById(filteredTocSections);
 
 function getRequestedPageId() {
   const params = new URLSearchParams(window.location.search);
   const requested = params.get("page");
   if (requested && pagesById.has(requested)) return requested;
-  return tocSections[0].pages[0].id;
+  return filteredTocSections[0].pages[0].id;
 }
 
 function createHelpPageHref(encodedSafeReturnTo) {
@@ -242,4 +259,4 @@ function createHelpPageHref(encodedSafeReturnTo) {
   };
 }
 
-export { HELP_PAGES_BASE, tocSections, pagesById, getRequestedPageId, createHelpPageHref };
+export { HELP_PAGES_BASE, filteredTocSections as tocSections, pagesById, getRequestedPageId, createHelpPageHref };

@@ -51,6 +51,7 @@ import { createRunBuilderParamsController } from "./appController/runBuilderPara
 import { createPaginationController } from "./appController/pagination.js";
 import { createActivityUtils } from "./appController/activityUtils.js";
 import { createActivityDashboardController } from "./appController/activityDashboardController.js";
+import { isAgentEnabled } from "../runtimeConfig.js";
 import {
   buildIntentSearchCatalogSnapshot,
   normalizeAiSuggestedEntries,
@@ -356,6 +357,7 @@ let activeInstallDestinationMenu = null;
 let currentCardsPage = 1;
 let onlyLocalDefinitions = getStoredOnlyLocalDefinitions();
 let activeTopPage = "discover";
+const AGENT_FEATURE_ENABLED = isAgentEnabled();
 let runBuilderMode = "agent";
 let runBuilderPickerFilter = "installed";
 let runBuilderSearchQuery = "";
@@ -1246,6 +1248,10 @@ function renderTopNavigation() {
 
   topNav.querySelectorAll("[data-top-nav-tab]").forEach((tab) => {
     const tabPage = tab.getAttribute("data-top-nav-tab") || "discover";
+    if (!AGENT_FEATURE_ENABLED && (tabPage === "activity" || tabPage === "agents")) {
+      tab.hidden = true;
+      return;
+    }
     tab.classList.toggle("active", tabPage === activeTopPage);
   });
 
@@ -1270,6 +1276,9 @@ function renderTopNavigation() {
 
 function setActiveTopPage(page) {
   activeTopPage = page || "discover";
+  if (!AGENT_FEATURE_ENABLED && (activeTopPage === "activity" || activeTopPage === "agents")) {
+    activeTopPage = "discover";
+  }
   if (activeTopPage === "discover" || activeTopPage === "installed" || activeTopPage === "favorites") {
     activeFilter = "all";
   }
@@ -3612,11 +3621,22 @@ function setupEventListeners() {
 
 
 export function initializeApp() {
+  if (!AGENT_FEATURE_ENABLED) {
+    if (activityPage) {
+      activityPage.hidden = true;
+    }
+    if (agentsPage) {
+      agentsPage.hidden = true;
+    }
+  }
+
   renderTopNavigation();
   setupRecommendationsSection();
   setupEventListeners();
-  setupRunBuilder();
-  activityDashboardController.setupActivityDashboard();
+  if (AGENT_FEATURE_ENABLED) {
+    setupRunBuilder();
+    activityDashboardController.setupActivityDashboard();
+  }
   loadDevProjects();
   loadCurrentDevProject()
     .then(loadSuggestionsForCurrentProject)

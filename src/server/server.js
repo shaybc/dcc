@@ -1,5 +1,7 @@
 import path from "path";
+import fs from "fs/promises";
 import express from "express";
+import YAML from "yaml";
 import "./db/index.js";
 import openaiRouter from "./routes/openai.js";
 import editorRouter from "./routes/editor.js";
@@ -14,6 +16,7 @@ import agentRunPacksRouter from "./routes/agentRunPacks.js";
 import agentRunsRouter from "./routes/agentRuns.js";
 import { loadAiLogConfigFromSettings } from "./utils/aiLogging.js";
 import { loadLoggerFileConfigFromSettings } from "./utils/logger.js";
+import { isAgentFeatureEnabled } from "./utils/env.js";
 
 const __dirname = import.meta.dirname;
 const app = express();
@@ -29,6 +32,42 @@ app.use(express.static(path.join(__dirname, "../client"), {
     res.setHeader("Cache-Control", "no-store");
   }
 }));
+
+app.get("/runtime-config.js", (_req, res) => {
+  res.type("application/javascript");
+  res.setHeader("Cache-Control", "no-store");
+  res.send(`window.__DCC_RUNTIME_CONFIG = Object.freeze({ enableAgent: ${isAgentFeatureEnabled} });`);
+});
+
+app.get("/docs/swagger/dcc-server-openapi.yaml", async (_req, res, next) => {
+  try {
+    const openApiPath = path.join(__dirname, "../../docs/swagger/dcc-server-openapi.yaml");
+    if (isAgentFeatureEnabled) {
+      res.sendFile(openApiPath);
+      return;
+    }
+
+    const raw = await fs.readFile(openApiPath, "utf8");
+    const openApi = YAML.parse(raw);
+
+    delete openApi?.paths?.["/api/agent-run-packs"];
+    delete openApi?.paths?.["/api/agent-runs"];
+    delete openApi?.paths?.["/api/agent-runs/debug"];
+    delete openApi?.paths?.["/api/agent-runs/{runId}"];
+    delete openApi?.paths?.["/api/agent-runs/{runId}/logs"];
+    delete openApi?.paths?.["/api/agent-runs/{runId}/stream"];
+    delete openApi?.paths?.["/api/agent-runs/{runId}/kill"];
+    if (Array.isArray(openApi?.tags)) {
+      openApi.tags = openApi.tags.filter((tag) => !["Agent Runs", "Agent Run Packs"].includes(tag?.name));
+    }
+
+    res.type("application/yaml");
+    res.send(YAML.stringify(openApi));
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use("/docs", express.static(path.join(__dirname, "../../docs"), {
   setHeaders: (res) => {
     res.setHeader("Cache-Control", "no-store");
@@ -44,8 +83,10 @@ app.use(definitionsRouter);
 app.use(lifecycleRouter);
 app.use(validationRouter);
 app.use(versionsRouter);
-app.use(agentRunPacksRouter);
-app.use(agentRunsRouter);
+if (isAgentFeatureEnabled) {
+  app.use(agentRunPacksRouter);
+  app.use(agentRunsRouter);
+}
 
 app.get("/swagger", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/swagger.html"));
