@@ -11,3 +11,5 @@ const EnvSchema = z.object({
 });
 
 export const env = EnvSchema.parse(process.env);
+
+export const isAgentFeatureEnabled = String(process.env.enable_agent || "").trim() === "true";
