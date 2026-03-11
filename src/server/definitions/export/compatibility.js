@@ -20,7 +20,8 @@ export const EXPORT_COMPATIBILITY = Object.freeze({
   ]),
   [DESTINATIONS.COPILOT]: Object.freeze([
     "rules",
-    "prompts"
+    "prompts",
+    "agents"
   ]),
   [DESTINATIONS.GEMINI]: Object.freeze([
     "rules",

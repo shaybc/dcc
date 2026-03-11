@@ -50,3 +50,11 @@ test("validateExportRequest reports unsupported destinations for all selected de
   assert.equal(result.totals.skipped, 1);
   assert.equal(result.skipped[0].reason, "unknown_destination");
 });
+
+
+test("validateExportRequest allows agents for copilot", () => {
+  const result = validateExportRequest([{ id: 1, key: "agents::agents/large-file-reviewer", type: "agent" }], DESTINATIONS.COPILOT);
+  assert.equal(result.destinationSupported, true);
+  assert.equal(result.totals.exportable, 1);
+  assert.equal(result.exportable[0].normalizedType, "agents");
+});

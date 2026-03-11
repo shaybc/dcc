@@ -22,3 +22,12 @@ test("continue compatibility remains unchanged", () => {
   assert.deepEqual(getExportability("context", DESTINATIONS.CONTINUE), { supported: true });
   assert.deepEqual(getExportability("mcpservers", DESTINATIONS.CONTINUE), { supported: true });
 });
+
+
+test("copilot supports agent export while gemini still skips it", () => {
+  assert.deepEqual(getExportability("agents", DESTINATIONS.COPILOT), { supported: true });
+  assert.deepEqual(getExportability("agents", DESTINATIONS.GEMINI), {
+    supported: false,
+    reason: "unsupported_type_for_destination"
+  });
+});

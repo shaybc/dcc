@@ -133,3 +133,55 @@ test("continue destination remains unaffected by export adapters", async () => {
   assert.equal(result.skipped[0].reason, "unsupported_destination");
   assert.match(result.warnings[0], /Unsupported export destination: continue/);
 });
+
+test("copilot agent exports write markdown agent files under .github/agents", async () => {
+  const projectPath = await fs.mkdtemp(path.join(os.tmpdir(), "dcc-export-agent-"));
+
+  const result = await exportDefinitionsToDestination({
+    projectPath,
+    destination: DESTINATIONS.COPILOT,
+    definitions: [{
+      type: "agents",
+      dccUri: "agents/large-file-reviewer",
+      content: "---\ndescription: 'this agent finds large files where there are more then 500 lines of code'\ntools: [execute, read]\n---\nFind all files in the current directory and its subdirectories that have more than 500 lines of code."
+    }],
+    mode: "install"
+  });
+
+  assert.equal(result.writtenFiles.length, 1);
+  assert.equal(result.writtenFiles[0].relativePath, path.join(".github", "agents", "agents-large-file-reviewer.md"));
+
+  const agentPath = path.join(projectPath, ".github", "agents", "agents-large-file-reviewer.md");
+  const content = await fs.readFile(agentPath, "utf8");
+  assert.match(content, /^---/);
+  assert.match(content, /tools: \[execute, read\]/);
+});
+
+test("remove mode retracts copilot agent markdown file", async () => {
+  const projectPath = await fs.mkdtemp(path.join(os.tmpdir(), "dcc-export-agent-remove-"));
+
+  await exportDefinitionsToDestination({
+    projectPath,
+    destination: DESTINATIONS.COPILOT,
+    definitions: [{
+      type: "agents",
+      dccUri: "agents/large-file-reviewer",
+      content: "---\ndescription: 'this agent finds large files where there are more then 500 lines of code'\ntools: [execute, read]\n---\nFind all files in the current directory and its subdirectories that have more than 500 lines of code."
+    }],
+    mode: "install"
+  });
+
+  await exportDefinitionsToDestination({
+    projectPath,
+    destination: DESTINATIONS.COPILOT,
+    definitions: [{
+      type: "agents",
+      dccUri: "agents/large-file-reviewer",
+      content: "ignored"
+    }],
+    mode: "remove"
+  });
+
+  const agentPath = path.join(projectPath, ".github", "agents", "agents-large-file-reviewer.md");
+  await assert.rejects(() => fs.readFile(agentPath, "utf8"), { code: "ENOENT" });
+});

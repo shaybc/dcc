@@ -20,6 +20,26 @@ function buildRulesBlock(definitionRow = {}) {
   return `${lines.join("\n")}\n`;
 }
 
+
+function buildAgentContent(definitionRow = {}) {
+  const body = String(definitionRow.content || "").trim();
+  if (!body) return "";
+
+  const frontmatterMatch = body.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
+  if (frontmatterMatch) return `${body}\n`;
+
+  const description = String(definitionRow.description || "").trim();
+  const frontmatterLines = [
+    "---",
+    `description: ${JSON.stringify(description || `Generated from ${String(definitionRow.dccUri || definitionRow.dcc_uri || definitionRow.name || "DCC agent").trim()}`)}`,
+    "tools: [execute, read]",
+    "---",
+    ""
+  ];
+
+  return `${frontmatterLines.join("\n")}${body}\n`;
+}
+
 function buildPromptContent(definitionRow = {}) {
   const header = buildTraceabilityHeader(definitionRow);
   const body = String(definitionRow.content || "").trim();
@@ -66,6 +86,16 @@ export class CopilotAdapter extends BaseAdapter {
       };
     }
 
+    if (normalizedType === "agents") {
+      return {
+        destination: this.destination,
+        type: normalizedType,
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow }),
+        mergeStrategy: "replace_file",
+        content: buildAgentContent(definitionRow)
+      };
+    }
+
     throw new Error(`Unsupported definition type for Copilot export: ${normalizedType || "unknown"}`);
   }
 
@@ -91,6 +121,13 @@ export class CopilotAdapter extends BaseAdapter {
     }
 
     if (normalizedType === "prompts") {
+      return [{
+        op: "delete_file",
+        relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow })
+      }];
+    }
+
+    if (normalizedType === "agents") {
       return [{
         op: "delete_file",
         relativePath: getManagedRelativePath({ destination: this.destination, type: normalizedType, dccUri: definitionRow })

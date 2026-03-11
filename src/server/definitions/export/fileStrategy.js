@@ -74,6 +74,14 @@ export function getManagedRelativePath({ destination, type, dccUri } = {}) {
     return AGGREGATE_FILES_BY_DESTINATION[normalizedDestination] || "";
   }
 
+  if (normalizedType === "agents") {
+    const slug = slugFromDccUri(dccUri);
+    if (normalizedDestination === "copilot") {
+      return path.join(".github", "agents", `${slug}.md`);
+    }
+    return "";
+  }
+
   if (normalizedType !== "prompts") {
     return "";
   }
