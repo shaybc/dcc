@@ -3622,6 +3622,8 @@ function setupEventListeners() {
 
 export function initializeApp() {
   if (!AGENT_FEATURE_ENABLED) {
+    topNav?.querySelector('[data-top-nav-tab="activity"]')?.remove();
+    topNav?.querySelector('[data-top-nav-tab="agents"]')?.remove();
     if (activityPage) {
       activityPage.hidden = true;
     }
