@@ -12,7 +12,7 @@ import { allDb, getDb } from "../db/helpers.js";
 import { getAssetRepo, listAssetRepos } from "../utils/assetRepos.js";
 import { runCommand } from "../utils/git.js";
 import { internalDefinitionTypeToDcc } from "../definitions/definitionType.js";
-import { sanitizeYamlHeaderScalars, sanitizeMarkdownFrontmatterHeaderScalars } from "../definitions/content.js";
+import { sanitizeYamlHeaderScalars, sanitizeMarkdownFrontmatterHeaderScalars, stringifyYamlWithMultilineDescriptions } from "../definitions/content.js";
 
 const fsp = fs.promises;
 const router = express.Router();
@@ -123,7 +123,7 @@ function ensureDccDefinitionTypeInContent(content, { format = "yaml", filePath =
     throw new Error("Definition content must be a YAML object.");
   }
   parsedYaml.dcc_definition_type = dccDefinitionType;
-  return sanitizeYamlHeaderScalars(YAML.stringify(parsedYaml));
+  return sanitizeYamlHeaderScalars(stringifyYamlWithMultilineDescriptions(parsedYaml));
 }
 router.get("/api/editor/definition", async (req, res) => {
   try {
