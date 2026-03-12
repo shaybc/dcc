@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { parseDefinitionContent } from "../src/server/definitions/parse.js";
-import { sanitizeYamlHeaderScalars, sanitizeMarkdownFrontmatterHeaderScalars, updateDefinitionMetadataInContent } from "../src/server/definitions/content.js";
+import { sanitizeYamlHeaderScalars, sanitizeMarkdownFrontmatterHeaderScalars, updateDefinitionMetadataInContent, stringifyYamlWithMultilineDescriptions } from "../src/server/definitions/content.js";
 
 test("parseDefinitionContent exposes dccUri when provided", () => {
   const parsed = parseDefinitionContent("name: Test\ndcc_uri: prompts/my-prompt\ndcc_definition_type: prompt\n", "prompts/test.yaml");
@@ -98,6 +98,18 @@ test("sanitizeYamlHeaderScalars preserves multiline block style metadata", () =>
   assert.match(sanitized, /^name:\s+"Debugging rules"/m);
 });
 
+
+
+test("stringifyYamlWithMultilineDescriptions preserves valid description blocks for long single-line text", () => {
+  const serialized = stringifyYamlWithMultilineDescriptions({
+    name: "Login Page UI Test",
+    description: "Tests a login web page for essential UI components like username, password fields, and login/cancel buttons."
+  });
+
+  assert.match(serialized, /^description:\s*\|-/m);
+  const parsed = parseDefinitionContent(serialized, "prompts/login-page-ui-test.yaml");
+  assert.equal(parsed.description, "Tests a login web page for essential UI components like username, password fields, and login/cancel buttons.");
+});
 test("sanitizeMarkdownFrontmatterHeaderScalars only sanitizes frontmatter header", () => {
   const raw = `---\nname: Debugging rules\ndescription: A description: with colon\n---\n\n# Title\nBody: should stay untouched\n`;
   const sanitized = sanitizeMarkdownFrontmatterHeaderScalars(raw);
