@@ -1,1 +1,6 @@
-<project><artifactId>spring-boot-starter-web</artifactId></project>
+<project>
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.example</groupId>
+	<artifactId>spring-boot-starter-web</artifactId>
+	<version>1.0.0</version>
+</project>
