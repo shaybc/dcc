@@ -30,6 +30,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "../client"), {
   setHeaders: (res) => {
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Permissions-Policy", "file-system-access=(self)");
   }
 }));
 
