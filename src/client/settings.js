@@ -38,6 +38,7 @@ initDevProjects({
   addDevRootButton: dom.addDevRootButton,
   saveDevRootsButton: dom.saveDevRootsButton,
   devRootsTable: dom.devRootsTable,
+  devRootDropzone: dom.devRootDropzone,
   devProjectsTable: dom.devProjectsTable,
   setDevRootsNotice,
   runWithLoading,
