@@ -6,7 +6,6 @@ export const assetReposTable = document.getElementById("assetReposTable");
 export const addAssetRepoButton = document.getElementById("addAssetRepo");
 export const assetRepoSyncTable = document.getElementById("assetRepoSyncTable");
 export const devRootsTable = document.getElementById("devRootsTable");
-export const devRootDropzone = document.getElementById("devRootDropzone");
 export const devProjectsTable = document.getElementById("devProjectsTable");
 export const addDevRootButton = document.getElementById("addDevRoot");
 export const saveDevRootsButton = document.getElementById("saveDevRoots");
