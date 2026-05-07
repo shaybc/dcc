@@ -71,7 +71,6 @@ export function setupEventListeners(ctx) {
     newDefinitionButton,
     toggleNewMenu,
     generateDefinitionMenuItem,
-    newDocumentMenuItem,
     generateDefinitionFromDescription,
     formatFilterLabel,
     filterIconSvg,
@@ -393,15 +392,6 @@ export function setupEventListeners(ctx) {
       button.addEventListener("click", () => {
         window.location.assign(`/editor/editor.html?mode=create&type=${encodeURIComponent(type)}`);
       });
-    });
-  }
-
-  if (newDocumentMenuItem) {
-    newDocumentMenuItem.innerHTML = `<span class="menu-type-icon">${filterIconSvg("doc")}</span><span>New document</span>`;
-    newDocumentMenuItem.addEventListener("click", () => {
-      newDefinitionMenu.hidden = true;
-      newDefinitionButton?.setAttribute("aria-expanded", "false");
-      window.location.assign("/editor/editor.html?mode=create&type=doc");
     });
   }
 
