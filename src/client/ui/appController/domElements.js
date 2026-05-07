@@ -29,6 +29,7 @@ const editDefinitionButton = document.getElementById("editDefinition");
 const newDefinitionButton = document.getElementById("newDefinitionButton");
 const newDefinitionMenu = document.getElementById("newDefinitionMenu");
 const generateDefinitionMenuItem = document.getElementById("generateDefinitionMenuItem");
+const newDocumentMenuItem = document.getElementById("newDocumentMenuItem");
 const recommendationsToggleButton = document.getElementById("recommendationsToggleButton");
 const hubMenuToggleButton = document.getElementById("hubMenuToggle");
 const hubMenu = document.getElementById("hubMenu");
@@ -228,6 +229,7 @@ export {
   newDefinitionButton,
   newDefinitionMenu,
   generateDefinitionMenuItem,
+  newDocumentMenuItem,
   recommendationsToggleButton,
   hubMenuToggleButton,
   hubMenu,
