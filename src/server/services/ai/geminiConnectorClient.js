@@ -52,7 +52,7 @@ export class GeminiConnectorClient {
       );
     }
 
-    const url    = this._connectorUrl(this.embedConnectorId);
+    const url    = this._connectorUrl(this.embedConnectorId, "regular");
     const body   = { [this.textParam]: String(text || "") };
 
     logConnectorHttpRequest({ method: "POST", url, body });
@@ -121,7 +121,7 @@ export class GeminiConnectorClient {
     }
   }
 
-  _connectorUrl(connectorId) {
+  _connectorUrl(connectorId, _mode = this.mode) {
     return `${this.baseUrl}/api/connectors/${encodeURIComponent(connectorId)}`;
   }
 
