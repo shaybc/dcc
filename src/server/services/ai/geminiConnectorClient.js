@@ -121,9 +121,8 @@ export class GeminiConnectorClient {
     }
   }
 
-  _connectorUrl(connectorId, mode = this.mode) {
-    const suffix = mode === "raw" ? "/raw" : "";
-    return `${this.baseUrl}/api/connectors/${encodeURIComponent(connectorId)}${suffix}`;
+  _connectorUrl(connectorId, _mode = this.mode) {
+    return `${this.baseUrl}/api/connectors/${encodeURIComponent(connectorId)}`;
   }
 
   _headers() {
