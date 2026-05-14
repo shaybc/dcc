@@ -19,7 +19,7 @@ This is a concise route map derived from the current Express route modules.
 
 ### `GET /api/settings`
 Returns runtime settings, including recommendation limits and Gemini provider fields:
-`{ maxRecommendedDefinitions, geminiClient, geminiApiKey, geminiModel, geminiConnectorId, geminiConnectorBaseUrl, geminiConnectorApiKey, geminiConnectorModel }`.
+`{ maxRecommendedDefinitions, geminiClient, geminiApiKey, geminiModel, geminiConnectorId, geminiConnectorBaseUrl, geminiConnectorApiKey, geminiConnectorModel, geminiConnectorMode }`.
 
 ### `POST /api/settings`
 Accepts partial updates for legacy repo compatibility + recommendation/Gemini settings.

@@ -31,6 +31,7 @@ export const geminiConnectorIdInput = document.getElementById("geminiConnectorId
 export const geminiConnectorBaseUrlInput = document.getElementById("geminiConnectorBaseUrlInput");
 export const geminiConnectorApiKeyInput = document.getElementById("geminiConnectorApiKeyInput");
 export const geminiConnectorModelInput = document.getElementById("geminiConnectorModelInput");
+export const geminiConnectorModeSelect = document.getElementById("geminiConnectorModeSelect");
 export const saveGeminiSettingsButton = document.getElementById("saveGeminiSettingsBtn");
 export const getModelsButton = document.getElementById("getModelsBtn");
 export const modelsDialogOverlay = document.getElementById("modelsDialogOverlay");
