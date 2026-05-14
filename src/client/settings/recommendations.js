@@ -18,6 +18,7 @@ export async function loadRecommendationSettings(domRefs) {
     geminiConnectorBaseUrlInput,
     geminiConnectorApiKeyInput,
     geminiConnectorModelInput,
+    geminiConnectorModeSelect,
     openAiResponseLogEnabledInput,
     aiClientTrafficLogEnabledInput,
     aiResponseLogMaxLengthInput,
@@ -43,6 +44,7 @@ export async function loadRecommendationSettings(domRefs) {
   if (geminiConnectorBaseUrlInput) geminiConnectorBaseUrlInput.value = String(data?.geminiConnectorBaseUrl || "");
   if (geminiConnectorApiKeyInput) geminiConnectorApiKeyInput.value = String(data?.geminiConnectorApiKey || "");
   if (geminiConnectorModelInput) geminiConnectorModelInput.value = String(data?.geminiConnectorModel || "gemini-2.5-pro");
+  if (geminiConnectorModeSelect) geminiConnectorModeSelect.value = String(data?.geminiConnectorMode || "regular");
   if (openAiResponseLogEnabledInput) openAiResponseLogEnabledInput.checked = Boolean(data?.openAiResponseLogEnabled);
   if (aiClientTrafficLogEnabledInput) aiClientTrafficLogEnabledInput.checked = Boolean(data?.aiClientTrafficLogEnabled);
 
@@ -85,6 +87,7 @@ export function initRecommendationSettings(domRefs, { setNotice, getDefaultTimeo
     geminiConnectorBaseUrlInput,
     geminiConnectorApiKeyInput,
     geminiConnectorModelInput,
+    geminiConnectorModeSelect,
   } = domRefs;
 
   geminiClientSelect?.addEventListener("change", () => toggleGeminiSettingsSections(domRefs));
@@ -177,6 +180,7 @@ export function initRecommendationSettings(domRefs, { setNotice, getDefaultTimeo
     const geminiConnectorBaseUrl = String(geminiConnectorBaseUrlInput?.value || "").trim();
     const geminiConnectorApiKey = String(geminiConnectorApiKeyInput?.value || "").trim();
     const geminiConnectorModel = String(geminiConnectorModelInput?.value || "").trim() || "gemini-2.5-pro";
+    const geminiConnectorMode = String(geminiConnectorModeSelect?.value || "regular");
 
     const response = await fetch("/api/settings", {
       method: "POST",
@@ -188,7 +192,8 @@ export function initRecommendationSettings(domRefs, { setNotice, getDefaultTimeo
         geminiConnectorId,
         geminiConnectorBaseUrl,
         geminiConnectorApiKey,
-        geminiConnectorModel
+        geminiConnectorModel,
+        geminiConnectorMode
       })
     });
 
@@ -205,6 +210,7 @@ export function initRecommendationSettings(domRefs, { setNotice, getDefaultTimeo
     if (geminiConnectorBaseUrlInput) geminiConnectorBaseUrlInput.value = geminiConnectorBaseUrl;
     if (geminiConnectorApiKeyInput) geminiConnectorApiKeyInput.value = geminiConnectorApiKey;
     if (geminiConnectorModelInput) geminiConnectorModelInput.value = geminiConnectorModel;
+    if (geminiConnectorModeSelect) geminiConnectorModeSelect.value = geminiConnectorMode;
 
     toggleGeminiSettingsSections(domRefs);
     setNotice("Gemini settings updated.");

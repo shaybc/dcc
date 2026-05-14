@@ -3,7 +3,7 @@ import { logInfo } from "../../utils/logger.js";
 import { getAiLogConfigSync, truncateAiLogPayload } from "../../utils/aiLogging.js";
 
 export class GeminiConnectorClient {
-  constructor({ apiKey, model, connectorId, baseUrl, embedConnectorId, textParam = "text", filesParam = "files" }) {
+  constructor({ apiKey, model, connectorId, baseUrl, embedConnectorId, textParam = "text", filesParam = "files", mode = "regular" }) {
     if (!connectorId) throw new Error("GeminiConnectorClient: connectorId is required");
     if (!baseUrl)     throw new Error("GeminiConnectorClient: baseUrl is required");
 
@@ -14,12 +14,14 @@ export class GeminiConnectorClient {
     this.embedConnectorId = embedConnectorId || null;
     this.textParam       = textParam;
     this.filesParam      = filesParam;
+    this.mode            = normalizeConnectorMode(mode);
   }
 
-  async generateText({ prompt, contents, generationConfig, system }) {
-    const url = this._connectorUrl(this.connectorId);
-    const text = this._flattenContents({ prompt, contents, system });
-    const body = this._buildRequestBody(text, generationConfig);
+  async generateText({ prompt, contents, generationConfig, system, tools, toolConfig }) {
+    const url = this.mode === "raw" ? this._rawConnectorUrl(this.connectorId) : this._connectorUrl(this.connectorId);
+    const body = this.mode === "raw"
+      ? buildRawGeminiBody({ prompt, contents, generationConfig, system, tools, toolConfig })
+      : this._buildRequestBody(this._flattenContents({ prompt, contents, system }), generationConfig);
 
     logConnectorHttpRequest({ method: "POST", url, body });
 
@@ -123,6 +125,11 @@ export class GeminiConnectorClient {
     return `${this.baseUrl}/api/connectors/${encodeURIComponent(connectorId)}`;
   }
 
+  _rawConnectorUrl(connectorId) {
+    const model = this.model.startsWith("models/") ? this.model.slice("models/".length) : this.model;
+    return `${this._connectorUrl(connectorId)}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  }
+
   _headers() {
     return {
       "Content-Type":  "application/json",
@@ -169,6 +176,10 @@ export class GeminiConnectorClient {
   }
 
   _normalizeToGeminiResponse(json) {
+    if (Array.isArray(json?.candidates)) {
+      return json;
+    }
+
     const resp = json?.response;
 
     if (resp && typeof resp === "object" && Array.isArray(resp.candidates)) {
@@ -195,6 +206,25 @@ export class GeminiConnectorClient {
       }
     };
   }
+}
+
+function normalizeConnectorMode(value) {
+  const mode = String(value || "").trim().toLowerCase();
+  return mode === "raw" ? "raw" : "regular";
+}
+
+function buildRawGeminiBody({ prompt, contents, generationConfig, system, tools, toolConfig }) {
+  const resolvedContents = Array.isArray(contents) && contents.length
+    ? contents
+    : [{ role: "user", parts: [{ text: String(prompt || "") }] }];
+
+  return {
+    contents: resolvedContents,
+    ...(system && system.trim() ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+    ...(generationConfig ? { generationConfig } : {}),
+    ...(tools ? { tools } : {}),
+    ...(toolConfig ? { toolConfig } : {})
+  };
 }
 
 function extractGeminiParts(content) {

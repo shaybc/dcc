@@ -8,11 +8,20 @@ const GEMINI_CONNECTOR_ID_SETTING = "geminiConnectorId";
 const GEMINI_CONNECTOR_BASE_URL_SETTING = "geminiConnectorBaseUrl";
 const GEMINI_CONNECTOR_API_KEY_SETTING = "geminiConnectorApiKey";
 const GEMINI_CONNECTOR_MODEL_SETTING = "geminiConnectorModel";
+const GEMINI_CONNECTOR_MODE_SETTING = "geminiConnectorMode";
 
 export function normalizeGeminiClient(value, fallback = "connector") {
   const client = String(value || "").trim().toLowerCase();
   if (client === "connector" || client === "aistudio") {
     return client;
+  }
+  return fallback;
+}
+
+export function normalizeGeminiConnectorMode(value, fallback = "regular") {
+  const mode = String(value || "").trim().toLowerCase();
+  if (mode === "regular" || mode === "raw") {
+    return mode;
   }
   return fallback;
 }
@@ -24,7 +33,7 @@ export function normalizeGeminiModel(value, fallback = "gemini-2.5-pro") {
 }
 
 export async function getGeminiSettings({ persistDefaults = true } = {}) {
-  const [dbApiKey, dbModel, dbClient, dbConnectorId, dbConnectorBaseUrl, dbConnectorApiKey, dbConnectorModel] = await Promise.all([
+  const [dbApiKey, dbModel, dbClient, dbConnectorId, dbConnectorBaseUrl, dbConnectorApiKey, dbConnectorModel, dbConnectorMode] = await Promise.all([
     getSetting(GEMINI_API_KEY_SETTING),
     getSetting(GEMINI_MODEL_SETTING),
     getSetting(GEMINI_CLIENT_SETTING),
@@ -32,6 +41,7 @@ export async function getGeminiSettings({ persistDefaults = true } = {}) {
     getSetting(GEMINI_CONNECTOR_BASE_URL_SETTING),
     getSetting(GEMINI_CONNECTOR_API_KEY_SETTING),
     getSetting(GEMINI_CONNECTOR_MODEL_SETTING),
+    getSetting(GEMINI_CONNECTOR_MODE_SETTING),
   ]);
 
   const apiKey = String(dbApiKey ?? env.GEMINI_API_KEY ?? "").trim();
@@ -41,6 +51,7 @@ export async function getGeminiSettings({ persistDefaults = true } = {}) {
   const connectorBaseUrl = String(dbConnectorBaseUrl ?? "").trim();
   const connectorApiKey = String(dbConnectorApiKey ?? "").trim();
   const connectorModel = normalizeGeminiModel(dbConnectorModel, "gemini-2.5-pro");
+  const connectorMode = normalizeGeminiConnectorMode(dbConnectorMode, "regular");
 
   if (persistDefaults) {
     const writes = [];
@@ -56,15 +67,18 @@ export async function getGeminiSettings({ persistDefaults = true } = {}) {
     if (dbConnectorModel === null && connectorModel) {
       writes.push(setSetting(GEMINI_CONNECTOR_MODEL_SETTING, connectorModel));
     }
+    if (dbConnectorMode === null && connectorMode) {
+      writes.push(setSetting(GEMINI_CONNECTOR_MODE_SETTING, connectorMode));
+    }
     if (writes.length) {
       await Promise.all(writes);
     }
   }
 
-  return { apiKey, model, client, connectorId, connectorBaseUrl, connectorApiKey, connectorModel };
+  return { apiKey, model, client, connectorId, connectorBaseUrl, connectorApiKey, connectorModel, connectorMode };
 }
 
-export async function saveGeminiSettings({ apiKey, model, client, connectorId, connectorBaseUrl, connectorApiKey, connectorModel }) {
+export async function saveGeminiSettings({ apiKey, model, client, connectorId, connectorBaseUrl, connectorApiKey, connectorModel, connectorMode }) {
   const updates = [];
   if (apiKey !== undefined) {
     updates.push(setSetting(GEMINI_API_KEY_SETTING, String(apiKey || "").trim()));
@@ -86,6 +100,9 @@ export async function saveGeminiSettings({ apiKey, model, client, connectorId, c
   }
   if (connectorModel !== undefined) {
     updates.push(setSetting(GEMINI_CONNECTOR_MODEL_SETTING, normalizeGeminiModel(connectorModel, "gemini-2.5-pro")));
+  }
+  if (connectorMode !== undefined) {
+    updates.push(setSetting(GEMINI_CONNECTOR_MODE_SETTING, normalizeGeminiConnectorMode(connectorMode, "regular")));
   }
   if (updates.length) {
     await Promise.all(updates);
