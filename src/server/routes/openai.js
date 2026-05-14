@@ -248,6 +248,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
   const enhanceFeature = req.get("X-DCC-Feature") || "";
 
   try {
+    logOpenAiRequest(reqId, "chat_completions_json", req.body);
     const parsed = ChatSchema.parse(req.body);
     logInfo(`[OPENAI] id=${reqId} ---------- /chat/completions Request Start -------`);
     logInfo(`[OPENAI] id=${reqId} incoming max_tokens=${parsed.max_tokens} parsed.max_thinking_tokens=${parsed.max_thinking_tokens || 0} temperature=${parsed.temperature}`);
@@ -652,6 +653,15 @@ function truncateLogText(value, maxLen = 300) {
     return normalized;
   }
   return `${normalized.slice(0, maxLen)}...`;
+}
+
+function logOpenAiRequest(reqId, label, payload) {
+  const aiLogConfig = getAiLogConfigSync();
+  if (!aiLogConfig.openAiResponseEnabled) {
+    return;
+  }
+  const serialized = truncateAiLogPayload(payload, aiLogConfig.responseMaxLength);
+  logInfo(`[OPENAI] id=${reqId} request_${label}=${serialized}`);
 }
 
 function logOpenAiResponse(reqId, label, payload) {
