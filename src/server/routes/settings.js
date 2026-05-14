@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { getSetting, setSetting } from "../utils/settings.js";
 import { allDb, runDb } from "../db/helpers.js";
-import { getGeminiSettings, normalizeGeminiClient, normalizeGeminiModel, saveGeminiSettings } from "../utils/geminiSettings.js";
+import { getGeminiSettings, normalizeGeminiClient, normalizeGeminiConnectorMode, normalizeGeminiModel, saveGeminiSettings } from "../utils/geminiSettings.js";
 import {
   createAssetRepo,
   deleteAssetRepo,
@@ -49,6 +49,7 @@ router.get("/api/settings", async (req, res) => {
       geminiConnectorBaseUrl: gemini.connectorBaseUrl,
       geminiConnectorApiKey: gemini.connectorApiKey,
       geminiConnectorModel: normalizeGeminiModel(gemini.connectorModel),
+      geminiConnectorMode: normalizeGeminiConnectorMode(gemini.connectorMode),
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -67,6 +68,7 @@ router.post("/api/settings", async (req, res) => {
     geminiConnectorBaseUrl,
     geminiConnectorApiKey,
     geminiConnectorModel,
+    geminiConnectorMode,
     openAiResponseLogEnabled,
     aiClientTrafficLogEnabled,
     aiResponseLogMaxLength,
@@ -89,6 +91,7 @@ router.post("/api/settings", async (req, res) => {
       connectorBaseUrl: geminiConnectorBaseUrl,
       connectorApiKey: geminiConnectorApiKey,
       connectorModel: geminiConnectorModel,
+      connectorMode: geminiConnectorMode,
     });
     await saveAiLogConfigToSettings({
       openAiResponseEnabled: openAiResponseLogEnabled,

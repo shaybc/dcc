@@ -36,7 +36,8 @@ async function getClientForModel(modelFromRequest) {
       apiKey,
       model,
       connectorId,
-      baseUrl
+      baseUrl,
+      mode: settings.connectorMode
     });
   }
 

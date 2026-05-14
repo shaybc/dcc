@@ -87,6 +87,7 @@ paths:
                   geminiConnectorBaseUrl: { type: string }
                   geminiConnectorApiKey: { type: string }
                   geminiConnectorModel: { type: string }
+                  geminiConnectorMode: { type: string, enum: [regular, raw] }
         "500":
           $ref: "#/components/responses/ServerError"
     post:
@@ -109,6 +110,7 @@ paths:
                 geminiConnectorBaseUrl: { type: string }
                 geminiConnectorApiKey: { type: string }
                 geminiConnectorModel: { type: string }
+                geminiConnectorMode: { type: string, enum: [regular, raw] }
       responses:
         "200":
           description: Updated
