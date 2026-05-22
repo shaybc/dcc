@@ -87,7 +87,8 @@ const ChatSchema = z.object({
   max_thinking_tokens: z.number().optional(),
   tools: z.array(z.any()).optional(),
   tool_choice: z.any().optional(),
-  stream_options: z.any().optional()
+  stream_options: z.any().optional(),
+  response_format: z.any().optional()
 }).passthrough();
 
 const CompletionSchema = z.object({
@@ -332,6 +333,7 @@ openaiRouter.post("/chat/completions", async (req, res) => {
     const generationConfig = cleanUndefined({
       temperature: parsed.temperature,
       maxOutputTokens: parsed.max_tokens,
+      ...buildResponseSchema(parsed.response_format),
       ...(parsed.max_thinking_tokens > 0
         ? { thinkingConfig: { thinkingBudget: parsed.max_thinking_tokens } }
         : {})
@@ -547,6 +549,23 @@ function normalizeContentText(content) {
   }
   if (content == null) return "";
   return String(content);
+}
+
+function buildResponseSchema(responseFormat) {
+  if (!responseFormat) return {};
+
+  if (responseFormat.type === "json_object") {
+    return { responseMimeType: "application/json" };
+  }
+
+  if (responseFormat.type === "json_schema" && responseFormat.json_schema?.schema) {
+    return {
+      responseMimeType: "application/json",
+      responseSchema: sanitizeGeminiSchema(responseFormat.json_schema.schema)
+    };
+  }
+
+  return {};
 }
 
 function buildToolConfig(toolChoice) {
