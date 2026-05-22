@@ -551,6 +551,31 @@ function normalizeContentText(content) {
   return String(content);
 }
 
+function resolveRefs(schema) {
+  if (!schema || typeof schema !== "object") return schema;
+
+  const defs = schema.$defs || schema.definitions || {};
+
+  function inline(node) {
+    if (!node || typeof node !== "object") return node;
+    if (Array.isArray(node)) return node.map(inline);
+
+    if (node.$ref) {
+      const refKey = node.$ref.replace("#/$defs/", "").replace("#/definitions/", "");
+      return inline(defs[refKey] || node);
+    }
+
+    const result = {};
+    for (const [k, v] of Object.entries(node)) {
+      if (k === "$defs" || k === "definitions") continue;
+      result[k] = inline(v);
+    }
+    return result;
+  }
+
+  return inline(schema);
+}
+
 function buildResponseSchema(responseFormat) {
   if (!responseFormat) return {};
 
@@ -559,9 +584,10 @@ function buildResponseSchema(responseFormat) {
   }
 
   if (responseFormat.type === "json_schema" && responseFormat.json_schema?.schema) {
+    const resolved = resolveRefs(responseFormat.json_schema.schema);
     return {
       responseMimeType: "application/json",
-      responseSchema: sanitizeGeminiSchema(responseFormat.json_schema.schema)
+      responseSchema: sanitizeGeminiSchema(resolved)
     };
   }
 
