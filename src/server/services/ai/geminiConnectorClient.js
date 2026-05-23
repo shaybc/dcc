@@ -18,7 +18,7 @@ export class GeminiConnectorClient {
   }
 
   async generateText({ prompt, contents, generationConfig, system, tools, toolConfig }) {
-    const url = this._connectorUrl(this.connectorId);
+    const url = this.mode === "raw" ? this._rawConnectorUrl(this.connectorId) : this._connectorUrl(this.connectorId);
     const body = this.mode === "raw"
       ? buildRawGeminiBody({ prompt, contents, generationConfig, system, tools, toolConfig })
       : this._buildRequestBody(this._flattenContents({ prompt, contents, system }), generationConfig);
@@ -125,6 +125,11 @@ export class GeminiConnectorClient {
     const model = this.model.startsWith("models/") ? this.model.slice("models/".length) : this.model;
     const suffix = mode == "raw" ? `/v1beta/models/${encodeURIComponent(model)}:generateContent`: "";
     return `${this.baseUrl}/api/connectors/${encodeURIComponent(connectorId)}${suffix}`;
+  }
+
+  _rawConnectorUrl(connectorId) {
+    const model = this.model.startsWith("models/") ? this.model.slice("models/".length) : this.model;
+    return `${this._connectorUrl(connectorId)}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   }
 
   _headers() {

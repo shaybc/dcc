@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { GeminiConnectorClient } from "../src/server/services/ai/geminiConnectorClient.js";
 
-test("raw connector mode sends Gemini payload with tools to connector endpoint", async () => {
+test("raw connector mode sends Gemini payload with tools to Gemini generateContent endpoint", async () => {
   const originalFetch = global.fetch;
   let capturedUrl = "";
   let capturedBody = null;
@@ -40,7 +40,7 @@ test("raw connector mode sends Gemini payload with tools to connector endpoint",
       toolConfig: { functionCallingConfig: { mode: "AUTO" } }
     });
 
-    assert.equal(capturedUrl, "https://connector.example.com/api/connectors/abc");
+    assert.equal(capturedUrl, "https://connector.example.com/api/connectors/abc/v1beta/models/gemini-2.5-pro:generateContent");
     assert.deepEqual(capturedBody.tools, [{ functionDeclarations: [{ name: "read_file", parameters: { type: "object" } }] }]);
     assert.deepEqual(capturedBody.toolConfig, { functionCallingConfig: { mode: "AUTO" } });
     assert.equal(capturedBody.systemInstruction.parts[0].text, "You are a coding agent.");
