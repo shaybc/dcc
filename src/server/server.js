@@ -21,6 +21,7 @@ import { isAgentFeatureEnabled } from "./utils/env.js";
 const __dirname = import.meta.dirname;
 const app = express();
 const PORT = process.env.PORT || 3000;
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // increase request body limits
 app.use(express.json({ limit: "10mb" }));
